@@ -1,0 +1,98 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 440227c04676c9594b2a6ef1def7984827ae1b9ce033d8ce1efde7ddea161199
+
+name:           pg-schema
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/odr/pg-schema#readme>
+homepage:       https://github.com/odr/pg-schema#readme
+bug-reports:    https://github.com/odr/pg-schema/issues
+author:         Dmitry Olshansky
+maintainer:     olshanskydr@gmail.com
+copyright:      Dmitry Olshansky
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    ChangeLog.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/odr/pg-schema
+
+library
+  exposed-modules:
+    Database.PostgreSQL.DML.Select
+    Database.PostgreSQL.Convert
+    Database.PostgreSQL.PgTagged
+    Database.PostgreSQL.Rec
+    Database.PostgreSQL.Schema.Catalog
+    Database.PostgreSQL.Schema.Info
+    Database.Schema.Def
+    Database.Schema.Util.ToStar
+    TH.Database.PostgreSQL.Schema
+    TH.Rec.Update
+  other-modules:
+    Paths_pg_schema
+  hs-source-dirs:
+    src
+  build-depends:
+    aeson
+    , base >=4.7 && <5
+    , containers
+    , postgresql-simple
+    , singletons
+    , tagged
+    , template-haskell
+    , text
+    , uuid
+    , time
+  default-language: Haskell2010
+  default-extensions:
+    AllowAmbiguousTypes
+    , ConstraintKinds
+    , DataKinds
+    , ExistentialQuantification
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , MultiParamTypeClasses
+    , OverloadedStrings
+    , ScopedTypeVariables
+    , TemplateHaskell
+    , TupleSections
+    , TypeApplications
+    , TypeFamilies
+    , TypeInType
+    , TypeOperators
+    , GeneralizedNewtypeDeriving
+
+executable pg-schema-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_pg_schema
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , pg-schema
+  default-language: Haskell2010
+
+test-suite pg-schema-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_pg_schema
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , pg-schema
+  default-language: Haskell2010
