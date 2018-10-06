@@ -249,3 +249,24 @@ instance CSchema PgCatalog where
     , "enum__type"
     , "type__namespace"
     ]
+
+instance CTypDef PgCatalog "oid" where
+  type TTypDef PgCatalog "oid" = TypDefC "N" Nothing '[]
+
+instance CTypDef PgCatalog "int2" where
+  type TTypDef PgCatalog "int2" = TypDefC "N" Nothing '[]
+
+instance CTypDef PgCatalog "int2[]" where
+  type TTypDef PgCatalog "int2[]" = TypDefC "A" (Just "int2") '[]
+
+instance CTypDef PgCatalog "float4" where
+  type TTypDef PgCatalog "float4" = TypDefC "N" Nothing '[]
+
+instance CTypDef PgCatalog "bool" where
+  type TTypDef PgCatalog "bool" = TypDefC "B" Nothing '[]
+
+instance CTypDef PgCatalog "name" where
+  type TTypDef PgCatalog "name" = TypDefC "S" Nothing '[]
+
+instance CTypDef PgCatalog "char" where
+  type TTypDef PgCatalog "char" = TypDefC "S" Nothing '[]

@@ -1,4 +1,3 @@
-{-# LANGUAGE PolyKinds #-}
 module Database.Schema.Util.ToStar where
 import           Data.Kind (Type)
 import           Data.Proxy (Proxy(..))

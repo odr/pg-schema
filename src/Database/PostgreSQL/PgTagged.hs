@@ -37,36 +37,29 @@ rePgTag = coerce
 -- So I support only plain records
 
 instance
-  ( fd ~ TFldDef sch tab n, CanConvert sch (FdType fd) (FdNullable fd) r
-  , ToStar n, ToStar tab, ToStar fd)
+  ( ToStar n, ToStar tab, ToStar fd, fd ~ TFldDef sch tab n
+  , CanConvert sch (FdType fd) (FdNullable fd) r )
   => CRecDef sch tab (PgTagged (n :: Symbol) r) where
-    type TRecFlds sch tab (PgTagged n r) =
-      '[ 'FldRecDefC ('FldRecInfoC n n (TFldDef sch tab n)) r]
-    type TRecTo   sch tab (PgTagged n r) = '[]
-    type TRecFrom sch tab (PgTagged n r) = '[]
+    type TRecDef sch tab (PgTagged n r) =
+      '[ 'FldRecDefC ('FldPlain ('FldRecInfoC n n (TFldDef sch tab n))) r]
 
 instance CRecDef sch tab (PgTagged n r) => CRecDef sch tab (PgTagged '[n] r)
   where
-    type TRecFlds sch tab (PgTagged '[n] r) = TRecFlds sch tab (PgTagged n r)
-    type TRecTo sch tab (PgTagged '[n] r) = '[]
-    type TRecFrom sch tab (PgTagged '[n] r) = '[]
+    type TRecDef sch tab (PgTagged '[n] r) = TRecDef sch tab (PgTagged n r)
 
 instance
-  ( fd ~ TFldDef sch tab n1, CanConvert sch (FdType fd) (FdNullable fd) r1
-  , ToStar n1, CRecDef sch tab (PgTagged (n2 ': ns) rs), ToStar fd )
+  ( ToStar n1, CRecDef sch tab (PgTagged (n2 ': ns) rs), ToStar fd
+  , fd ~ TFldDef sch tab n1, CanConvert sch (FdType fd) (FdNullable fd) r1 )
   => CRecDef sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs)) where
 #if MIN_VERSION_singletons(2,4,0)
-    type TRecFlds sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs))
-      =  TRecFlds sch tab (PgTagged n1 r1)
-      ++ TRecFlds sch tab (PgTagged (n2 ': ns) rs)
+    type TRecDef sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs))
+      =  TRecDef sch tab (PgTagged n1 r1)
+      ++ TRecDef sch tab (PgTagged (n2 ': ns) rs)
 #else
-    type TRecFlds sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs))
-      =  TRecFlds sch tab (PgTagged n1 r1)
-      :++ TRecFlds sch tab (PgTagged (n2 ': ns) rs)
+    type TRecDef sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs))
+      =  TRecDef sch tab (PgTagged n1 r1)
+      :++ TRecDef sch tab (PgTagged (n2 ': ns) rs)
 #endif
-
-    type TRecTo sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs)) = '[]
-    type TRecFrom sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs)) = '[]
 
 instance FromRow (Only b) => FromRow (PgTagged (n::Symbol) b) where
   fromRow = coerce @(Only b) <$> fromRow

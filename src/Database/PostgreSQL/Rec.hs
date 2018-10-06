@@ -18,24 +18,25 @@ promote [d|
     , friPgName   :: s
     , friFldDef   :: FldDef s }
 
-  data FldRecDef s t = FldRecDefC
-    { frdInfo     :: FldRecInfo s
-    , frdType     :: t }
-
   data RefRecInfo s = RefRecInfoC
     { rriName     :: s
     , rriRefTab   :: s
     , rriFromFlds :: [s]
     , rriToFlds   :: [s] }
 
-  data RefRecDef s t = RefRecDefC
-    { rrdInfo     :: RefRecInfo s
-    , rrdType     :: t  -- for child recs it is a type of list elements
-    }
+  data FldRecInfoSum s
+    = FldPlain (FldRecInfo s)
+    | FldTo (RefRecInfo s)
+    | FldFrom (RefRecInfo s)
+
+  data FldRecDef s t = FldRecDefC
+    { frdInfo :: FldRecInfoSum s
+    , frdType :: t }
   |]
 
 type instance TStar (FldRecInfo Symbol) = FldRecInfo Text
 type instance TStar (RefRecInfo Symbol) = RefRecInfo Text
+type instance TStar (FldRecInfoSum Symbol) = FldRecInfoSum Text
 
 instance (ToStar a, ToStar b, ToStar c)
   => ToStar ('FldRecInfoC a b c :: FldRecInfo Symbol) where
@@ -46,46 +47,34 @@ instance (ToStar a, ToStar b, ToStar c, ToStar d)
     toStar =
       RefRecInfoC (toStar @_ @a) (toStar @_ @b) (toStar @_ @c) (toStar @_ @d)
 
-type FrdPgType frd = FdType (FriFldDef (FrdInfo frd))
-type FrdNullable frd = FdNullable (FriFldDef (FrdInfo frd))
+instance ToStar a => ToStar ('FldPlain a :: FldRecInfoSum Symbol) where
+    toStar = FldPlain (toStar @_ @a)
 
-type CanFldConvert sch frd =
-  ( CanConvert sch (FrdPgType frd) (FrdNullable frd) (FrdType frd)
-  , ToStar (FrdInfo frd) )
+instance ToStar a => ToStar ('FldTo a :: FldRecInfoSum Symbol) where
+    toStar = FldTo (toStar @_ @a)
+
+instance ToStar a => ToStar ('FldFrom a :: FldRecInfoSum Symbol) where
+    toStar = FldFrom (toStar @_ @a)
+
+
+type family CanFldConvert sch (frd :: FldRecDef Symbol Type) :: Constraint where
+  CanFldConvert sch ('FldRecDefC ('FldPlain fri) t) =
+    ( CanConvert sch (FdType (FriFldDef fri)) (FdNullable (FriFldDef fri)) t
+    , ToStar fri )
+  CanFldConvert sch ('FldRecDefC ('FldTo rri) t) =
+    CRecDef sch (RdTo (TRelDef sch (RriName rri))) t
+  CanFldConvert sch ('FldRecDefC ('FldFrom rri) t) =
+    CRecDef sch (RdFrom (TRelDef sch (RriName rri))) t
 
 type family CanRecConvert sch (frd::[FldRecDef Symbol Type]) :: Constraint where
   CanRecConvert sch '[] = ()
   CanRecConvert sch (x ': xs) = (CanFldConvert sch x, CanRecConvert sch xs)
 
-type CFromDef sch rrd =
-  CRecDef sch (RdFrom (TRelDef sch (RriName (RrdInfo rrd)))) (RrdType rrd)
-
-type CToDef sch rrd =
-  CRecDef sch (RdTo (TRelDef sch (RriName (RrdInfo rrd)))) (RrdType rrd)
-
-type family CanFromConvert sch (rrd :: [RefRecDef Symbol Type]) :: Constraint
-  where
-    CanFromConvert sch '[] = ()
-    CanFromConvert sch (x ': xs) = (CFromDef sch x, CanFromConvert sch xs)
-
-type family CanToConvert sch (rrd :: [RefRecDef Symbol Type]) :: Constraint
-  where
-    CanToConvert sch '[] = ()
-    CanToConvert sch (x ': xs) = (CToDef sch x, CanToConvert sch xs)
-
 class
-  ( CanRecConvert sch (TRecFlds sch tab a)
-  , CanFromConvert sch (TRecFrom sch tab a)
-  , CanToConvert sch (TRecTo sch tab a)
-  , ToStar (RecFldInfos sch tab a)
+  ( CanRecConvert sch (TRecDef sch tab a)
+  , ToStar (RecDefInfo sch tab a)
   , ToStar tab )
   => CRecDef (sch::Type) (tab :: Symbol) (a::Type) where
+    type TRecDef sch tab a   :: [FldRecDef Symbol Type]
 
-  type TRecFlds sch tab a   :: [FldRecDef Symbol Type]
-  -- ^ fields from table
-  type TRecTo sch tab a   :: [RefRecDef Symbol Type]
-  -- ^ referencies to master table
-  type TRecFrom sch tab a :: [RefRecDef Symbol Type]
-  -- ^ referencies to detail table
-
-type RecFldInfos sch tab a = Map FrdInfoSym0 (TRecFlds sch tab a)
+type RecDefInfo sch tab a = Map FrdInfoSym0 (TRecDef sch tab a)

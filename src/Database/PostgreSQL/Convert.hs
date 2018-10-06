@@ -33,7 +33,8 @@ instance CanConvert sch tn 'False t => CanConvert sch tn 'True (Maybe t)
 
 instance CanConvert1 ('TypDefC "B" x y) sch tn Bool
 
-instance CanConvert sch n b t => CanConvert1 ('TypDefC "A" ('Just n) y) sch x [t]
+instance CanConvert sch n 'False t
+  => CanConvert1 ('TypDefC "A" ('Just n) y) sch x [t]
 
 instance CanConvert1 ('TypDefC "N" x y) sch "int2" Int
 instance CanConvert1 ('TypDefC "N" x y) sch "int4" Int
