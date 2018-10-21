@@ -1,6 +1,8 @@
 module TH.Rec.Update where
+
 import GHC.TypeLits
 import Language.Haskell.TH
+
 
 class SetField (fn::Symbol) r t | r fn -> t where
   setField :: t -> r -> r

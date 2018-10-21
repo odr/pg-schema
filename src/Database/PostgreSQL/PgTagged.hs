@@ -2,24 +2,29 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.PgTagged where
 
+import Data.Aeson
 import Data.Coerce
 import Data.Kind
 import Data.Singletons.Prelude
 import Data.Tagged
 import Database.PostgreSQL.Simple as PG
+import Database.PostgreSQL.Simple.FromField as PG
 import Database.PostgreSQL.Simple.FromRow as PG
+import Database.PostgreSQL.Simple.ToField as PG
 import Database.PostgreSQL.Simple.ToRow as PG
 import Database.Schema.Rec
+import Type.Reflection
 import Util.ToStar
 
 
 #if MIN_VERSION_base(4,11,0)
 newtype PgTagged a b = PgTagged (Tagged a b) deriving
   ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
-  , Semigroup)
+  , Semigroup, FromJSON, ToJSON)
 #else
 newtype PgTagged a b = PgTagged (Tagged a b) deriving
-  ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid )
+  ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
+  , FromJSON, ToJSON )
 #endif
 
 pgTag :: b -> PgTagged a b
@@ -100,3 +105,9 @@ instance (ToRow (Only a), ToRow (PgTagged (n2 ': ns) as))
     toRow
       = toRow @(Only a PG.:. PgTagged (n2 ': ns) as)
       . ((PG.:.) <$> fst <*> snd) . coerce
+
+instance (FromJSON a, Typeable a) => FromField (PgTagged n a) where
+  fromField = (fmap pgTag .) . fromJSONField
+
+instance ToJSON a => ToField (PgTagged n a) where
+  toField = toJSONField . unPgTag

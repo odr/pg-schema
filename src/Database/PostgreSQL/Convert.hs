@@ -5,6 +5,7 @@ module Database.PostgreSQL.Convert where
 import Data.Aeson
 import Data.Text as T
 import Data.Time
+import Data.UUID
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.Schema.Def
@@ -44,6 +45,7 @@ instance CanConvert1 ('TypDef "N" x y) sch "float4" Double
 instance CanConvert1 ('TypDef "N" x y) sch "float8" Double
 instance CanConvert1 ('TypDef "N" x y) sch "oid" Int
 instance CanConvert1 ('TypDef "N" x y) sch "numeric" Integer
+instance CanConvert1 ('TypDef "N" x y) sch "oid" UUID
 
 instance CanConvert1 ('TypDef "D" x y) sch "date" Day
 instance CanConvert1 ('TypDef "D" x y) sch "time" TimeOfDay

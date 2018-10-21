@@ -35,6 +35,7 @@ library
     Database.PostgreSQL.Schema.Info
     Database.Schema.Def
     Database.Schema.Rec
+    Database.Schema.TH
     TH.Database.PostgreSQL.Schema
     TH.Rec.Update
     Util.ToStar
@@ -61,6 +62,7 @@ library
     AllowAmbiguousTypes
     , ConstraintKinds
     , DataKinds
+    , DeriveGeneric
     , EmptyCase
     , ExistentialQuantification
     , FlexibleContexts
