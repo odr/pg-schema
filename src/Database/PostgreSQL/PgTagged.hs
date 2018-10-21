@@ -3,15 +3,14 @@
 module Database.PostgreSQL.PgTagged where
 
 import Data.Coerce
+import Data.Kind
 import Data.Singletons.Prelude
 import Data.Tagged
-import Database.PostgreSQL.Convert
-import Database.PostgreSQL.Rec
 import Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.FromRow as PG
 import Database.PostgreSQL.Simple.ToRow as PG
-import Database.Schema.Def
-import Database.Schema.Util.ToStar
+import Database.Schema.Rec
+import Util.ToStar
 
 
 #if MIN_VERSION_base(4,11,0)
@@ -32,34 +31,52 @@ unPgTag = coerce
 rePgTag :: PgTagged a c -> PgTagged b c
 rePgTag = coerce
 
--- Instances for Tagged records (as tuples)
--- I don't know a _good_ way to support references in Tagged records.
--- So I support only plain records
+instance ToStar n => CRecordInfo (PgTagged (n::Symbol) r) where
+  type TRecordInfo (PgTagged n r) = '[ 'FieldInfo 'FldPlain n n]
 
 instance
-  ( ToStar n, ToStar tab, ToStar fd, fd ~ TFldDef sch tab n
-  , CanConvert sch (FdType fd) (FdNullable fd) r )
-  => CRecDef sch tab (PgTagged (n :: Symbol) r) where
-    type TRecDef sch tab (PgTagged n r) =
-      '[ 'FldRecDefC ('FldPlain ('FldRecInfoC n n (TFldDef sch tab n))) r]
-
-instance CRecDef sch tab (PgTagged n r) => CRecDef sch tab (PgTagged '[n] r)
-  where
-    type TRecDef sch tab (PgTagged '[n] r) = TRecDef sch tab (PgTagged n r)
+  CRecordInfo (PgTagged n r) => CRecordInfo (PgTagged ('[n]::[Symbol]) r) where
+  type TRecordInfo (PgTagged '[n] r) = TRecordInfo (PgTagged n r)
 
 instance
-  ( ToStar n1, CRecDef sch tab (PgTagged (n2 ': ns) rs), ToStar fd
-  , fd ~ TFldDef sch tab n1, CanConvert sch (FdType fd) (FdNullable fd) r1 )
-  => CRecDef sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs)) where
+  (ToStar n, CRecordInfo (PgTagged n r), CRecordInfo (PgTagged (n1 ':ns) r1))
+  => CRecordInfo (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
 #if MIN_VERSION_singletons(2,4,0)
-    type TRecDef sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs))
-      =  TRecDef sch tab (PgTagged n1 r1)
-      ++ TRecDef sch tab (PgTagged (n2 ': ns) rs)
+  type TRecordInfo (PgTagged (n ': n1 ':ns) (r,r1)) =
+    TRecordInfo (PgTagged n r) ++ TRecordInfo (PgTagged (n1 ': ns) r1)
 #else
-    type TRecDef sch tab (PgTagged (n1 ': n2 ': ns) (r1,rs))
-      =  TRecDef sch tab (PgTagged n1 r1)
-      :++ TRecDef sch tab (PgTagged (n2 ': ns) rs)
+  type TRecordInfo (PgTagged (n ': n1 ':ns) (r,r1)) =
+    TRecordInfo (PgTagged n r) :++ TRecordInfo (PgTagged (n1 ': ns) r1)
 #endif
+
+instance CFieldType (PgTagged (n::Symbol) r) n where
+  type TFieldType (PgTagged n r) n = r
+
+instance CFieldType (PgTagged ('[n]::[Symbol]) r) n where
+  type TFieldType (PgTagged '[n] r) n = r
+
+instance
+  CFieldTypeB (n==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
+  => CFieldType (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) x where
+  type TFieldType (PgTagged (n ':n1 ':ns) (r,r1)) x=
+    TFieldTypeB (n==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
+
+class CFieldTypeB (b :: Bool) (r :: Type) (n :: Symbol) where
+  type TFieldTypeB b r n :: Type
+
+instance CFieldTypeB 'True (PgTagged (n ':ns) (r,r1)) n where
+  type TFieldTypeB 'True (PgTagged (n ':ns) (r,r1)) n = r
+
+instance
+  CFieldType (PgTagged ns r1) n1
+  => CFieldTypeB 'False (PgTagged (n ':ns) (r,r1)) n1 where
+  type TFieldTypeB 'False (PgTagged (n ':ns) (r,r1)) n1 =
+    TFieldType (PgTagged ns r1) n1
+
+instance
+  ( ToStar t
+  , CQueryFields db sch t (PgTagged ns r) (TRecordInfo (PgTagged ns r)) )
+  => CQueryRecord db sch (t::Symbol) (PgTagged ns r) where
 
 instance FromRow (Only b) => FromRow (PgTagged (n::Symbol) b) where
   fromRow = coerce @(Only b) <$> fromRow

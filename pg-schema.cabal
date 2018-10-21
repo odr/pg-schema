@@ -28,14 +28,16 @@ library
   exposed-modules:
     Database.PostgreSQL.DML.Select
     Database.PostgreSQL.Convert
+    Database.PostgreSQL.DB
     Database.PostgreSQL.PgTagged
-    Database.PostgreSQL.Rec
+    -- Database.PostgreSQL.Rec
     Database.PostgreSQL.Schema.Catalog
     Database.PostgreSQL.Schema.Info
     Database.Schema.Def
-    Database.Schema.Util.ToStar
+    Database.Schema.Rec
     TH.Database.PostgreSQL.Schema
     TH.Rec.Update
+    Util.ToStar
   other-modules:
     Paths_pg_schema
   hs-source-dirs:
@@ -44,25 +46,34 @@ library
     aeson
     , base >=4.7 && <5
     , containers
+    , formatting
+    , mtl
     , postgresql-simple
+    -- , shakespeare
     , singletons
     , tagged
     , template-haskell
     , text
-    , uuid
     , time
+    , uuid
   default-language: Haskell2010
   default-extensions:
     AllowAmbiguousTypes
     , ConstraintKinds
     , DataKinds
+    , EmptyCase
     , ExistentialQuantification
     , FlexibleContexts
     , FlexibleInstances
     , FunctionalDependencies
+    , GADTs
+    , GeneralizedNewtypeDeriving
+    , InstanceSigs
     , LambdaCase
     , MultiParamTypeClasses
     , OverloadedStrings
+    , QuasiQuotes
+    , RecordWildCards
     , ScopedTypeVariables
     , TemplateHaskell
     , TupleSections
@@ -70,7 +81,6 @@ library
     , TypeFamilies
     , TypeInType
     , TypeOperators
-    , GeneralizedNewtypeDeriving
 
 executable pg-schema-exe
   main-is: Main.hs
