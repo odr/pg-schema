@@ -3,13 +3,16 @@
 module Database.PostgreSQL.Convert where
 
 import Data.Aeson
+import Data.Coerce
 import Data.Text as T
 import Data.Time
 import Data.UUID
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
+import Database.PostgreSQL.Simple.Types
 import Database.Schema.Def
 import GHC.TypeLits
+import Type.Reflection
 
 
 class (FromJSON t, ToJSON t, CTypDef sch tn)
@@ -29,6 +32,17 @@ newtype PgChar = PgChar { unPgChar :: Char } deriving
 instance ToField PgChar where
   toField = toField . (:[]) . unPgChar
 
+newtype PgArr a = PgArr { getPgArr :: [a] }
+  -- ^ PGArray has no JSON instances. [] has JSON, but no PG.
+  -- This one has both.
+  deriving (Show, Eq, Ord, Read, FromJSON, ToJSON, Functor)
+
+instance (FromField a, Typeable a) => FromField (PgArr a) where
+  fromField = (fmap (coerce @(PGArray a)) .) . fromField
+
+instance ToField a => ToField (PgArr a) where
+  toField = toField . coerce @_ @(PGArray a)
+
 -- It is possible to do better
 -- but there are too much complexity without clear profit
 instance CanConvertPG sch tn 'False t => CanConvertPG sch tn 'True (Maybe t)
@@ -36,7 +50,7 @@ instance CanConvertPG sch tn 'False t => CanConvertPG sch tn 'True (Maybe t)
 instance CanConvert1 ('TypDef "B" x y) sch tn Bool
 
 instance CanConvertPG sch n 'False t
-  => CanConvert1 ('TypDef "A" ('Just n) y) sch x [t]
+  => CanConvert1 ('TypDef "A" ('Just n) y) sch x (PgArr t)
 
 instance CanConvert1 ('TypDef "N" x y) sch "int2" Int
 instance CanConvert1 ('TypDef "N" x y) sch "int4" Int

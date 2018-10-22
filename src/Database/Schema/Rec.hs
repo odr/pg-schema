@@ -2,11 +2,14 @@
 {-# LANGUAGE UndecidableSuperClasses #-}
 module Database.Schema.Rec where
 
+import Data.Aeson
 import Data.Kind
 import Data.Singletons.Prelude as SP
 import Data.Singletons.TH
 import Data.Text (Text)
+import Database.PostgreSQL.Simple.FromField as PG
 import Database.Schema.Def
+import Type.Reflection
 import Util.ToStar
 
 
@@ -38,6 +41,12 @@ class ToStar (TRecordInfo r) => CRecordInfo r where
 
   recordInfo :: [FieldInfo]
   recordInfo = toStar @_ @(TRecordInfo r)
+
+newtype SchList a = SchArray { getSchList :: [a] }
+  deriving (Show, Eq, Ord, FromJSON, ToJSON)
+
+instance (FromJSON a, Typeable a) => FromField (SchList a) where
+  fromField = fromJSONField
 
 data QueryRecord = QueryRecord
   { tableName   :: Text

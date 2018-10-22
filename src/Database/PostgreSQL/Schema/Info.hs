@@ -9,7 +9,7 @@ import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
--- import Database.PostgreSQL.Simple.FromRow
+import Database.PostgreSQL.Simple.FromRow
 -- import Database.PostgreSQL.Simple.Types
 import Database.Schema.Rec
 import Database.Schema.TH
@@ -29,8 +29,8 @@ data PgClass = PgClass
   { class__namespace  :: PgTagged "nspname" Text
   , relname           :: Text
   , relkind           :: PgChar
-  , attribute__class  :: [PgAttribute]
-  , constraint__class :: [PgConstraint] }
+  , attribute__class  :: SchList PgAttribute
+  , constraint__class :: SchList PgConstraint }
   deriving (Show,Generic)
 
 data PgAttribute = PgAttribute
@@ -45,7 +45,7 @@ data PgConstraint = PgConstraint
   { constraint__namespace :: PgTagged "nspname" Text
   , conname               :: Text
   , contype               :: PgChar
-  , conkey                :: [Int] }
+  , conkey                :: PgArr Int }
   deriving (Show,Generic)
 
 data PgType = PgType
@@ -54,7 +54,7 @@ data PgType = PgType
   , typname         :: Text
   , typcategory     :: PgChar
   , typelem         :: UUID
-  , enum__type      :: [PgEnum]}
+  , enum__type      :: SchList PgEnum}
   deriving (Show,Generic)
 
 data PgEnum = PgEnum
@@ -68,8 +68,8 @@ data PgRelations = PgRelations
   , conname               :: Text
   , constraint__class     :: PgTagged "relname" Text
   , constraint__fclass    :: PgTagged "relname" Text
-  , conkey                :: [Int]
-  , confkey               :: [Int] }
+  , conkey                :: PgArr Int
+  , confkey               :: PgArr Int }
   deriving (Show,Generic)
 
 L.concat <$> mapM (deriveJSON defaultOptions)
@@ -88,6 +88,9 @@ instance CQueryRecord PG PgCatalog "pg_class" PgClass
 instance CQueryRecord PG PgCatalog "pg_type" PgType
 instance CQueryRecord PG PgCatalog "pg_constraint" PgRelations
 
--- instance FromRow PgType
--- instance FromRow PgClass
--- instance FromRow PgRelations
+instance FromRow PgEnum
+instance FromRow PgConstraint
+instance FromRow PgAttribute
+instance FromRow PgType
+instance FromRow PgClass
+instance FromRow PgRelations

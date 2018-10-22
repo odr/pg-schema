@@ -13,6 +13,7 @@ import Database.PostgreSQL.Simple.FromRow as PG
 import Database.PostgreSQL.Simple.ToField as PG
 import Database.PostgreSQL.Simple.ToRow as PG
 import Database.Schema.Rec
+import GHC.TypeLits
 import Type.Reflection
 import Util.ToStar
 
@@ -20,11 +21,10 @@ import Util.ToStar
 #if MIN_VERSION_base(4,11,0)
 newtype PgTagged a b = PgTagged (Tagged a b) deriving
   ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
-  , Semigroup, FromJSON, ToJSON)
+  , Semigroup)
 #else
 newtype PgTagged a b = PgTagged (Tagged a b) deriving
-  ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
-  , FromJSON, ToJSON )
+  ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid)
 #endif
 
 pgTag :: b -> PgTagged a b
@@ -35,6 +35,13 @@ unPgTag = coerce
 
 rePgTag :: PgTagged a c -> PgTagged b c
 rePgTag = coerce
+
+instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
+  parseJSON = withObject "PgTagged " $ \v ->
+    pgTag <$> v .: toStar @_ @a
+
+instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
+  toJSON v = object [toStar @_ @a .= unPgTag v]
 
 instance ToStar n => CRecordInfo (PgTagged (n::Symbol) r) where
   type TRecordInfo (PgTagged n r) = '[ 'FieldInfo 'FldPlain n n]
@@ -106,8 +113,10 @@ instance (ToRow (Only a), ToRow (PgTagged (n2 ': ns) as))
       = toRow @(Only a PG.:. PgTagged (n2 ': ns) as)
       . ((PG.:.) <$> fst <*> snd) . coerce
 
-instance (FromJSON a, Typeable a) => FromField (PgTagged n a) where
-  fromField = (fmap pgTag .) . fromJSONField
+instance
+  (FromJSON a, Typeable a, KnownSymbol n)
+  => FromField (PgTagged (n::Symbol) a) where
+  fromField = fromJSONField
 
-instance ToJSON a => ToField (PgTagged n a) where
-  toField = toJSONField . unPgTag
+instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
+  toField = toJSONField
