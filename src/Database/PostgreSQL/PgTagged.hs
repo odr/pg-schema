@@ -43,6 +43,13 @@ instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
   toJSON v = object [toStar @_ @a .= unPgTag v]
 
+-- instance (ToStar a, FromJSON b) => FromJSON (PgTagged ([a]::[Symbol]) b) where
+--   parseJSON = rePgTag @a <$> parseJSON
+--
+-- instance (ToStar a, ToJSON b) => ToJSON (PgTagged ([a]::[Symbol]) b) where
+--   toJSON v = object [toStar @_ @a .= unPgTag v]
+
+
 instance ToStar n => CRecordInfo (PgTagged (n::Symbol) r) where
   type TRecordInfo (PgTagged n r) = '[ 'FieldInfo 'FldPlain n n]
 
@@ -67,11 +74,19 @@ instance CFieldType (PgTagged (n::Symbol) r) n where
 instance CFieldType (PgTagged ('[n]::[Symbol]) r) n where
   type TFieldType (PgTagged '[n] r) n = r
 
+#if MIN_VERSION_singletons(2,4,0)
 instance
   CFieldTypeB (n==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
   => CFieldType (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) x where
   type TFieldType (PgTagged (n ':n1 ':ns) (r,r1)) x=
     TFieldTypeB (n==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
+#else
+instance
+  CFieldTypeB (n:==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
+  => CFieldType (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) x where
+  type TFieldType (PgTagged (n ':n1 ':ns) (r,r1)) x=
+    TFieldTypeB (n:==x) (PgTagged (n ': n1 ':ns) (r,r1)) x
+#endif
 
 class CFieldTypeB (b :: Bool) (r :: Type) (n :: Symbol) where
   type TFieldTypeB b r n :: Type

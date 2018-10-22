@@ -2,7 +2,7 @@
 -- {-# LANGUAGE CPP #-}
 module Database.PostgreSQL.DML.Select where
 
-import Control.Monad.RWS
+import Control.Monad.RWS (MonadRWS, ask, evalRWS, get, local, modify)
 import Data.Bifunctor
 import Data.List as L
 import Data.Semigroup ((<>))
