@@ -4,25 +4,15 @@ module Database.PostgreSQL.Schema.Info where
 import Data.Aeson.TH
 import Data.List as L
 import Data.Text as T
-import Data.UUID
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Simple.FromRow
--- import Database.PostgreSQL.Simple.Types
 import Database.Schema.Rec
 import Database.Schema.TH
 import GHC.Generics
--- import TH.Rec.Update
 
-
-data PgSchema = PgSchema
--- ^ Schema data. Three selects are needed to get it. One for each field
-  { types     :: [PgType]
-  , classes   :: [PgClass] -- ^ tables and views
-  , relations :: [PgRelations] }
-  deriving (Show,Generic)
 
 data PgClass = PgClass
 -- ^ Tables and views info
@@ -50,10 +40,11 @@ data PgConstraint = PgConstraint
 
 data PgType = PgType
 -- ^ Types info
-  { type__namespace :: PgTagged "nspname" Text
+  { oid             :: PgOid
+  , type__namespace :: PgTagged "nspname" Text
   , typname         :: Text
   , typcategory     :: PgChar
-  , typelem         :: UUID
+  , typelem         :: PgOid
   , enum__type      :: SchList PgEnum}
   deriving (Show,Generic)
 
@@ -62,7 +53,7 @@ data PgEnum = PgEnum
   , enumsortorder :: Double }
   deriving (Show,Generic)
 
-data PgRelations = PgRelations
+data PgRelation = PgRelation
 -- ^ Foreighn key info
   { constraint__namespace :: PgTagged "nspname" Text
   , conname               :: Text
@@ -73,24 +64,21 @@ data PgRelations = PgRelations
   deriving (Show,Generic)
 
 L.concat <$> mapM (deriveJSON defaultOptions)
-  [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelations]
-
--- L.concat <$> mapM mkSetField
---   [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelations]
+  [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelation]
 
 L.concat <$> mapM (schemaRec @PgCatalog id)
-  [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelations]
+  [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelation]
 
 instance CQueryRecord PG PgCatalog "pg_enum" PgEnum
 instance CQueryRecord PG PgCatalog "pg_constraint" PgConstraint
 instance CQueryRecord PG PgCatalog "pg_attribute" PgAttribute
 instance CQueryRecord PG PgCatalog "pg_class" PgClass
 instance CQueryRecord PG PgCatalog "pg_type" PgType
-instance CQueryRecord PG PgCatalog "pg_constraint" PgRelations
+instance CQueryRecord PG PgCatalog "pg_constraint" PgRelation
 
 instance FromRow PgEnum
 instance FromRow PgConstraint
 instance FromRow PgAttribute
 instance FromRow PgType
 instance FromRow PgClass
-instance FromRow PgRelations
+instance FromRow PgRelation

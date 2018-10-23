@@ -13,7 +13,7 @@ instance CTabDef PgCatalog "pg_attribute" where
   type TTabDef PgCatalog "pg_attribute" =
     'TabDef
       '["oid","attrelid","attname","atttypid","attnum","attnotnull","atthasdef"]
-      '["oid"] '[ '["attrelid","attname"], '["attrelid","attnum"]] False
+      '["oid"] '[ '["attrelid","attname"], '["attrelid","attnum"]]
 
 instance CTabDef PgCatalog tab => CFldDef PgCatalog tab "oid" where
   type TFldDef PgCatalog tab "oid" = 'FldDef "oid" False False
@@ -42,7 +42,7 @@ instance CFldDef PgCatalog "pg_attribute" "atthasdef" where
 instance CTabDef PgCatalog "pg_class" where
   type TTabDef PgCatalog "pg_class" =
     'TabDef '["oid","relnamespace","relname","relkind"] '["oid"]
-      '[ '["relnamespace","relname"]] False
+      '[ '["relnamespace","relname"]]
 
 instance CFldDef PgCatalog "pg_class" "relnamespace" where
   type TFldDef PgCatalog "pg_class" "relnamespace" = 'FldDef "oid" False False
@@ -63,7 +63,7 @@ instance CTabDef PgCatalog "pg_constraint" where
     'TabDef
       '["oid","connamespace","conname","contype","conrelid","confrelid"
       ,"conkey","confkey","confupdtypeid","confdeltypeid"]
-      '["oid"] '[ '["connamespace","conname"]] False
+      '["oid"] '[ '["connamespace","conname"]]
 
 instance CFldDef PgCatalog "pg_constraint" "connamespace" where
   type TFldDef PgCatalog "pg_constraint" "connamespace" =
@@ -105,7 +105,7 @@ instance CFldDef PgCatalog "pg_constraint" "confkey" where
 instance CTabDef PgCatalog "pg_enum" where
   type TTabDef PgCatalog "pg_enum" =
     'TabDef '["oid","enumtypid","enumlabel","enumsortorder"] '["oid"]
-      '[ '["enumtypid","enumlabel"], '["enumtypid","enumsortorder"]] False
+      '[ '["enumtypid","enumlabel"], '["enumtypid","enumsortorder"]]
 
 instance CFldDef PgCatalog "pg_enum" "enumtypid" where
   type TFldDef PgCatalog "pg_enum" "enumtypid" = 'FldDef "oid" False False
@@ -121,7 +121,7 @@ instance CFldDef PgCatalog "pg_enum" "enumsortorder" where
 
 instance CTabDef PgCatalog "pg_namespace" where
   type TTabDef PgCatalog "pg_namespace" =
-    'TabDef '["oid","nspname"] '["oid"] '[ '["nspname"]] False
+    'TabDef '["oid","nspname"] '["oid"] '[ '["nspname"]]
 
 instance CFldDef PgCatalog "pg_namespace" "nspname" where
   type TFldDef PgCatalog "pg_namespace" "nspname" = 'FldDef "name" False False
@@ -131,7 +131,7 @@ instance CFldDef PgCatalog "pg_namespace" "nspname" where
 instance CTabDef PgCatalog "pg_type" where
   type TTabDef PgCatalog "pg_type" =
     'TabDef '["oid","typnamespace","typname","typcategory","typelem"]
-      '["oid"] '[ '["typnamespace","typname"]] False
+      '["oid"] '[ '["typnamespace","typname"]]
   -- typcategory Codes
   -- A	- Array types
   -- B	- Boolean types
@@ -167,35 +167,35 @@ instance CFldDef PgCatalog "pg_type" "typelem" where
 
 instance CRelDef PgCatalog "attribute__class" where
   type TRelDef PgCatalog "attribute__class" =
-    'RelDef "pg_attribute" "pg_class" '[ '("attrelid","oid")] DcRestrict
+    'RelDef "pg_attribute" "pg_class" '[ '("attrelid","oid")]
 
 instance CRelDef PgCatalog "attribute__type" where
   type TRelDef PgCatalog "attribute__type" =
-    'RelDef "pg_attribute" "pg_type" '[ '("atttypid","oid")] DcRestrict
+    'RelDef "pg_attribute" "pg_type" '[ '("atttypid","oid")]
 
 instance CRelDef PgCatalog "class__namespace" where
   type TRelDef PgCatalog "class__namespace" =
-    'RelDef "pg_class" "pg_namespace" '[ '("relnamespace","oid")] DcRestrict
+    'RelDef "pg_class" "pg_namespace" '[ '("relnamespace","oid")]
 
 instance CRelDef PgCatalog "constraint__class" where
   type TRelDef PgCatalog "constraint__class" =
-    'RelDef "pg_constraint" "pg_class" '[ '("conrelid","oid")] DcRestrict
+    'RelDef "pg_constraint" "pg_class" '[ '("conrelid","oid")]
 
 instance CRelDef PgCatalog "constraint__fclass" where
   type TRelDef PgCatalog "constraint__fclass" =
-    'RelDef "pg_constraint" "pg_class" '[ '("confrelid","oid")] DcRestrict
+    'RelDef "pg_constraint" "pg_class" '[ '("confrelid","oid")]
 
 instance CRelDef PgCatalog "constraint__namespace" where
   type TRelDef PgCatalog "constraint__namespace" =
-    'RelDef "pg_constraint" "pg_namespace" '[ '("connamespace","oid")] DcRestrict
+    'RelDef "pg_constraint" "pg_namespace" '[ '("connamespace","oid")]
 
 instance CRelDef PgCatalog "enum__type" where
   type TRelDef PgCatalog "enum__type" =
-    'RelDef "pg_enum" "pg_type" '[ '("enumtypid","oid")] DcRestrict
+    'RelDef "pg_enum" "pg_type" '[ '("enumtypid","oid")]
 --
 instance CRelDef PgCatalog "type__namespace" where
   type TRelDef PgCatalog "type__namespace" =
-    'RelDef "pg_type" "pg_namespace" '[ '("typnamespace","oid")] DcRestrict
+    'RelDef "pg_type" "pg_namespace" '[ '("typnamespace","oid")]
 
 ----------- schema ----------
 

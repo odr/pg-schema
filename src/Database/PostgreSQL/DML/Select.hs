@@ -6,14 +6,24 @@ import Control.Monad.RWS (MonadRWS, ask, evalRWS, get, local, modify)
 import Data.Bifunctor
 import Data.List as L
 import Data.Semigroup ((<>))
+import Data.String
 import Data.Text as T
 import Database.PostgreSQL.DB
+import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Rec
 import Formatting
 
 
 type MonadQuery m = MonadRWS (Int,Bool) () (Int,[Text]) m
+
+selectSch_
+  :: forall sch tab r. (FromRow r, CQueryRecord PG sch tab r)
+  => Connection -> IO [r]
+selectSch_ conn = query_ conn (selectQuery @sch @tab @r)
+
+selectQuery :: forall sch tab r. CQueryRecord PG sch tab r => Query
+selectQuery = fromString $ unpack (selectText @sch @tab @r)
 
 selectText :: forall sch tab r. CQueryRecord PG sch tab r => Text
 selectText = fst

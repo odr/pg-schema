@@ -27,13 +27,13 @@ newtype PgTagged a b = PgTagged (Tagged a b) deriving
   ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid)
 #endif
 
-pgTag :: b -> PgTagged a b
+pgTag :: forall a b. b -> PgTagged a b
 pgTag = coerce
 
-unPgTag :: PgTagged a b -> b
+unPgTag :: forall a b. PgTagged a b -> b
 unPgTag = coerce
 
-rePgTag :: PgTagged a c -> PgTagged b c
+rePgTag :: forall a b c. PgTagged a c -> PgTagged b c
 rePgTag = coerce
 
 instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where

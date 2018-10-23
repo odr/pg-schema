@@ -35,7 +35,7 @@ schemaRec toDbName rn = do
         tname = pack $ nameBase n
         tdbname = toDbName tname
         nameQ = pure $ nameToSym n
-        dbNameQ = pure $ strToSym $ unpack $ toDbName tname
+        dbNameQ = pure $ txtToSym $ toDbName tname
         kindQ
           | tdbname `member` (rels @sch) = case t of
             AppT con _ | con == schList -> [t|'FldTo|]
@@ -54,3 +54,6 @@ strToSym = LitT . StrTyLit
 
 toPromotedList :: [Type] -> Type
 toPromotedList = L.foldr (\x xs -> AppT (AppT PromotedConsT x) xs) PromotedNilT
+
+txtToSym :: Text -> Type
+txtToSym = strToSym . unpack

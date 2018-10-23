@@ -43,7 +43,7 @@ class ToStar (TRecordInfo r) => CRecordInfo r where
   recordInfo = toStar @_ @(TRecordInfo r)
 
 newtype SchList a = SchArray { getSchList :: [a] }
-  deriving (Show, Eq, Ord, FromJSON, ToJSON)
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, Functor)
 
 instance (FromJSON a, Typeable a) => FromField (SchList a) where
   fromField = fromJSONField
