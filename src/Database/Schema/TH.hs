@@ -12,7 +12,13 @@ schemaRec
   :: forall sch. CSchema sch
   => (Text -> Text) -> Name -> DecsQ
 schemaRec toDbName rn = do
-  TyConI (DataD _ _ _ _ [RecC _ fs] _)<- reify rn
+  fs <- reify rn >>= \case
+    TyConI (DataD _ _ _ _ [RecC _ fs] _) -> pure fs
+    TyConI (NewtypeD _ _ _ _ (RecC _ fs) _) -> pure fs
+    x -> do
+      reportError $ "schemaRec: Invalid pattern in reify: " ++ show x
+      pure []
+
   schList <- [t|SchList|]
   i1 <- L.concat <$> traverse (fieldTypeInst schList) fs
   i2 <- traverse (getFieldInfo schList) fs >>= recordInfoInst . toPromotedList

@@ -15,7 +15,7 @@ import Database.Schema.Rec
 import Formatting
 
 
-type MonadQuery m = MonadRWS (Int,Bool) () (Int,[Text]) m
+type MonadQuery m = MonadRWS (Text,(Int,Bool)) () (Int,[Text]) m
 
 selectSch_
   :: forall sch tab r. (FromRow r, CQueryRecord PG sch tab r)
@@ -27,7 +27,15 @@ selectQuery = fromString $ unpack (selectText @sch @tab @r)
 
 selectText :: forall sch tab r. CQueryRecord PG sch tab r => Text
 selectText = fst
-  $ evalRWS (selectM (getQueryRecord @PG @sch @tab @r)) (0,True) (0,[])
+  $ evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
+    (schemaName @sch,(0,True)) (0,[])
+
+-- jsonPairing :: [(Text, Text)] -> Text
+-- jsonPairing fs = case fs of
+--   [(a,_)] -> a
+--   _       -> "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
+--   where
+--     pairs = L.map (\(a,b) -> "'" <> b <> "'," <> a) fs
 
 jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
@@ -36,44 +44,49 @@ jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
 
 selectM :: MonadQuery m => QueryRecord -> m Text
 selectM QueryRecord {..} = do
-  (n,isRoot) <- ask
+  (schName,(n,isRoot)) <- ask
   fields <- traverse fieldM queryFields
-  (_,joins) <- get
+  (_,joins) <- second L.reverse <$> get
   let
     sel
-      | isRoot    = T.intercalate "," $ L.map (\(a,b) -> a <> " " <> b) fields
+      | isRoot    =
+        T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") fields
       | otherwise = jsonPairing fields
     j = T.intercalate " " joins
-  pure $ sformat fmt sel tableName n j
+  pure $ sformat fmt sel schName tableName n j
   where
-    fmt = "select " % stext % " from " % stext % " t" % int % " " % stext
+    fmt = "select " % stext
+      % " from " % stext % "." % stext % " t" % int % " " % stext
 
 fieldM :: MonadQuery m => QueryField -> m (Text, Text)
 fieldM (FieldPlain name dbname _) = do
-  (n,_) <- ask
+  (n,_) <- snd <$> ask
   pure $ (sformat fmt n dbname, name)
   where
     fmt = "t" % int % "." % stext
 
 fieldM (FieldFrom name QueryRecord {..} refs) = do
-  (n1,_) <- ask
-  modify (\(n2,joins) -> (n2+1, joinText n1 (n2+1) : joins))
+  (schName,(n1,_)) <- ask
+  modify (\(n2,joins) -> (n2+1, joinText schName n1 (n2+1) : joins))
   (n2,_) <- get
-  f <- jsonPairing <$> local (const (n2,False)) (traverse fieldM queryFields)
+  f <- jsonPairing
+    <$> local (second $ const (n2,False)) (traverse fieldM queryFields)
   pure (f, name)
   where
-    joinText n1 n2 = sformat fmt outer tableName n2 (refCond n1 n2 refs)
+    joinText schName n1 n2 =
+      sformat fmt outer schName tableName n2 (refCond n1 n2 refs)
       where
-        fmt = stext % "join " % stext % " t" % int % " on " % stext
+        fmt = stext % "join " % stext % "." % stext % " t" % int
+          % " on " % stext
         outer
           | L.any (fdNullable . fromDef) refs = "left outer "
           | otherwise = ""
 
 fieldM (FieldTo name rec refs) = do
-  (n1,_) <- ask
+  (n1,_) <- snd <$> ask
   (n2, joins) <- get
   modify (const (n2+1,[]))
-  selText <- local (const $ (n2+1,False)) $ selectM rec
+  selText <- local (second $ const $ (n2+1,False)) $ selectM rec
   modify (second $ const joins)
   pure (sformat fmt selText (refCond (n2+1) n1 refs), name)
   where

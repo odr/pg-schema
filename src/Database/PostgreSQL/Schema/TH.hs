@@ -1,13 +1,16 @@
 module Database.PostgreSQL.Schema.TH where
 
+-- import Control.Monad.Catch
+import Control.Monad.Catch
 import Control.Monad.Zip
 import Data.Bifunctor
-import Data.ByteString (ByteString)
+import Data.ByteString as BS
 import Data.Coerce
 import Data.List as L
 import Data.Map as M
 import Data.Maybe as Mb
 import Data.Ord
+import Data.Semigroup ((<>))
 import Data.Set as S
 import Data.Text as T
 import Database.PostgreSQL.Convert
@@ -22,22 +25,36 @@ import Database.Schema.TH
 import Language.Haskell.TH
 
 
+data ExceptionSch
+  = ConnectException ByteString SomeException
+  | GetDataException Text SomeException
+  deriving Show
+
+instance Exception ExceptionSch
+
+
 mkSchema :: ByteString -> Name -> Text -> DecsQ
 mkSchema connStr sch ns = do
   (types, classes, relations) <- runIO $ do
-    conn <- connectPostgreSQL connStr
-    types <- selectSch_ @PgCatalog @"pg_type" @PgType conn
-    (classes::[PgClass]) <- fmap attFilterAndSort <$> query conn
+    conn <- catch (connectPostgreSQL connStr)
+      (throwM . ConnectException connStr)
+    types <- catch (selectSch_ @PgCatalog @"pg_type" @PgType conn)
+      (throwM . GetDataException (selectText @PgCatalog @"pg_type" @PgType))
+    (classes::[PgClass]) <- catch (fmap attFilterAndSort <$> query conn
       ("select * from ("
         <> selectQuery @PgCatalog @"pg_class" @PgClass <> ") t \
         \where t.class__namespace=jsonb_build_object('nspname',?) \
         \and t.relkind in ('v','r')")
-      (Only ns)
-    (relations::[PgRelation]) <- query conn
+      (Only ns))
+      (throwM . GetDataException (selectText @PgCatalog @"pg_class" @PgClass))
+    (relations::[PgRelation]) <- catch (query conn
       ("select * from ("
         <> selectQuery @PgCatalog @"pg_constraint" @PgRelation <> ") t \
         \where t.constraint__namespace=jsonb_build_object('nspname',?)")
-      (Only ns)
+      (Only ns))
+      (throwM
+        . GetDataException (selectText @PgCatalog @"pg_constraint" @PgRelation))
+
     pure (types, classes, relations)
 
   let
@@ -47,7 +64,7 @@ mkSchema connStr sch ns = do
     attrs = L.concat $ (\(a,xs) -> (a,) <$> xs) <$> classAttrs
     attrsTypes = S.fromList $ (unPgTag . attribute__type . snd) <$> attrs
     mtypes = M.fromList . fmap (\x -> (oid x, x)) $ types
-    ntypes = (\t -> (t, unpack . typname <$> M.lookup (typelem t) mtypes))
+    ntypes = (\t -> (t, T.unpack . typname <$> M.lookup (typelem t) mtypes))
       <$> L.filter ((`S.member` attrsTypes) . typname) types
 
   -- reportWarning $ "ntypes count: " ++ show (L.length ntypes)
@@ -71,11 +88,11 @@ mkSchema connStr sch ns = do
           'TypDef $(categoryQ) $(typElemQ) $(enumQ)
       |]
       where
-        nameQ = pure $ strToSym $ unpack $ typname pgt
+        nameQ = pure $ txtToSym $ typname pgt
         categoryQ = pure $ strToSym [coerce $ typcategory pgt]
         enumQ
           = pure . toPromotedList . getSchList
-          $ strToSym . unpack . enumlabel <$> enum__type pgt
+          $ txtToSym . enumlabel <$> enum__type pgt
         typElemQ = toPromotedMaybeQ $ strToSym <$> mbn
     instFldDef (cname, attr) = [d|
       instance CFldDef $(schQ) $(tabQ) $(fldQ) where
@@ -83,9 +100,9 @@ mkSchema connStr sch ns = do
           'FldDef $(typQ) $(nulQ) $(defQ)
       |]
       where
-        tabQ = pure $ strToSym $ unpack cname
-        fldQ = pure $ strToSym $ unpack $ attname attr
-        typQ = pure $ strToSym $ unpack $ unPgTag $ attribute__type attr
+        tabQ = pure $ txtToSym cname
+        fldQ = pure $ txtToSym $ attname attr
+        typQ = pure $ txtToSym $ unPgTag $ attribute__type attr
         nulQ = boolQ $ not $ attnotnull attr
         defQ = boolQ $ atthasdef attr
     instTabDef PgClass {..} = [d|
@@ -94,12 +111,12 @@ mkSchema connStr sch ns = do
           'TabDef $(fsQ) $(pkQ) $(ukQ)
       |]
       where
-        tabQ = pure $ strToSym $ unpack relname
+        tabQ = pure $ txtToSym relname
         attrs = getSchList attribute__class
         constrs = getSchList constraint__class
-        fsQ = pure . toPromotedList $ strToSym . unpack . attname <$> attrs
+        fsQ = pure . toPromotedList $ txtToSym . attname <$> attrs
         numToSym a =
-          strToSym . unpack . attname <$> L.find ((==a) . attnum) attrs
+          txtToSym . attname <$> L.find ((==a) . attnum) attrs
         keysBy f
           = catMaybes -- if something is wrong exclude such constraint
           $ traverse numToSym . (\PgConstraint {..} -> getPgArr conkey)

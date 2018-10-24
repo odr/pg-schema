@@ -1,6 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 module Database.PostgreSQL.Schema.Info where
 
+import Control.Monad
 import Data.Aeson.TH
 import Data.List as L
 import Data.Text as T
@@ -12,6 +13,7 @@ import Database.PostgreSQL.Simple.FromRow
 import Database.Schema.Rec
 import Database.Schema.TH
 import GHC.Generics
+import Language.Haskell.TH
 
 
 data PgClass = PgClass
@@ -63,22 +65,14 @@ data PgRelation = PgRelation
   , confkey               :: PgArr Int }
   deriving (Show,Generic)
 
-L.concat <$> mapM (deriveJSON defaultOptions)
+L.concat
+  <$> zipWithM (\n s ->
+    L.concat <$> sequenceA
+      [ deriveJSON defaultOptions n
+      , [d|instance FromRow $(conT n)|]
+      , schemaRec @PgCatalog id n
+      , [d|instance CQueryRecord PG PgCatalog $(pure $ strToSym s) $(conT n)|]
+      ])
   [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelation]
-
-L.concat <$> mapM (schemaRec @PgCatalog id)
-  [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelation]
-
-instance CQueryRecord PG PgCatalog "pg_enum" PgEnum
-instance CQueryRecord PG PgCatalog "pg_constraint" PgConstraint
-instance CQueryRecord PG PgCatalog "pg_attribute" PgAttribute
-instance CQueryRecord PG PgCatalog "pg_class" PgClass
-instance CQueryRecord PG PgCatalog "pg_type" PgType
-instance CQueryRecord PG PgCatalog "pg_constraint" PgRelation
-
-instance FromRow PgEnum
-instance FromRow PgConstraint
-instance FromRow PgAttribute
-instance FromRow PgType
-instance FromRow PgClass
-instance FromRow PgRelation
+  [ "pg_enum", "pg_type", "pg_constraint", "pg_attribute", "pg_class"
+  , "pg_constraint" ]

@@ -12,6 +12,7 @@ import Database.PostgreSQL.Simple.FromField as PG
 import Database.PostgreSQL.Simple.FromRow as PG
 import Database.PostgreSQL.Simple.ToField as PG
 import Database.PostgreSQL.Simple.ToRow as PG
+import Database.Schema.Def
 import Database.Schema.Rec
 import GHC.TypeLits
 import Type.Reflection
@@ -36,10 +37,14 @@ unPgTag = coerce
 rePgTag :: forall a b c. PgTagged a c -> PgTagged b c
 rePgTag = coerce
 
+-- instance FromJSON b => FromJSON (PgTagged (a::Symbol) b) where
+--   parseJSON = fmap pgTag <$> parseJSON
 instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
-  parseJSON = withObject "PgTagged " $ \v ->
-    pgTag <$> v .: toStar @_ @a
+  parseJSON =
+    withObject "PgTagged " $ \v -> pgTag <$> v .: toStar @_ @a
 
+-- instance ToJSON b => ToJSON (PgTagged (a::Symbol) b) where
+--   toJSON = toJSON . unPgTag
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
   toJSON v = object [toStar @_ @a .= unPgTag v]
 
@@ -48,6 +53,21 @@ instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
 --
 -- instance (ToStar a, ToJSON b) => ToJSON (PgTagged ([a]::[Symbol]) b) where
 --   toJSON v = object [toStar @_ @a .= unPgTag v]
+
+-- instance FromField a => FromField (PgTagged (n::Symbol) a) where
+--   fromField f = fmap pgTag . fromField f
+--
+-- instance ToField a => ToField (PgTagged (n::Symbol) a) where
+--   toField = toField . unPgTag
+
+instance
+  (FromJSON a, Typeable a, KnownSymbol n)
+  => FromField (PgTagged (n::Symbol) a) where
+  fromField = fromJSONField
+
+instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
+  toField = toJSONField
+
 
 
 instance ToStar n => CRecordInfo (PgTagged (n::Symbol) r) where
@@ -101,7 +121,7 @@ instance
     TFieldType (PgTagged ns r1) n1
 
 instance
-  ( ToStar t
+  ( CSchema sch
   , CQueryFields db sch t (PgTagged ns r) (TRecordInfo (PgTagged ns r)) )
   => CQueryRecord db sch (t::Symbol) (PgTagged ns r) where
 
@@ -127,11 +147,3 @@ instance (ToRow (Only a), ToRow (PgTagged (n2 ': ns) as))
     toRow
       = toRow @(Only a PG.:. PgTagged (n2 ': ns) as)
       . ((PG.:.) <$> fst <*> snd) . coerce
-
-instance
-  (FromJSON a, Typeable a, KnownSymbol n)
-  => FromField (PgTagged (n::Symbol) a) where
-  fromField = fromJSONField
-
-instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
-  toField = toJSONField

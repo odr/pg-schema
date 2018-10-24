@@ -1,0 +1,10 @@
+DIR=$(dirname "$0")
+export PGHOST=localhost
+
+set -e
+
+dropdb --if-exists -Upostgres schema_test
+createdb -Upostgres schema_test
+
+psql -1 -f create.sql -Upostgres schema_test
+psql -1 -f insert.sql -Upostgres schema_test
