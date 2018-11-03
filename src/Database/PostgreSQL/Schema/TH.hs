@@ -32,30 +32,36 @@ data ExceptionSch
 
 instance Exception ExceptionSch
 
+getSchema :: Connection -> Text -> IO ([PgType], [PgClass], [PgRelation])
+getSchema conn ns = do
+  types <- catch (selectSch_ @PgCatalog @"pg_type" @PgType conn)
+    (throwM . GetDataException (selectText @PgCatalog @"pg_type" @PgType))
+  (classes::[PgClass]) <- catch (fmap attFilterAndSort <$> query conn
+    ("select * from ("
+      <> selectQuery @PgCatalog @"pg_class" @PgClass <> ") t \
+      \where t.class__namespace=jsonb_build_object('nspname',?) \
+      \and t.relkind in ('v','r')")
+    (Only ns))
+    (throwM . GetDataException (selectText @PgCatalog @"pg_class" @PgClass))
+  (relations::[PgRelation]) <- catch (query conn
+    ("select * from ("
+      <> selectQuery @PgCatalog @"pg_constraint" @PgRelation <> ") t \
+      \where t.constraint__namespace=jsonb_build_object('nspname',?)")
+    (Only ns))
+    (throwM
+      . GetDataException (selectText @PgCatalog @"pg_constraint" @PgRelation))
+  pure (types, classes, relations)
+  where
+    attFilterAndSort c =
+      c { attribute__class = coerce $ L.sortBy (comparing attnum)
+        $ L.filter ((>0) . attnum) (coerce $ attribute__class c) }
+
 
 mkSchema :: ByteString -> Name -> Text -> DecsQ
 mkSchema connStr sch ns = do
   (types, classes, relations) <- runIO $ do
-    conn <- catch (connectPostgreSQL connStr)
-      (throwM . ConnectException connStr)
-    types <- catch (selectSch_ @PgCatalog @"pg_type" @PgType conn)
-      (throwM . GetDataException (selectText @PgCatalog @"pg_type" @PgType))
-    (classes::[PgClass]) <- catch (fmap attFilterAndSort <$> query conn
-      ("select * from ("
-        <> selectQuery @PgCatalog @"pg_class" @PgClass <> ") t \
-        \where t.class__namespace=jsonb_build_object('nspname',?) \
-        \and t.relkind in ('v','r')")
-      (Only ns))
-      (throwM . GetDataException (selectText @PgCatalog @"pg_class" @PgClass))
-    (relations::[PgRelation]) <- catch (query conn
-      ("select * from ("
-        <> selectQuery @PgCatalog @"pg_constraint" @PgRelation <> ") t \
-        \where t.constraint__namespace=jsonb_build_object('nspname',?)")
-      (Only ns))
-      (throwM
-        . GetDataException (selectText @PgCatalog @"pg_constraint" @PgRelation))
-
-    pure (types, classes, relations)
+    conn <- catch (connectPostgreSQL connStr) (throwM . ConnectException connStr)
+    getSchema conn ns
 
   let
     classAttrs = ((,) <$> relname <*> getSchList . attribute__class) <$> classes
@@ -78,9 +84,6 @@ mkSchema connStr sch ns = do
     ((\PgRelation {..} -> conname) <$> relations)
   pure $ typs ++ flds ++ tabs ++ rls ++ schema
   where
-    attFilterAndSort c =
-      c { attribute__class = coerce $ L.sortBy (comparing attnum)
-        $ L.filter ((>0) . attnum) (coerce $ attribute__class c) }
     schQ = conT sch
     instTypDef (pgt,mbn) = [d|
       instance CTypDef $(schQ) $(nameQ) where

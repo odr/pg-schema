@@ -29,18 +29,20 @@ create table sch.addresses
 create table sch.customers
   ( id serial primary key
   , name text not null
-  , address text not null
+  , address_id int
   , note text
   , created_at timestamp with time zone not null default now()
   , updated_at timestamp with time zone
+  , constraint cust_addr foreign key (address_id) references sch.addresses(id)
   );
 
 create table sch.companies
   ( id serial primary key
   , name text not null
-  , address text not null
+  , address_id int
   , created_at timestamp with time zone not null default now()
   , updated_at timestamp with time zone
+  , constraint comp_addr foreign key (address_id) references sch.addresses(id)
   );
 
 create type sch.order_state as enum ('paid','booked','delivered');
@@ -73,7 +75,7 @@ create table sch.order_positions
   ( order_id int not null
   , num int not null
   , article_id int not null
-  , count int
+  , cnt int not null
   , price numeric not null
   , primary key (order_id, num)
   , constraint opos_order foreign key (order_id) references sch.orders(id)
