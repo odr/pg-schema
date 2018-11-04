@@ -3,8 +3,8 @@ sudo: false
 language: generic
 
 env:
-  - STACK_YAML=stack.yaml
-  - STACK_YAML=ghc-8.0.yaml
+  # - STACK_YAML=stack.yaml
+  # - STACK_YAML=ghc-8.0.yaml
   - STACK_YAML=ghc-8.2.yaml
   - STACK_YAML=ghc-8.4.yaml
 
@@ -22,6 +22,11 @@ before_install:
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+
+install:
+  # Create databases
+  - psql -c "create user test with CREATEDB SUPERUSER PASSWORD 'test';" -U postgres
+  ./sql/db
 
 script:
 - stack --no-terminal --install-ghc test --haddock --no-haddock-deps
