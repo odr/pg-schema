@@ -29,7 +29,7 @@ I suppose that is acceptable for a medium to big databases as well.
 
 ## Tutorial
 
-We will use a table set which is described in [this file](sql/create.sql)
+We will use a set of tables which is described in [this file](sql/create.sql)
 Many GHC-extensions should be enabled. I use the following
 (maybe some of them is not necessary):
 ```
