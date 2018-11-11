@@ -1,4 +1,4 @@
-create schema if not exists sch authorization avia;
+create schema if not exists sch;
 
 create extension if not exists "uuid-ossp";
 
