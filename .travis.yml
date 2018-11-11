@@ -28,13 +28,8 @@ before_install:
 - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
 before_script:
-# Create databases
-- dropdb --if-exists schema_test -U postgres
-- createdb schema_test -U postgres
-- psql -1 -f sql/create.sql schema_test -U postgres
-- psql -1 -f sql/insert.sql schema_test -U postgres
-
-# cd sql && ./db && cd ..
+# Create databases:
+- cd sql && ./db && cd ..
 
 script:
 - stack --no-terminal --install-ghc test --haddock --no-haddock-deps --ghc-options='-j +RTS -A64m -n4m -qb0 -M6G -RTS'
