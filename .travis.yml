@@ -17,6 +17,9 @@ addons:
     packages:
       - libgmp-dev
 
+services:
+  - postgresql
+
 before_install:
 # Download and unpack the stack executable
 - mkdir -p ~/.local/bin
@@ -26,8 +29,7 @@ before_install:
 
 install:
   # Create databases
-  # - psql -c "create user test with CREATEDB SUPERUSER PASSWORD 'test';" -U postgres
-  ./sql/db
+  cd sql && ./db && cd ..
 
 script:
 - stack --no-terminal --install-ghc test --haddock --no-haddock-deps
