@@ -5,4 +5,4 @@ import Database.PostgreSQL.Schema.TH
 
 data Sch
 
-mkSchema "dbname=schema_test user=test host=localhost" ''Sch "sch"
+mkSchema "dbname=schema_test host=localhost" ''Sch "sch"
