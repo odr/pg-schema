@@ -3,8 +3,8 @@ export PGHOST=localhost
 
 set -e
 
-dropdb --if-exists -Upostgres schema_test
-createdb -Upostgres schema_test
+dropdb --if-exists schema_test -U postgres
+createdb schema_test -U postgres
 
-psql -1 -f create.sql -Upostgres schema_test
-psql -1 -f insert.sql -Upostgres schema_test
+psql -1 -f create.sql schema_test -U postgres
+psql -1 -f insert.sql schema_test -U postgres

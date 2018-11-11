@@ -16,6 +16,10 @@ addons:
   apt:
     packages:
       - libgmp-dev
+  postgresql: "9.5"
+
+services:
+  - postgresql
 
 before_install:
 # Download and unpack the stack executable
@@ -23,10 +27,9 @@ before_install:
 - export PATH=$HOME/.local/bin:$PATH
 - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
-install:
-  # Create databases
-  - psql -c "create user test with CREATEDB SUPERUSER PASSWORD 'test';" -U postgres
-  ./sql/db
+before_script:
+# Create databases:
+- cd sql && ./db && cd ..
 
 script:
-- stack --no-terminal --install-ghc test --haddock --no-haddock-deps
+- stack --no-terminal --install-ghc test --haddock --no-haddock-deps --ghc-options='-j +RTS -A64m -n4m -qb0 -M6G -RTS'

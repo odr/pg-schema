@@ -16,8 +16,8 @@ import GHC.Generics
 import Language.Haskell.TH
 
 
+-- | Tables and views info
 data PgClass = PgClass
--- ^ Tables and views info
   { class__namespace  :: PgTagged "nspname" Text
   , relname           :: Text
   , relkind           :: PgChar
@@ -40,8 +40,8 @@ data PgConstraint = PgConstraint
   , conkey                :: PgArr Int }
   deriving (Show,Generic)
 
+-- | Types info
 data PgType = PgType
--- ^ Types info
   { oid             :: PgOid
   , type__namespace :: PgTagged "nspname" Text
   , typname         :: Text
@@ -55,8 +55,8 @@ data PgEnum = PgEnum
   , enumsortorder :: Double }
   deriving (Show,Generic)
 
+-- | Foreighn key info
 data PgRelation = PgRelation
--- ^ Foreighn key info
   { constraint__namespace :: PgTagged "nspname" Text
   , conname               :: Text
   , constraint__class     :: PgTagged "relname" Text
