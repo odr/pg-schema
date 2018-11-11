@@ -33,4 +33,5 @@ install:
   cd sql && ./db && cd ..
 
 script:
-- stack --no-terminal --install-ghc test --haddock --no-haddock-deps
+- stack --no-terminal --install-ghc test --haddock --no-haddock-deps \
+  --ghc-options='-j +RTS -A64m -n4m -qb0 -M6G -RTS'
