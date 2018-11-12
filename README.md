@@ -96,9 +96,9 @@ instance CSchema PgCatalog
 instance [safe] CSchema Tutorial
 ```
 
-Type `PgCatalog` and instances for him were defined in module `Database.PostgreSQL.Schema.Catalog`.
+Type `PgCatalog` and instances for it were defined in module `Database.PostgreSQL.Schema.Catalog`.
 
-Type `Sch` and instances for him is defined in the test application included
+Type `Sch` and instances for it is defined in the test application included
 into package. It is the same as our `Tutorial` type
 
 With this instance we can get now:
@@ -246,8 +246,8 @@ TRels PgCatalog :: [Symbol]
 
 ## Record definitions and selections
 
-Having all this information what we can do now? We can define records and select
-populate it with data. At first define record and generate some instances (using TH-function `schemaRec`):
+Having all this information what we can do now? We can define records and 
+populate it with data. At first we'll define record and generate some instances (using TH-function `schemaRec`):
 ```
 ghci> { data Ord1 = Ord1 { day :: Day, num :: Text, seller_id :: Int } deriving (Eq, Show); schemaRec @Tutorial id ''Ord1 }
 ```
