@@ -64,16 +64,54 @@ Many GHC-extensions should be enabled. I use the following
 , TypeOperators
 ```
 
+### TL;DR
+
+```
+ghci> {data Tutorial; mkSchema "dbname=schema_test user=postgres" ''Tutorial "sch"}
+
+ghci> { data Company = Company { name :: Text, address_id :: Maybe Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Company }
+
+ghci> { data Article = Article { name :: Text, code :: Maybe Text } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Article }
+
+ghci> import Data.Fixed
+ghci> { data OrdPos = OrdPos { num :: Int, opos_article :: Article, cnt :: Int, price :: Centi } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''OrdPos }
+
+ghci> import Data.Time
+ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
+
+ghci> instance CQueryRecord PG Tutorial "companies" Company
+ghci> instance CQueryRecord PG Tutorial "articles" Article
+ghci> instance CQueryRecord PG Tutorial "order_positions" OrdPos
+ghci> instance CQueryRecord PG Tutorial "orders" Order
+
+ghci> instance FromJSON Company
+ghci> instance FromField Company where fromField = fromJSONField
+ghci> instance FromJSON Article
+ghci> instance FromJSON OrdPos
+ghci> instance FromRow Order
+
+
+ghci> os :: [Order] <- selectSch_ @Tutorial @"orders" conn
+
+
+ghci> mapM_ print os
+Order {day = 2018-11-11, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}}
+Order {day = 2018-11-11, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}}
+Order {day = 2018-11-11, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}}
+Order {day = 2018-11-11, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article5", code = Just "a5"}, cnt = 4, price = 18.00}]}}
+Order {day = 2018-11-11, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}}
+
+```
+
 ### Type provider
 
 We will use ghci for tutorial. So in directory `pg-schema` run
 ```
 > stack ghci
 ```
-All necessary extensions are included in cabal file so they are included by
-default. So run
+All necessary extensions are included in cabal file so they are activated by
+default. All modules from `pg-schema` are imported. So run
 ```
-ghci> import Database.PostgreSQL.Schema.TH
 ghci> {data Tutorial; mkSchema "dbname=schema_test user=postgres" ''Tutorial "sch"}
 ghci> :i Tutorial
 ```
