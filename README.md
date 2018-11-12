@@ -91,6 +91,7 @@ ghci> instance FromJSON OrdPos
 ghci> instance FromRow Order
 
 
+ghci> conn <- connectPostgreSQL "dbname=schema_test user=postgres"
 ghci> os :: [Order] <- selectSch_ @Tutorial @"orders" conn
 
 
