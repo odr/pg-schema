@@ -5,6 +5,7 @@ module Database.PostgreSQL.Convert where
 import Control.Monad.Zip
 import Data.Aeson
 import Data.Coerce
+import Data.Fixed
 import Data.List as L
 import Data.Text as T
 import Data.Time
@@ -70,6 +71,7 @@ instance CanConvert1 ('TypDef "N" x y) sch "float4" Double
 instance CanConvert1 ('TypDef "N" x y) sch "float8" Double
 instance CanConvert1 ('TypDef "N" x y) sch "oid" Int
 instance CanConvert1 ('TypDef "N" x y) sch "numeric" Integer
+instance CanConvert1 ('TypDef "N" x y) sch "numeric" Centi
 instance CanConvert1 ('TypDef "N" x y) sch "oid" PgOid
 
 instance CanConvert1 ('TypDef "D" x y) sch "date" Day
