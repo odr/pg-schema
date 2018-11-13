@@ -50,8 +50,8 @@ insert into sch.companies(name) values
 with
   q1 as (insert into sch.customers(name) values ('cust1') returning id),
   q2 as (
-    insert into sch.orders(day,num,customer_id,seller_id)
-      select now(),'n1',q1.id,1
+    insert into sch.orders(day,num,customer_id,seller_id,state)
+      select now(),'n1',q1.id,1,'paid'
       from q1
       returning id
   ),
@@ -63,8 +63,8 @@ with
       returning *
   ),
   q4 as (
-    insert into sch.orders(day,num,customer_id,seller_id)
-      select now(),'n1',q1.id,1
+    insert into sch.orders(day,num,customer_id,seller_id,state)
+      select now(),'n1',q1.id,1,'booked'
       from q1
       returning id
   ),
@@ -76,8 +76,8 @@ with
       returning *
   ),
   q6 as (
-    insert into sch.orders(day,num,customer_id,seller_id)
-      select now(),'n2',q1.id,3
+    insert into sch.orders(day,num,customer_id,seller_id,state)
+      select now(),'n2',q1.id,3,'delivered'
       from q1
       returning id
   ),

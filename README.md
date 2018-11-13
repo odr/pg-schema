@@ -77,7 +77,7 @@ ghci> import Data.Fixed
 ghci> { data OrdPos = OrdPos { num :: Int, opos_article :: Article, cnt :: Int, price :: Centi } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''OrdPos }
 
 ghci> import Data.Time
-ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
+ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: PGEnum Tutorial "order_state" } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
 
 ghci> instance CQueryRecord PG Tutorial "companies" Company
 ghci> instance CQueryRecord PG Tutorial "articles" Article
@@ -96,12 +96,11 @@ ghci> os :: [Order] <- selectSch_ @Tutorial @"orders" conn
 
 
 ghci> mapM_ print os
-Order {day = 2018-11-11, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}}
-Order {day = 2018-11-11, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}}
-Order {day = 2018-11-11, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}}
-Order {day = 2018-11-11, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article5", code = Just "a5"}, cnt = 4, price = 18.00}]}}
-Order {day = 2018-11-11, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}}
-
+Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
+Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}, state = Nothing}
+Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}, state = Just Order_state_delivered}
+Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article5", code = Just "a5"}, cnt = 4, price = 18.00}]}, state = Just Order_state_booked}
+Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}, state = Just Order_state_paid}
 ```
 
 ### Type provider
@@ -406,6 +405,9 @@ QueryRecord {tableName = "orders", queryFields = [FieldPlain "day" "day" (FldDef
 
 We saw how to create simple record and get data from database. But we can make more complicated case.
 Each order has items (order_positions). And probably we want to select sellers of order as well.
+
+Beside that order has an enumeration field `state`. We can add it also with type `PGEnum Tutorial "order_state"` where "order_state" is a name of type in database.
+
 Let's define types:
 ```
 ghci> { data Company = Company { name :: Text, address_id :: Maybe Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Company }
@@ -416,7 +418,7 @@ ghci> import Data.Fixed
 ghci> { data OrdPos = OrdPos { num :: Int, opos_article :: Article, cnt :: Int, price :: Centi } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''OrdPos }
 
 ghci> import Data.Time
-ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
+ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: PGEnum Tutorial "order_state" } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
 
 ghci> instance CQueryRecord PG Tutorial "companies" Company
 ghci> instance CQueryRecord PG Tutorial "articles" Article
@@ -429,7 +431,7 @@ Here `SchList` is a special list to get data from child tables.
 Well and now we'll try to get the text of select statement and populate data:
 ```
 ghci> selectText @Tutorial @"orders" @Order
-"select t0.day \"day\",t0.num \"num\",jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\",array_to_json(array(select jsonb_build_object('num',t2.num,'opos_article',jsonb_build_object('name',t3.name,'code',t3.code),'cnt',t2.cnt,'price',t2.price) from sch.order_positions t2 join sch.articles t3 on t2.article_id=t3.id where t2.order_id=t0.id)) \"opos_order\" from sch.orders t0 join sch.companies t1 on t0.seller_id=t1.id"
+"select t0.day \"day\",t0.num \"num\",jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\",array_to_json(array(select jsonb_build_object('num',t2.num,'opos_article',jsonb_build_object('name',t3.name,'code',t3.code),'cnt',t2.cnt,'price',t2.price) from sch.order_positions t2 join sch.articles t3 on t2.article_id=t3.id where t2.order_id=t0.id)) \"opos_order\",t0.state \"state\" from sch.orders t0 join sch.companies t1 on t0.seller_id=t1.id"
 
 ghci> os :: [Order] <- selectSch_ @Tutorial @"orders" conn
 <interactive>:21:18: error:
@@ -513,14 +515,16 @@ and now...
 ghci> os :: [Order] <- selectSch_ @Tutorial @"orders" conn
 
 ghci> mapM_ print os
-Order {day = 2018-11-11, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}}
-Order {day = 2018-11-11, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}}
-Order {day = 2018-11-11, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}}
-Order {day = 2018-11-11, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article5", code = Just "a5"}, cnt = 4, price = 18.00}]}}
-Order {day = 2018-11-11, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}}
+Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
+Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}, state = Nothing}
+Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}, state = Just Order_state_delivered}
+Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article5", code = Just "a5"}, cnt = 4, price = 18.00}]}, state = Just Order_state_booked}
+Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}, state = Just Order_state_paid}
 ```
 
 Isn't it's worth to say "Wow"?
+
+Notice that all these data are getting in one select.
 
 In fact this way to get data from database was used also on populating `PgCatalog`
 on processing TH-generation of schema. Function `mkSchema` make only three selects

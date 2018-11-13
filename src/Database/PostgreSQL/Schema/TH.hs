@@ -15,6 +15,7 @@ import Data.Set as S
 import Data.Text as T
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DML.Select
+import Database.PostgreSQL.Enum
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Schema.Info
@@ -22,6 +23,7 @@ import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Rec
 import Database.Schema.TH
+import GHC.Generics
 import Language.Haskell.TH
 
 
@@ -56,7 +58,6 @@ getSchema conn ns = do
       c { attribute__class = coerce $ L.sortBy (comparing attnum)
         $ L.filter ((>0) . attnum) (coerce $ attribute__class c) }
 
-
 mkSchema :: ByteString -> Name -> Text -> DecsQ
 mkSchema connStr sch ns = do
   (types, classes, relations) <- runIO $ do
@@ -85,18 +86,25 @@ mkSchema connStr sch ns = do
   pure $ typs ++ flds ++ tabs ++ rls ++ schema
   where
     schQ = conT sch
-    instTypDef (pgt,mbn) = [d|
-      instance CTypDef $(schQ) $(nameQ) where
-        type TTypDef $(schQ) $(nameQ) =
-          'TypDef $(categoryQ) $(typElemQ) $(enumQ)
-      |]
+    instTypDef (pgt,mbn) = (++)
+      <$> [d|
+        instance CTypDef $(schQ) $(nameQ) where
+          type TTypDef $(schQ) $(nameQ) =
+            'TypDef $(categoryQ) $(typElemQ) $(enumQ)
+        |]
+      <*> if L.null enumL then pure [] else
+        (sequence
+          [dataInstD (pure []) ''PGEnum [schQ, nameQ] Nothing enumsQ
+            [ derivClause Nothing
+              [[t|Show|], [t|Read|], [t|Ord|], [t|Eq|], [t|Generic|]] ] ])
       where
+        enumL = getSchList $ enumlabel <$> enum__type pgt
         nameQ = pure $ txtToSym $ typname pgt
         categoryQ = pure $ strToSym [coerce $ typcategory pgt]
-        enumQ
-          = pure . toPromotedList . getSchList
-          $ txtToSym . enumlabel <$> enum__type pgt
+        enumQ = pure $ toPromotedList $ txtToSym <$> enumL
         typElemQ = toPromotedMaybeQ $ strToSym <$> mbn
+        enumsQ = flip normalC [] . mkName . T.unpack
+          . ((toTitle (typname pgt) <> "_") <>) <$> enumL
     instFldDef (cname, attr) = [d|
       instance CFldDef $(schQ) $(tabQ) $(fldQ) where
         type TFldDef $(schQ) $(tabQ) $(fldQ) =

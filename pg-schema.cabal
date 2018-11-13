@@ -33,6 +33,7 @@ library
     -- Database.PostgreSQL.Rec
     Database.PostgreSQL.Schema.Catalog
     Database.PostgreSQL.Schema.Info
+    Database.PostgreSQL.Enum
     Database.PostgreSQL.Schema.TH
     Database.Schema.Def
     Database.Schema.Rec
