@@ -9,7 +9,6 @@ import Data.Text as T
 import Data.Text.IO as T
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Select
--- import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField

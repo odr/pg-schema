@@ -26,9 +26,10 @@ source-repository head
 
 library
   exposed-modules:
-    Database.PostgreSQL.DML.Select
     Database.PostgreSQL.Convert
     Database.PostgreSQL.DB
+    Database.PostgreSQL.DML.Condition
+    Database.PostgreSQL.DML.Select
     Database.PostgreSQL.PgTagged
     -- Database.PostgreSQL.Rec
     Database.PostgreSQL.Schema.Catalog
@@ -76,9 +77,11 @@ library
     , LambdaCase
     , MultiParamTypeClasses
     , OverloadedStrings
+    , PolyKinds
     , QuasiQuotes
     , RecordWildCards
     , ScopedTypeVariables
+    , StandaloneDeriving
     , TemplateHaskell
     , TupleSections
     , TypeApplications

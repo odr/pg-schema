@@ -31,7 +31,7 @@ schemaRec toDbName rn = do
       where
         tdbname = toDbName $ pack $ nameBase n
         tt
-          | tdbname `member` (rels @sch) = case t of
+          | tdbname `member` (relSet @sch) = case t of
             AppT con t' | con == schList -> t'
             _                            -> t
           | otherwise = t
@@ -43,7 +43,7 @@ schemaRec toDbName rn = do
         nameQ = pure $ nameToSym n
         dbNameQ = pure $ txtToSym $ toDbName tname
         kindQ
-          | tdbname `member` (rels @sch) = case t of
+          | tdbname `member` (relSet @sch) = case t of
             AppT con _ | con == schList -> [t|'FldTo|]
             _                           -> [t|'FldFrom|]
           | otherwise = [t|'FldPlain|]

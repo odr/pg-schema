@@ -4,6 +4,7 @@ module Database.PostgreSQL.Enum where
 import Data.Aeson
 import Data.Kind
 import Data.List as L
+import Data.Semigroup ((<>))
 import Data.Text as T
 import Data.Text.Encoding as T
 import Database.PostgreSQL.Convert
