@@ -218,8 +218,10 @@ instance CSchema PgCatalog where
     , "constraint__fclass"
     , "constraint__namespace"
     , "enum__type"
-    , "type__namespace"
-    ]
+    , "type__namespace" ]
+
+  type TTypes PgCatalog =
+    '["oid","int2","int2[]","float4","bool","name","char"]
 
 instance CTypDef PgCatalog "oid" where
   type TTypDef PgCatalog "oid" = 'TypDef "N" Nothing '[]

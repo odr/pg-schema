@@ -40,15 +40,16 @@ getSchema conn ns = do
     (throwM . GetDataException (selectText @PgCatalog @"pg_type" @PgType))
   (classes::[PgClass]) <- catch (fmap attFilterAndSort <$> query conn
     ("select * from ("
-      <> selectQuery @PgCatalog @"pg_class" @PgClass <> ") t \
+      `mappend` selectQuery @PgCatalog @"pg_class" @PgClass `mappend` ") t \
       \where t.class__namespace=jsonb_build_object('nspname',?) \
       \and t.relkind in ('v','r')")
     (Only ns))
     (throwM . GetDataException (selectText @PgCatalog @"pg_class" @PgClass))
   (relations::[PgRelation]) <- catch (query conn
     ("select * from ("
-      <> selectQuery @PgCatalog @"pg_constraint" @PgRelation <> ") t \
-      \where t.constraint__namespace=jsonb_build_object('nspname',?)")
+      `mappend` selectQuery @PgCatalog @"pg_constraint" @PgRelation
+      `mappend` ") t \
+      \ where t.constraint__namespace=jsonb_build_object('nspname',?)")
     (Only ns))
     (throwM
       . GetDataException (selectText @PgCatalog @"pg_constraint" @PgRelation))
@@ -83,6 +84,7 @@ mkSchema connStr sch ns = do
     $ Mb.mapMaybe (mkRelDef mClassAttrs) relations
   schema <- instSchema (relname <$> classes)
     ((\PgRelation {..} -> conname) <$> relations)
+    (typname . fst <$> ntypes)
   pure $ typs ++ flds ++ tabs ++ rls ++ schema
   where
     schQ = conT sch
@@ -158,11 +160,12 @@ mkSchema connStr sch ns = do
           = fmap toPromotedList . traverse pairQ
           $ bimap txtToSym txtToSym <$> rdCols
 
-    instSchema ts rs = [d|
+    instSchema ts rs typs = [d|
       instance CSchema $(schQ) where
         type TSchema $(schQ) = $(pure $ txtToSym ns)
         type TTabs $(schQ) = $(pure $ toPromotedList $ L.map txtToSym ts)
         type TRels $(schQ) = $(pure $ toPromotedList $ L.map txtToSym rs)
+        type TTypes $(schQ) = $(pure $ toPromotedList $ L.map txtToSym typs)
       |]
 
     -- class CSchema sch where

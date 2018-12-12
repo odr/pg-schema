@@ -56,3 +56,22 @@ toStar = fromSing @k (sing @_ @a)
 --
 -- instance ToStar 'Nothing where
 --   toStar = Nothing
+
+-- type family Demote2 (t::kt) k :: Type
+--
+-- type instance Demote2 t [k] = [Demote2 t k]
+-- type instance Demote2 t (k1,k2) = (Demote2 t k1,Demote2 t k2)
+-- type instance Demote2 t (Maybe k) = Maybe (Demote2 t k)
+--
+-- class CDemote2 t (fnames :: k) where
+--   de2 :: Demote2 t k
+--
+-- instance CDemote2 t ('[] :: [k]) where
+--   de2 = []
+--
+-- instance (CDemote2 t (x::k), CDemote2 t (xs::[k])) => CDemote2 t (x ': xs) where
+--   de2 = de2 @t @x : de2 @t @xs
+--
+-- type family Cs (cs :: [Constraint]) :: Constraint where
+--   Cs '[] = ()
+--   Cs (c ': cs) = (c, Cs cs)

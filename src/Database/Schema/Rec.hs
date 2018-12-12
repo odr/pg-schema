@@ -107,8 +107,10 @@ instance
   , cols ~ RdCols relDef
   , ToStar cols
   , uncols ~ Unzip cols
-  , CDefs FldDef '(sch, t) (Fst uncols)
-  , CDefs FldDef '(sch, tabTo) (Snd uncols)
+  , fds ~ SP.Map (TFldDefSym2 sch t) (Fst uncols)
+  , fdsTo ~ SP.Map (TFldDefSym2 sch tabTo) (Snd uncols)
+  , ToStar fds
+  , ToStar fdsTo
   , ToStar n
   )
   => CQueryFields db sch t r ('FieldInfo 'FldFrom n dbname ': xs) where
@@ -122,8 +124,8 @@ instance
       refs =
         zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
           (toStar @_ @cols)
-          (defs @FldDef @'(sch, t) @(Fst uncols))
-          (defs @FldDef @'(sch, tabTo) @(Snd uncols))
+          (toStar @_ @fds)
+          (toStar @_ @fdsTo)
 
 instance
   ( CQueryFields db sch t r xs
@@ -134,8 +136,10 @@ instance
   , cols ~ RdCols relDef
   , ToStar cols
   , uncols ~ Unzip cols
-  , CDefs FldDef '(sch, t) (Snd uncols)
-  , CDefs FldDef '(sch, tabFrom) (Fst uncols)
+  , fds ~ SP.Map (TFldDefSym2 sch t) (Snd uncols)
+  , fdsFrom ~ SP.Map (TFldDefSym2 sch tabFrom) (Fst uncols)
+  , ToStar fds
+  , ToStar fdsFrom
   , ToStar n
   )
   => CQueryFields db sch t r ('FieldInfo 'FldTo n dbname ': xs) where
@@ -149,5 +153,5 @@ instance
       refs =
         zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
           (toStar @_ @cols)
-          (defs @FldDef @'(sch, tabFrom) @(Fst uncols))
-          (defs @FldDef @'(sch, t) @(Snd uncols))
+          (toStar @_ @fdsFrom)
+          (toStar @_ @fds)
