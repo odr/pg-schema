@@ -39,8 +39,8 @@ class CFieldType (r :: Type) (n :: Symbol) where
 class ToStar (TRecordInfo r) => CRecordInfo r where
   type TRecordInfo r :: [FieldInfoK]
 
-  recordInfo :: [FieldInfo]
-  recordInfo = toStar @_ @(TRecordInfo r)
+recordInfo :: forall r. CRecordInfo r => [FieldInfo]
+recordInfo = toStar @_ @(TRecordInfo r)
 
 newtype SchList a = SchList { getSchList :: [a] }
   deriving (Show, Eq, Ord, FromJSON, ToJSON, Functor)
