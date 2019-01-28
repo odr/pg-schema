@@ -2,24 +2,15 @@
 {-# LANGUAGE UndecidableSuperClasses #-}
 module Database.Schema.Rec where
 
-import Data.Aeson
 import Data.Kind
 import Data.Singletons.Prelude as SP
 import Data.Singletons.TH
 import Data.Text (Text)
-import Database.PostgreSQL.Simple.FromField as PG
 import Database.Schema.Def
-import Type.Reflection
 import Util.ToStar
 
 
 singletons [d|
-  -- data FldKind
-  --   = FldPlain -- ^ simple field
-  --   | FldTo    -- ^ other records referenced to this field (type is List)
-  --   | FldFrom  -- ^ field point to another record
-  --   deriving (Show, Read, Eq)
-
   data FieldInfo' s = FieldInfo
     { fieldName :: s
     , fieldDbName :: s }
@@ -40,12 +31,6 @@ class ToStar (TRecordInfo r) => CRecordInfo r where
 
 recordInfo :: forall r. CRecordInfo r => [FieldInfo]
 recordInfo = toStar @_ @(TRecordInfo r)
-
-newtype SchList a = SchList { getSchList :: [a] }
-  deriving (Show, Eq, Ord, FromJSON, ToJSON, Functor)
-
-instance (FromJSON a, Typeable a) => FromField (SchList a) where
-  fromField = fromJSONField
 
 data QueryRecord = QueryRecord
   { tableName   :: Text

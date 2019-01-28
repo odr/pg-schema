@@ -12,6 +12,7 @@ import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Simple.FromRow
 import Database.Schema.Rec
 import Database.Schema.TH
+import Database.Types.SchList
 import GHC.Generics
 import Language.Haskell.TH
 

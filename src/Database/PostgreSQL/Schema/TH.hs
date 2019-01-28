@@ -21,8 +21,8 @@ import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Schema.Info
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
-import Database.Schema.Rec
 import Database.Schema.TH
+import Database.Types.SchList
 import GHC.Generics
 import Language.Haskell.TH
 

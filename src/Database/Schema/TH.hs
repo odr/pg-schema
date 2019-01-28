@@ -1,7 +1,6 @@
 module Database.Schema.TH where
 
 import Data.List as L
-import Data.Map as M
 import Data.Text as T
 import Database.Schema.Def
 import Database.Schema.Rec
@@ -19,22 +18,14 @@ schemaRec toDbName rn = do
       reportError $ "schemaRec: Invalid pattern in reify: " ++ show x
       pure []
 
-  schList <- [t|SchList|]
-  i1 <- L.concat <$> traverse (fieldTypeInst schList) fs
+  i1 <- L.concat <$> traverse fieldTypeInst fs
   i2 <- traverse getFieldInfo fs >>= recordInfoInst . toPromotedList
   pure $ i2 ++ i1
   where
-    fieldTypeInst schList (n,_,t) = [d|
+    fieldTypeInst (n,_,t) = [d|
       instance CFieldType $(conT rn) $(pure $ nameToSym n) where
-        type TFieldType $(conT rn) $(pure $ nameToSym n) = $(pure tt)
+        type TFieldType $(conT rn) $(pure $ nameToSym n) = $(pure t)
       |]
-      where
-        tdbname = toDbName $ pack $ nameBase n
-        tt
-          | tdbname `member` (relDefMap @sch) = case t of
-            AppT con t' | con == schList -> t'
-            _           -> t
-          | otherwise = t
 
     getFieldInfo (n,_,_) = [t|'FieldInfo $(nameQ) $(dbNameQ)|]
       where

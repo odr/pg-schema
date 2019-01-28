@@ -39,6 +39,7 @@ library
     Database.Schema.Def
     Database.Schema.Rec
     Database.Schema.TH
+    Database.Types.SchList
     TH.Rec.Update
     Util.ToStar
   other-modules:

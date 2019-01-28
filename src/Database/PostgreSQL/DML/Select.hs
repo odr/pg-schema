@@ -30,13 +30,6 @@ selectText = fst
   $ evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
     (schemaName @sch,(0,True)) (0,[])
 
--- jsonPairing :: [(Text, Text)] -> Text
--- jsonPairing fs = case fs of
---   [(a,_)] -> a
---   _       -> "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
---   where
---     pairs = L.map (\(a,b) -> "'" <> b <> "'," <> a) fs
-
 jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
   where
