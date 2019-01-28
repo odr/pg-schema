@@ -71,7 +71,7 @@ instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
 
 
 instance ToStar n => CRecordInfo (PgTagged (n::Symbol) r) where
-  type TRecordInfo (PgTagged n r) = '[ 'FieldInfo 'FldPlain n n]
+  type TRecordInfo (PgTagged n r) = '[ 'FieldInfo n n]
 
 instance
   CRecordInfo (PgTagged n r) => CRecordInfo (PgTagged ('[n]::[Symbol]) r) where

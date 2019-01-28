@@ -21,7 +21,7 @@ schemaRec toDbName rn = do
 
   schList <- [t|SchList|]
   i1 <- L.concat <$> traverse (fieldTypeInst schList) fs
-  i2 <- traverse (getFieldInfo schList) fs >>= recordInfoInst . toPromotedList
+  i2 <- traverse getFieldInfo fs >>= recordInfoInst . toPromotedList
   pure $ i2 ++ i1
   where
     fieldTypeInst schList (n,_,t) = [d|
@@ -33,20 +33,14 @@ schemaRec toDbName rn = do
         tt
           | tdbname `member` (relDefMap @sch) = case t of
             AppT con t' | con == schList -> t'
-            _                            -> t
+            _           -> t
           | otherwise = t
 
-    getFieldInfo schList (n,_,t) = [t|'FieldInfo $(kindQ) $(nameQ) $(dbNameQ)|]
+    getFieldInfo (n,_,_) = [t|'FieldInfo $(nameQ) $(dbNameQ)|]
       where
         tname = pack $ nameBase n
-        tdbname = toDbName tname
         nameQ = pure $ nameToSym n
         dbNameQ = pure $ txtToSym $ toDbName tname
-        kindQ
-          | tdbname `member` (relDefMap @sch) = case t of
-            AppT con _ | con == schList -> [t|'FldTo|]
-            _                           -> [t|'FldFrom|]
-          | otherwise = [t|'FldPlain|]
     recordInfoInst fis = [d|
       instance CRecordInfo $(conT rn) where
         type TRecordInfo $(conT rn) = $(pure fis)

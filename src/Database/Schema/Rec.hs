@@ -14,15 +14,14 @@ import Util.ToStar
 
 
 singletons [d|
-  data FldKind
-    = FldPlain -- ^ simple field
-    | FldTo    -- ^ other records referenced to this field (type is List)
-    | FldFrom  -- ^ field point to another record
-    deriving (Show, Read, Eq)
+  -- data FldKind
+  --   = FldPlain -- ^ simple field
+  --   | FldTo    -- ^ other records referenced to this field (type is List)
+  --   | FldFrom  -- ^ field point to another record
+  --   deriving (Show, Read, Eq)
 
   data FieldInfo' s = FieldInfo
-    { fieldKind :: FldKind
-    , fieldName :: s
+    { fieldName :: s
     , fieldDbName :: s }
     deriving Show
 
@@ -81,26 +80,36 @@ class CTypDef sch tn => CanConvert db sch (tn::Symbol) (nullable::Bool) t
 class
   (CSchema sch, CTabDef sch t)
   => CQueryFields db sch t r (fis :: [FieldInfoK]) where
- getQueryFields :: [QueryField]
+  getQueryFields :: [QueryField]
+
+class CQueryFieldT (ft :: FldKind) db sch t r (fi :: FieldInfoK) where
+  getQueryFieldT :: QueryField
+--
 
 instance (CSchema sch, CTabDef sch t) => CQueryFields db sch t r '[] where
   getQueryFields = []
 
 instance
-  ( CQueryFields db sch t r xs
-  , CFldDef sch t dbname
-  , fdef ~ TFldDef sch t dbname
-  , CanConvert db sch (FdType fdef) (FdNullable fdef) (TFieldType r n)
-  , ToStar n
-  )
-  => CQueryFields db sch t r ('FieldInfo 'FldPlain n dbname ': xs) where
-  getQueryFields =
-    FieldPlain (toStar @_ @n) (toStar @_ @dbname) (fldDef @sch @t @dbname)
-      : getQueryFields @db @sch @t @r @xs
+  ( CQueryFieldT (TFieldKind sch t (FieldDbName x)) db sch t r x
+  , CQueryFields db sch t r xs
+  , CSchema sch, CTabDef sch t )
+  => CQueryFields db sch t r (x ': xs) where
+  getQueryFields
+    = getQueryFieldT @(TFieldKind sch t (FieldDbName x)) @db @sch @t @r @x
+    : getQueryFields @db @sch @t @r @xs
 
 instance
-  ( CQueryFields db sch t r xs
-  , relDef ~ TRelDef sch dbname
+  ( CFldDef sch t dbname
+  , fdef ~ TFldDef sch t dbname
+  , CanConvert db sch (FdType fdef) (FdNullable fdef) (TFieldType r n)
+  , ToStar n )
+  => CQueryFieldT 'FldPlain db sch t r ('FieldInfo n dbname) where
+  getQueryFieldT =
+    FieldPlain (toStar @_ @n) (toStar @_ @dbname) (fldDef @sch @t @dbname)
+
+
+instance
+  ( relDef ~ TRelDef sch dbname
   , tabTo ~ RdTo relDef
   , recTo ~ TFieldType r n
   , CQueryRecord db sch tabTo recTo
@@ -111,15 +120,13 @@ instance
   , fdsTo ~ SP.Map (TFldDefSym2 sch tabTo) (Snd uncols)
   , ToStar fds
   , ToStar fdsTo
-  , ToStar n
-  )
-  => CQueryFields db sch t r ('FieldInfo 'FldFrom n dbname ': xs) where
-  getQueryFields =
+  , ToStar n )
+  => CQueryFieldT 'FldFrom db sch t r ('FieldInfo n dbname) where
+  getQueryFieldT =
     FieldFrom
       (toStar @_ @n)
       (getQueryRecord @db @sch @tabTo @recTo)
       refs
-      : getQueryFields @db @sch @t @r @xs
     where
       refs =
         zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
@@ -128,8 +135,7 @@ instance
           (toStar @_ @fdsTo)
 
 instance
-  ( CQueryFields db sch t r xs
-  , relDef ~ TRelDef sch dbname
+  ( relDef ~ TRelDef sch dbname
   , tabFrom ~ RdFrom relDef
   , recFrom ~ TFieldType r n
   , CQueryRecord db sch tabFrom recFrom
@@ -140,15 +146,13 @@ instance
   , fdsFrom ~ SP.Map (TFldDefSym2 sch tabFrom) (Fst uncols)
   , ToStar fds
   , ToStar fdsFrom
-  , ToStar n
-  )
-  => CQueryFields db sch t r ('FieldInfo 'FldTo n dbname ': xs) where
-  getQueryFields =
+  , ToStar n )
+  => CQueryFieldT 'FldTo db sch t r ('FieldInfo n dbname) where
+  getQueryFieldT =
     FieldTo
       (toStar @_ @n)
       (getQueryRecord @db @sch @tabFrom @recFrom)
       refs
-      : getQueryFields @db @sch @t @r @xs
     where
       refs =
         zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
