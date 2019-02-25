@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                  #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.DML.Condition where
 
@@ -7,6 +8,7 @@ import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Bifunctor
 import Data.Kind (Type)
 import Data.Proxy (Proxy(..))
+import Data.Singletons.Prelude
 import Data.Text.Lazy as T
 import Data.Tuple
 import Database.PostgreSQL.Convert
@@ -17,6 +19,9 @@ import GHC.Generics (Generic)
 import GHC.OverloadedLabels (IsLabel(..))
 import GHC.TypeLits (Symbol)
 import Util.ToStar
+#if !MIN_VERSION_base(4,11,0)
+import Data.Semigroup
+#endif
 
 
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like {isCaseSesnsitive :: Bool}
@@ -151,11 +156,11 @@ infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 -- ...
 --   :: Cond Sch "customers"
 
--- или так:
+-- or:
 -- ghci> :t #id =? (1::Int) ||| pchild @"ord_cust"
 -- (#id =? (1::Int) ||| pnot (pchild @"opos_order" (#price >? 5))) :: Cond Sch "customers"
 
--- или так:
+-- or:
 -- ghci> x = 1 :: Int
 -- ghci> y = 5 :: Integer
 -- ghci> :t #id =? x ||| pchild @"ord_cust" (#id =? x||| pnot (pchild @"opos_order" (#price >? y)))
@@ -271,3 +276,25 @@ ghci> pgCond
     ))))"
 ,[SomeToField (Just "xx"),SomeToField 5,SomeToField 1])
 -}
+
+data CondWithPath sch t
+  = forall (path :: [Symbol]) tab. PathToTab sch t path tab
+  => CondWithPath (Proxy path) (Cond sch tab)
+
+class PathToTab sch t path tab
+
+instance PathToTab sch t '[] t
+
+#if !MIN_VERSION_base(4,11,0)
+instance
+  ( t' ~ If (TFromTab sch x :== t) (TToTab sch x) (TFromTab sch x)
+  , PathToTab sch t' xs tab
+  )
+  => PathToTab sch t (x ': xs) tab
+#else
+instance
+  ( t' ~ If (TFromTab sch x == t) (TToTab sch x) (TFromTab sch x)
+  , PathToTab sch t' xs tab
+  )
+  => PathToTab sch t (x ': xs) tab
+#endif

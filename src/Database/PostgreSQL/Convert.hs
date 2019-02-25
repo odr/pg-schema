@@ -4,6 +4,7 @@ module Database.PostgreSQL.Convert where
 
 import Control.Monad.Zip
 import Data.Aeson
+import Data.ByteString
 import Data.Coerce
 import Data.Fixed
 import Data.List as L
@@ -17,11 +18,11 @@ import GHC.TypeLits
 import Type.Reflection
 
 
-class (FromJSON t, ToJSON t, CTypDef sch tn)
+class ({-FromJSON t, ToJSON t, -}CTypDef sch tn)
   => CanConvertPG sch (tn::Symbol) (nullable :: Bool) t
 
-class (FromJSON t, ToJSON t)
-  => CanConvert1 (td::TypDefK) sch (tn::Symbol) t
+class {-(FromJSON t, ToJSON t)
+  => -}CanConvert1 (td::TypDefK) sch (tn::Symbol) t
 
 instance
   (CanConvert1 (TTypDef sch tn) sch tn t, CTypDef sch tn, FromJSON t, ToJSON t)
@@ -83,3 +84,7 @@ instance CanConvert1 ('TypDef "S" x y) sch "char" PgChar
 instance CanConvert1 ('TypDef "S" x y) sch "name" Text
 instance CanConvert1 ('TypDef "S" x y) sch "text" Text
 instance CanConvert1 ('TypDef "S" x y) sch "varchar" Text
+
+instance CanConvert1 ('TypDef "U" x y) sch "bytea" (Binary ByteString)
+-- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
+-- used only in the root table

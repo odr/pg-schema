@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Util.ToStar where
 
 -- import Data.Kind (Type)
@@ -14,7 +15,11 @@ type family ToStar (a::k) :: Constraint where
   ToStar (a::k) = (SingKind k, SingI a)
 
 toStar :: forall k (a::k). ToStar (a::k) => Demote k
+#if MIN_VERSION_base(4,12,0)
+toStar = fromSing @k (sing @a)
+#else
 toStar = fromSing @k (sing @_ @a)
+#endif
 
 -- class (SingKind k, SingI a) => ToStar (a::k) where
 --   toStar :: Demote k
