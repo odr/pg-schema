@@ -14,6 +14,7 @@ import Data.Semigroup ((<>))
 import Data.Set as S
 import Data.Text as T
 import Database.PostgreSQL.Convert
+import Database.PostgreSQL.DML.Condition
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.Enum
 import Database.PostgreSQL.PgTagged
@@ -29,32 +30,30 @@ import Language.Haskell.TH
 
 data ExceptionSch
   = ConnectException ByteString SomeException
-  | GetDataException Text SomeException
+  | GetDataException (Text, [SomeToField]) SomeException
   deriving Show
 
 instance Exception ExceptionSch
 
 getSchema :: Connection -> Text -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn ns = do
-  types <- catch (selectSch_ @PgCatalog @"pg_type" @PgType conn)
-    (throwM . GetDataException (selectText @PgCatalog @"pg_type" @PgType))
-  (classes::[PgClass]) <- catch (fmap attFilterAndSort <$> query conn
-    ("select * from ("
-      `mappend` selectQuery @PgCatalog @"pg_class" @PgClass `mappend` ") t \
-      \where t.class__namespace=jsonb_build_object('nspname',?) \
-      \and t.relkind in ('v','r')")
-    (Only ns))
-    (throwM . GetDataException (selectText @PgCatalog @"pg_class" @PgClass))
-  (relations::[PgRelation]) <- catch (query conn
-    ("select * from ("
-      `mappend` selectQuery @PgCatalog @"pg_constraint" @PgRelation
-      `mappend` ") t \
-      \ where t.constraint__namespace=jsonb_build_object('nspname',?)")
-    (Only ns))
-    (throwM
-      . GetDataException (selectText @PgCatalog @"pg_constraint" @PgRelation))
+  types <- catch (selectSch @PgCatalog @"pg_type" @PgType conn EmptyCond)
+    ( throwM . GetDataException
+      (selectText @PgCatalog @"pg_type" @PgType EmptyCond) )
+  classes <- fmap attFilterAndSort <$> catch
+    (selectSch @PgCatalog @"pg_class" @PgClass conn condClass)
+    ( throwM . GetDataException
+      (selectText @PgCatalog @"pg_class" @PgClass condClass) )
+  relations <- catch
+    (selectSch @PgCatalog @"pg_constraint" @PgRelation conn condRel)
+    ( throwM . GetDataException
+      (selectText @PgCatalog @"pg_constraint" @PgRelation condRel) )
   pure (types, classes, relations)
   where
+    condClass
+      = pparent @"class__namespace" (#nspname =? ns)
+      &&& (pin @"relkind" (PgChar <$> "vr"))
+    condRel = pparent @"constraint__namespace" (#nspname =? ns)
     attFilterAndSort c =
       c { attribute__class = coerce $ L.sortBy (comparing attnum)
         $ L.filter ((>0) . attnum) (coerce $ attribute__class c) }

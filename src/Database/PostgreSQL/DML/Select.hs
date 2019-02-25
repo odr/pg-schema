@@ -8,27 +8,48 @@ import Data.List as L
 import Data.Semigroup ((<>))
 import Data.String
 import Data.Text as T
+import Data.Text.Lazy (toStrict)
 import Database.PostgreSQL.DB
+import Database.PostgreSQL.DML.Condition
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Rec
 import Formatting
 
+data QueryRead = QueryRead
+  { qrSchema     :: Text
+  , qrCurrTabNum :: Int
+  , qrIsRoot     :: Bool }
+  deriving Show
 
-type MonadQuery m = MonadRWS (Text,(Int,Bool)) () (Int,[Text]) m
+data QueryState = QueryState
+  { qsLastTabNum :: Int
+  , qsJoins      :: [Text] }
+  deriving Show
 
-selectSch_
+type MonadQuery m = MonadRWS QueryRead () QueryState m
+
+selectSch
   :: forall sch tab r. (FromRow r, CQueryRecord PG sch tab r)
-  => Connection -> IO [r]
-selectSch_ conn = query_ conn (selectQuery @sch @tab @r)
+  => Connection -> Cond sch tab -> IO [r]
+selectSch conn cond = let (q,c) = selectQuery @sch @tab @r cond in
+  query conn q c
 
-selectQuery :: forall sch tab r. CQueryRecord PG sch tab r => Query
-selectQuery = fromString $ unpack (selectText @sch @tab @r)
+selectQuery
+  :: forall sch tab r. CQueryRecord PG sch tab r
+  => Cond sch tab -> (Query,[SomeToField])
+selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
-selectText :: forall sch tab r. CQueryRecord PG sch tab r => Text
-selectText = fst
-  $ evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
-    (schemaName @sch,(0,True)) (0,[])
+selectText
+  :: forall sch tab r. CQueryRecord PG sch tab r
+  => Cond sch tab -> (Text,[SomeToField])
+selectText cond
+  | condText == mempty  = (sel, [])
+  | otherwise           = (sel <> " where " <> toStrict condText, pars)
+  where
+    sel = fst $ evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
+      (QueryRead (schemaName @sch) 0 True) (QueryState 0 [])
+    (condText, pars) = pgCond cond
 
 jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
@@ -37,33 +58,36 @@ jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
 
 selectM :: MonadQuery m => QueryRecord -> m Text
 selectM QueryRecord {..} = do
-  (schName,(n,isRoot)) <- ask
+  QueryRead {..} <- ask --(schName,(n,isRoot))
   fields <- traverse fieldM queryFields
-  (_,joins) <- second L.reverse <$> get
+  joins <- L.reverse . qsJoins <$> get
   let
     sel
-      | isRoot    =
+      | qrIsRoot    =
         T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") fields
       | otherwise = jsonPairing fields
     j = T.intercalate " " joins
-  pure $ sformat fmt sel schName tableName n j
+  pure $ sformat fmt sel qrSchema tableName qrCurrTabNum j
   where
     fmt = "select " % stext
       % " from " % stext % "." % stext % " t" % int % " " % stext
 
 fieldM :: MonadQuery m => QueryField -> m (Text, Text)
 fieldM (FieldPlain name dbname _) = do
-  (n,_) <- snd <$> ask
+  n <- qrCurrTabNum <$> ask
   pure $ (sformat fmt n dbname, name)
   where
     fmt = "t" % int % "." % stext
 
 fieldM (FieldFrom name QueryRecord {..} refs) = do
-  (schName,(n1,_)) <- ask
-  modify (\(n2,joins) -> (n2+1, joinText schName n1 (n2+1) : joins))
-  (n2,_) <- get
+  QueryRead {..} <- ask -- (schName,(n1,_))
+  modify (\QueryState{..} -> QueryState
+    (qsLastTabNum+1)
+    (joinText qrSchema qrCurrTabNum (qsLastTabNum+1) : qsJoins))
+  n2 <- qsLastTabNum <$> get
   f <- jsonPairing
-    <$> local (second $ const (n2,False)) (traverse fieldM queryFields)
+    <$> local (\qr -> qr { qrCurrTabNum = n2, qrIsRoot = False })
+      (traverse fieldM queryFields)
   pure (f, name)
   where
     joinText schName n1 n2 =
@@ -76,12 +100,14 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
           | otherwise = ""
 
 fieldM (FieldTo name rec refs) = do
-  (n1,_) <- snd <$> ask
-  (n2, joins) <- get
-  modify (const (n2+1,[]))
-  selText <- local (second $ const $ (n2+1,False)) $ selectM rec
-  modify (second $ const joins)
-  pure (sformat fmt selText (refCond (n2+1) n1 refs), name)
+  n1 <- qrCurrTabNum <$> ask
+  (QueryState ltn joins) <- get
+  modify (const $ QueryState (ltn+1) [])
+  selText <- local
+    (\qr -> qr { qrCurrTabNum = ltn+1, qrIsRoot = False})
+    (selectM rec)
+  modify (\qs -> qs { qsJoins = joins })
+  pure (sformat fmt selText (refCond (ltn+1) n1 refs), name)
   where
     fmt = "array_to_json(array(" % stext % " where " % stext % "))"
 

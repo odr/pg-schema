@@ -8,6 +8,7 @@ import Data.List as L
 import Data.Text as T
 import Data.Text.IO as T
 import Database.PostgreSQL.DB
+import Database.PostgreSQL.DML.Condition
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
@@ -55,12 +56,12 @@ L.concat
 
 main :: IO ()
 main = do
-  mapM_ T.putStrLn
-    [ selectText @Sch @"countries" @Country
-    , selectText @Sch @"cities" @City
-    , selectText @Sch @"addresses" @Address
+  mapM_ (\(a,b) -> T.putStrLn a >> print b)
+    [ selectText @Sch @"countries" @Country EmptyCond
+    , selectText @Sch @"cities" @City EmptyCond
+    , selectText @Sch @"addresses" @Address EmptyCond
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  selectSch_ @Sch @"countries" @Country conn >>= print
-  selectSch_ @Sch @"cities" @City conn >>= print
-  selectSch_ @Sch @"addresses" @Address conn >>= print
+  selectSch @Sch @"countries" @Country conn EmptyCond >>= print
+  selectSch @Sch @"cities" @City conn EmptyCond >>= print
+  selectSch @Sch @"addresses" @Address conn EmptyCond >>= print

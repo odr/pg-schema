@@ -78,6 +78,7 @@ library
     , LambdaCase
     , MultiParamTypeClasses
     , OverloadedStrings
+    , OverloadedLabels
     , PolyKinds
     , QuasiQuotes
     , RecordWildCards

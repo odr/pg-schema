@@ -1,18 +1,22 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.DML.Condition where
 
-import Data.Aeson (FromJSON(..), ToJSON(..))
--- import Data.Kind (Type)
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Aeson (FromJSON(..), ToJSON(..))
+import Data.Bifunctor
+import Data.Kind (Type)
 import Data.Proxy (Proxy(..))
-import Data.Text (Text)
+import Data.Text.Lazy as T
+import Data.Tuple
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.Simple.ToField
 import Database.Schema.Def
+import Formatting
 import GHC.Generics (Generic)
 import GHC.OverloadedLabels (IsLabel(..))
 import GHC.TypeLits (Symbol)
+import Util.ToStar
 
 
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like {isCaseSesnsitive :: Bool}
@@ -40,14 +44,20 @@ showCmp = \case
 -- /5a685faf899a2b00361b221d7e945a4922bf7863
 -- /existental-type-variables.rst#implementation-plan
 -- we have to add Proxy to existensials while ^ this proposal isn't implemented
-data Cond sch (tab::Symbol)
-  = Empty
+data Cond (sch::Type) (tab::Symbol)
+  = EmptyCond
   | forall fld v .
     ( CFldDef sch tab fld
-    , Show v
+    , ToField v, Show v
     , CanConvertPG sch (FdType (TFldDef sch tab fld))
       (FdNullable (TFldDef sch tab fld)) v )
     => Cmp (Proxy fld) Cmp v
+  | forall fld v .
+    ( CFldDef sch tab fld
+    , ToField v, Show v
+    , CanConvertPG sch (FdType (TFldDef sch tab fld))
+      (FdNullable (TFldDef sch tab fld)) v )
+    => In (Proxy fld) [v]
   | forall fld .
     (CFldDef sch tab fld, FdNullable (TFldDef sch tab fld) ~ 'True)
     => Null (Proxy fld)
@@ -73,7 +83,7 @@ deriving instance Show (Cond sch tab)
 --
 pcmp
   :: forall name sch tab v .
-    ( CFldDef sch tab name, Show v
+    ( CFldDef sch tab name, Show v, ToField v
     , CanConvertPG sch (FdType (TFldDef sch tab name))
       (FdNullable (TFldDef sch tab name)) v )
   => Cmp -> v -> Cond sch tab
@@ -101,14 +111,23 @@ pparent = Parent @sch @tab @name Proxy
 
 -- --
 instance
-  ( CFldDef sch tab fld, Show v
+  ( CFldDef sch tab fld, Show v, ToField v
   , CanConvertPG sch (FdType (TFldDef sch tab fld))
     (FdNullable (TFldDef sch tab fld)) v )
   => IsLabel fld (Cmp -> v -> Cond sch tab) where
-  fromLabel = Cmp @sch @tab @fld Proxy
+  fromLabel = Cmp @_ @_ @fld Proxy
 --
+
 pnot :: Cond sch tab -> Cond sch tab
 pnot = Not
+
+pin
+  :: forall name sch tab v .
+    ( CFldDef sch tab name, Show v, ToField v
+    , CanConvertPG sch (FdType (TFldDef sch tab name))
+      (FdNullable (TFldDef sch tab name)) v )
+  => [v] -> Cond sch tab
+pin = In @sch @tab @name Proxy
 
 (&&&), (|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
 (&&&) = BoolOp And
@@ -117,7 +136,7 @@ infixl 2 |||
 infixl 3 &&&
 --
 (<?),(>?),(<=?),(>=?),(=?),(~=?),(~~?)
-  :: (Cmp -> v -> Cond sch tab) -> v -> Cond sch tab
+  :: forall sch tab v. (Cmp -> v -> Cond sch tab) -> v -> Cond sch tab
 x <? b  = x (:<)  b
 x >? b  = x (:>)  b
 x <=? b = x (:<=) b
@@ -131,90 +150,110 @@ infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 -- (#id =? (1::Int) ||| pnot (pchild @"opos_order" (#price >? 5)))
 -- ...
 --   :: Cond Sch "customers"
---
+
+-- или так:
+-- ghci> :t #id =? (1::Int) ||| pchild @"ord_cust"
+-- (#id =? (1::Int) ||| pnot (pchild @"opos_order" (#price >? 5))) :: Cond Sch "customers"
+
+-- или так:
+-- ghci> x = 1 :: Int
+-- ghci> y = 5 :: Integer
+-- ghci> :t #id =? x ||| pchild @"ord_cust" (#id =? x||| pnot (pchild @"opos_order" (#price >? y)))
+-- :: Cond Sch "customers"
+
 -- <номер таблицы родителя> <номер дочерней таблицы>
 type CondMonad = ReaderT Int (State Int)
 runCond :: CondMonad a -> a
 runCond x = evalState (runReaderT x 0) 0
 
 data SomeToField where
-  SomeToField :: ToField a => a -> SomeToField
+  SomeToField :: (ToField a, Show a) => a -> SomeToField
+
+deriving instance Show SomeToField
 
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 --
--- withPar :: (Text -> a) -> CondMonad a
--- withPar f = lift $ do
---   n <- snd <$> get
---   modify $ second (+1)
---   return $ f (paramName @b n)
---
-convCond :: Cond sch t -> CondMonad (Text, [SomeToField])
-convCond (condition :: Cond sch t) = case condition of
-  Empty -> return ("1=1",[])
-  -- (Cmp (_::Proxy n) cmp v) -> do
-  --   ntab <- get
-  --   first (T.intercalate " AND ") . unzip <$> mapM (\(n,vdb) ->
-  --     let nm = format "tw{}.{}" (ntab, n) in
-  --       withPar @db $ \par ->
-  --         (case cmp of
-  --           Like    -> condLike @db nm par
-  --           CmpS op -> format "{}{}{}" (nm,showCmp op,par)
-  --         , vdb
-  --         )
-  --     ) nvs
-  --   where
-  --     nvs =
-        -- zip (map fst $ fldDbDef @db @n @(TabFldType sch t n)) $ fldToDb @db @n v
---   Null (_::Proxy n) -> return $ (,[])
---     $ T.intercalate " AND "
---     $ map ((`mappend` " IS NULL") . fst)
---     $ fldDbDef @db @n @(TabFldType sch t n)
---   Not c -> first (format "NOT ({})" . Only) <$> convCond c
---   BoolOp bo c1 c2 ->
---     (\(cc1,d1) (cc2,d2) -> (format "({}) {} ({})" (cc1,show bo,cc2),d1++d2))
---       <$> convCond c1 <*> convCond c2
---   Child (_ :: Proxy ref) (cond::Cond db sch (RdFrom (TRelDef sch ref))) ->
---     getRef True (tabName @sch @(RdFrom (TRelDef sch ref)))
---       (toStar @_ @(TRelDef sch ref)) (convCond cond)
---   Parent (_ :: Proxy ref) (cond::Cond db sch (RdTo (TRelDef sch ref))) ->
---     getRef False (tabName @sch @(RdTo (TRelDef sch ref)))
---       (toStar @_ @(TRelDef sch ref)) (convCond cond)
---   where
---     getRef
---       :: Bool -> Text -> RelDef Text -> CondMonad (Text, [FieldToDB db])
---       -> CondMonad (Text, [FieldToDB db])
---     getRef isChild tn rd cc = do
---       pnum <- ask
---       cnum <- lift $ do
---         modify (first (+1))
---         fst <$> get
---
---       first (\c ->
---         format "EXISTS (SELECT 1 FROM {} t{} WHERE {}{}({}))"
---           ( tn
---           , cnum
---           , T.intercalate " AND "
---             $ map
---               ( (\(ch,pr) -> format "t{}.{} = t{}.{}" (cnum,ch,pnum,pr))
---                 . (if isChild then id else swap) )
---             $ rdCols rd
---           , if T.null c then (""::T.Text) else " AND "
---           , c)
---         ) <$> local (const cnum) cc
-  _     -> undefined
+convCond :: forall sch t. Cond sch t -> CondMonad (Text, [SomeToField])
+convCond = \case
+  EmptyCond -> pure mempty
+  Cmp (_::Proxy n) cmp v -> go <$> ask
+    where
+      go ntab = case cmp of
+        Like True  -> (fld' <> " like ?", [v'])
+        Like False -> ("upper(" <> fld' <> ") like upper(?)", [v'])
+        op         -> (fld' <> " " <> showCmp op <> " ?", [v'])
+        where
+          v' = SomeToField v
+          fld' = fld ntab (toStar @_ @n)
+  In (_::Proxy n) vs -> go <$> ask
+    where
+      go ntab =
+        ( fld ntab (toStar @_ @n)
+          <> " in (" <> (T.intercalate "," $ const "?" <$> vs) <> ")"
+        , SomeToField <$> vs )
+  Null (_::Proxy n) ->
+    (\ntab ->
+      (format (text % int % "." % stext % " is null")
+        (tabPref ntab) ntab (toStar @_ @n), []))
+    <$> ask
+  Not c -> getNot <$> convCond c
+  BoolOp bo c1 c2 -> getBoolOp bo <$> convCond c1 <*> convCond c2
+  Child (_ :: Proxy ref) (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
+    getRef True (toStar @_ @(RdFrom (TRelDef sch ref)))
+      (toStar @_ @(TRelDef sch ref)) (convCond cond)
+  Parent (_ :: Proxy ref) (cond::Cond sch (RdTo (TRelDef sch ref))) ->
+    getRef False (toStar @_ @(RdTo (TRelDef sch ref)))
+      (toStar @_ @(TRelDef sch ref)) (convCond cond)
+  where
+    tabPref ntab
+      | ntab == 0 = "t"
+      | otherwise = "qt"
+    fld ntab name = format (text % int % "." % stext) (tabPref ntab) ntab name
+    getNot (c,vs)
+      | c == mempty = mempty
+      | otherwise   = (format ("not (" % text % ")") c, vs)
+    getBoolOp bo (cc1,d1) (cc2,d2)
+      | cc1 == mempty = (cc2,d2)
+      | cc2 == mempty = (cc1,d1)
+      | otherwise =
+        (format ("(" % text % ") " % string % " (" % text % ")")
+          cc1 (show bo) cc2
+        , d1++d2)
 
--- --
--- -- > dbCond $ pcmp @"id" @Dbs @Sch @"Customer" ==? 1 ||| pchild @"ordCust" (#id ==? 2 ||| pnull @"num")
--- -- ("(t0.id=?1) Or (EXISTS (SELECT 1 FROM Orders t1 WHERE t1.customerId = t0.id AND ((t1.id=?2) Or (num IS NULL))))",[SQLInteger 1,SQLInteger 2])
--- -- > dbCond $ pcmp @"id" @Dbs @Sch @"Orders" ==? 1 &&& pparent @"ordCust" (#id ==? 2) &&& pchild @"opOrd" (#num >? 3)
--- -- ("((t0.id=?1) And (EXISTS (SELECT 1 FROM Customer t1 WHERE t1.id = t0.customerId AND (t1.id=?2)))) And (EXISTS (SELECT 1 FROM OrderPosition t2 WHERE t2.orderId = t0.id AND (t2.num>?3)))",[SQLInteger 1,SQLInteger 2,SQLInteger 3])
--- -- > dbCond $ #id ==? 1 &&& pparent @"ordCust" @Dbs @Sch @"Orders" (#id ==? 2) &&& pchild @"opOrd" (#num >? 3)
--- -- ("((t0.id=?1)
---   -- And (EXISTS (SELECT 1 FROM Customer t1 WHERE t1.id = t0.customerId AND (t1.id=?2))))
---   -- And (EXISTS (SELECT 1 FROM OrderPosition t2 WHERE t2.orderId = t0.id AND (t2.num>?3)))"
---   -- ,[SQLInteger 1,SQLInteger 2,SQLInteger 3])
---
---
--- dbCond :: Cond db sch t -> (Text, [FieldToDB db])
--- dbCond = runCond . convCond
+    -- getRef
+    --   :: Bool -> Text -> RelDef -> CondMonad (Text, [SomeToField])
+    --   -> CondMonad (Text, [SomeToField])
+    getRef isChild tn rd cc = do
+      pnum <- ask
+      cnum <- lift $ do
+        modify (+1)
+        get
+
+      first (\c ->
+        format ("exists (select 1 from " % stext % " qt" % int %
+          " where " % text % ")")
+          tn cnum
+          (T.intercalate " and "
+            (
+              ( (\(ch,pr) -> format
+                ( "qt" % int % "." % stext % " = " % text % int % "." % stext)
+                  cnum ch (tabPref pnum) pnum pr)
+                . (if isChild then id else swap) )
+            <$> rdCols rd)
+            <> (if T.null c then (""::T.Text) else (" and (" <> c <> ")")))
+        ) <$> local (const cnum) cc
+
+pgCond :: Cond sch t -> (Text, [SomeToField])
+pgCond = runCond . convCond
+
+-- ghci> pgCond
+  -- (pparent @"cust_addr" (pparent @"address_city" (#name ~=? (Just "xx"::Maybe Text) ))
+  -- &&& (#id =? (5::Int) ||| pchild @"ord_cust" (#id =? (1::Int)
+  -- ||| pnot (pchild @"opos_order" EmptyCond))) :: Cond Sch "customers")
+-- ("(exists (select 1 from addresses t1 where t1.id = t0.address_id
+-- and (exists (select 1 from cities t2 where t2.id = t1.city_id
+-- and (t2.name like ?))))) And ((t0.id = ?)
+-- Or (exists (select 1 from orders t3 where t3.customer_id = t0.id and ((t3.id = ?)
+-- Or (not (exists (select 1 from order_positions t4 where t4.order_id = t3.id)))))))"
+-- ,[SomeToField (Just "xx"),SomeToField 5,SomeToField 1])
