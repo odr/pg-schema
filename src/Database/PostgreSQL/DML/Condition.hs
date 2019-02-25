@@ -221,9 +221,6 @@ convCond = \case
           cc1 (show bo) cc2
         , d1++d2)
 
-    -- getRef
-    --   :: Bool -> Text -> RelDef -> CondMonad (Text, [SomeToField])
-    --   -> CondMonad (Text, [SomeToField])
     getRef isChild tn rd cc = do
       pnum <- ask
       cnum <- lift $ do
@@ -247,13 +244,30 @@ convCond = \case
 pgCond :: Cond sch t -> (Text, [SomeToField])
 pgCond = runCond . convCond
 
--- ghci> pgCond
-  -- (pparent @"cust_addr" (pparent @"address_city" (#name ~=? (Just "xx"::Maybe Text) ))
-  -- &&& (#id =? (5::Int) ||| pchild @"ord_cust" (#id =? (1::Int)
-  -- ||| pnot (pchild @"opos_order" EmptyCond))) :: Cond Sch "customers")
--- ("(exists (select 1 from addresses t1 where t1.id = t0.address_id
--- and (exists (select 1 from cities t2 where t2.id = t1.city_id
--- and (t2.name like ?))))) And ((t0.id = ?)
--- Or (exists (select 1 from orders t3 where t3.customer_id = t0.id and ((t3.id = ?)
--- Or (not (exists (select 1 from order_positions t4 where t4.order_id = t3.id)))))))"
--- ,[SomeToField (Just "xx"),SomeToField 5,SomeToField 1])
+{-
+ghci> pgCond
+  (pparent @"cust_addr"
+    (pparent @"address_city" (#name ~=? Just @Text "xx" ))
+    &&& (#id =? (5::Int)
+      ||| pchild @"ord_cust" (#id =? (1::Int)
+      ||| pnot (pchild @"opos_order" EmptyCond))) :: Cond Sch "customers")
+
+("(exists (
+  select 1 from addresses qt1
+    where qt1.id = t0.address_id and (exists (
+      select 1 from cities qt2
+        where qt2.id = qt1.city_id and (qt2.name like ?))
+  ))
+  And
+    ( (t0.id = ?)
+    Or (exists (
+      select 1 from orders qt3
+        where qt3.customer_id = t0.id
+          and
+            ( (qt3.id = ?)
+            Or (not (exists (
+              select 1 from order_positions qt4
+                where qt4.order_id = qt3.id)))
+    ))))"
+,[SomeToField (Just "xx"),SomeToField 5,SomeToField 1])
+-}
