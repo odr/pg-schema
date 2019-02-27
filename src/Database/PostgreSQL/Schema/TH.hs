@@ -37,26 +37,28 @@ instance Exception ExceptionSch
 
 getSchema :: Connection -> Text -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn ns = do
-  types <- catch (selectSch @PgCatalog @"pg_type" @PgType conn EmptyCond)
+  types <- catch (selectSch @PgCatalog @"pg_type" @PgType conn [])
     ( throwM . GetDataException
-      (selectText @PgCatalog @"pg_type" @PgType EmptyCond) )
-  classes <- fmap attFilterAndSort <$> catch
-    (selectSch @PgCatalog @"pg_class" @PgClass conn condClass)
+      (selectText @PgCatalog @"pg_type" @PgType []) )
+  classes <- fmap attSort <$> catch
+    (selectSch @PgCatalog @"pg_class" @PgClass conn condsClass)
     ( throwM . GetDataException
-      (selectText @PgCatalog @"pg_class" @PgClass condClass) )
+      (selectText @PgCatalog @"pg_class" @PgClass condsClass) )
   relations <- catch
-    (selectSch @PgCatalog @"pg_constraint" @PgRelation conn condRel)
+    (selectSch @PgCatalog @"pg_constraint" @PgRelation conn condsRel)
     ( throwM . GetDataException
-      (selectText @PgCatalog @"pg_constraint" @PgRelation condRel) )
+      (selectText @PgCatalog @"pg_constraint" @PgRelation condsRel) )
   pure (types, classes, relations)
   where
-    condClass
-      = pparent @"class__namespace" (#nspname =? ns)
-      &&& (pin @"relkind" (PgChar <$> "vr"))
-    condRel = pparent @"constraint__namespace" (#nspname =? ns)
-    attFilterAndSort c =
-      c { attribute__class = coerce $ L.sortBy (comparing attnum)
-        $ L.filter ((>0) . attnum) (coerce $ attribute__class c) }
+    condsClass =
+      [ rootCond
+        $ pparent @"class__namespace" (#nspname =? ns)
+          &&& (pin @"relkind" (PgChar <$> "vr"))
+      , cwp @'["attribute__class"] (#attnum >? (0::Int)) ]
+    condsRel =
+      [rootCond $ pparent @"constraint__namespace" (#nspname =? ns)]
+    attSort c = c { attribute__class =
+      coerce $ L.sortBy (comparing attnum) $ coerce $ attribute__class c }
 
 mkSchema :: ByteString -> Name -> Text -> DecsQ
 mkSchema connStr sch ns = do

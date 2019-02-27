@@ -57,11 +57,21 @@ L.concat
 main :: IO ()
 main = do
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selectText @Sch @"countries" @Country EmptyCond
-    , selectText @Sch @"cities" @City EmptyCond
-    , selectText @Sch @"addresses" @Address EmptyCond
+    [ selectText @Sch @"countries" @Country []
+    , selectText @Sch @"cities" @City []
+    , selectText @Sch @"addresses" @Address []
+    , selectText @Sch @"addresses" @Address cond
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  selectSch @Sch @"countries" @Country conn EmptyCond >>= print
-  selectSch @Sch @"cities" @City conn EmptyCond >>= print
-  selectSch @Sch @"addresses" @Address conn EmptyCond >>= print
+  selectSch @Sch @"countries" @Country conn [] >>= print
+  T.putStrLn ""
+  selectSch @Sch @"cities" @City conn [] >>= print
+  T.putStrLn ""
+  selectSch @Sch @"addresses" @Address conn [] >>= print
+  T.putStrLn ""
+  selectSch @Sch @"addresses" @Address conn cond >>= print
+  where
+    cond =
+      [rootCond
+        (pparent @"address_city"
+          $ pparent @"city_country" (#code =? Just @Text "RU"))]

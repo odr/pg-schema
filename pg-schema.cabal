@@ -90,6 +90,7 @@ library
     , TypeFamilies
     , TypeInType
     , TypeOperators
+    , RankNTypes
 
 executable pg-schema
   main-is: Main.hs
@@ -122,6 +123,7 @@ executable pg-schema
     , InstanceSigs
     , LambdaCase
     , MultiParamTypeClasses
+    , OverloadedLabels
     , OverloadedStrings
     , QuasiQuotes
     , RecordWildCards

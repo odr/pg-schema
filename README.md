@@ -67,6 +67,8 @@ Many GHC-extensions should be enabled. I use the following
 ### TL;DR
 
 ```
+ghci> import Database.PostgreSQL.Schema.TH
+
 ghci> {data Tutorial; mkSchema "dbname=schema_test user=postgres" ''Tutorial "sch"}
 
 ghci> { data Company = Company { name :: Text, address_id :: Maybe Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Company }
@@ -77,7 +79,8 @@ ghci> import Data.Fixed
 ghci> { data OrdPos = OrdPos { num :: Int, opos_article :: Article, cnt :: Int, price :: Centi } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''OrdPos }
 
 ghci> import Data.Time
-ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: PGEnum Tutorial "order_state" } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
+ghci> import Database.Types.SchList
+ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: Maybe (PGEnum Tutorial "order_state") } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
 
 ghci> instance CQueryRecord PG Tutorial "companies" Company
 ghci> instance CQueryRecord PG Tutorial "articles" Article
@@ -92,15 +95,27 @@ ghci> instance FromRow Order
 
 
 ghci> conn <- connectPostgreSQL "dbname=schema_test user=postgres"
-ghci> os :: [Order] <- selectSch_ @Tutorial @"orders" conn
 
-
-ghci> mapM_ print os
+-- all orders
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn []
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}, state = Just Order_state_delivered}
 Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article5", code = Just "a5"}, cnt = 4, price = 18.00}]}, state = Just Order_state_booked}
 Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}, state = Just Order_state_paid}
+
+-- orders where exists position with cnt > 5
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn [rootCond $ pchild @"opos_order" (#cnt >? (5::Int))]
+Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
+
+-- all orders but with filtered positions. Included only positions with cnt > 5
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn [cwp @'["opos_order"] (#cnt >? (5::Int))]
+Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
+Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Nothing}
+Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Just Order_state_delivered}
+Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Just Order_state_booked}
+Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Just Order_state_paid}
+
 ```
 
 ### Type provider
@@ -120,18 +135,23 @@ for class CSchema:
 ```
 ghci> :i CSchema
 class (ToStar (TSchema sch), ToStar (TTabs sch),
-       ToStar (TRels sch), CTabDefs sch (TTabs sch),
-       CRelDefs sch (TRels sch)) =>
+       ToStar (TRels sch),
+       ToStar (Data.Singletons.Prelude.Base.Map (TTabDefSym1 sch) (TTabs sch)),
+       ToStar (Data.Singletons.Prelude.Base.Map (TRelDefSym1 sch) (TRels sch)),
+       ToStar (TTabFldDefs sch), ToStar (TTabFlds sch),
+       ToStar (TTabDefs sch), ToStar (TTypes sch),
+       ToStar (Data.Singletons.Prelude.Base.Map (TTypDefSym1 sch) (TTypes sch))) =>
       CSchema (sch :: k) where
-  type family TSchema (sch :: k) :: ghc-prim-0.5.2.0:GHC.Types.Symbol
-  type family TTabs (sch :: k) :: [ghc-prim-0.5.2.0:GHC.Types.Symbol]
-  type family TRels (sch :: k) :: [ghc-prim-0.5.2.0:GHC.Types.Symbol]
-  schemaName :: Text
-  tables :: Data.Set.Internal.Set Text
-  rels :: Data.Set.Internal.Set Text
+  type family TSchema (sch :: k) :: ghc-prim-0.5.3:GHC.Types.Symbol
+  type family TTabs (sch :: k) :: [ghc-prim-0.5.3:GHC.Types.Symbol]
+  type family TRels (sch :: k) :: [ghc-prim-0.5.3:GHC.Types.Symbol]
+  type family TTypes (sch :: k) :: [ghc-prim-0.5.3:GHC.Types.Symbol]
+  	-- Defined at /home/odr/git/pg-schema/src/Database/Schema/Def.hs:144:1
 instance CSchema Sch
+  -- Defined at /home/odr/git/pg-schema/app/Sch.hs:8:1
 instance CSchema PgCatalog
-instance [safe] CSchema Tutorial
+  -- Defined at /home/odr/git/pg-schema/src/Database/PostgreSQL/Schema/Catalog.hs:202:10
+instance [safe] CSchema Tutorial -- Defined at <interactive>:2:17
 ```
 
 Type `PgCatalog` and instances for it are defined in module `Database.PostgreSQL.Schema.Catalog`.
@@ -144,11 +164,15 @@ With this instance we can get now:
 ghci> schemaName @Tutorial
 "sch"
 
-ghci> tables @Tutorial
-fromList ["addresses","articles","cities","companies","countries","customers","order_positions","orders"]
+ghci> tabDefMap @Tutorial
+fromList [("addresses",(TabDef {tdFlds = ["id","city_id","street","home","app","zipcode"], tdKey = ["id"], tdUniq = []},fromList [("app",FldDef {fdType = "text", fdNullable = True, fdHasDefault = False}),("city_id",FldDef {fdType = "int4", fdNullable = True, fdHasDefault = False}),("home",FldDef {fdType = "text", fdNullable = True, fdHasDefault = False}),("id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = True}),("street",FldDef {fdType = "text", fdNullable = True, fdHasDefault = False}),("zipcode",FldDef {fdType = "text", fdNullable = True, fdHasDefault = False})])),("articles",(TabDef {tdFlds = ["id","name","code","created_at","updated_at"], tdKey = ["id"], tdUniq = [["name"]]},fromList [("code",FldDef {fdType = "text", fdNullable = True, fdHasDefault = False}),("created_at",FldDef {fdType = "timestamptz", fdNullable = False, fdHasDefault = True}),("id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = True}),("name",FldDef {fdType = "text", fdNullable = False, fdHasDefault = False}),("updated_at",FldDef {fdType = "timestamptz", fdNullable = True, fdHasDefault = False})])),("cities",(TabDef {tdFlds = ["id","country_id","name"], tdKey = ["id"], tdUniq = []},fromList [("country_id",FldDef {fdType = "int4", fdNullable = True, fdHasDefault = False}),("id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = True}),("name",FldDef {fdType = "text", fdNullable = True, fdHasDefault = False})])),("companies",(TabDef {tdFlds = ["id","name","address_id","created_at","updated_at"], tdKey = ["id"], tdUniq = []},fromList [("address_id",FldDef {fdType = "int4", fdNullable = True, fdHasDefault = False}),("created_at",FldDef {fdType = "timestamptz", fdNullable = False, fdHasDefault = True}),("id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = True}),("name",FldDef {fdType = "text", fdNullable = False, fdHasDefault = False}),("updated_at",FldDef {fdType = "timestamptz", fdNullable = True, fdHasDefault = False})])),("countries",(TabDef {tdFlds = ["id","name","code"], tdKey = ["id"], tdUniq = []},fromList [("code",FldDef {fdType = "text", fdNullable = True, fdHasDefault = False}),("id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = True}),("name",FldDef {fdType = "text", fdNullable = False, fdHasDefault = False})])),("customers",(TabDef {tdFlds = ["id","name","address_id","note","created_at","updated_at"], tdKey = ["id"], tdUniq = []},fromList [("address_id",FldDef {fdType = "int4", fdNullable = True, fdHasDefault = False}),("created_at",FldDef {fdType = "timestamptz", fdNullable = False, fdHasDefault = True}),("id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = True}),("name",FldDef {fdType = "text", fdNullable = False, fdHasDefault = False}),("note",FldDef {fdType = "text", fdNullable = True, fdHasDefault = False}),("updated_at",FldDef {fdType = "timestamptz", fdNullable = True, fdHasDefault = False})])),("order_positions",(TabDef {tdFlds = ["order_id","num","article_id","cnt","price"], tdKey = ["order_id","num"], tdUniq = [["order_id","article_id"]]},fromList [("article_id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = False}),("cnt",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = False}),("num",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = False}),("order_id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = False}),("price",FldDef {fdType = "numeric", fdNullable = False, fdHasDefault = False})])),("orders",(TabDef {tdFlds = ["id","day","num","customer_id","seller_id","trader_id","state","created_at","updated_at"], tdKey = ["id"], tdUniq = []},fromList [("created_at",FldDef {fdType = "timestamptz", fdNullable = False, fdHasDefault = True}),("customer_id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = False}),("day",FldDef {fdType = "date", fdNullable = False, fdHasDefault = False}),("id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = True}),("num",FldDef {fdType = "text", fdNullable = False, fdHasDefault = False}),("seller_id",FldDef {fdType = "int4", fdNullable = False, fdHasDefault = False}),("state",FldDef {fdType = "order_state", fdNullable = True, fdHasDefault = False}),("trader_id",FldDef {fdType = "int4", fdNullable = True, fdHasDefault = False}),("updated_at",FldDef {fdType = "timestamptz", fdNullable = True, fdHasDefault = False})]))]
 
-ghci> rels @Tutorial
-fromList ["address_city","city_country","comp_addr","cust_addr","opos_article","opos_order","ord_cust","ord_seller","ord_trader"]
+ghci> relDefMap @Tutorial
+fromList [("address_city",RelDef {rdFrom = "addresses", rdTo = "cities", rdCols = [("city_id","id")]}),("city_country",RelDef {rdFrom = "cities", rdTo = "countries", rdCols = [("country_id","id")]}),("comp_addr",RelDef {rdFrom = "companies", rdTo = "addresses", rdCols = [("address_id","id")]}),("cust_addr",RelDef {rdFrom = "customers", rdTo = "addresses", rdCols = [("address_id","id")]}),("opos_article",RelDef {rdFrom = "order_positions", rdTo = "articles", rdCols = [("article_id","id")]}),("opos_order",RelDef {rdFrom = "order_positions", rdTo = "orders", rdCols = [("order_id","id")]}),("ord_cust",RelDef {rdFrom = "orders", rdTo = "customers", rdCols = [("customer_id","id")]}),("ord_seller",RelDef {rdFrom = "orders", rdTo = "companies", rdCols = [("seller_id","id")]}),("ord_trader",RelDef {rdFrom = "orders", rdTo = "companies", rdCols = [("trader_id","id")]})]
+
+ghci> typDefMap @Tutorial
+fromList [("date",TypDef {typCategory = "D", typElem = Nothing, typEnum = []}),("int4",TypDef {typCategory = "N", typElem = Nothing, typEnum = []}),("numeric",TypDef {typCategory = "N", typElem = Nothing, typEnum = []}),("order_state",TypDef {typCategory = "E", typElem = Nothing, typEnum = ["paid","booked","delivered"]}),("text",TypDef {typCategory = "S", typElem = Nothing, typEnum = []}),("timestamptz",TypDef {typCategory = "D", typElem = Nothing, typEnum = []})]
+
 ```
 
 The same info we can get on type level. Just import TypeLits first to make ghci answers more simple.
@@ -179,8 +203,6 @@ class (ToStar name, ToStar (TTabDef sch name),
        CFldDefs2 sch name (TdUniq (TTabDef sch name))) =>
       CTabDef (sch :: k) (name :: Symbol) where
   type family TTabDef (sch :: k) (name :: Symbol) :: TabDefK
-  tabName :: Text
-  tabDef :: TabDef
 ...
 ```
 
@@ -189,9 +211,6 @@ E.g. for table `orders`:
 ghci> tabName @Tutorial @"orders"
 "orders"
 
-ghci> tabDef @Tutorial @"orders"
-TabDef {tdFlds = ["id","day","num","customer_id","seller_id","trader_id","state","created_at","updated_at"], tdKey = ["id"], tdUniq = []}
-
 ghci> :kind! TTabDef Tutorial "orders"
 TTabDef Tutorial "orders" :: TabDef' Symbol
 = 'TabDef
@@ -199,6 +218,11 @@ TTabDef Tutorial "orders" :: TabDef' Symbol
       "state", "created_at", "updated_at"]
     '["id"]
     '[]
+
+ghci> toStar @_ @(TTabDef Tutorial "orders")
+TabDef {tdFlds = ["id","day","num","customer_id","seller_id","trader_id","state","created_at","updated_at"], tdKey = ["id"], tdUniq = []}
+
+
 ```
 
 We can get information not only about tables but also about relations between them:
@@ -210,19 +234,8 @@ class (ToStar name, ToStar (TRelDef sch name),
        CFldDefs sch (TToTab sch name) (TToFlds sch name)) =>
       CRelDef (sch :: k) (name :: Symbol) where
   type family TRelDef (sch :: k) (name :: Symbol) :: RelDefK
-  relName :: Text
-  relDef :: RelDef
  ...
 
-ghci> relName @Tutorial @"opos_order"
-"opos_order"
-
-ghci> relDef @Tutorial @"opos_order"
-RelDef {rdFrom = "order_positions", rdTo = "orders", rdCols = [("order_id","id")]}
-
-ghci> :kind! TRelDef Tutorial "opos_order"
-TRelDef Tutorial "opos_order" :: RelDef' Symbol
-= 'RelDef "order_positions" "orders" '['("order_id", "id")]
 ```
 
 Then for fields of tables we also can get additional description:
@@ -232,18 +245,6 @@ class (ToStar fname, ToStar (TFldDef sch tname fname),
        CTypDef sch (FdType (TFldDef sch tname fname))) =>
       CFldDef (sch :: k) (tname :: k1) (fname :: Symbol) where
   type family TFldDef (sch :: k) (tname :: k1) (fname :: Symbol) :: FldDefK
-  fldName :: Text
-  fldDef :: FldDef
-
-ghci> fldName @Tutorial @"orders" @"state"
-"state"
-
-ghci> fldDef @Tutorial @"orders" @"state"
-FldDef {fdType = "order_state", fdNullable = True, fdHasDefault = False}
-
-ghci> :kind! TFldDef Tutorial "orders" "state"
-TFldDef Tutorial "orders" "state" :: FldDef' Symbol
-= 'FldDef "order_state" 'True 'False
 ```
 
 In field description there is an information about database type of field.
@@ -253,14 +254,6 @@ ghci> :i CTypDef
 class (ToStar name, ToStar (TTypDef sch name)) =>
       CTypDef (sch :: k) (name :: Symbol) where
   type family TTypDef (sch :: k) (name :: Symbol) :: TypDefK
-  typName :: Text
-  typDef :: TypDef
-
-ghci> typName @Tutorial @"order_state"
-"order_state"
-
-ghci> typDef @Tutorial @"order_state"
-TypDef {typCategory = "E", typElem = Nothing, typEnum = ["paid","booked","delivered"]}
 
 ghci> :kind! TTypDef Tutorial "order_state"
 TTypDef Tutorial "order_state" :: TypDef' Symbol
@@ -287,6 +280,7 @@ TRels PgCatalog :: [Symbol]
 Having all this information what we can do now? We can define records and
 populate it with data. At first we'll define record and generate some instances (using TH-function `schemaRec`):
 ```
+ghci> import Data.Time
 ghci> { data Ord1 = Ord1 { day :: Day, num :: Text, seller_id :: Int } deriving (Eq, Show); schemaRec @Tutorial id ''Ord1 }
 ```
 Now just define the most important instance:
@@ -295,12 +289,12 @@ ghci> instance CQueryRecord PG Tutorial "orders" Ord1
 ```
 And we can get text of query for this record and try to run it now:
 ```
-ghci> selectText @Tutorial @"orders" @Ord1
+ghci> selectText @Tutorial @"orders" @Ord1 []
 "select t0.day \"day\",t0.num \"num\",t0.seller_id \"seller_id\" from sch.orders t0 "
 
 ghci> conn <- connectPostgreSQL "dbname=schema_test user=postgres"
 
-ghci> (rs :: [Ord1]) <- selectSch_ @Tutorial @"orders" conn
+ghci> (rs :: [Ord1]) <- selectSch @Tutorial @"orders" conn []
 <interactive>:73:19: error:
     • No instance for (FromRow Ord1) arising from a use of ‘selectSch_’
     • In the first argument of ‘GHC.GHCi.ghciStepIO ::
@@ -320,9 +314,7 @@ ghci> instance FromRow Ord1
 
 and now:
 ```
-ghci> (rs :: [Ord1]) <- selectSch_ @Tutorial @"orders" conn
-
-ghci> mapM_ print rs
+ghci> selectSch @Tutorial @"orders" conn [] >>= mapM_ (print @Ord1)
 Ord1 {day = 2018-11-11, num = "n22", seller_id = 3}
 Ord1 {day = 2018-11-11, num = "n21", seller_id = 5}
 Ord1 {day = 2018-11-11, num = "n2", seller_id = 3}
@@ -336,13 +328,19 @@ ghci> { data Ord2 = Ord2 { day :: Day, num :: Text, seler_id :: Int } deriving (
 
 ghci> instance CQueryRecord PG Tutorial "orders" Ord2
 <interactive>:88:10: error:
-    • No instance for (CFldDef Tutorial "orders" "seler_id")
+    • No instance for (CQueryFieldT
+                         FldUnknownSym0
+                         PG
+                         Tutorial
+                         "orders"
+                         Ord2
+                         ('FieldInfo "seler_id" "seler_id"))
         arising from the superclasses of an instance declaration
     • In the instance declaration for
         ‘CQueryRecord PG Tutorial "orders" Ord2’
 ```
 
-Well. A message is rather clear. There is no field "seler_id" in table "orders".
+Well. A message is not so clear. But it is clear that something wrong with field "seler_id" in table "orders".
 Let's try to make record with a wrong type:
 ```
 ghci> { data Ord3 = Ord3 { day :: Day, num :: Text, seller_id :: Char } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Ord3 }
@@ -355,8 +353,7 @@ ghci> instance CQueryRecord PG Tutorial "orders" Ord3
     • In the instance declaration for
         ‘CQueryRecord PG Tutorial "orders" Ord3’
 ```
-It is not so clear but we can see that we try to use "Char" for some field in
-table "orders" with db-type "int4". Good enough.
+We can see that we try to use "Char" for some field in table "orders" with db-type "int4". Good enough.
 
 Class `CanConvert1` has no methods and we can define it for new types as well.
 Now we can check is `seller_id` can be an `Integer`:
@@ -381,13 +378,12 @@ What was generated by `schemaRec` and what is a class `CQueryRecord`?
 ghci> -- CRecordInfo
 
 ghci> recordInfo @Ord1
-[FieldInfo {fieldKind = FldPlain, fieldName = "day", fieldDbName = "day"},FieldInfo {fieldKind = FldPlain, fieldName = "num", fieldDbName = "num"},FieldInfo {fieldKind = FldPlain, fieldName = "seller_id", fieldDbName = "seller_id"}]
+[FieldInfo {fieldName = "day", fieldDbName = "day"},FieldInfo {fieldName = "num", fieldDbName = "num"},FieldInfo {fieldName = "seller_id", fieldDbName = "seller_id"}]
 
 ghci> :kind! TRecordInfo Ord1
 TRecordInfo Ord1 :: [FieldInfo' Symbol]
-= '['FieldInfo 'FldPlain "day" "day",
-    'FieldInfo 'FldPlain "num" "num",
-    'FieldInfo 'FldPlain "seller_id" "seller_id"]
+= '[ 'FieldInfo "day" "day", 'FieldInfo "num" "num",
+     'FieldInfo "seller_id" "seller_id"]
 
 ghci> -- CFieldInfo
 
@@ -406,7 +402,7 @@ QueryRecord {tableName = "orders", queryFields = [FieldPlain "day" "day" (FldDef
 We saw how to create simple record and get data from database. But we can make more complicated case.
 Each order has items (order_positions). And probably we want to select sellers of order as well.
 
-Beside that order has an enumeration field `state`. We can add it also with type `PGEnum Tutorial "order_state"` where "order_state" is a name of type in database.
+Beside that order has an enumeration field `state`. We can add it also with type `Maybe (PGEnum Tutorial "order_state")` where "order_state" is a name of type in database.
 
 Let's define types:
 ```
@@ -418,7 +414,7 @@ ghci> import Data.Fixed
 ghci> { data OrdPos = OrdPos { num :: Int, opos_article :: Article, cnt :: Int, price :: Centi } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''OrdPos }
 
 ghci> import Data.Time
-ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: PGEnum Tutorial "order_state" } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
+ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: Maybe (PGEnum Tutorial "order_state") } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
 
 ghci> instance CQueryRecord PG Tutorial "companies" Company
 ghci> instance CQueryRecord PG Tutorial "articles" Article
@@ -430,10 +426,10 @@ Here `SchList` is a special list to get data from child tables.
 
 Well and now we'll try to get the text of select statement and populate data:
 ```
-ghci> selectText @Tutorial @"orders" @Order
-"select t0.day \"day\",t0.num \"num\",jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\",array_to_json(array(select jsonb_build_object('num',t2.num,'opos_article',jsonb_build_object('name',t3.name,'code',t3.code),'cnt',t2.cnt,'price',t2.price) from sch.order_positions t2 join sch.articles t3 on t2.article_id=t3.id where t2.order_id=t0.id)) \"opos_order\",t0.state \"state\" from sch.orders t0 join sch.companies t1 on t0.seller_id=t1.id"
+ghci> selectText @Tutorial @"orders" @Order []
+("select t0.day \"day\",t0.num \"num\",jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\",array_to_json(array(select jsonb_build_object('num',t2.num,'opos_article',jsonb_build_object('name',t3.name,'code',t3.code),'cnt',t2.cnt,'price',t2.price) from sch.order_positions t2 join sch.articles t3 on t2.article_id=t3.id where t2.order_id=t0.id)) \"opos_order\",t0.state \"state\" from sch.orders t0 join sch.companies t1 on t0.seller_id=t1.id",[])
 
-ghci> os :: [Order] <- selectSch_ @Tutorial @"orders" conn
+ghci> os :: [Order] <- selectSch @Tutorial @"orders" conn []
 <interactive>:21:18: error:
     • No instance for (FromRow Order)
         arising from a use of ‘selectSch_’
@@ -512,14 +508,13 @@ ghci> instance FromRow Order
 
 and now...
 ```
-ghci> os :: [Order] <- selectSch_ @Tutorial @"orders" conn
-
-ghci> mapM_ print os
+ghci> selectSch @Tutorial @"orders" conn [] >>= mapM_ (print @Order)
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}, state = Just Order_state_delivered}
 Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article5", code = Just "a5"}, cnt = 4, price = 18.00}]}, state = Just Order_state_booked}
 Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}, state = Just Order_state_paid}
+
 ```
 
 Isn't it's worth to say "Wow"?
@@ -529,3 +524,5 @@ Notice that all these data are getting in one select.
 In fact this way to get data from database was used also on populating `PgCatalog`
 on processing TH-generation of schema. Function `mkSchema` make only three selects
 to get all information about tables, relations and types in database.
+
+### Conditions

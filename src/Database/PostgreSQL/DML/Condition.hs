@@ -2,26 +2,24 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.DML.Condition where
 
-import Control.Monad.Reader
-import Control.Monad.State
-import Data.Aeson (FromJSON(..), ToJSON(..))
-import Data.Bifunctor
-import Data.Kind (Type)
-import Data.Proxy (Proxy(..))
-import Data.Singletons.Prelude
-import Data.Text.Lazy as T
-import Data.Tuple
-import Database.PostgreSQL.Convert
-import Database.PostgreSQL.Simple.ToField
-import Database.Schema.Def
-import Formatting
-import GHC.Generics (Generic)
-import GHC.OverloadedLabels (IsLabel(..))
-import GHC.TypeLits (Symbol)
-import Util.ToStar
-#if !MIN_VERSION_base(4,11,0)
-import Data.Semigroup
-#endif
+import           Control.Monad.RWS
+import           Data.Aeson (FromJSON(..), ToJSON(..))
+import           Data.Kind (Type)
+import           Data.List as L
+import           Data.Maybe (isJust)
+import           Data.Proxy (Proxy(..))
+import           Data.Singletons.Prelude
+import qualified Data.Text as T.S
+import           Data.Text.Lazy as T
+import           Data.Tuple
+import           Database.PostgreSQL.Convert
+import           Database.PostgreSQL.Simple.ToField
+import           Database.Schema.Def
+import           Formatting
+import           GHC.Generics (Generic)
+import           GHC.OverloadedLabels (IsLabel(..))
+import           GHC.TypeLits (Symbol)
+import           Util.ToStar
 
 
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like {isCaseSesnsitive :: Bool}
@@ -108,11 +106,10 @@ pchild
 pchild = Child @sch @tab @name Proxy
 
 pparent
-  :: forall name sch tab rel .
-    ( rel ~ TRelDef sch name, tab ~ RdFrom rel
-    , CTabDef sch (RdTo rel), CRelDef sch name )
-  => Cond sch (RdTo rel) -> Cond sch tab
-pparent = Parent @sch @tab @name Proxy
+  :: forall name sch rel.
+    ( rel ~ TRelDef sch name, CTabDef sch (RdTo rel), CRelDef sch name )
+  => Cond sch (RdTo rel) -> Cond sch (RdFrom rel)
+pparent = Parent @sch @(RdFrom rel) @name Proxy
 
 -- --
 instance
@@ -167,9 +164,9 @@ infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 -- :: Cond Sch "customers"
 
 -- <номер таблицы родителя> <номер дочерней таблицы>
-type CondMonad = ReaderT Int (State Int)
-runCond :: CondMonad a -> a
-runCond x = evalState (runReaderT x 0) 0
+type CondMonad = RWS Int [SomeToField] Int
+runCond :: CondMonad a -> (a,[SomeToField])
+runCond x = evalRWS x 0 0
 
 data SomeToField where
   SomeToField :: (ToField a, Show a) => a -> SomeToField
@@ -179,75 +176,72 @@ deriving instance Show SomeToField
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 --
-convCond :: forall sch t. Cond sch t -> CondMonad (Text, [SomeToField])
-convCond = \case
+convCond :: forall sch t. CSchema sch => Int -> Cond sch t -> CondMonad Text
+convCond rootTabNum = \case
   EmptyCond -> pure mempty
-  Cmp (_::Proxy n) cmp v -> go <$> ask
+  Cmp (_::Proxy n) cmp v -> ask >>= go
     where
-      go ntab = case cmp of
-        Like True  -> (fld' <> " like ?", [v'])
-        Like False -> ("upper(" <> fld' <> ") like upper(?)", [v'])
-        op         -> (fld' <> " " <> showCmp op <> " ?", [v'])
+      go ntab = do
+        tell [SomeToField v]
+        pure $ case cmp of
+          Like True  -> fld' <> " like ?"
+          Like False -> "upper(" <> fld' <> ") like upper(?)"
+          op         -> fld' <> " " <> showCmp op <> " ?"
         where
-          v' = SomeToField v
           fld' = fld ntab (toStar @_ @n)
-  In (_::Proxy n) vs -> go <$> ask
+  In (_::Proxy n) vs -> tell (SomeToField <$> vs) >> go <$> ask
     where
-      go ntab =
-        ( fld ntab (toStar @_ @n)
-          <> " in (" <> (T.intercalate "," $ const "?" <$> vs) <> ")"
-        , SomeToField <$> vs )
+      go ntab = fld ntab (toStar @_ @n)
+        <> " in (" <> (T.intercalate "," $ const "?" <$> vs) <> ")"
   Null (_::Proxy n) ->
-    (\ntab ->
-      (format (text % int % "." % stext % " is null")
-        (tabPref ntab) ntab (toStar @_ @n), []))
+    (\ntab -> format (text % int % "." % stext % " is null")
+      (tabPref ntab) ntab (toStar @_ @n))
     <$> ask
-  Not c -> getNot <$> convCond c
-  BoolOp bo c1 c2 -> getBoolOp bo <$> convCond c1 <*> convCond c2
+  Not c -> getNot <$> convCond rootTabNum c
+  BoolOp bo c1 c2 ->
+    getBoolOp bo <$> convCond rootTabNum c1 <*> convCond rootTabNum c2
   Child (_ :: Proxy ref) (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
     getRef True (toStar @_ @(RdFrom (TRelDef sch ref)))
-      (toStar @_ @(TRelDef sch ref)) (convCond cond)
+      (toStar @_ @(TRelDef sch ref)) (convCond rootTabNum cond)
   Parent (_ :: Proxy ref) (cond::Cond sch (RdTo (TRelDef sch ref))) ->
     getRef False (toStar @_ @(RdTo (TRelDef sch ref)))
-      (toStar @_ @(TRelDef sch ref)) (convCond cond)
+      (toStar @_ @(TRelDef sch ref)) (convCond rootTabNum cond)
   where
     tabPref ntab
-      | ntab == 0 = "t"
-      | otherwise = "qt"
-    fld ntab name = format (text % int % "." % stext) (tabPref ntab) ntab name
-    getNot (c,vs)
+      | ntab == 0 = format ("t" % int) rootTabNum
+      | otherwise = format ("t" % int % "q" % int) rootTabNum ntab
+    fld ntab name = format (text % "." % stext) (tabPref ntab) name
+    getNot c
       | c == mempty = mempty
-      | otherwise   = (format ("not (" % text % ")") c, vs)
-    getBoolOp bo (cc1,d1) (cc2,d2)
-      | cc1 == mempty = (cc2,d2)
-      | cc2 == mempty = (cc1,d1)
-      | otherwise =
-        (format ("(" % text % ") " % string % " (" % text % ")")
-          cc1 (show bo) cc2
-        , d1++d2)
-
+      | otherwise   = format ("not (" % text % ")") c
+    getBoolOp bo cc1 cc2
+      | cc1 == mempty = cc2
+      | cc2 == mempty = cc1
+      | otherwise = format ("(" % text % ") " % string % " (" % text % ")")
+        cc1 (show bo) cc2
+    getRef :: Bool -> T.S.Text -> RelDef -> CondMonad Text -> CondMonad Text
     getRef isChild tn rd cc = do
       pnum <- ask
-      cnum <- lift $ do
-        modify (+1)
-        get
+      modify (+1)
+      cnum <- get
+      mkExists pnum cnum <$> local (const cnum) cc
+      where
+        mkExists pnum cnum c =
+          format ("exists (select 1 from " % stext % "." % stext % " " % text %
+            " where " % text % ")")
+            (schemaName @sch) tn (tabPref cnum)
+            (T.intercalate " and "
+              (
+                ( (\(ch,pr) -> format
+                  (text % "." % stext % " = " % text % "." % stext)
+                    (tabPref cnum) ch (tabPref pnum) pr)
+                  . (if isChild then id else swap) )
+              <$> rdCols rd)
+              <> (if T.null c then (""::T.Text) else (" and (" <> c <> ")")))
 
-      first (\c ->
-        format ("exists (select 1 from " % stext % " qt" % int %
-          " where " % text % ")")
-          tn cnum
-          (T.intercalate " and "
-            (
-              ( (\(ch,pr) -> format
-                ( "qt" % int % "." % stext % " = " % text % int % "." % stext)
-                  cnum ch (tabPref pnum) pnum pr)
-                . (if isChild then id else swap) )
-            <$> rdCols rd)
-            <> (if T.null c then (""::T.Text) else (" and (" <> c <> ")")))
-        ) <$> local (const cnum) cc
-
-pgCond :: Cond sch t -> (Text, [SomeToField])
-pgCond = runCond . convCond
+pgCond
+  :: forall sch t. CSchema sch => Int -> Cond sch t -> (Text, [SomeToField])
+pgCond n = runCond . convCond n
 
 {-
 ghci> pgCond
@@ -277,24 +271,42 @@ ghci> pgCond
 ,[SomeToField (Just "xx"),SomeToField 5,SomeToField 1])
 -}
 
-data CondWithPath sch t
-  = forall (path :: [Symbol]) tab. PathToTab sch t path tab
-  => CondWithPath (Proxy path) (Cond sch tab)
-
-class PathToTab sch t path tab
-
-instance PathToTab sch t '[] t
-
 #if !MIN_VERSION_base(4,11,0)
-instance
-  ( t' ~ If (TFromTab sch x :== t) (TToTab sch x) (TFromTab sch x)
-  , PathToTab sch t' xs tab
-  )
-  => PathToTab sch t (x ': xs) tab
+type (:====) a b = (:==) a b
 #else
-instance
-  ( t' ~ If (TFromTab sch x == t) (TToTab sch x) (TFromTab sch x)
-  , PathToTab sch t' xs tab
-  )
-  => PathToTab sch t (x ': xs) tab
+type (:====) a b = (==) a b
 #endif
+
+type family PathToTab sch (t :: Symbol) (path :: [Symbol]) :: Symbol where
+  PathToTab sch t '[] = t
+  PathToTab sch t (x ': xs) = PathToTab sch
+    (If (TFromTab sch x :==== t) (TToTab sch x) (TFromTab sch x)) xs
+
+data CondWithPath sch t
+  = forall (path :: [Symbol]) . ToStar path
+  => CondWithPath (Proxy path) (Cond sch (PathToTab sch t path))
+
+withCondWithPath
+  :: forall sch t r
+  . CSchema sch
+  => (forall sch' t'. CSchema sch' => Cond sch' t' -> r)
+  -> [T.S.Text] -> CondWithPath sch t -> Maybe r
+withCondWithPath f path (CondWithPath (Proxy :: Proxy path') cond) =
+  guard (path == toStar @_ @path') >> pure (f cond)
+
+withCondsWithPath
+  :: forall sch t r
+  . CSchema sch
+  => (forall sch' t'. CSchema sch' => Cond sch' t' -> r)
+  -> [T.S.Text] -> [CondWithPath sch t] -> Maybe r
+withCondsWithPath f path =
+  join . L.find isJust . L.map (withCondWithPath f path)
+
+cwp
+  :: forall path sch t t1
+  . (CSchema sch, t1 ~ PathToTab sch t path, ToStar path)
+  => Cond sch t1 -> CondWithPath sch t
+cwp = CondWithPath (Proxy @path)
+
+rootCond :: forall sch t. CSchema sch => Cond sch t -> CondWithPath sch t
+rootCond = cwp @'[]
