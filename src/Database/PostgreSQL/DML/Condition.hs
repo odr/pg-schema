@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP                  #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.DML.Condition where
 
@@ -8,7 +7,6 @@ import           Data.Kind (Type)
 import           Data.List as L
 import           Data.Maybe (isJust)
 import           Data.Proxy (Proxy(..))
-import           Data.Singletons.Prelude
 import qualified Data.Text as T.S
 import           Data.Text.Lazy as T
 import           Data.Tuple
@@ -271,40 +269,27 @@ ghci> pgCond
 ,[SomeToField (Just "xx"),SomeToField 5,SomeToField 1])
 -}
 
-#if !MIN_VERSION_base(4,11,0)
-type (:====) a b = (:==) a b
-#else
-type (:====) a b = (==) a b
-#endif
-
-type family PathToTab sch (t :: Symbol) (path :: [Symbol]) :: Symbol where
-  PathToTab sch t '[] = t
-  PathToTab sch t (x ': xs) = PathToTab sch
-    (If (TFromTab sch x :==== t) (TToTab sch x) (TFromTab sch x)) xs
-
 data CondWithPath sch t
   = forall (path :: [Symbol]) . ToStar path
-  => CondWithPath (Proxy path) (Cond sch (PathToTab sch t path))
+  => CondWithPath (Proxy path) (Cond sch (TabOnPath sch t path))
 
 withCondWithPath
-  :: forall sch t r
-  . CSchema sch
-  => (forall sch' t'. CSchema sch' => Cond sch' t' -> r)
+  :: forall sch t r. CSchema sch
+  => (forall t'. Cond sch t' -> r)
   -> [T.S.Text] -> CondWithPath sch t -> Maybe r
 withCondWithPath f path (CondWithPath (Proxy :: Proxy path') cond) =
   guard (path == toStar @_ @path') >> pure (f cond)
 
 withCondsWithPath
-  :: forall sch t r
-  . CSchema sch
-  => (forall sch' t'. CSchema sch' => Cond sch' t' -> r)
+  :: forall sch t r. CSchema sch
+  => (forall t'. Cond sch t' -> r)
   -> [T.S.Text] -> [CondWithPath sch t] -> Maybe r
 withCondsWithPath f path =
   join . L.find isJust . L.map (withCondWithPath f path)
 
 cwp
   :: forall path sch t t1
-  . (CSchema sch, t1 ~ PathToTab sch t path, ToStar path)
+  . (CSchema sch, t1 ~ TabOnPath sch t path, ToStar path)
   => Cond sch t1 -> CondWithPath sch t
 cwp = CondWithPath (Proxy @path)
 

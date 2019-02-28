@@ -11,23 +11,32 @@ import Data.Text as T
 import Data.Text.Lazy (toStrict)
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Condition
+import Database.PostgreSQL.DML.Order
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Rec
 import Formatting
 
 
+data QueryParam sch t = QueryParam
+  { qpConds :: !([CondWithPath sch t])
+  , qpOrds  :: !([OrdWithPath sch t]) }
+
+qpEmpty :: forall sch t. QueryParam sch t
+qpEmpty = QueryParam [] []
+
 data QueryRead sch t = QueryRead
   { qrSchema     :: !Text
   , qrCurrTabNum :: !Int
   , qrIsRoot     :: !Bool
   , qrPath       :: !([Text])
-  , qrConds      :: !([CondWithPath sch t])}
+  , qrParam      :: !(QueryParam sch t) }
 
 data QueryState = QueryState
   { qsLastTabNum :: !Int
   , qsJoins      :: !([Text])
-  , qsWhere      :: !Bool }
+  , qsWhere      :: !Bool
+  , qsOrd        :: !Text }
   deriving Show
 
 type MonadQuery sch t m =
@@ -35,20 +44,20 @@ type MonadQuery sch t m =
 
 selectSch
   :: forall sch tab r. (FromRow r, CQueryRecord PG sch tab r)
-  => Connection -> [CondWithPath sch tab] -> IO [r]
+  => Connection -> QueryParam sch tab -> IO [r]
 selectSch conn cond = let (q,c) = selectQuery @sch @tab @r cond in
   query conn q c
 
 selectQuery
   :: forall sch tab r. CQueryRecord PG sch tab r
-  => [CondWithPath sch tab] -> (Query,[SomeToField])
+  => QueryParam sch tab -> (Query,[SomeToField])
 selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
 selectText
   :: forall sch tab r. CQueryRecord PG sch tab r
-  => [CondWithPath sch tab] -> (Text,[SomeToField])
+  => QueryParam sch tab -> (Text,[SomeToField])
 selectText cond = evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
-  (QueryRead (schemaName @sch) 0 True [] cond) (QueryState 0 [] False)
+  (QueryRead (schemaName @sch) 0 True [] cond) (QueryState 0 [] False "")
 
 jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
@@ -63,7 +72,8 @@ selectM QueryRecord {..} = do
   joins <- L.reverse . qsJoins <$> get
   let
     (condText, pars) = fromMaybe mempty
-      $ withCondsWithPath (pgCond qrCurrTabNum) (L.reverse qrPath) qrConds
+      $ withCondsWithPath (pgCond qrCurrTabNum) (L.reverse qrPath)
+      $ qpConds qrParam
     sel
       | qrIsRoot    =
         T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") fields
@@ -72,13 +82,22 @@ selectM QueryRecord {..} = do
     whereText
       | condText == mempty = ""
       | otherwise       = " where " <> toStrict condText
+    ordText
+      | t == mempty = ""
+      | otherwise = " order by " <> t
+      where
+        t = fromMaybe mempty
+          $ withOrdsWithPath (convOrd qrCurrTabNum) (L.reverse qrPath)
+          $ qpOrds qrParam
   modify (\qs -> qs { qsWhere = whereText /= mempty })
+  unless qrIsRoot $ modify (\qs -> qs { qsOrd = ordText })
   tell pars
   pure $ sformat fmt sel qrSchema tableName qrCurrTabNum j whereText
+    (if qrIsRoot then ordText else "")
   where
     fmt = "select " % stext
       % " from " % stext % "." % stext % " t" % int % " " % stext
-      % stext
+      % stext % stext
 
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text)
 fieldM (FieldPlain name dbname _) = do
@@ -92,7 +111,8 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
   modify (\QueryState{..} -> QueryState
     (qsLastTabNum+1)
     (joinText qrSchema qrCurrTabNum (qsLastTabNum+1) : qsJoins)
-    False)
+    False
+    "")
   n2 <- qsLastTabNum <$> get
   f <- jsonPairing
     <$> local (\qr -> qr
@@ -111,18 +131,18 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
 
 fieldM (FieldTo name rec refs) = do
   QueryRead {..} <- ask
-  (QueryState ltn joins _) <- get
-  modify (const $ QueryState (ltn+1) [] False)
+  (QueryState ltn joins _ _) <- get
+  modify (const $ QueryState (ltn+1) [] False "")
   selText <- local
     (\qr -> qr
       { qrCurrTabNum = ltn+1, qrIsRoot = False, qrPath = name : qrPath })
     (selectM rec)
   modify (\qs -> qs { qsJoins = joins })
-  isWhere <- qsWhere <$> get
+  (QueryState _ _ isWhere ordText) <- get
   pure (sformat fmt selText (if isWhere then "and" else "where")
-    (refCond (ltn+1) qrCurrTabNum refs), name)
+    (refCond (ltn+1) qrCurrTabNum refs) ordText, name)
   where
-    fmt = "array_to_json(array(" % stext % " " % text % " " % stext % "))"
+    fmt = "array_to_json(array("%stext%" "%text%" "%stext%stext%"))"
 
 refCond :: Int -> Int -> [QueryRef] -> Text
 refCond nFrom nTo = T.intercalate " and " . L.map compFlds

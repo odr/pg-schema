@@ -21,6 +21,7 @@ toStar = fromSing @k (sing @a)
 toStar = fromSing @k (sing @_ @a)
 #endif
 
+
 -- class (SingKind k, SingI a) => ToStar (a::k) where
 --   toStar :: Demote k
 --

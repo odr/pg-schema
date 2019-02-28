@@ -53,25 +53,25 @@ L.concat
   [ ''Country, ''City, ''Address]
   [ "countries", "cities", "addresses"]
 
-
 main :: IO ()
 main = do
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selectText @Sch @"countries" @Country []
-    , selectText @Sch @"cities" @City []
-    , selectText @Sch @"addresses" @Address []
-    , selectText @Sch @"addresses" @Address cond
+    [ selectText @Sch @"countries" @Country qpEmpty
+    , selectText @Sch @"cities" @City qpEmpty
+    , selectText @Sch @"addresses" @Address qpEmpty
+    , selectText @Sch @"addresses" @Address qp
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  selectSch @Sch @"countries" @Country conn [] >>= print
+  selectSch @Sch @"countries" @Country conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @"cities" @City conn [] >>= print
+  selectSch @Sch @"cities" @City conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @"addresses" @Address conn [] >>= print
+  selectSch @Sch @"addresses" @Address conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @"addresses" @Address conn cond >>= print
+  selectSch @Sch @"addresses" @Address conn qp >>= print
   where
-    cond =
-      [rootCond
-        (pparent @"address_city"
-          $ pparent @"city_country" (#code =? Just @Text "RU"))]
+    qp = qpEmpty
+      { qpConds =
+        [rootCond
+          (pparent @"address_city"
+            $ pparent @"city_country" (#code =? Just @Text "RU"))] }

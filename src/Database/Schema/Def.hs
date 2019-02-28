@@ -1,4 +1,4 @@
--- DuplicateRecordFields conflicts with singletons!
+{-# LANGUAGE CPP                     #-}
 {-# LANGUAGE NoDuplicateRecordFields #-}
 {-# LANGUAGE UndecidableInstances    #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
@@ -183,3 +183,14 @@ typDefMap :: forall sch. CSchema sch => M.Map Text TypDef
 typDefMap = M.fromList $ L.zip
   (toStar @_ @(TTypes sch))
   (toStar @_ @(SP.Map (TTypDefSym1 sch) (TTypes sch)))
+
+#if !MIN_VERSION_base(4,11,0)
+type (:====) a b = (:==) a b
+#else
+type (:====) a b = (==) a b
+#endif
+
+type family TabOnPath sch (t :: Symbol) (path :: [Symbol]) :: Symbol where
+  TabOnPath sch t '[] = t
+  TabOnPath sch t (x ': xs) = TabOnPath sch
+    (If (TFromTab sch x :==== t) (TToTab sch x) (TFromTab sch x)) xs
