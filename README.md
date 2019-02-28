@@ -97,7 +97,7 @@ ghci> instance FromRow Order
 ghci> conn <- connectPostgreSQL "dbname=schema_test user=postgres"
 
 -- all orders
-ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn []
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn qpEmpty
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}, state = Just Order_state_delivered}
@@ -105,11 +105,11 @@ Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", ad
 Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}, state = Just Order_state_paid}
 
 -- orders where exists position with cnt > 5
-ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn [rootCond $ pchild @"opos_order" (#cnt >? (5::Int))]
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn qpEmpty { qpConds = [rootCond $ pchild @"opos_order" (#cnt >? (5::Int))] }
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 
 -- all orders but with filtered positions. Included only positions with cnt > 5
-ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn [cwp @'["opos_order"] (#cnt >? (5::Int))]
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn qpEmpty { qpConds = [cwp @'["opos_order"] (#cnt >? (5::Int))], qpOrds = [rootOrd @'[ '("num", Desc)]] }
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Nothing}
 Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Just Order_state_delivered}
@@ -294,9 +294,9 @@ ghci> selectText @Tutorial @"orders" @Ord1 []
 
 ghci> conn <- connectPostgreSQL "dbname=schema_test user=postgres"
 
-ghci> (rs :: [Ord1]) <- selectSch @Tutorial @"orders" conn []
+ghci> (rs :: [Ord1]) <- selectSch @Tutorial @"orders" conn qpEmpty
 <interactive>:73:19: error:
-    • No instance for (FromRow Ord1) arising from a use of ‘selectSch_’
+    • No instance for (FromRow Ord1) arising from a use of ‘selectSch’
     • In the first argument of ‘GHC.GHCi.ghciStepIO ::
                                   forall a. IO a -> IO a’, namely
         ‘(selectSch_ @Tutorial @"orders" conn)’
@@ -314,7 +314,7 @@ ghci> instance FromRow Ord1
 
 and now:
 ```
-ghci> selectSch @Tutorial @"orders" conn [] >>= mapM_ (print @Ord1)
+ghci> selectSch @Tutorial @"orders" conn qpEmpty >>= mapM_ (print @Ord1)
 Ord1 {day = 2018-11-11, num = "n22", seller_id = 3}
 Ord1 {day = 2018-11-11, num = "n21", seller_id = 5}
 Ord1 {day = 2018-11-11, num = "n2", seller_id = 3}
@@ -426,10 +426,10 @@ Here `SchList` is a special list to get data from child tables.
 
 Well and now we'll try to get the text of select statement and populate data:
 ```
-ghci> selectText @Tutorial @"orders" @Order []
+ghci> selectText @Tutorial @"orders" @Order qpEmpty
 ("select t0.day \"day\",t0.num \"num\",jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\",array_to_json(array(select jsonb_build_object('num',t2.num,'opos_article',jsonb_build_object('name',t3.name,'code',t3.code),'cnt',t2.cnt,'price',t2.price) from sch.order_positions t2 join sch.articles t3 on t2.article_id=t3.id where t2.order_id=t0.id)) \"opos_order\",t0.state \"state\" from sch.orders t0 join sch.companies t1 on t0.seller_id=t1.id",[])
 
-ghci> os :: [Order] <- selectSch @Tutorial @"orders" conn []
+ghci> os :: [Order] <- selectSch @Tutorial @"orders" conn qpEmpty
 <interactive>:21:18: error:
     • No instance for (FromRow Order)
         arising from a use of ‘selectSch_’
@@ -508,7 +508,7 @@ ghci> instance FromRow Order
 
 and now...
 ```
-ghci> selectSch @Tutorial @"orders" conn [] >>= mapM_ (print @Order)
+ghci> selectSch @Tutorial @"orders" conn qpEmpty >>= mapM_ (print @Order)
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 2, price = 28.00}]}, state = Just Order_state_delivered}
