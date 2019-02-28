@@ -30,6 +30,7 @@ library
     Database.PostgreSQL.DB
     Database.PostgreSQL.DML.Condition
     Database.PostgreSQL.DML.Order
+    Database.PostgreSQL.DML.Limit
     Database.PostgreSQL.DML.Select
     Database.PostgreSQL.PgTagged
     -- Database.PostgreSQL.Rec

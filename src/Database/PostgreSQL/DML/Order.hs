@@ -42,8 +42,7 @@ withOrdsWithPath
   :: forall sch t r. CSchema sch
   => (forall t'. Order sch t' -> r)
   -> [Text] -> [OrdWithPath sch t] -> Maybe r
-withOrdsWithPath f path =
-  join . L.find isJust . L.map (withOrdWithPath f path)
+withOrdsWithPath f path = join . L.find isJust . L.map (withOrdWithPath f path)
 
 owp
   :: forall path flds sch t

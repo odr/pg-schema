@@ -9,6 +9,8 @@ import Data.Text as T
 import Data.Text.IO as T
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Condition
+import Database.PostgreSQL.DML.Limit
+import Database.PostgreSQL.DML.Order
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
@@ -60,6 +62,7 @@ main = do
     , selectText @Sch @"cities" @City qpEmpty
     , selectText @Sch @"addresses" @Address qpEmpty
     , selectText @Sch @"addresses" @Address qp
+    , selectText @Sch @"addresses" @Address qp'
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
   selectSch @Sch @"countries" @Country conn qpEmpty >>= print
@@ -69,9 +72,13 @@ main = do
   selectSch @Sch @"addresses" @Address conn qpEmpty >>= print
   T.putStrLn ""
   selectSch @Sch @"addresses" @Address conn qp >>= print
+  T.putStrLn ""
+  selectSch @Sch @"addresses" @Address conn qp' >>= print
   where
     qp = qpEmpty
       { qpConds =
         [rootCond
           (pparent @"address_city"
-            $ pparent @"city_country" (#code =? Just @Text "RU"))] }
+            $ pparent @"city_country" (#code =? Just @Text "RU"))]
+      , qpOrds = [ rootOrd @'[ '("street",'Asc)]] }
+    qp' = qp { qpLOs = [rootLO @('LO ('Just 1) ('Just 1))] }

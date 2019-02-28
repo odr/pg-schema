@@ -11,6 +11,7 @@ import Data.Text as T
 import Data.Text.Lazy (toStrict)
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Condition
+import Database.PostgreSQL.DML.Limit
 import Database.PostgreSQL.DML.Order
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
@@ -20,10 +21,11 @@ import Formatting
 
 data QueryParam sch t = QueryParam
   { qpConds :: !([CondWithPath sch t])
-  , qpOrds  :: !([OrdWithPath sch t]) }
+  , qpOrds  :: !([OrdWithPath sch t])
+  , qpLOs   :: !([LimOffWithPath sch t]) }
 
 qpEmpty :: forall sch t. QueryParam sch t
-qpEmpty = QueryParam [] []
+qpEmpty = QueryParam [] [] []
 
 data QueryRead sch t = QueryRead
   { qrSchema     :: !Text
@@ -36,7 +38,8 @@ data QueryState = QueryState
   { qsLastTabNum :: !Int
   , qsJoins      :: !([Text])
   , qsWhere      :: !Bool
-  , qsOrd        :: !Text }
+  , qsOrd        :: !Text
+  , qsLimOff     :: !Text }
   deriving Show
 
 type MonadQuery sch t m =
@@ -57,7 +60,7 @@ selectText
   :: forall sch tab r. CQueryRecord PG sch tab r
   => QueryParam sch tab -> (Text,[SomeToField])
 selectText cond = evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
-  (QueryRead (schemaName @sch) 0 True [] cond) (QueryState 0 [] False "")
+  (QueryRead (schemaName @sch) 0 True [] cond) (QueryState 0 [] False "" "")
 
 jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
@@ -65,7 +68,8 @@ jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
     pairs = L.map (\(a,b) -> "'" <> b <> "'," <> a) fs
 
 selectM
-  :: forall sch t m. (CSchema sch, MonadQuery sch t m) => QueryRecord -> m Text
+  :: forall sch t m. (CSchema sch, MonadQuery sch t m)
+  => QueryRecord -> m Text
 selectM QueryRecord {..} = do
   QueryRead {..} <- ask
   fields <- traverse fieldM queryFields
@@ -89,15 +93,17 @@ selectM QueryRecord {..} = do
         t = fromMaybe mempty
           $ withOrdsWithPath (convOrd qrCurrTabNum) (L.reverse qrPath)
           $ qpOrds qrParam
+    loText = fromMaybe mempty
+      $ withLOsWithPath convLO (L.reverse qrPath) $ qpLOs qrParam
   modify (\qs -> qs { qsWhere = whereText /= mempty })
-  unless qrIsRoot $ modify (\qs -> qs { qsOrd = ordText })
+  unless qrIsRoot $ modify (\qs -> qs { qsOrd = ordText, qsLimOff = loText })
   tell pars
   pure $ sformat fmt sel qrSchema tableName qrCurrTabNum j whereText
-    (if qrIsRoot then ordText else "")
+    (if qrIsRoot then ordText else "") (if qrIsRoot then loText else "")
   where
     fmt = "select " % stext
       % " from " % stext % "." % stext % " t" % int % " " % stext
-      % stext % stext
+      % stext % stext % stext
 
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text)
 fieldM (FieldPlain name dbname _) = do
@@ -111,8 +117,7 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
   modify (\QueryState{..} -> QueryState
     (qsLastTabNum+1)
     (joinText qrSchema qrCurrTabNum (qsLastTabNum+1) : qsJoins)
-    False
-    "")
+    False "" "")
   n2 <- qsLastTabNum <$> get
   f <- jsonPairing
     <$> local (\qr -> qr
@@ -131,18 +136,18 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
 
 fieldM (FieldTo name rec refs) = do
   QueryRead {..} <- ask
-  (QueryState ltn joins _ _) <- get
-  modify (const $ QueryState (ltn+1) [] False "")
+  (QueryState ltn joins _ _ _) <- get
+  modify (const $ QueryState (ltn+1) [] False "" "")
   selText <- local
     (\qr -> qr
       { qrCurrTabNum = ltn+1, qrIsRoot = False, qrPath = name : qrPath })
     (selectM rec)
   modify (\qs -> qs { qsJoins = joins })
-  (QueryState _ _ isWhere ordText) <- get
+  (QueryState _ _ isWhere ordText loText) <- get
   pure (sformat fmt selText (if isWhere then "and" else "where")
-    (refCond (ltn+1) qrCurrTabNum refs) ordText, name)
+    (refCond (ltn+1) qrCurrTabNum refs) ordText loText, name)
   where
-    fmt = "array_to_json(array("%stext%" "%text%" "%stext%stext%"))"
+    fmt = "array_to_json(array("%stext%" "%text%" "%stext%stext%stext%"))"
 
 refCond :: Int -> Int -> [QueryRef] -> Text
 refCond nFrom nTo = T.intercalate " and " . L.map compFlds
