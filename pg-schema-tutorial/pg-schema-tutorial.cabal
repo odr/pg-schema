@@ -6,7 +6,7 @@
 
 name:           pg-schema-tutorial
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/odr/pg-schema/pg-schema-tutorial#readme>
+description:    Please see the README on GitHub at <https://github.com/odr/pg-schema/tree/master/pg-schema-tutorial>
 homepage:       https://github.com/odr/pg-schema#readme
 bug-reports:    https://github.com/odr/pg-schema/issues
 author:         Dmitry Olshansky
