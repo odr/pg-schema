@@ -1,4 +1,4 @@
-# pg-schema
+# pg-schema-tutorial
 
 Type provider from PostgreSQL. With some batteries.
 
