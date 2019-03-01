@@ -5,6 +5,7 @@ import           Control.Monad.RWS
 import           Data.Aeson (FromJSON(..), ToJSON(..))
 import           Data.Kind (Type)
 import           Data.List as L
+import           Data.Maybe
 import           Data.Maybe (isJust)
 import           Data.Proxy (Proxy(..))
 import qualified Data.Text as T.S
@@ -274,24 +275,28 @@ data CondWithPath sch t
   => CondWithPath (Proxy path) (Cond sch (TabOnPath sch t path))
 
 withCondWithPath
-  :: forall sch t r. CSchema sch
-  => (forall t'. Cond sch t' -> r)
+  :: forall sch t r
+  . (forall t'. Cond sch t' -> r)
   -> [T.S.Text] -> CondWithPath sch t -> Maybe r
 withCondWithPath f path (CondWithPath (Proxy :: Proxy path') cond) =
   guard (path == toStar @_ @path') >> pure (f cond)
 
 withCondsWithPath
-  :: forall sch t r. CSchema sch
-  => (forall t'. Cond sch t' -> r)
+  :: forall sch t r
+  . (forall t'. Cond sch t' -> r)
   -> [T.S.Text] -> [CondWithPath sch t] -> Maybe r
 withCondsWithPath f path =
   join . L.find isJust . L.map (withCondWithPath f path)
 
 cwp
-  :: forall path sch t t1
-  . (CSchema sch, t1 ~ TabOnPath sch t path, ToStar path)
+  :: forall path sch t t1. (t1 ~ TabOnPath sch t path, ToStar path)
   => Cond sch t1 -> CondWithPath sch t
 cwp = CondWithPath (Proxy @path)
 
-rootCond :: forall sch t. CSchema sch => Cond sch t -> CondWithPath sch t
+rootCond :: forall sch t. Cond sch t -> CondWithPath sch t
 rootCond = cwp @'[]
+
+condByPath
+  :: forall sch t. CSchema sch
+  => Int -> [T.S.Text] ->[CondWithPath sch t] -> (Text, [SomeToField])
+condByPath num path = fromMaybe mempty . withCondsWithPath (pgCond num) path

@@ -5,7 +5,6 @@ module Database.PostgreSQL.DML.Select where
 import Control.Monad.RWS
 import Data.Bifunctor
 import Data.List as L
-import Data.Maybe (fromMaybe)
 import Data.String
 import Data.Text as T
 import Data.Text.Lazy (toStrict)
@@ -75,9 +74,8 @@ selectM QueryRecord {..} = do
   fields <- traverse fieldM queryFields
   joins <- L.reverse . qsJoins <$> get
   let
-    (condText, pars) = fromMaybe mempty
-      $ withCondsWithPath (pgCond qrCurrTabNum) (L.reverse qrPath)
-      $ qpConds qrParam
+    (condText, pars) =
+      condByPath qrCurrTabNum (L.reverse qrPath) $ qpConds qrParam
     sel
       | qrIsRoot    =
         T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") fields
@@ -90,11 +88,8 @@ selectM QueryRecord {..} = do
       | t == mempty = ""
       | otherwise = " order by " <> t
       where
-        t = fromMaybe mempty
-          $ withOrdsWithPath (convOrd qrCurrTabNum) (L.reverse qrPath)
-          $ qpOrds qrParam
-    loText = fromMaybe mempty
-      $ withLOsWithPath convLO (L.reverse qrPath) $ qpLOs qrParam
+        t = ordByPath qrCurrTabNum (L.reverse qrPath) $ qpOrds qrParam
+    loText = loByPath (L.reverse qrPath) $ qpLOs qrParam
   modify (\qs -> qs { qsWhere = whereText /= mempty })
   unless qrIsRoot $ modify (\qs -> qs { qsOrd = ordText, qsLimOff = loText })
   tell pars

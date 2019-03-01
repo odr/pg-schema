@@ -32,27 +32,26 @@ data OrdWithPath sch t
   => OrdWithPath (Proxy path) (Order sch (TabOnPath sch t path))
 
 withOrdWithPath
-  :: forall sch t r. CSchema sch
-  => (forall t'. Order sch t' -> r)
+  :: forall sch t r
+  . (forall t'. Order sch t' -> r)
   -> [Text] -> OrdWithPath sch t -> Maybe r
 withOrdWithPath f path (OrdWithPath (Proxy :: Proxy p) ord) =
   guard (path == toStar @_ @p) >> pure (f ord)
 --
 withOrdsWithPath
-  :: forall sch t r. CSchema sch
-  => (forall t'. Order sch t' -> r)
+  :: forall sch t r
+  . (forall t'. Order sch t' -> r)
   -> [Text] -> [OrdWithPath sch t] -> Maybe r
 withOrdsWithPath f path = join . L.find isJust . L.map (withOrdWithPath f path)
 
 owp
   :: forall path flds sch t
-  . ( CSchema sch, TOrder sch (TabOnPath sch t path) flds, ToStar path
-    , ToStar flds )
+  . (TOrder sch (TabOnPath sch t path) flds, ToStar path, ToStar flds)
   => OrdWithPath sch t
 owp = OrdWithPath (Proxy @path) (Order (Proxy @flds))
 
 rootOrd
-  :: forall flds sch t. (CSchema sch, TOrder sch t flds, ToStar flds)
+  :: forall flds sch t. (TOrder sch t flds, ToStar flds)
   => OrdWithPath sch t
 rootOrd = owp @'[] @flds
 
@@ -61,3 +60,6 @@ convOrd (T.pack . show -> n) (Order (Proxy::Proxy fs)) =
   T.intercalate "," $ L.map showFld (toStar @_ @fs)
   where
     showFld (nm, T.pack . show -> od) = "t"<>n<>"."<>nm<>" "<>od
+
+ordByPath :: forall sch t. Int -> [Text] -> [OrdWithPath sch t] -> Text
+ordByPath num path = fromMaybe mempty . withOrdsWithPath (convOrd num) path

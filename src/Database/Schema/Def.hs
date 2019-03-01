@@ -201,3 +201,8 @@ type family TabOnPath sch (t :: Symbol) (path :: [Symbol]) :: Symbol where
   TabOnPath sch t '[] = t
   TabOnPath sch t (x ': xs) = TabOnPath sch
     (If (TFromTab sch x :==== t) (TToTab sch x) (TFromTab sch x)) xs
+--
+type family TabPath sch (t :: Symbol) (path :: [Symbol]) :: Constraint where
+  TabPath sch t '[] = ()
+  TabPath sch t (x ': xs) = TabPath sch
+    (If (TFromTab sch x :==== t) (TToTab sch x) (TFromTab sch x)) xs
