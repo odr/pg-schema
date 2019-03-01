@@ -3,6 +3,7 @@ module Database.PostgreSQL.Schema.Info where
 
 import Control.Monad
 import Data.Aeson.TH
+import Data.Hashable
 import Data.List as L
 import Data.Text as T
 import Database.PostgreSQL.Convert
@@ -24,7 +25,7 @@ data PgClass = PgClass
   , relkind           :: PgChar
   , attribute__class  :: SchList PgAttribute
   , constraint__class :: SchList PgConstraint }
-  deriving (Show,Generic)
+  deriving (Show,Eq,Generic)
 
 data PgAttribute = PgAttribute
   { attname         :: Text
@@ -32,14 +33,14 @@ data PgAttribute = PgAttribute
   , attnum          :: Int
   , attnotnull      :: Bool
   , atthasdef       :: Bool }
-  deriving (Show,Generic)
+  deriving (Show,Eq,Generic)
 
 data PgConstraint = PgConstraint
   { constraint__namespace :: PgTagged "nspname" Text
   , conname               :: Text
   , contype               :: PgChar
   , conkey                :: PgArr Int }
-  deriving (Show,Generic)
+  deriving (Show,Eq,Generic)
 
 -- | Types info
 data PgType = PgType
@@ -49,12 +50,12 @@ data PgType = PgType
   , typcategory     :: PgChar
   , typelem         :: PgOid
   , enum__type      :: SchList PgEnum}
-  deriving (Show,Generic)
+  deriving (Show,Eq,Generic)
 
 data PgEnum = PgEnum
   { enumlabel     :: Text
   , enumsortorder :: Double }
-  deriving (Show,Generic)
+  deriving (Show,Eq,Generic)
 
 -- | Foreighn key info
 data PgRelation = PgRelation
@@ -64,7 +65,7 @@ data PgRelation = PgRelation
   , constraint__fclass    :: PgTagged "relname" Text
   , conkey                :: PgArr Int
   , confkey               :: PgArr Int }
-  deriving (Show,Generic)
+  deriving (Show,Eq,Generic)
 
 L.concat
   <$> zipWithM (\n s ->
@@ -73,6 +74,7 @@ L.concat
       , [d|instance FromRow $(conT n)|]
       , schemaRec @PgCatalog id n
       , [d|instance CQueryRecord PG PgCatalog $(pure $ strToSym s) $(conT n)|]
+      , [d|instance Hashable $(conT n)|]
       ])
   [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelation]
   [ "pg_enum", "pg_type", "pg_constraint", "pg_attribute", "pg_class"

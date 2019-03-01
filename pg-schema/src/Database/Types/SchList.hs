@@ -2,6 +2,7 @@
 module Database.Types.SchList where
 
 import Data.Aeson
+import Data.Hashable
 import Database.PostgreSQL.Simple.FromField as PG
 import Database.Schema.Def
 import Database.Schema.Rec
@@ -10,7 +11,7 @@ import Type.Reflection
 
 
 newtype SchList a = SchList { getSchList :: [a] }
-  deriving (Show, Eq, Ord, FromJSON, ToJSON, Functor)
+  deriving (Show, Eq, Ord, FromJSON, ToJSON, Functor, Hashable)
 
 instance (FromJSON a, Typeable a) => FromField (SchList a) where
   fromField = fromJSONField

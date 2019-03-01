@@ -7,6 +7,7 @@ import Data.Aeson
 import Data.ByteString
 import Data.Coerce
 import Data.Fixed
+import Data.Hashable
 import Data.List as L
 import Data.Text as T
 import Data.Time
@@ -30,7 +31,8 @@ instance
 
 -- Char has no ToField instance so make own char
 newtype PgChar = PgChar { unPgChar :: Char }
-  deriving (Show, Eq, Read, Ord, FromField, Enum, Bounded, FromJSON, ToJSON)
+  deriving (Show, Eq, Read, Ord, FromField, Enum, Bounded, FromJSON, ToJSON
+    , Hashable)
 
 instance ToField PgChar where
   toField = toField . (:[]) . unPgChar
@@ -39,7 +41,7 @@ newtype PgArr a = PgArr { getPgArr :: [a] }
   -- ^ PGArray has no JSON instances. [] has JSON, but no PG.
   -- This one has both.
   deriving (Show, Eq, Ord, Read, FromJSON, ToJSON, Functor, Applicative, Monad
-    , MonadZip, Foldable)
+    , MonadZip, Foldable, Hashable)
 
 instance (FromField a, Typeable a) => FromField (PgArr a) where
   fromField = (fmap (coerce @(PGArray a)) .) . fromField
@@ -58,6 +60,9 @@ instance CanConvertPG sch n 'False t
 
 newtype PgOid = PgOid { fromPgOid :: Oid }
   deriving (Show, Eq, Read, Ord, FromField, ToField)
+
+instance Hashable PgOid where
+  hashWithSalt s = hashWithSalt s . show
 
 instance FromJSON PgOid where
   parseJSON = fmap (PgOid . read . ("Oid " ++)) . parseJSON

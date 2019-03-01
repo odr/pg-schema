@@ -4,6 +4,7 @@ module Database.PostgreSQL.PgTagged where
 
 import Data.Aeson
 import Data.Coerce
+import Data.Hashable
 import Data.Kind
 import Data.Singletons.Prelude
 import Data.Tagged
@@ -22,11 +23,14 @@ import Util.ToStar
 #if MIN_VERSION_base(4,11,0)
 newtype PgTagged a b = PgTagged (Tagged a b) deriving
   ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
-  , Semigroup)
+  , Semigroup )
 #else
 newtype PgTagged a b = PgTagged (Tagged a b) deriving
-  ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid)
+  ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid )
 #endif
+
+instance Hashable b => Hashable (PgTagged a b) where
+  hashWithSalt s = hashWithSalt @b s . coerce
 
 pgTag :: forall a b. b -> PgTagged a b
 pgTag = coerce

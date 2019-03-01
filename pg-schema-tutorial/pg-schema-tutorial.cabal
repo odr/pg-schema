@@ -1,0 +1,68 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 440227c04676c9594b2a6ef1def7984827ae1b9ce033d8ce1efde7ddea161199
+
+name:           pg-schema-tutorial
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/odr/pg-schema#readme>
+homepage:       https://github.com/odr/pg-schema#readme
+bug-reports:    https://github.com/odr/pg-schema/issues
+author:         Dmitry Olshansky
+maintainer:     olshanskydr@gmail.com
+copyright:      Dmitry Olshansky
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    ChangeLog.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/odr/pg-schema
+
+executable pg-schema-tutorial
+  main-is: Main.hs
+  other-modules:
+      Paths_pg_schema_tutorial
+    , Sch
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , pg-schema
+    , postgresql-simple
+    , template-haskell
+    , text
+  default-language: Haskell2010
+  default-extensions:
+      AllowAmbiguousTypes
+    , ConstraintKinds
+    , DataKinds
+    , DeriveGeneric
+    , EmptyCase
+    , ExistentialQuantification
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , GADTs
+    , GeneralizedNewtypeDeriving
+    , InstanceSigs
+    , LambdaCase
+    , MultiParamTypeClasses
+    , OverloadedLabels
+    , OverloadedStrings
+    , QuasiQuotes
+    , RecordWildCards
+    , ScopedTypeVariables
+    , TemplateHaskell
+    , TupleSections
+    , TypeApplications
+    , TypeFamilies
+    , TypeInType
+    , TypeOperators
