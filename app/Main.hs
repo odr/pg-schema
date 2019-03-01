@@ -80,5 +80,5 @@ main = do
         [rootCond
           (pparent @"address_city"
             $ pparent @"city_country" (#code =? Just @Text "RU"))]
-      , qpOrds = [ rootOrd @'[ '("street",'Asc)]] }
+      , qpOrds = [ rootOrd [ascf @"street"] ] }
     qp' = qp { qpLOs = [rootLO $ LO (Just 1) (Just 1)] }

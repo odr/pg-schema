@@ -37,28 +37,12 @@ unPgTag = coerce
 rePgTag :: forall a b c. PgTagged a c -> PgTagged b c
 rePgTag = coerce
 
--- instance FromJSON b => FromJSON (PgTagged (a::Symbol) b) where
---   parseJSON = fmap pgTag <$> parseJSON
 instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
   parseJSON =
     withObject "PgTagged " $ \v -> pgTag <$> v .: toStar @_ @a
 
--- instance ToJSON b => ToJSON (PgTagged (a::Symbol) b) where
---   toJSON = toJSON . unPgTag
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
   toJSON v = object [toStar @_ @a .= unPgTag v]
-
--- instance (ToStar a, FromJSON b) => FromJSON (PgTagged ([a]::[Symbol]) b) where
---   parseJSON = rePgTag @a <$> parseJSON
---
--- instance (ToStar a, ToJSON b) => ToJSON (PgTagged ([a]::[Symbol]) b) where
---   toJSON v = object [toStar @_ @a .= unPgTag v]
-
--- instance FromField a => FromField (PgTagged (n::Symbol) a) where
---   fromField f = fmap pgTag . fromField f
---
--- instance ToField a => ToField (PgTagged (n::Symbol) a) where
---   toField = toField . unPgTag
 
 instance
   (FromJSON a, Typeable a, KnownSymbol n)
@@ -67,8 +51,6 @@ instance
 
 instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
   toField = toJSONField
-
-
 
 instance ToStar n => CRecordInfo (PgTagged (n::Symbol) r) where
   type TRecordInfo (PgTagged n r) = '[ 'FieldInfo n n]

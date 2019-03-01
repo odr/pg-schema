@@ -97,6 +97,7 @@ ghci> instance FromRow Order
 ghci> conn <- connectPostgreSQL "dbname=schema_test user=postgres"
 
 -- all orders
+
 ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn qpEmpty
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 4, price = 18.00},OrdPos {num = 2, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 2, price = 17.00},OrdPos {num = 1, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 3, price = 23.00}]}, state = Nothing}
@@ -105,11 +106,19 @@ Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", ad
 Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 1, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 1, price = 100.00},OrdPos {num = 2, opos_article = Article {name = "article2", code = Just "a2"}, cnt = 2, price = 50.00},OrdPos {num = 3, opos_article = Article {name = "article6", code = Just "a6"}, cnt = 4, price = 18.00}]}, state = Just Order_state_paid}
 
 -- orders where exists position with cnt > 5
+
 ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn qpEmpty { qpConds = [rootCond $ pchild @"opos_order" (#cnt >? (5::Int))] }
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 
--- all orders but with filtered positions. Included only positions with cnt > 5
-ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn qpEmpty { qpConds = [cwp @'["opos_order"] (#cnt >? (5::Int))], qpOrds = [rootOrd @'[ '("num", Desc)]] }
+-- all orders sorted decendant by field `num` and with filtered positions.
+-- Included only top 2 positions (by cnt) with cnt > 5
+
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn qpEmpty
+  { qpConds = [cwp @'["opos_order"] (#cnt >? (5::Int))]
+  , qpOrds =
+    [ rootOrd [descf @"num"]
+    , owp @'["opos_order"] [descf @"cnt"] ]
+  , qpLOs = [lowp @"opos_order" (LO (Just 2) Nothing)] }
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Nothing}
 Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Just Order_state_delivered}

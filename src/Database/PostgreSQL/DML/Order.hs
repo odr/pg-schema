@@ -1,65 +1,60 @@
-{-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.DML.Order where
 
 import Control.Monad
-import Data.Kind
 import Data.List as L
 import Data.Maybe
 import Data.Proxy
 import Data.Semigroup ((<>))
-import Data.Singletons.TH
 import Data.Text as T
 import Database.Schema.Def
 import GHC.TypeLits
 import Util.ToStar
 
 
-singletons [d|
-  data OrdDirection = Asc | Desc deriving Show
-  |]
+data OrdDirection = Asc | Desc deriving Show
 
-type family
-  TOrder (sch::Type) (tab::Symbol) (flds::[(Symbol, OrdDirection)])
-    :: Constraint where
-  TOrder sch tab '[] = ()
-  TOrder sch tab ('(x,od) ': xs) = (CFldDef sch tab x, TOrder sch tab xs)
+data OrdFld sch tab
+  = forall fld. CFldDef sch tab fld => OrdFld (Proxy fld) OrdDirection
 
-data Order sch tab =
-  forall flds. (ToStar flds, TOrder sch tab flds) => Order (Proxy flds)
+ordf :: forall fld sch tab. CFldDef sch tab fld => OrdDirection -> OrdFld sch tab
+ordf = OrdFld (Proxy @fld)
+
+ascf :: forall fld sch tab. CFldDef sch tab fld => OrdFld sch tab
+ascf = ordf @fld Asc
+
+descf :: forall fld sch tab. CFldDef sch tab fld => OrdFld sch tab
+descf = ordf @fld Desc
 
 data OrdWithPath sch t
   = forall (path :: [Symbol]). ToStar path
-  => OrdWithPath (Proxy path) (Order sch (TabOnPath sch t path))
+  => OrdWithPath (Proxy path) [OrdFld sch (TabOnPath sch t path)]
 
 withOrdWithPath
   :: forall sch t r
-  . (forall t'. Order sch t' -> r)
+  . (forall t'. [OrdFld sch t'] -> r)
   -> [Text] -> OrdWithPath sch t -> Maybe r
 withOrdWithPath f path (OrdWithPath (Proxy :: Proxy p) ord) =
   guard (path == toStar @_ @p) >> pure (f ord)
 --
 withOrdsWithPath
   :: forall sch t r
-  . (forall t'. Order sch t' -> r)
+  . (forall t'. [OrdFld sch t'] -> r)
   -> [Text] -> [OrdWithPath sch t] -> Maybe r
 withOrdsWithPath f path = join . L.find isJust . L.map (withOrdWithPath f path)
 
 owp
-  :: forall path flds sch t
-  . (TOrder sch (TabOnPath sch t path) flds, ToStar path, ToStar flds)
-  => OrdWithPath sch t
-owp = OrdWithPath (Proxy @path) (Order (Proxy @flds))
+  :: forall path sch t t'. (ToStar path, TabOnPath sch t path ~ t')
+  => [OrdFld sch t'] -> OrdWithPath sch t
+owp = OrdWithPath (Proxy @path)
 
-rootOrd
-  :: forall flds sch t. (TOrder sch t flds, ToStar flds)
-  => OrdWithPath sch t
-rootOrd = owp @'[] @flds
+rootOrd :: forall sch t. [OrdFld sch t] -> OrdWithPath sch t
+rootOrd = owp @'[]
 
-convOrd :: Int -> Order sch t -> Text
-convOrd (T.pack . show -> n) (Order (Proxy::Proxy fs)) =
-  T.intercalate "," $ L.map showFld (toStar @_ @fs)
+convOrd :: Int -> [OrdFld sch t] -> Text
+convOrd (T.pack . show -> n) ofs = T.intercalate "," $ L.map showFld ofs
   where
-    showFld (nm, T.pack . show -> od) = "t"<>n<>"."<>nm<>" "<>od
+    showFld (OrdFld (Proxy :: Proxy fld) (T.pack . show -> od)) =
+      "t"<>n<>"."<>(toStar @_ @fld)<>" "<>od
 
 ordByPath :: forall sch t. Int -> [Text] -> [OrdWithPath sch t] -> Text
 ordByPath num path = fromMaybe mempty . withOrdsWithPath (convOrd num) path

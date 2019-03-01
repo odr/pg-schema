@@ -52,10 +52,10 @@ getSchema conn ns = do
       { qpConds =
         [ rootCond
           $ pparent @"class__namespace" (#nspname =? ns)
-            &&& (pin @"relkind" (PgChar <$> "vr"))
+            &&& (pin @"relkind" (PgChar <$> "vr")) -- views & tables
         , cwp @'["attribute__class"] (#attnum >? (0::Int)) ]
       , qpOrds =
-        [ owp @'["attribute__class"] @'[ '("attnum",'Asc)] ] }
+        [ owp @'["attribute__class"] [ascf @"attnum"] ] }
     qpRel = qpEmpty
       { qpConds =
         [rootCond $ pparent @"constraint__namespace" (#nspname =? ns)] }

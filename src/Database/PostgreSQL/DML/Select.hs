@@ -1,5 +1,4 @@
 {-# LANGUAGE UndecidableInstances #-}
--- {-# LANGUAGE CPP #-}
 module Database.PostgreSQL.DML.Select where
 
 import Control.Monad.RWS
