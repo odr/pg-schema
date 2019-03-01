@@ -118,12 +118,40 @@ ghci> mapM_ (print @Order) =<< selectSch @Tutorial @"orders" conn qpEmpty
   , qpOrds =
     [ rootOrd [descf @"num"]
     , owp @'["opos_order"] [descf @"cnt"] ]
-  , qpLOs = [lowp @"opos_order" (LO (Just 2) Nothing)] }
+  , qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Nothing}
 Order {day = 2018-11-13, num = "n2", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Just Order_state_delivered}
 Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Just Order_state_booked}
 Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Just Order_state_paid}
+
+-- query text for the last query (formatted by hand...):
+
+ghci> selectText @Tutorial @"orders" @Order qpEmpty
+  { qpConds = [cwp @'["opos_order"] (#cnt >? (5::Int))]
+  , qpOrds =
+    [ rootOrd [descf @"num"]
+    , owp @'["opos_order"] [descf @"cnt"] ]
+  , qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
+("select t0.day \"day\", t0.num \"num\"
+  , jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\"
+  , array_to_json(array(
+    select
+      jsonb_build_object
+        ( 'num',t2.num
+        , 'opos_article',jsonb_build_object('name',t3.name,'code',t3.code)
+        , 'cnt',t2.cnt
+        , 'price',t2.price )
+      from sch.order_positions t2 join sch.articles t3 on t2.article_id=t3.id
+      where t2.cnt > ? and t2.order_id=t0.id
+      order by t2.cnt Desc
+      limit 2)) \"opos_order\"
+  , t0.state \"state\"
+  from sch.orders t0
+    join sch.companies t1 on t0.seller_id=t1.id
+  order by t0.num Desc"
+,[SomeToField 5])
+
 
 ```
 
