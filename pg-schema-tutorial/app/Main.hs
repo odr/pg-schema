@@ -81,4 +81,4 @@ main = do
           (pparent @"address_city"
             $ pparent @"city_country" (#code =? Just @Text "RU"))]
       , qpOrds = [ rootOrd [ascf @"street"] ] }
-    qp' = qp { qpLOs = [rootLO $ LO (Just 1) (Just 2)] }
+    qp' = qp { qpLOs = [rootLO $ LO (Just 1) (Just 1)] }

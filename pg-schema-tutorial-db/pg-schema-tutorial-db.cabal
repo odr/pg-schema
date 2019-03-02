@@ -30,28 +30,10 @@ library
     , pg-schema
   default-language: Haskell2010
   default-extensions:
-      AllowAmbiguousTypes
-    , ConstraintKinds
-    , DataKinds
+      DataKinds
     , DeriveGeneric
-    , EmptyCase
-    , ExistentialQuantification
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , GADTs
-    , GeneralizedNewtypeDeriving
-    , InstanceSigs
-    , LambdaCase
+    , FlexibleInstances    
     , MultiParamTypeClasses
-    , OverloadedLabels
     , OverloadedStrings
-    , QuasiQuotes
-    , RecordWildCards
-    , ScopedTypeVariables
     , TemplateHaskell
-    , TupleSections
-    , TypeApplications
     , TypeFamilies
-    , TypeInType
-    , TypeOperators

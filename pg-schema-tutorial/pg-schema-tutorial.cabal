@@ -1,9 +1,3 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
---
--- see: https://github.com/sol/hpack
---
--- hash: 440227c04676c9594b2a6ef1def7984827ae1b9ce033d8ce1efde7ddea161199
-
 name:           pg-schema-tutorial
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/odr/pg-schema/tree/master/pg-schema-tutorial>
@@ -42,31 +36,15 @@ executable pg-schema-tutorial
     , text
   default-language: Haskell2010
   default-extensions:
-      AllowAmbiguousTypes
-    , ConstraintKinds
-    , DataKinds
+      DataKinds
     , DeriveGeneric
-    , EmptyCase
-    , ExistentialQuantification
-    , FlexibleContexts
     , FlexibleInstances
-    , FunctionalDependencies
-    , GADTs
-    , GeneralizedNewtypeDeriving
-    , InstanceSigs
-    , LambdaCase
     , MultiParamTypeClasses
     , OverloadedLabels
     , OverloadedStrings
-    , QuasiQuotes
-    , RecordWildCards
-    , ScopedTypeVariables
     , TemplateHaskell
-    , TupleSections
     , TypeApplications
     , TypeFamilies
-    , TypeInType
-    , TypeOperators
 
 custom-setup
   setup-depends:
