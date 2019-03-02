@@ -12,13 +12,10 @@ import Data.Semigroup ((<>))
 import Data.Set as S
 import Data.Text as T
 import Database.PostgreSQL.Convert
-import Database.PostgreSQL.DML.Condition
-import Database.PostgreSQL.DML.Order
-import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.Enum
 import Database.PostgreSQL.PgTagged
-import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Schema.Info
+import Database.PostgreSQL.Schema.Schema
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.TH
@@ -26,39 +23,6 @@ import Database.Types.SchList
 import GHC.Generics
 import Language.Haskell.TH
 
-
-data ExceptionSch
-  = ConnectException ByteString SomeException
-  | GetDataException (Text, [SomeToField]) SomeException
-  deriving Show
-
-instance Exception ExceptionSch
-
-getSchema :: Connection -> Text -> IO ([PgType], [PgClass], [PgRelation])
-getSchema conn ns = do
-  types <- catch (selectSch @PgCatalog @"pg_type" @PgType conn qpEmpty)
-    ( throwM . GetDataException
-      (selectText @PgCatalog @"pg_type" @PgType qpEmpty ) )
-  classes <- catch (selectSch @PgCatalog @"pg_class" @PgClass conn qpClass)
-    ( throwM . GetDataException
-      (selectText @PgCatalog @"pg_class" @PgClass qpClass) )
-  relations <- catch
-    (selectSch @PgCatalog @"pg_constraint" @PgRelation conn qpRel)
-    ( throwM . GetDataException
-      (selectText @PgCatalog @"pg_constraint" @PgRelation qpRel) )
-  pure (types, classes, relations)
-  where
-    qpClass = qpEmpty
-      { qpConds =
-        [ rootCond
-          $ pparent @"class__namespace" (#nspname =? ns)
-            &&& (pin @"relkind" (PgChar <$> "vr")) -- views & tables
-        , cwp @'["attribute__class"] (#attnum >? (0::Int)) ]
-      , qpOrds =
-        [ owp @'["attribute__class"] [ascf @"attnum"] ] }
-    qpRel = qpEmpty
-      { qpConds =
-        [rootCond $ pparent @"constraint__namespace" (#nspname =? ns)] }
 
 mkSchema :: ByteString -> Name -> Text -> DecsQ
 mkSchema connStr sch ns = do

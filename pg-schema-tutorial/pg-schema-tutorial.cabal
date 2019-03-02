@@ -14,7 +14,7 @@ maintainer:     olshanskydr@gmail.com
 copyright:      Dmitry Olshansky
 license:        BSD3
 license-file:   LICENSE
-build-type:     Simple
+build-type:     Custom
 cabal-version:  >= 1.10
 extra-source-files:
     ChangeLog.md
@@ -66,3 +66,9 @@ executable pg-schema-tutorial
     , TypeFamilies
     , TypeInType
     , TypeOperators
+
+custom-setup
+  setup-depends:
+    base >= 4.7 && <5,
+    Cabal,
+    pg-schema
