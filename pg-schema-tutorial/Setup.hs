@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+import Control.Monad
 import Database.PostgreSQL.Schema.Schema
 import Debug.Trace
 import Distribution.Simple
@@ -7,5 +8,6 @@ import Distribution.Types.HookedBuildInfo
 
 
 main = do
-  updateSchemaHash "dbname=schema_test user=postgres" "sch" "app/Sch.hs"
+  void $ updateSchemaHash "dbname=schema_test user=postgres" "sch"
+    "../pg-schema-tutorial-db/src/Sch.hs"
   defaultMain

@@ -54,13 +54,16 @@ getSchemaHash conn = fmap hash . getSchema conn
 getSchemaHash' :: ByteString -> Text -> IO Int
 getSchemaHash' connStr ns = connectPostgreSQL connStr >>= flip getSchemaHash ns
 
-updateSchemaHash :: ByteString -> Text -> FilePath -> IO ()
+updateSchemaHash :: ByteString -> Text -> FilePath -> IO Bool
 updateSchemaHash connStr dbSchema file = do
   h <- getSchemaHash' connStr dbSchema
   s <- readFile file
-  let s' = unlines $ setHash h <$> lines s
-  -- check length to force close file. Where indirective...
-  when (Prelude.length s > 0 && s /= s') $ writeFile file s'
+  let
+    s' = unlines $ setHash h <$> lines s
+    -- check length to force close file. Where indirective...
+    isChanged = Prelude.length s > 0 && s /= s'
+  when isChanged $ writeFile file s'
+  pure isChanged
   where
     setHash h s = case words s of
       ["hashSchema","=",x]
