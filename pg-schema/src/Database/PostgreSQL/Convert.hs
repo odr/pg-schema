@@ -26,7 +26,7 @@ class {-(FromJSON t, ToJSON t)
   => -}CanConvert1 (td::TypDefK) sch (tn::Symbol) t
 
 instance
-  (CanConvert1 (TTypDef sch tn) sch tn t, CTypDef sch tn, FromJSON t, ToJSON t)
+  (CanConvert1 (TTypDef sch tn) sch tn t, CTypDef sch tn{-, FromJSON t, ToJSON t -})
   => CanConvertPG sch tn 'False t
 
 -- Char has no ToField instance so make own char
