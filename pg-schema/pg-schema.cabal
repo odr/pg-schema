@@ -32,6 +32,7 @@ library
     Database.PostgreSQL.DML.Order
     Database.PostgreSQL.DML.Limit
     Database.PostgreSQL.DML.Select
+    Database.PostgreSQL.DML.Insert
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
     Database.PostgreSQL.Schema.Info
