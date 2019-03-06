@@ -24,7 +24,7 @@ instance Exception ExceptionSch
 
 getSchema :: Connection -> Text -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn ns = do
-  types <- catch (selectSch @PgCatalog @"pg_type" @PgType conn qpEmpty)
+  types <- catch (selectSch @PgCatalog @"pg_type" @PgType conn qpTyp)
     ( throwM . GetDataException
       (selectText @PgCatalog @"pg_type" @PgType qpEmpty ) )
   classes <- catch (selectSch @PgCatalog @"pg_class" @PgClass conn qpClass)
@@ -36,6 +36,11 @@ getSchema conn ns = do
       (selectText @PgCatalog @"pg_constraint" @PgRelation qpRel) )
   pure (types, classes, relations)
   where
+    -- all data are ordered to provide stable `hashSchema`
+    qpTyp = qpEmpty
+      { qpOrds =
+        [ rootOrd [ascf @"typname"]
+        , owp @'["enum__type"] [ascf @"enumsortorder"] ] }
     qpClass = qpEmpty
       { qpConds =
         [ rootCond
@@ -43,10 +48,13 @@ getSchema conn ns = do
             &&& (pin @"relkind" (PgChar <$> "vr")) -- views & tables
         , cwp @'["attribute__class"] (#attnum >? (0::Int)) ]
       , qpOrds =
-        [ owp @'["attribute__class"] [ascf @"attnum"] ] }
+        [ rootOrd [ascf @"relname"]
+        , owp @'["attribute__class"] [ascf @"attnum"]
+        , owp @'["constraint__class"] [ascf @"conname"] ] }
     qpRel = qpEmpty
       { qpConds =
-        [rootCond $ pparent @"constraint__namespace" (#nspname =? ns)] }
+        [rootCond $ pparent @"constraint__namespace" (#nspname =? ns)]
+      , qpOrds = [ rootOrd [ascf @"conname"] ] }
 
 getSchemaHash :: Connection -> Text -> IO Int
 getSchemaHash conn = fmap hash . getSchema conn
