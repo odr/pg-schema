@@ -1,6 +1,5 @@
 {-# LANGUAGE UndecidableInstances    #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
--- {-# OPTIONS_GHC -freduction-depth=0 #-}
 module Database.Schema.Join where
 
 import Data.Singletons.Prelude as SP

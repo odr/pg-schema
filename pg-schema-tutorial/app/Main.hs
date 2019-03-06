@@ -9,18 +9,22 @@ import Data.Text as T
 import Data.Text.IO as T
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Condition
+import Database.PostgreSQL.DML.Insert
 import Database.PostgreSQL.DML.Limit
 import Database.PostgreSQL.DML.Order
 import Database.PostgreSQL.DML.Select
+import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.Schema.Rec
 import Database.Schema.TH
+import Generic.Random
 import GHC.Generics
 import Language.Haskell.TH
 import Sch
-
+import Test.QuickCheck
+import Test.QuickCheck.Instances ()
 
 data Country = Country
   { code :: Maybe Text
@@ -28,6 +32,9 @@ data Country = Country
   -- TODO: cycle references lead to halt! Should check to avoid it
   -- , city_country :: SchList City }
   deriving (Eq, Show, Ord, Generic)
+
+instance Arbitrary Country where
+  arbitrary = genericArbitrarySingle
 
 data City = City
   { name         :: Maybe Text
@@ -47,6 +54,7 @@ L.concat
     L.concat <$> sequenceA
       [ deriveJSON defaultOptions n
       , [d|instance FromRow $(conT n)|]
+      , [d|instance ToRow $(conT n)|]
       , [d|instance FromField $(conT n) where fromField = fromJSONField |]
       , [d|instance ToField $(conT n) where toField = toJSONField |]
       , schemaRec @Sch id n
@@ -57,6 +65,7 @@ L.concat
 
 main :: IO ()
 main = do
+  countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
     [ selectText @Sch @"countries" @Country qpEmpty
     , selectText @Sch @"cities" @City qpEmpty
@@ -65,6 +74,8 @@ main = do
     , selectText @Sch @"addresses" @Address qp'
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
+  cids <- insertSch @Sch @"countries" conn countries
+  mapM_ (print @(PgTagged "id" Int)) cids
   selectSch @Sch @"countries" @Country conn qpEmpty >>= print
   T.putStrLn ""
   selectSch @Sch @"cities" @City conn qpEmpty >>= print

@@ -29,11 +29,14 @@ executable pg-schema-tutorial
   build-depends:
       aeson
     , base >=4.7 && <5
+    , generic-random
     , pg-schema
     , pg-schema-tutorial-db
     , postgresql-simple
     , template-haskell
     , text
+    , QuickCheck
+    , quickcheck-instances
   default-language: Haskell2010
   default-extensions:
       DataKinds
