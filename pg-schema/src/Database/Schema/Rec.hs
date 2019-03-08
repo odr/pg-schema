@@ -144,3 +144,6 @@ instance
           (toStar @_ @cols)
           (toStar @_ @fdsFrom)
           (toStar @_ @fds)
+
+type AllMandatory sch t r =
+  IsAllMandatory sch t (Map FieldDbNameSym0 (TRecordInfo r)) ~ 'True

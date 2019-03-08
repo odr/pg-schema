@@ -10,23 +10,23 @@ import Database.Schema.Rec
 import GHC.Int
 
 
--- TODO
--- 1. Check
--- 2. Insert tree
+-- TODO: Insert tree
 insertSch
   :: forall sch t r r'
-  . (CQueryRecord PG sch t r, CQueryRecord PG sch t r', ToRow r, FromRow r')
+  . ( AllMandatory sch t r, CQueryRecord PG sch t r
+    , CQueryRecord PG sch t r', ToRow r, FromRow r' )
   => Connection -> [r] -> IO [r']
 insertSch conn = returning conn (insertText @sch @t @r @r')
 
 insertSch_
   :: forall sch t r
-  . (CQueryRecord PG sch t r, ToRow r)
+  . (AllMandatory sch t r, CQueryRecord PG sch t r, ToRow r)
   => Connection -> [r] -> IO Int64
 insertSch_ conn = executeMany conn (insertText_ @sch @t @r)
 
 insertText
-  :: forall sch t r r'. (CQueryRecord PG sch t r, CQueryRecord PG sch t r')
+  :: forall sch t r r'
+  . (AllMandatory sch t r, CQueryRecord PG sch t r, CQueryRecord PG sch t r')
   => Query
 insertText = insertText_ @sch @t @r `mappend` " returning " `mappend` fs'
   where

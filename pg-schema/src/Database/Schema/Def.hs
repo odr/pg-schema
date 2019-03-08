@@ -63,6 +63,12 @@ promote [d|
       Just (RelDef rfrom rto _) | rfrom == tab  -> FldFrom
                                 | rto == tab    -> FldTo
       _                                         -> FldUnknown
+
+  isAllMandatory' :: Eq s => (s -> FldDef' s) -> [s] -> [s] -> Bool
+  isAllMandatory' f tabFlds recFlds =
+    L.null $ L.filter (isMandatory . f) tabFlds L.\\ recFlds
+    where
+      isMandatory fd = not (fdNullable fd || fdHasDefault fd)
   |]
 
 type TypDefK = TypDef' Symbol
@@ -143,6 +149,8 @@ type TTabDefs sch = SP.Map (TTabDefSym1 sch) (TTabs sch)
 type TTabFlds sch = SP.Map TdFldsSym0 (TTabDefs sch)
 type TTabFldDefs sch =
   Zip2With (TFldDefSym1 sch) (TTabs sch) (TTabFlds sch)
+type IsAllMandatory sch t rs =
+  IsAllMandatory' (TFldDefSym2 sch t) (TdFlds (TTabDef sch t)) rs
 
 type TFieldKind sch tab name =
   GetFldKind (TTabDef sch tab) (TRelDefs sch) tab name
