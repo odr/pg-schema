@@ -24,5 +24,6 @@ instance CFieldType r n => CFieldType (SchList r) n where
 
 instance
   ( CSchema sch
-  , CQueryFields db sch t (SchList r) (TRecordInfo (SchList r)) )
+  , CQueryFields db sch t
+    (FiWithType (TFieldTypeSym1 (SchList r)) (TRecordInfo (SchList r))) )
   => CQueryRecord db sch (t::Symbol) (SchList r) where
