@@ -4,7 +4,8 @@ module Database.PostgreSQL.Convert where
 
 import Control.Monad.Zip
 import Data.Aeson
-import Data.ByteString
+import Data.ByteString as BS.S
+import Data.ByteString.Lazy as BS.L
 import Data.Coerce
 import Data.Fixed
 import Data.Hashable
@@ -90,6 +91,7 @@ instance CanConvert1 ('TypDef "S" x y) sch "name" Text
 instance CanConvert1 ('TypDef "S" x y) sch "text" Text
 instance CanConvert1 ('TypDef "S" x y) sch "varchar" Text
 
-instance CanConvert1 ('TypDef "U" x y) sch "bytea" (Binary ByteString)
+instance CanConvert1 ('TypDef "U" x y) sch "bytea" (Binary BS.S.ByteString)
+instance CanConvert1 ('TypDef "U" x y) sch "bytea" (Binary BS.L.ByteString)
 -- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
 -- used only in the root table
