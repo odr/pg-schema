@@ -7,21 +7,13 @@ import Data.Aeson.TH
 import Data.List as L
 import Data.Text as T
 import Data.Text.IO as T
-import Database.PostgreSQL.DB
-import Database.PostgreSQL.DML.Condition
-import Database.PostgreSQL.DML.Insert
-import Database.PostgreSQL.DML.Limit
-import Database.PostgreSQL.DML.Order
-import Database.PostgreSQL.DML.Select
-import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
-import Database.Schema.Rec
-import Database.Schema.TH
 import Generic.Random
 import GHC.Generics
 import Language.Haskell.TH
+import PgSchema
 import Sch
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
@@ -58,7 +50,7 @@ L.concat
       , [d|instance FromField $(conT n) where fromField = fromJSONField |]
       , [d|instance ToField $(conT n) where toField = toJSONField |]
       , schemaRec @Sch id n
-      , [d|instance CQueryRecord PG Sch $(pure $ strToSym s) $(conT n)|]
+      , [d|instance CQueryRecord PG Sch $(litT $ strTyLit s) $(conT n)|]
       ])
   [ ''Country, ''City, ''Address]
   [ "countries", "cities", "addresses"]

@@ -26,6 +26,7 @@ source-repository head
 
 library
   exposed-modules:
+    PgSchema
     Database.PostgreSQL.Convert
     Database.PostgreSQL.DB
     Database.PostgreSQL.DML.Condition

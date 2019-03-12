@@ -1,6 +1,6 @@
 module Sch where
 
-import Database.PostgreSQL.Schema.TH
+import PgSchema
 
 
 data Sch
