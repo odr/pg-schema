@@ -40,6 +40,8 @@ library
     Database.PostgreSQL.Schema.Schema
     Database.PostgreSQL.Enum
     Database.PostgreSQL.Schema.TH
+    -- Database.PostgreSQL.Schema.GenFile
+    Database.Schema.Gen
     Database.Schema.Def
     Database.Schema.Rec
     Database.Schema.TH
@@ -54,6 +56,7 @@ library
     aeson
     , base >=4.7 && <5
     , containers
+    , directory
     , exceptions
     , formatting
     , mtl

@@ -24,7 +24,7 @@ import GHC.Generics
 import Language.Haskell.TH
 
 
-mkSchema :: ByteString -> Name -> Text -> DecsQ
+mkSchema :: ByteString -> String -> Text -> DecsQ
 mkSchema connStr sch ns = do
   (types, classes, relations) <- runIO $ do
     conn <- catch (connectPostgreSQL connStr) (throwM . ConnectException connStr)
@@ -35,13 +35,15 @@ mkSchema connStr sch ns = do
     mClassAttrs =
       M.fromList [((c, attnum a), attname a)| (c,as) <- classAttrs, a <- as]
     attrs = L.concat $ (\(a,xs) -> (a,) <$> xs) <$> classAttrs
-    attrsTypes = S.fromList $ (unPgTag . attribute__type . snd) <$> attrs
-    mtypes = M.fromList . fmap (\x -> (oid x, x)) $ types
     ntypes = (\t -> (t, T.unpack . typname <$> M.lookup (typelem t) mtypes))
       <$> L.filter ((`S.member` attrsTypes) . typname) types
+      where
+        attrsTypes = S.fromList $ (unPgTag . attribute__type . snd) <$> attrs
+        mtypes = M.fromList . fmap (\x -> (oid x, x)) $ types
 
   -- reportWarning $ "ntypes count: " ++ show (L.length ntypes)
   -- reportWarning $ "attrs count: " ++ show (L.length attrs)
+  dataSch <- dataD (pure []) (mkName sch) [] Nothing [] []
   typs <- L.concat <$> traverse instTypDef ntypes
   flds <- L.concat <$> traverse instFldDef attrs
   tabs <- L.concat <$> traverse instTabDef classes
@@ -50,9 +52,9 @@ mkSchema connStr sch ns = do
   schema <- instSchema (relname <$> classes)
     ((\PgRelation {..} -> conname) <$> relations)
     (typname . fst <$> ntypes)
-  pure $ typs ++ flds ++ tabs ++ rls ++ schema
+  pure $ dataSch : typs ++ flds ++ tabs ++ rls ++ schema
   where
-    schQ = conT sch
+    schQ = conT (mkName sch)
     instTypDef (pgt,mbn) = (++)
       <$> [d|
         instance CTypDef $(schQ) $(nameQ) where
@@ -155,3 +157,32 @@ boolQ False = [t|'False|]
 
 pairQ :: (Type,Type) -> TypeQ
 pairQ (a,b) = [t| '( $(pure a), $(pure b) )|]
+
+showSchema
+  :: ByteString -- ^ connect string
+  -> Text       -- ^ haskell module name to generate
+  -> Int        -- ^ hash-value for schema
+  -> String     -- ^ name of generated haskell type for schema
+  -> Text       -- ^ name of schema in database
+  -> ExpQ       -- ^ schema type with all instances
+showSchema connStr modul hash sch ns =
+  mkSchema connStr sch ns
+    >>= stringE . T.unpack . mkModule . prettify . T.pack . pprint
+  where
+    prettify
+      = T.replace "Database.Schema.Def." ""
+      . T.replace "GHC.Maybe." ""
+      . T.replace "GHC.Show." ""
+      . T.replace "GHC.Read." ""
+      . T.replace "GHC.Classes." ""
+      . T.replace "GHC.Generics." ""
+      . T.replace "GHC.Types." ""
+      . T.replace "Database.PostgreSQL.Enum." ""
+    mkModule t =
+      "module " <> modul <> "(" <> T.pack sch <> ") where\n\
+      \-- file is generated automatically and should not be changed\n\n\
+      \import GHC.Generics\n\
+      \import PgSchema\n\n\n\
+      \hashSchema :: Int\n\
+      \hashSchema = " <> T.pack (show hash) <> "\n\n"
+      <> t

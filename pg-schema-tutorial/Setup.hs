@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
-import Control.Monad
-import Database.PostgreSQL.Schema.Schema
 import Debug.Trace
 import Distribution.Simple
-import Distribution.Simple.Setup
-import Distribution.Types.HookedBuildInfo
-
+import PgSchema
 
 main = do
-  void $ updateSchemaHash "dbname=schema_test user=postgres" "sch"
+  updateSchemaFile
     "../pg-schema-tutorial-db/src/Sch.hs"
+    (Left "PG_SCHEMA_TUTORIAL_DB")
+    "Sch" -- ^ haskell module name to generate
+    "Sch" -- ^ name of generated haskell type for schema
+    "sch" -- ^ name of schema in database
   defaultMain

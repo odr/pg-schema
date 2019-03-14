@@ -9,6 +9,7 @@ import Database.PostgreSQL.DML.Order as PGS
 import Database.PostgreSQL.DML.Select as PGS
 import Database.PostgreSQL.Enum as PGS
 import Database.PostgreSQL.PgTagged as PGS
+-- import Database.PostgreSQL.Schema.GenFile as PGS
 import Database.PostgreSQL.Schema.Schema as PGS
 import Database.PostgreSQL.Schema.TH as PGS (mkSchema)
 import Database.Schema.Def as PGS hiding ((:====))
