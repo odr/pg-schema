@@ -11,6 +11,8 @@ import Data.Singletons.Prelude as SP
 import Data.Singletons.Prelude.List as SP
 import Data.Singletons.TH
 import Data.Text as T
+import Util.ShowType
+import Util.TH.LiftType
 import Util.ToStar
 
 
@@ -214,3 +216,35 @@ type family TabPath sch (t :: Symbol) (path :: [Symbol]) :: Constraint where
   TabPath sch t '[] = ()
   TabPath sch t (x ': xs) = TabPath sch
     (If (TFromTab sch x :==== t) (TToTab sch x) (TFromTab sch x)) xs
+--
+instance LiftType TypDef where
+  liftType TypDef{..} = [t| 'TypDef
+    $(liftType typCategory) $(liftType typElem) $(liftType typEnum) |]
+
+instance LiftType FldDef where
+  liftType FldDef{..} = [t| 'FldDef
+    $(liftType fdType) $(liftType fdNullable) $(liftType fdHasDefault) |]
+
+instance LiftType TabDef where
+  liftType TabDef{..} = [t| 'TabDef
+    $(liftType tdFlds) $(liftType tdKey) $(liftType tdUniq) |]
+
+instance LiftType RelDef where
+  liftType RelDef{..} = [t| 'RelDef
+    $(liftType rdFrom) $(liftType rdTo) $(liftType rdCols) |]
+--
+instance ShowType TypDef where
+  showType TypDef{..} = "'TypDef " <> T.intercalate " "
+    [showType typCategory, showType typElem, showType typEnum]
+
+instance ShowType FldDef where
+  showType FldDef{..} = "'FldDef " <> T.intercalate " "
+    [showType fdType, showType fdNullable, showType fdHasDefault]
+
+instance ShowType TabDef where
+  showType TabDef{..} = "'TabDef " <> T.intercalate " "
+    [showType tdFlds, showType tdKey, showType tdUniq]
+
+instance ShowType RelDef where
+  showType RelDef{..} = "'RelDef " <> T.intercalate " "
+    [showType rdFrom, showType rdTo, showType rdCols]

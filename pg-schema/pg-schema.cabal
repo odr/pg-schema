@@ -47,7 +47,9 @@ library
     Database.Schema.TH
     Database.Types.SchList
     TH.Rec.Update
+    Util.ShowType
     Util.ToStar
+    Util.TH.LiftType
   other-modules:
     Paths_pg_schema
   hs-source-dirs:

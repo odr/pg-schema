@@ -1,6 +1,5 @@
 module Database.PostgreSQL.Schema.TH where
 
-import Control.Monad
 import Control.Monad.Catch
 import Data.ByteString as BS
 import Data.List as L
@@ -11,51 +10,10 @@ import Database.PostgreSQL.Enum
 import Database.PostgreSQL.Schema.Schema
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
-import Database.Schema.TH
 import GHC.Generics
 import Language.Haskell.TH
+import Util.TH.LiftType
 
-
-class LiftType a where
-  liftType :: a -> TypeQ
-
-instance LiftType Text where
-  liftType = pure . txtToSym
-
-instance LiftType Name where
-  liftType = conT
-
-instance LiftType a => LiftType (Maybe a) where
-  liftType = traverse liftType >=> maybeQ
-    where
-      maybeQ Nothing  = [t|'Nothing|]
-      maybeQ (Just t) = appT [t|'Just|] (pure t)
-
-instance LiftType Bool where
-  liftType True  = [t|'True|]
-  liftType False = [t|'False|]
-
-instance LiftType a => LiftType [a] where
-  liftType = fmap toPromotedList . traverse liftType
-
-instance (LiftType a, LiftType b) => LiftType (a,b) where
-  liftType (a,b) = [t| '( $(liftType a), $(liftType b) ) |]
-
-instance LiftType TypDef where
-  liftType TypDef{..} = [t| 'TypDef
-    $(liftType typCategory) $(liftType typElem) $(liftType typEnum) |]
-
-instance LiftType FldDef where
-  liftType FldDef{..} = [t| 'FldDef
-    $(liftType fdType) $(liftType fdNullable) $(liftType fdHasDefault) |]
-
-instance LiftType TabDef where
-  liftType TabDef{..} = [t| 'TabDef
-    $(liftType tdFlds) $(liftType tdKey) $(liftType tdUniq) |]
-
-instance LiftType RelDef where
-  liftType RelDef{..} = [t| 'RelDef
-    $(liftType rdFrom) $(liftType rdTo) $(liftType rdCols) |]
 
 thTypDef :: Name -> Text -> TypDef -> DecsQ
 thTypDef sch name td@(TypDef{..}) = (++)

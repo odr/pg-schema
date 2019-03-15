@@ -5,6 +5,7 @@ import Data.Text as T
 import Database.Schema.Def
 import Database.Schema.Rec
 import Language.Haskell.TH
+import Util.TH.LiftType
 
 
 schemaRec
@@ -31,7 +32,7 @@ schemaRec toDbName rn = do
       where
         tname = pack $ nameBase n
         nameQ = pure $ nameToSym n
-        dbNameQ = pure $ txtToSym $ toDbName tname
+        dbNameQ = liftType $ toDbName tname
     recordInfoInst fis = [d|
       instance CRecordInfo $(conT rn) where
         type TRecordInfo $(conT rn) = $(pure fis)
@@ -45,6 +46,3 @@ strToSym = LitT . StrTyLit
 
 toPromotedList :: [Type] -> Type
 toPromotedList = L.foldr (\x xs -> AppT (AppT PromotedConsT x) xs) PromotedNilT
-
-txtToSym :: Text -> Type
-txtToSym = strToSym . unpack
