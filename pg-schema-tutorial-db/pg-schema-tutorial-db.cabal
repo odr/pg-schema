@@ -28,7 +28,6 @@ library
   build-depends:
       base >=4.7 && <5
     , pg-schema
-    , text
   default-language: Haskell2010
   default-extensions:
       DataKinds

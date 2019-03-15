@@ -69,7 +69,7 @@ Many GHC-extensions should be enabled. I use the following
 ```
 ghci> import Database.PostgreSQL.Schema.TH
 
-ghci> {data Tutorial; mkSchema "dbname=schema_test user=postgres" ''Tutorial "sch"}
+ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" "sch"}
 
 ghci> { data Company = Company { name :: Text, address_id :: Maybe Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Company }
 

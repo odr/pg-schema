@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Database.Schema.Gen where
 
 import Data.List as L
@@ -6,6 +7,11 @@ import Data.String
 import Data.Text as T
 import Database.Schema.Def
 
+
+#if !MIN_VERSION_base(4,11,0)
+(<>) :: Monoid a => a -> a -> a
+(<>) = mappend
+#endif
 
 class ShowType a where
   showType :: a -> Text
@@ -44,10 +50,10 @@ instance ShowType RelDef where
     [showType rdFrom, showType rdTo, showType rdCols]
 
 mkInst :: ShowType a => Text -> [Text] -> a -> Text
-mkInst name pars a =
-  "\ninstance C" <> sgn <> " where\n\
-  \  type T" <> sgn <> " = \n\
-  \    " <> showType a <> "\n"
+mkInst name pars a
+  =  "\ninstance C" <> sgn <> " where\n"
+  <> "  type T" <> sgn <> " = \n"
+  <> "    " <> showType a <> "\n"
   where
     sgn = T.intercalate " " (name : pars)
 
@@ -59,11 +65,11 @@ textTypDef sch typ td@(TypDef {..}) = mkInst "TypDef" ss td <> pgEnum
     st = T.intercalate " " ss
     pgEnum
       | L.null typEnum = ""
-      | otherwise =
-        "\ndata instance PGEnum " <> st <> " = \n\
-        \  " <> T.intercalate " | " (((toTitle typ <> "_") <>) <$> typEnum)
-        <> "\n" <>
-        "  deriving (Show, Read, Ord, Eq, Generic)\n"
+      | otherwise
+        =  "\ndata instance PGEnum " <> st <> " = \n"
+        <> "  " <> T.intercalate " | " (((toTitle typ <> "_") <>) <$> typEnum)
+        <> "\n"
+        <> "  deriving (Show, Read, Ord, Eq, Generic)\n"
 
 textFldDef :: Text -> Text -> Text -> FldDef -> Text
 textFldDef sch tab fld =
@@ -85,23 +91,22 @@ genModuleText
     , Map Text TabDef
     , Map Text RelDef)
   -> Text
-genModuleText moduleName schName dbSchName hash (mtyp, mfld, mtab, mrel) =
-  "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n\
-  \{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n\
-  \module " <> moduleName <> "(" <> schName <> ") where\n\n\
-  \-- This file is generated and can't be edited.\n\n\
-  \import GHC.Generics\n\
-  \import PgSchema\n\n\n\
-  \hashSchema :: Int\n\
-  \hashSchema = " <> fromString (show hash) <> "\n\n\
-  \data " <> schName <> "\n\n"
+genModuleText moduleName schName dbSchName hash (mtyp, mfld, mtab, mrel)
+  =  "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
+  <> "{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n"
+  <> "module " <> moduleName <> "(" <> schName <> ") where\n\n"
+  <> "-- This file is generated and can't be edited.\n\n"
+  <> "import GHC.Generics\n"
+  <> "import PgSchema\n\n\n"
+  <> "hashSchema :: Int\n"
+  <> "hashSchema = " <> fromString (show hash) <> "\n\n"
+  <> "data " <> schName <> "\n\n"
   <> (mconcat $ L.map (uncurry $ textTypDef schName) $ toList mtyp)
   <> (mconcat $ L.map (\((a,b),c) -> textFldDef schName a b c) $ toList mfld)
   <> (mconcat $ L.map (uncurry $ textTabDef schName) $ toList mtab)
   <> (mconcat $ L.map (uncurry $ textRelDef schName) $ toList mrel)
-  <>
-  "\ninstance CSchema " <> schName <> " where\n\
-  \  type TSchema " <> schName <> " = " <> showType dbSchName <> "\n\
-  \  type TTabs " <> schName <> " = " <> showType (keys mtab) <> "\n\
-  \  type TRels " <> schName <> " = " <> showType (keys mrel) <> "\n\
-  \  type TTypes " <> schName <> " = " <> showType (keys mtyp) <> "\n"
+  <> "\ninstance CSchema " <> schName <> " where\n"
+  <> "  type TSchema " <> schName <> " = " <> showType dbSchName <> "\n"
+  <> "  type TTabs " <> schName <> " = " <> showType (keys mtab) <> "\n"
+  <> "  type TRels " <> schName <> " = " <> showType (keys mrel) <> "\n"
+  <> "  type TTypes " <> schName <> " = " <> showType (keys mtyp) <> "\n"

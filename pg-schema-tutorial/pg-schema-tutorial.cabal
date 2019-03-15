@@ -22,14 +22,12 @@ executable pg-schema-tutorial
   main-is: Main.hs
   other-modules:
       Paths_pg_schema_tutorial
-    -- , Sch
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5
-    , directory
     , generic-random
     , pg-schema
     , pg-schema-tutorial-db
