@@ -15,7 +15,7 @@ import Database.Schema.Rec
 import Database.Schema.TH
 import Database.Types.SchList
 import GHC.Generics
-import Language.Haskell.TH
+import Util.TH.LiftType
 
 
 -- | Tables and views info
@@ -71,11 +71,11 @@ L.concat
   <$> zipWithM (\n s ->
     L.concat <$> sequenceA
       [ deriveJSON defaultOptions n
-      , [d|instance FromRow $(conT n)|]
+      , [d|instance FromRow $(liftType n)|]
       , schemaRec @PgCatalog id n
-      , [d|instance CQueryRecord PG PgCatalog $(pure $ strToSym s) $(conT n)|]
-      , [d|instance Hashable $(conT n)|]
+      , [d|instance CQueryRecord PG PgCatalog $(liftType s) $(liftType n)|]
+      , [d|instance Hashable $(liftType n)|]
       ])
   [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelation]
-  [ "pg_enum", "pg_type", "pg_constraint", "pg_attribute", "pg_class"
+  [ "pg_enum" :: Text, "pg_type", "pg_constraint", "pg_attribute", "pg_class"
   , "pg_constraint" ]

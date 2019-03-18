@@ -29,9 +29,10 @@ instance LiftType Bool where
 
 instance LiftType a => LiftType [a] where
   liftType = fmap toPromotedList . traverse liftType
-    where
-      toPromotedList =
-        L.foldr (\x xs -> AppT (AppT PromotedConsT x) xs) PromotedNilT
+
+toPromotedList :: [Type] -> Type
+toPromotedList =
+  L.foldr (\x xs -> AppT (AppT PromotedConsT x) xs) PromotedNilT
 
 instance (LiftType a, LiftType b) => LiftType (a,b) where
   liftType (a,b) = [t| '( $(liftType a), $(liftType b) ) |]

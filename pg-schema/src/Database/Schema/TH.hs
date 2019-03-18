@@ -23,26 +23,15 @@ schemaRec toDbName rn = do
   i2 <- traverse getFieldInfo fs >>= recordInfoInst . toPromotedList
   pure $ i2 ++ i1
   where
-    fieldTypeInst (n,_,t) = [d|
-      instance CFieldType $(conT rn) $(pure $ nameToSym n) where
-        type TFieldType $(conT rn) $(pure $ nameToSym n) = $(pure t)
+    fieldTypeInst (pack . nameBase -> tname,_,t) = [d|
+      instance CFieldType $(liftType rn) $(liftType tname) where
+        type TFieldType $(liftType rn) $(liftType tname) = $(pure t)
       |]
 
-    getFieldInfo (n,_,_) = [t|'FieldInfo $(nameQ) $(dbNameQ)|]
-      where
-        tname = pack $ nameBase n
-        nameQ = pure $ nameToSym n
-        dbNameQ = liftType $ toDbName tname
+    getFieldInfo (pack . nameBase -> tname, _, _) =
+      [t|'FieldInfo $(liftType tname) $(liftType $ toDbName tname)|]
+
     recordInfoInst fis = [d|
-      instance CRecordInfo $(conT rn) where
-        type TRecordInfo $(conT rn) = $(pure fis)
+      instance CRecordInfo $(liftType rn) where
+        type TRecordInfo $(liftType rn) = $(pure fis)
       |]
-
-nameToSym :: Name -> Type
-nameToSym = strToSym . nameBase
-
-strToSym :: String -> Type
-strToSym = LitT . StrTyLit
-
-toPromotedList :: [Type] -> Type
-toPromotedList = L.foldr (\x xs -> AppT (AppT PromotedConsT x) xs) PromotedNilT

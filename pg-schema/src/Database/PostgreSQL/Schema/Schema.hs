@@ -25,7 +25,6 @@ import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Gen
 import Database.Types.SchList
-import Debug.Trace
 import System.Directory
 import System.Environment
 
@@ -159,7 +158,7 @@ updateSchemaFile
   -> Text       -- ^ name of generated haskell type for schema
   -> Text       -- ^ name of schema in database
   -> IO ()
-updateSchemaFile fileName ecs moduleName schName dbSchemaName = trace "updateSchemaFile" $ do
+updateSchemaFile fileName ecs moduleName schName dbSchemaName = do
   connStr <- either getConnStr pure ecs
   unless (BS.null connStr) $ do
     fe <- doesFileExist fileName
@@ -174,7 +173,7 @@ updateSchemaFile fileName ecs moduleName schName dbSchemaName = trace "updateSch
           Just [_,_,x] | x == fromString (show h) -> False
           _            -> True
       else (pure True)
-    trace "needGen" $ when needGen $ trace "writeFile" $ T.writeFile fileName $ moduleText h schema
+    when needGen $ T.writeFile fileName $ moduleText h schema
   where
     getConnStr env =
       handle (const @_ @SomeException $ pure "") (fromString <$> getEnv env)
