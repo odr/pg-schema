@@ -151,8 +151,6 @@ refCond nFrom nTo = T.intercalate " and " . L.map compFlds
 
 --
 -- {-
--- fldExp = case toStar @_ @fldRecInfoSum
---
 -- "
 -- select rel.relname, rel.relkind
 --   , array_to_json(array(

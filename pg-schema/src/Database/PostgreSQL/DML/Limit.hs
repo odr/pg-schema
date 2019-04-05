@@ -24,7 +24,7 @@ data LimOffWithPath sch t
 withLOWithPath
   :: forall sch t r. (LO -> r) -> [Text] -> LimOffWithPath sch t -> Maybe r
 withLOWithPath f path (LimOffWithPath (Proxy :: Proxy p) lo) =
-  guard (path == toStar @_ @p) >> pure (f lo)
+  guard (path == toStar @p) >> pure (f lo)
 
 withLOsWithPath
   :: forall sch t r. (LO -> r) -> [Text] -> [LimOffWithPath sch t] -> Maybe r

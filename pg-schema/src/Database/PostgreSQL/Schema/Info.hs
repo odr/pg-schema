@@ -20,8 +20,7 @@ import Util.TH.LiftType
 
 -- | Tables and views info
 data PgClass = PgClass
-  { class__namespace  :: PgTagged "nspname" Text
-  , relname           :: Text
+  { relname           :: Text
   , relkind           :: PgChar
   , attribute__class  :: SchList PgAttribute
   , constraint__class :: SchList PgConstraint }

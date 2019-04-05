@@ -256,7 +256,7 @@ TTabDef Tutorial "orders" :: TabDef' Symbol
     '["id"]
     '[]
 
-ghci> toStar @_ @(TTabDef Tutorial "orders")
+ghci> toStar @(TTabDef Tutorial "orders")
 TabDef {tdFlds = ["id","day","num","customer_id","seller_id","trader_id","state","created_at","updated_at"], tdKey = ["id"], tdUniq = []}
 
 

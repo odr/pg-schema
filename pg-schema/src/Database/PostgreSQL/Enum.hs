@@ -27,11 +27,11 @@ instance
       Just [(x,"")] -> pure x
       _             -> returnError Incompatible f ""
     where
-      parse = reads . unpack . ((toTitle (toStar @_ @name) <> "_") <>)
+      parse = reads . unpack . ((toTitle (toStar @name) <> "_") <>)
 
 instance
   (Show (PGEnum sch name), ToStar name) => ToField (PGEnum sch name) where
-  toField = toField . L.drop (T.length (toStar @_ @name) + 1) . show
+  toField = toField . L.drop (T.length (toStar @name) + 1) . show
 
 instance
   ( TTypDef sch name ~ 'TypDef "E" 'Nothing es

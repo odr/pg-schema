@@ -43,10 +43,10 @@ rePgTag = coerce
 
 instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
   parseJSON =
-    withObject "PgTagged " $ \v -> pgTag <$> v .: toStar @_ @a
+    withObject "PgTagged " $ \v -> pgTag <$> v .: toStar @a
 
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
-  toJSON v = object [toStar @_ @a .= unPgTag v]
+  toJSON v = object [toStar @a .= unPgTag v]
 
 instance
   (FromJSON a, Typeable a, KnownSymbol n)

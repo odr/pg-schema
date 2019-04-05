@@ -91,7 +91,7 @@ class
   type TTypDef sch name :: TypDefK
 
 typDef :: forall sch name. CTypDef sch name => TypDef
-typDef = toStar @_ @(TTypDef sch name)
+typDef = toStar @(TTypDef sch name)
 genDefunSymbols [''TTypDef]
 
 -- CFldDef
@@ -104,7 +104,7 @@ class
   type TFldDef sch tname fname :: FldDefK
 
 fldDef :: forall sch tname fname. CFldDef sch tname fname => FldDef
-fldDef = toStar @_ @(TFldDef sch tname fname)
+fldDef = toStar @(TFldDef sch tname fname)
 
 genDefunSymbols [''TFldDef]
 
@@ -178,7 +178,7 @@ class
 type TRelDefs sch = Map2 (TRelDefSym1 sch) (TRels sch)
 
 schemaName :: forall sch. CSchema sch => Text
-schemaName = toStar @_ @(TSchema sch)
+schemaName = toStar @(TSchema sch)
 --
 tabDefMap :: forall sch. CSchema sch => M.Map Text (TabDef, M.Map Text FldDef)
 tabDefMap = M.fromList
@@ -186,20 +186,20 @@ tabDefMap = M.fromList
     $ L.zip tabDefs
       $ L.zipWith (\fs -> M.fromList . L.zip fs) tabFlds tabFldDefs
   where
-    tabs = toStar @_ @(TTabs sch)
-    tabDefs = toStar @_ @(TTabDefs sch)
-    tabFlds = toStar @_ @(TTabFlds sch)
-    tabFldDefs = toStar @_ @(TTabFldDefs sch)
+    tabs = toStar @(TTabs sch)
+    tabDefs = toStar @(TTabDefs sch)
+    tabFlds = toStar @(TTabFlds sch)
+    tabFldDefs = toStar @(TTabFldDefs sch)
 
 --
 relDefMap :: forall sch. CSchema sch => M.Map Text RelDef
 relDefMap = M.fromList $ L.zip
-  (toStar @_ @(TRels sch)) $ toStar @_ @(SP.Map (TRelDefSym1 sch) (TRels sch))
+  (toStar @(TRels sch)) $ toStar @(SP.Map (TRelDefSym1 sch) (TRels sch))
 
 typDefMap :: forall sch. CSchema sch => M.Map Text TypDef
 typDefMap = M.fromList $ L.zip
-  (toStar @_ @(TTypes sch))
-  (toStar @_ @(SP.Map (TTypDefSym1 sch) (TTypes sch)))
+  (toStar @(TTypes sch))
+  (toStar @(SP.Map (TTypDefSym1 sch) (TTypes sch)))
 
 #if !MIN_VERSION_base(4,11,0)
 type (:====) a b = (:==) a b

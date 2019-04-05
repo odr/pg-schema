@@ -7,18 +7,26 @@ module Util.ToStar where
 -- import Data.Text as T
 -- import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 -- import Type.Reflection (Typeable, typeRep)
-import Data.Kind
 import Data.Singletons.Prelude
 
 
-type family ToStar (a::k) :: Constraint where
-  ToStar (a::k) = (SingKind k, SingI a)
+-- demote' :: forall a. (SingI a, SingKind (KindOf a)) => Demote (KindOf a)
+-- #if !MIN_VERSION_base(4,12,0)
+-- demote' = fromSing (sing :: Sing a)
+-- #else
+-- demote' = demote @a
+-- #endif
 
-toStar :: forall k (a::k). ToStar (a::k) => Demote k
+type ToStar a = (SingKind (KindOf a), SingI a)
+
+-- type family ToStar (a::k) :: Constraint where
+--   ToStar (a::k) = (SingKind k, SingI a)
+
+toStar :: forall a. (SingI a, SingKind (KindOf a)) => Demote (KindOf a)
 #if MIN_VERSION_base(4,12,0)
-toStar = fromSing @k (sing @a)
+toStar = demote @a
 #else
-toStar = fromSing @k (sing @_ @a)
+toStar = fromSing (sing :: Sing a)
 #endif
 
 
@@ -52,13 +60,13 @@ toStar = fromSing @k (sing @_ @a)
 --
 -- instance (ToStar x, ToStar xs)
 --       => ToStar (x ': xs) where
---   toStar = toStar @_ @x : toStar @_ @xs
+--   toStar = toStar @x : toStar @xs
 --
 -- instance (ToStar x, ToStar y) => ToStar '(x,y) where
---   toStar = (toStar @_ @x, toStar @_ @y)
+--   toStar = (toStar @x, toStar @y)
 --
 -- instance ToStar x => ToStar ('Just x) where
---   toStar = Just (toStar @_ @x)
+--   toStar = Just (toStar @x)
 --
 -- instance ToStar 'Nothing where
 --   toStar = Nothing
