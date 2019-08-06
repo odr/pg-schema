@@ -8,9 +8,7 @@ import Language.Haskell.TH
 import Util.TH.LiftType
 
 
-schemaRec
-  :: forall sch. CSchema sch
-  => (Text -> Text) -> Name -> DecsQ
+schemaRec :: forall sch. CSchema sch => (Text -> Text) -> Name -> DecsQ
 schemaRec toDbName rn = do
   fs <- reify rn >>= \case
     TyConI (DataD _ _ _ _ [RecC _ fs] _) -> pure fs

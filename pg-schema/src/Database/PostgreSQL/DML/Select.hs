@@ -65,9 +65,7 @@ jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
   where
     pairs = L.map (\(a,b) -> "'" <> b <> "'," <> a) fs
 
-selectM
-  :: forall sch t m. (CSchema sch, MonadQuery sch t m)
-  => QueryRecord -> m Text
+selectM :: MonadQuery sch t m => QueryRecord -> m Text
 selectM QueryRecord {..} = do
   QueryRead {..} <- ask
   fields <- traverse fieldM queryFields

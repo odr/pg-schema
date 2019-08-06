@@ -86,7 +86,7 @@ data QueryRef = QueryRef
   deriving Show
 
 data QueryField
-  = FieldPlain Text Text FldDef
+  = FieldPlain Text Text FldDef -- name dbname flddef
   | FieldTo    Text QueryRecord [QueryRef]
   | FieldFrom  Text QueryRecord [QueryRef]
   deriving Show

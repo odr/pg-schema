@@ -116,3 +116,87 @@ with
       returning *
   )
   select 1
+
+  with
+    customers (_rid, name, address_id, note, orders) as (
+      select row_number() over(), v.name, v.address_id, v.note, v.orders::jsonb
+        from (values
+          ('DimaO', 1, 'DimaO note',
+            '[{"day":"2019-04-05","num":"040501","seller_id":5,"state":"booked"
+              , "pos":
+                [ {"num":1,"article_id":1,"cnt":5,"price":123}
+                , {"num":2,"article_id":2,"cnt":8,"price":11} ]}
+            , {"day":"2019-04-03","num":"040301","seller_id":3,"state":"paid"
+              , "pos":
+                [ {"num":1,"article_id":3,"cnt":5,"price":123}
+                , {"num":2,"article_id":4,"cnt":2,"price":112}
+                , {"num":3,"article_id":5,"cnt":1,"price":2000} ]}]'),
+          ('Pushkin', 4, 'Pushkin note',
+            '[{"day":"2019-04-04","num":"040401","seller_id":3,"state":"paid"
+              , "pos":
+                [ {"num":1,"article_id":3,"cnt":1,"price":1234}
+                , {"num":2,"article_id":4,"cnt":3,"price":121} ]}
+            , {"day":"2019-04-03","num":"040302","seller_id":3,"state":"delivered"
+              , "pos":
+                [ {"num":1,"article_id":3,"cnt":5,"price":123}
+                , {"num":2,"article_id":4,"cnt":2,"price":112}
+                , {"num":3,"article_id":2,"cnt":2,"price":800} ]}]')
+          ) v(name, address_id, note, orders)
+    ),
+    i_customers (id,name) as (
+      insert into sch.customers(name, address_id, note)
+        select c.name, c.address_id, c.note from customers c
+        returning id,name
+    ),
+    i_customers_res (_rid,id) as (
+      select row_number() over(), id
+        from i_customers
+    ),
+    orders (_rid, cu_rid, customer_id, day,num, seller_id, state, pos) as (
+      select row_number() over(), icr._rid, icr.id, o.day, o.num, o.seller_id, o.state, o.pos
+        from i_customers_res icr
+  	join customers c on c._rid = icr._rid
+          cross join lateral jsonb_to_recordset(c.orders)
+            as o(day date, num text, seller_id integer, state sch.order_state, pos jsonb)
+    ),
+    i_orders (id, customer_id, num, state) as (
+      insert into sch.orders(customer_id, day, num, seller_id, state)
+        select customer_id, day, num, seller_id, state from orders
+        returning id, customer_id, num, state
+    ),
+    i_orders_res(_rid,id) as (
+      select row_number() over(), id
+        from i_orders
+    ),
+    poss (ord_rid, order_id, num, article_id, cnt, price) as (
+      select orr._rid, orr.id, p.num, p.article_id, p.cnt, p.price
+        from i_orders_res orr
+          join orders o on o._rid = orr._rid
+          cross join lateral jsonb_to_recordset(o.pos)
+            as p(num integer, article_id integer, cnt integer, price numeric)
+    ),
+    i_poss (order_id, num, price) as (
+      insert into sch.order_positions(order_id, num, article_id, cnt, price)
+        select order_id, num, article_id, cnt, price from poss
+        returning order_id, num, price
+    )
+    select c.id, c.name
+      , array_to_json(array(
+        select jsonb_build_object(
+          'id', o.id
+          ,'num', o.num
+          ,'state', o.state
+          ,'pos',array_to_json(array(
+            select jsonb_build_object(
+              'num',p.num
+              ,'price',p.price)
+              from i_poss p
+              where p.order_id = o.id
+            ))
+            )
+          from i_orders o
+          where o.customer_id = c.id
+          ))
+      from i_customers c
+        
+  -- based on https://stackoverflow.com/a/27996203/521370

@@ -4,9 +4,11 @@ module Main where
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.TH
+import Data.Fixed
 import Data.List as L
 import Data.Text as T
 import Data.Text.IO as T
+import Data.Time
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
@@ -41,6 +43,31 @@ data Address = Address
   , address_city :: City } -- PgTagged "name" (Maybe Text) }
   deriving (Eq, Show, Ord, Generic)
 
+data Company = Company
+  { name       :: Text
+  , address_id :: Maybe Int }
+  deriving (Eq, Show, Generic)
+
+data Article = Article
+  { name :: Text
+  , code :: Maybe Text }
+  deriving (Eq, Show, Generic)
+
+data OrdPos = OrdPos
+  { num          :: Int
+  , opos_article :: Article
+  , cnt          :: Int
+  , price        :: Centi }
+  deriving (Eq, Show, Generic)
+
+data Order = Order
+  { day        :: Day
+  , num        :: Text
+  , ord_seller :: Company
+  , opos_order :: SchList OrdPos
+  , state      :: Maybe (PGEnum Sch "order_state") }
+  deriving (Eq, Show, Generic)
+
 L.concat
   <$> zipWithM (\n s ->
     L.concat <$> sequenceA
@@ -52,8 +79,23 @@ L.concat
       , schemaRec @Sch id n
       , [d|instance CQueryRecord PG Sch $(litT $ strTyLit s) $(conT n)|]
       ])
-  [ ''Country, ''City, ''Address]
-  [ "countries", "cities", "addresses"]
+  [ ''Country, ''City, ''Address, ''Company, ''Article ]
+    -- , ''OrdPos, ''Order]
+  [ "countries", "cities", "addresses", "companies", "articles" ]
+    -- , "order_positions", "orders"]
+L.concat
+  <$> zipWithM (\n s ->
+    L.concat <$> sequenceA
+      [ deriveJSON defaultOptions n
+      -- , [d|instance FromRow $(conT n)|]
+      -- , [d|instance ToRow $(conT n)|]
+      , [d|instance FromField $(conT n) where fromField = fromJSONField |]
+      , [d|instance ToField $(conT n) where toField = toJSONField |]
+      , schemaRec @Sch id n
+      , [d|instance CQueryRecord PG Sch $(litT $ strTyLit s) $(conT n)|]
+      ])
+  [ ''OrdPos, ''Order]
+  [ "order_positions", "orders"]
 
 main :: IO ()
 main = do
