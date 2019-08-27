@@ -26,8 +26,7 @@ qpEmpty :: forall sch t. QueryParam sch t
 qpEmpty = QueryParam [] [] []
 
 data QueryRead sch t = QueryRead
-  { qrSchema     :: !Text
-  , qrCurrTabNum :: !Int
+  { qrCurrTabNum :: !Int
   , qrIsRoot     :: !Bool
   , qrPath       :: !([Text])
   , qrParam      :: !(QueryParam sch t) }
@@ -58,7 +57,7 @@ selectText
   :: forall sch tab r. CQueryRecord PG sch tab r
   => QueryParam sch tab -> (Text,[SomeToField])
 selectText cond = evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
-  (QueryRead (schemaName @sch) 0 True [] cond) (QueryState 0 [] False "" "")
+  (QueryRead 0 True [] cond) (QueryState 0 [] False "" "")
 
 jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
@@ -90,11 +89,11 @@ selectM QueryRecord {..} = do
   modify (\qs -> qs { qsWhere = whereText /= mempty })
   unless qrIsRoot $ modify (\qs -> qs { qsOrd = ordText, qsLimOff = loText })
   tell pars
-  pure $ sformat fmt sel qrSchema tableName qrCurrTabNum j whereText
+  pure $ sformat fmt sel (qualName tableName) qrCurrTabNum j whereText
     (if qrIsRoot then ordText else "") (if qrIsRoot then loText else "")
   where
     fmt = "select " % stext
-      % " from " % stext % "." % stext % " t" % int % " " % stext
+      % " from " % stext % " t" % int % " " % stext
       % stext % stext % stext
 
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text)
@@ -108,7 +107,7 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
   QueryRead {..} <- ask
   modify (\QueryState{..} -> QueryState
     (qsLastTabNum+1)
-    (joinText qrSchema qrCurrTabNum (qsLastTabNum+1) : qsJoins)
+    (joinText qrCurrTabNum (qsLastTabNum+1) : qsJoins)
     False "" "")
   n2 <- qsLastTabNum <$> get
   f <- jsonPairing
@@ -117,10 +116,10 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
         (traverse fieldM queryFields)
   pure (f, name)
   where
-    joinText schName n1 n2 =
-      sformat fmt outer schName tableName n2 (refCond n1 n2 refs)
+    joinText n1 n2 =
+      sformat fmt outer (qualName tableName) n2 (refCond n1 n2 refs)
       where
-        fmt = stext % "join " % stext % "." % stext % " t" % int
+        fmt = stext % "join " % stext % " t" % int
           % " on " % stext
         outer
           | L.any (fdNullable . fromDef) refs = "left outer "

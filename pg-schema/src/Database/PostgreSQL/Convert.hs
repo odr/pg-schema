@@ -12,19 +12,19 @@ import Data.Hashable
 import Data.List as L
 import Data.Text as T
 import Data.Time
+import Database.PostgreSQL.Schema.Catalog (PGC)
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import Database.Schema.Def
-import GHC.TypeLits
 import Type.Reflection
 
 
 class ({-FromJSON t, ToJSON t, -}CTypDef sch tn)
-  => CanConvertPG sch (tn::Symbol) (nullable :: Bool) t
+  => CanConvertPG sch (tn::NameNSK) (nullable :: Bool) t
 
 class {-(FromJSON t, ToJSON t)
-  => -}CanConvert1 (td::TypDefK) sch (tn::Symbol) t
+  => -}CanConvert1 (td::TypDefK) sch (tn::NameNSK) t
 
 instance
   (CanConvert1 (TTypDef sch tn) sch tn t, CTypDef sch tn{-, FromJSON t, ToJSON t -})
@@ -71,27 +71,27 @@ instance FromJSON PgOid where
 instance ToJSON PgOid where
   toJSON = toJSON . L.drop 4 . show . fromPgOid
 
-instance CanConvert1 ('TypDef "N" x y) sch "int2" Int
-instance CanConvert1 ('TypDef "N" x y) sch "int4" Int
-instance CanConvert1 ('TypDef "N" x y) sch "int8" Integer
-instance CanConvert1 ('TypDef "N" x y) sch "float4" Double
-instance CanConvert1 ('TypDef "N" x y) sch "float8" Double
-instance CanConvert1 ('TypDef "N" x y) sch "oid" Int
-instance CanConvert1 ('TypDef "N" x y) sch "numeric" Integer
-instance CanConvert1 ('TypDef "N" x y) sch "numeric" Centi
-instance CanConvert1 ('TypDef "N" x y) sch "oid" PgOid
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "int2") Int
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "int4") Int
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "int8") Integer
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "float4") Double
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "float8") Double
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "oid") Int
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "numeric") Integer
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "numeric") Centi
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "oid") PgOid
 
-instance CanConvert1 ('TypDef "D" x y) sch "date" Day
-instance CanConvert1 ('TypDef "D" x y) sch "time" TimeOfDay
-instance CanConvert1 ('TypDef "D" x y) sch "timestamp" UTCTime
-instance CanConvert1 ('TypDef "D" x y) sch "timestamptz" ZonedTime
+instance CanConvert1 ('TypDef "D" x y) sch (PGC "date") Day
+instance CanConvert1 ('TypDef "D" x y) sch (PGC "time") TimeOfDay
+instance CanConvert1 ('TypDef "D" x y) sch (PGC "timestamp") UTCTime
+instance CanConvert1 ('TypDef "D" x y) sch (PGC "timestamptz") ZonedTime
 
-instance CanConvert1 ('TypDef "S" x y) sch "char" PgChar
-instance CanConvert1 ('TypDef "S" x y) sch "name" Text
-instance CanConvert1 ('TypDef "S" x y) sch "text" Text
-instance CanConvert1 ('TypDef "S" x y) sch "varchar" Text
+instance CanConvert1 ('TypDef "S" x y) sch (PGC "char") PgChar
+instance CanConvert1 ('TypDef "S" x y) sch (PGC "name") Text
+instance CanConvert1 ('TypDef "S" x y) sch (PGC "text") Text
+instance CanConvert1 ('TypDef "S" x y) sch (PGC "varchar") Text
 
-instance CanConvert1 ('TypDef "U" x y) sch "bytea" (Binary BS.S.ByteString)
-instance CanConvert1 ('TypDef "U" x y) sch "bytea" (Binary BS.L.ByteString)
+instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary BS.S.ByteString)
+instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary BS.L.ByteString)
 -- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
 -- used only in the root table

@@ -14,7 +14,6 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Generic.Random
 import GHC.Generics
-import Language.Haskell.TH
 import PgSchema
 import Sch
 import Test.QuickCheck
@@ -65,23 +64,24 @@ data Order = Order
   , num        :: Text
   , ord_seller :: Company
   , opos_order :: SchList OrdPos
-  , state      :: Maybe (PGEnum Sch "order_state") }
+  , state      :: Maybe (PGEnum Sch ('NameNS "sch" "order_state")) }
   deriving (Eq, Show, Generic)
 
 L.concat
   <$> zipWithM (\n s ->
     L.concat <$> sequenceA
       [ deriveJSON defaultOptions n
-      , [d|instance FromRow $(conT n)|]
-      , [d|instance ToRow $(conT n)|]
-      , [d|instance FromField $(conT n) where fromField = fromJSONField |]
-      , [d|instance ToField $(conT n) where toField = toJSONField |]
+      , [d|instance FromRow $(liftType n)|]
+      , [d|instance ToRow $(liftType n)|]
+      , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
+      , [d|instance ToField $(liftType n) where toField = toJSONField |]
       , schemaRec @Sch id n
-      , [d|instance CQueryRecord PG Sch $(litT $ strTyLit s) $(conT n)|]
+      , [d|instance CQueryRecord PG Sch $(liftType s) $(liftType n)|]
       ])
   [ ''Country, ''City, ''Address, ''Company, ''Article ]
     -- , ''OrdPos, ''Order]
-  [ "countries", "cities", "addresses", "companies", "articles" ]
+  [ "sch" ->> "countries", "sch" ->> "cities", "sch" ->> "addresses"
+  , "sch" ->> "companies", "sch" ->> "articles" ]
     -- , "order_positions", "orders"]
 L.concat
   <$> zipWithM (\n s ->
@@ -89,41 +89,42 @@ L.concat
       [ deriveJSON defaultOptions n
       -- , [d|instance FromRow $(conT n)|]
       -- , [d|instance ToRow $(conT n)|]
-      , [d|instance FromField $(conT n) where fromField = fromJSONField |]
-      , [d|instance ToField $(conT n) where toField = toJSONField |]
+      , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
+      , [d|instance ToField $(liftType n) where toField = toJSONField |]
       , schemaRec @Sch id n
-      , [d|instance CQueryRecord PG Sch $(litT $ strTyLit s) $(conT n)|]
+      , [d|instance CQueryRecord PG Sch $(liftType s) $(liftType n)|]
       ])
   [ ''OrdPos, ''Order]
-  [ "order_positions", "orders"]
+  [ "sch" ->> "order_positions", "sch" ->> "orders"]
 
+type NSC name = 'NameNS "sch" name
 main :: IO ()
 main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selectText @Sch @"countries" @Country qpEmpty
-    , selectText @Sch @"cities" @City qpEmpty
-    , selectText @Sch @"addresses" @Address qpEmpty
-    , selectText @Sch @"addresses" @Address qp
-    , selectText @Sch @"addresses" @Address qp'
+    [ selectText @Sch @(NSC "countries") @Country qpEmpty
+    , selectText @Sch @(NSC "cities") @City qpEmpty
+    , selectText @Sch @(NSC "addresses") @Address qpEmpty
+    , selectText @Sch @(NSC "addresses") @Address qp
+    , selectText @Sch @(NSC "addresses") @Address qp'
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  cids <- insertSch @Sch @"countries" conn countries
+  cids <- insertSch @Sch @(NSC "countries") conn countries
   mapM_ (print @(PgTagged "id" Int)) cids
-  selectSch @Sch @"countries" @Country conn qpEmpty >>= print
+  selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @"cities" @City conn qpEmpty >>= print
+  selectSch @Sch @(NSC "cities") @City conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @"addresses" @Address conn qpEmpty >>= print
+  selectSch @Sch @(NSC "addresses") @Address conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @"addresses" @Address conn qp >>= print
+  selectSch @Sch @(NSC "addresses") @Address conn qp >>= print
   T.putStrLn ""
-  selectSch @Sch @"addresses" @Address conn qp' >>= print
+  selectSch @Sch @(NSC "addresses") @Address conn qp' >>= print
   where
     qp = qpEmpty
       { qpConds =
         [rootCond
-          (pparent @"address_city"
-            $ pparent @"city_country" (#code =? Just @Text "RU"))]
+          (pparent @(NSC "address_city")
+            $ pparent @(NSC "city_country") (#code =? Just @Text "RU"))]
       , qpOrds = [ rootOrd [ascf @"street"] ] }
     qp' = qp { qpLOs = [rootLO $ LO (Just 1) (Just 1)] }

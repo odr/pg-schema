@@ -17,7 +17,7 @@ import           Database.Schema.Def
 import           Formatting
 import           GHC.Generics (Generic)
 import           GHC.OverloadedLabels (IsLabel(..))
-import           GHC.TypeLits (Symbol)
+import           GHC.TypeLits
 import           Util.ToStar
 
 
@@ -46,7 +46,7 @@ showCmp = \case
 -- /5a685faf899a2b00361b221d7e945a4922bf7863
 -- /existental-type-variables.rst#implementation-plan
 -- we have to add Proxy to existensials while ^ this proposal isn't implemented
-data Cond (sch::Type) (tab::Symbol)
+data Cond (sch::Type) (tab::NameNSK)
   = EmptyCond
   | forall fld v .
     ( CFldDef sch tab fld
@@ -218,7 +218,7 @@ convCond rootTabNum = \case
       | cc2 == mempty = cc1
       | otherwise = format ("(" % text % ") " % string % " (" % text % ")")
         cc1 (show bo) cc2
-    getRef :: Bool -> T.S.Text -> RelDef -> CondMonad Text -> CondMonad Text
+    getRef :: Bool -> NameNS -> RelDef -> CondMonad Text -> CondMonad Text
     getRef isChild tn rd cc = do
       pnum <- ask
       modify (+1)
@@ -226,9 +226,9 @@ convCond rootTabNum = \case
       mkExists pnum cnum <$> local (const cnum) cc
       where
         mkExists pnum cnum c =
-          format ("exists (select 1 from " % stext % "." % stext % " " % text %
+          format ("exists (select 1 from " % stext % " " % text %
             " where " % text % ")")
-            (schemaName @sch) tn (tabPref cnum)
+            (qualName tn) (tabPref cnum)
             (T.intercalate " and "
               (
                 ( (\(ch,pr) -> format

@@ -74,7 +74,7 @@ recordInfo :: forall r. CRecordInfo r => [FieldInfo]
 recordInfo = toStar @(TRecordInfo r)
 
 data QueryRecord = QueryRecord
-  { tableName   :: Text
+  { tableName   :: NameNS
   , queryFields :: [QueryField] }
   deriving Show
 
@@ -94,7 +94,7 @@ data QueryField
 class
   ( CSchema sch, ToStar t
   , CQueryFields db sch t (FiWithType (TFieldTypeSym1 r) (TRecordInfo r)) )
-  => CQueryRecord (db::Type) (sch::Type) (t::Symbol) (r::Type) where
+  => CQueryRecord (db::Type) (sch::Type) (t::NameNSK) (r::Type) where
   getQueryRecord :: QueryRecord
   getQueryRecord = QueryRecord {..}
     where
@@ -102,14 +102,15 @@ class
       queryFields = getQueryFields
         @db @sch @t @(FiWithType (TFieldTypeSym1 r) (TRecordInfo r))
 
-class CTypDef sch tn => CanConvert db sch (tn::Symbol) (nullable::Bool) t
+class CTypDef sch tn => CanConvert db sch (tn::NameNSK) (nullable::Bool) t
 
 class
   (CSchema sch, CTabDef sch t)
-  => CQueryFields db sch t (fis :: [(FieldInfoK,Type)]) where
+  => CQueryFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
   getQueryFields :: [QueryField]
 
-class CQueryFieldT (ft :: FldKind) db sch t (fi :: (FieldInfoK,Type)) where
+class CQueryFieldT (ft::FldKindK) db sch (t::NameNSK)
+  (fi::(FieldInfoK,Type)) where
   getQueryFieldT :: QueryField
 --
 
@@ -136,10 +137,9 @@ instance
 
 
 instance
-  ( relDef ~ TRelDef sch dbname
-  , tabTo ~ RdTo relDef
+  ( tabTo ~ RdTo rd
   , CQueryRecord db sch tabTo recTo
-  , cols ~ RdCols relDef
+  , cols ~ RdCols rd
   , ToStar cols
   , uncols ~ Unzip cols
   , fds ~ SP.Map (TFldDefSym2 sch t) (Fst uncols)
@@ -147,24 +147,18 @@ instance
   , ToStar fds
   , ToStar fdsTo
   , ToStar n )
-  => CQueryFieldT 'FldFrom db sch t '( 'FieldInfo n dbname, recTo) where
+  => CQueryFieldT ('FldFrom rd) db sch t '( 'FieldInfo n dbname, recTo)
+  where
   getQueryFieldT =
-    FieldFrom
-      (toStar @n)
-      (getQueryRecord @db @sch @tabTo @recTo)
-      refs
+    FieldFrom (toStar @n) (getQueryRecord @db @sch @tabTo @recTo) refs
     where
-      refs =
-        zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
-          (toStar @cols)
-          (toStar @fds)
-          (toStar @fdsTo)
+      refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
+        (toStar @cols) (toStar @fds) (toStar @fdsTo)
 
 instance
-  ( relDef ~ TRelDef sch dbname
-  , tabFrom ~ RdFrom relDef
+  ( tabFrom ~ RdFrom rd
   , CQueryRecord db sch tabFrom recFrom
-  , cols ~ RdCols relDef
+  , cols ~ RdCols rd
   , ToStar cols
   , uncols ~ Unzip cols
   , fds ~ SP.Map (TFldDefSym2 sch t) (Snd uncols)
@@ -172,18 +166,12 @@ instance
   , ToStar fds
   , ToStar fdsFrom
   , ToStar n )
-  => CQueryFieldT 'FldTo db sch t '( 'FieldInfo n dbname, recFrom) where
+  => CQueryFieldT ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) where
   getQueryFieldT =
-    FieldTo
-      (toStar @n)
-      (getQueryRecord @db @sch @tabFrom @recFrom)
-      refs
+    FieldTo (toStar @n) (getQueryRecord @db @sch @tabFrom @recFrom) refs
     where
-      refs =
-        zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
-          (toStar @cols)
-          (toStar @fdsFrom)
-          (toStar @fds)
+      refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
+        (toStar @cols) (toStar @fdsFrom) (toStar @fds)
 
 type AllMandatory sch t r =
   IsAllMandatory sch t (Map FieldDbNameSym0 (TRecordInfo r)) ~ 'True

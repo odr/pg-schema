@@ -37,7 +37,7 @@ insertText = insertText_ @sch @t @r `mappend` " returning " `mappend` fs'
 
 insertText_
   :: forall sch t r. CQueryRecord PG sch t r => Query
-insertText_ = "insert into " `mappend` sn `mappend` "." `mappend` tn
+insertText_ = "insert into " `mappend` tn
   `mappend` "(" `mappend` fs `mappend` ") values (" `mappend` qs
   `mappend` ")"
   where
@@ -45,8 +45,7 @@ insertText_ = "insert into " `mappend` sn `mappend` "." `mappend` tn
     (fs,qs) = bimap inter inter
       $ unzip [ (dbn,"?") | (FieldPlain _ dbn _) <- queryFields qr]
     toQ = fromString . T.unpack
-    tn = toQ $ tableName qr
-    sn = toQ $ schemaName @sch
+    tn = toQ $ qualName $ tableName qr
     inter = toQ . T.intercalate ","
 
 -- insertText
