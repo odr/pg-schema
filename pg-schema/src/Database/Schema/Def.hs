@@ -27,25 +27,25 @@ singletons [d|
     { typCategory :: s
     , typElem     :: Maybe (NameNS' s)
     , typEnum     :: [s] }
-    deriving Show
+    deriving (Show, Eq, Ord)
 
   data FldDef' s = FldDef
     { fdType        :: NameNS' s
     , fdNullable    :: Bool
     , fdHasDefault  :: Bool }
-    deriving Show
+    deriving (Show, Eq, Ord)
 
   data TabDef' s = TabDef
     { tdFlds       :: [s]
     , tdKey        :: [s]
     , tdUniq       :: [[s]] }
-    deriving Show
+    deriving (Show, Eq, Ord)
 
   data RelDef' s = RelDef
     { rdFrom    :: NameNS' s
     , rdTo      :: NameNS' s
     , rdCols    :: [(s,s)] }
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
   zip2With :: (a -> b -> c) -> [a] -> [[b]] -> [[c]]
   zip2With f as = L.zipWith (\a -> L.map (f a)) as
@@ -61,7 +61,7 @@ singletons [d|
     | FldFrom (RelDef' s)
     -- ^ field points to another record
     | FldUnknown s
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
   |]
 
