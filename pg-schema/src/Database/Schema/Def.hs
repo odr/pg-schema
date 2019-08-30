@@ -7,6 +7,7 @@ module Database.Schema.Def where
 import Data.Kind
 import Data.List as L
 import Data.Map as M
+import Data.Semigroup ((<>))
 import Data.Singletons.Prelude as SP
 import Data.Singletons.Prelude.List as SP
 import Data.Singletons.TH
