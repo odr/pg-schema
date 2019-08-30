@@ -50,6 +50,7 @@ library
     Util.ShowType
     Util.ToStar
     Util.TH.LiftType
+    PgSchema.Gen
   other-modules:
     Paths_pg_schema
   hs-source-dirs:

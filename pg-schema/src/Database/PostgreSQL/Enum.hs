@@ -12,26 +12,25 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.Schema.Def
 import GHC.Generics
-import GHC.TypeLits
 import Type.Reflection
 import Util.ToStar
 
 
-data family PGEnum sch (name :: Symbol) :: Type
+data family PGEnum sch (name :: NameNSK) :: Type
 
 instance
-  (Read (PGEnum sch name), KnownSymbol name, Typeable sch)
+  (Read (PGEnum sch name), ToStar name, Typeable sch, Typeable name)
   => FromField (PGEnum sch name) where
   fromField f mbs =
     case parse . decodeUtf8 <$> mbs of
       Just [(x,"")] -> pure x
       _             -> returnError Incompatible f ""
     where
-      parse = reads . unpack . ((toTitle (toStar @_ @name) <> "_") <>)
+      parse = reads . unpack . ((toTitle (nnsName $ toStar @name) <> "_") <>)
 
 instance
   (Show (PGEnum sch name), ToStar name) => ToField (PGEnum sch name) where
-  toField = toField . L.drop (T.length (toStar @_ @name) + 1) . show
+  toField = toField . L.drop (T.length (nnsName $ toStar @name) + 1) . show
 
 instance
   ( TTypDef sch name ~ 'TypDef "E" 'Nothing es

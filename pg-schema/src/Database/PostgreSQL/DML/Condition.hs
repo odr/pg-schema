@@ -17,7 +17,7 @@ import           Database.Schema.Def
 import           Formatting
 import           GHC.Generics (Generic)
 import           GHC.OverloadedLabels (IsLabel(..))
-import           GHC.TypeLits (Symbol)
+import           GHC.TypeLits
 import           Util.ToStar
 
 
@@ -46,7 +46,7 @@ showCmp = \case
 -- /5a685faf899a2b00361b221d7e945a4922bf7863
 -- /existental-type-variables.rst#implementation-plan
 -- we have to add Proxy to existensials while ^ this proposal isn't implemented
-data Cond (sch::Type) (tab::Symbol)
+data Cond (sch::Type) (tab::NameNSK)
   = EmptyCond
   | forall fld v .
     ( CFldDef sch tab fld
@@ -187,24 +187,24 @@ convCond rootTabNum = \case
           Like False -> "upper(" <> fld' <> ") like upper(?)"
           op         -> fld' <> " " <> showCmp op <> " ?"
         where
-          fld' = fld ntab (toStar @_ @n)
+          fld' = fld ntab (toStar @n)
   In (_::Proxy n) vs -> tell (SomeToField <$> vs) >> go <$> ask
     where
-      go ntab = fld ntab (toStar @_ @n)
+      go ntab = fld ntab (toStar @n)
         <> " in (" <> (T.intercalate "," $ const "?" <$> vs) <> ")"
   Null (_::Proxy n) ->
     (\ntab -> format (text % int % "." % stext % " is null")
-      (tabPref ntab) ntab (toStar @_ @n))
+      (tabPref ntab) ntab (toStar @n))
     <$> ask
   Not c -> getNot <$> convCond rootTabNum c
   BoolOp bo c1 c2 ->
     getBoolOp bo <$> convCond rootTabNum c1 <*> convCond rootTabNum c2
   Child (_ :: Proxy ref) (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
-    getRef True (toStar @_ @(RdFrom (TRelDef sch ref)))
-      (toStar @_ @(TRelDef sch ref)) (convCond rootTabNum cond)
+    getRef True (toStar @(RdFrom (TRelDef sch ref)))
+      (toStar @(TRelDef sch ref)) (convCond rootTabNum cond)
   Parent (_ :: Proxy ref) (cond::Cond sch (RdTo (TRelDef sch ref))) ->
-    getRef False (toStar @_ @(RdTo (TRelDef sch ref)))
-      (toStar @_ @(TRelDef sch ref)) (convCond rootTabNum cond)
+    getRef False (toStar @(RdTo (TRelDef sch ref)))
+      (toStar @(TRelDef sch ref)) (convCond rootTabNum cond)
   where
     tabPref ntab
       | ntab == 0 = format ("t" % int) rootTabNum
@@ -218,7 +218,7 @@ convCond rootTabNum = \case
       | cc2 == mempty = cc1
       | otherwise = format ("(" % text % ") " % string % " (" % text % ")")
         cc1 (show bo) cc2
-    getRef :: Bool -> T.S.Text -> RelDef -> CondMonad Text -> CondMonad Text
+    getRef :: Bool -> NameNS -> RelDef -> CondMonad Text -> CondMonad Text
     getRef isChild tn rd cc = do
       pnum <- ask
       modify (+1)
@@ -226,9 +226,9 @@ convCond rootTabNum = \case
       mkExists pnum cnum <$> local (const cnum) cc
       where
         mkExists pnum cnum c =
-          format ("exists (select 1 from " % stext % "." % stext % " " % text %
+          format ("exists (select 1 from " % stext % " " % text %
             " where " % text % ")")
-            (schemaName @sch) tn (tabPref cnum)
+            (qualName tn) (tabPref cnum)
             (T.intercalate " and "
               (
                 ( (\(ch,pr) -> format
@@ -279,7 +279,7 @@ withCondWithPath
   . (forall t'. Cond sch t' -> r)
   -> [T.S.Text] -> CondWithPath sch t -> Maybe r
 withCondWithPath f path (CondWithPath (Proxy :: Proxy path') cond) =
-  guard (path == toStar @_ @path') >> pure (f cond)
+  guard (path == toStar @path') >> pure (f cond)
 
 withCondsWithPath
   :: forall sch t r

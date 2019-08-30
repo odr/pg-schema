@@ -43,10 +43,10 @@ rePgTag = coerce
 
 instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
   parseJSON =
-    withObject "PgTagged " $ \v -> pgTag <$> v .: toStar @_ @a
+    withObject "PgTagged " $ \v -> pgTag <$> v .: toStar @a
 
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
-  toJSON v = object [toStar @_ @a .= unPgTag v]
+  toJSON v = object [toStar @a .= unPgTag v]
 
 instance
   (FromJSON a, Typeable a, KnownSymbol n)
@@ -110,7 +110,7 @@ instance
   ( CSchema sch
   , CQueryFields db sch t
     (FiWithType (TFieldTypeSym1 (PgTagged ns r)) (TRecordInfo (PgTagged ns r))) )
-  => CQueryRecord db sch (t::Symbol) (PgTagged ns r) where
+  => CQueryRecord db sch t (PgTagged ns r) where
 
 instance FromRow (Only b) => FromRow (PgTagged (n::Symbol) b) where
   fromRow = coerce @(Only b) <$> fromRow

@@ -10,6 +10,7 @@ import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
+import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.Schema.Rec
 import Database.Schema.TH
@@ -27,9 +28,14 @@ data PgClass = PgClass
   , constraint__class :: SchList PgConstraint }
   deriving (Show,Eq,Generic)
 
+data PgClassShort = PgClassShort
+  { class__namespace :: PgTagged "nspname" Text
+  , relname          :: Text }
+  deriving (Show,Eq,Generic)
+
 data PgAttribute = PgAttribute
   { attname         :: Text
-  , attribute__type :: PgTagged "typname" Text
+  , attribute__type :: PgType
   , attnum          :: Int
   , attnotnull      :: Bool
   , atthasdef       :: Bool }
@@ -49,20 +55,20 @@ data PgType = PgType
   , typname         :: Text
   , typcategory     :: PgChar
   , typelem         :: PgOid
-  , enum__type      :: SchList PgEnum}
+  , enum__type      :: SchList PgEnum }
   deriving (Show,Eq,Generic)
-
+--
 data PgEnum = PgEnum
   { enumlabel     :: Text
   , enumsortorder :: Double }
   deriving (Show,Eq,Generic)
 
--- | Foreighn key info
+-- | Foreign key info
 data PgRelation = PgRelation
   { constraint__namespace :: PgTagged "nspname" Text
   , conname               :: Text
-  , constraint__class     :: PgTagged "relname" Text
-  , constraint__fclass    :: PgTagged "relname" Text
+  , constraint__class     :: PgClassShort
+  , constraint__fclass    :: PgClassShort
   , conkey                :: PgArr Int
   , confkey               :: PgArr Int }
   deriving (Show,Eq,Generic)
@@ -72,10 +78,12 @@ L.concat
     L.concat <$> sequenceA
       [ deriveJSON defaultOptions n
       , [d|instance FromRow $(liftType n)|]
+      , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
       , schemaRec @PgCatalog id n
       , [d|instance CQueryRecord PG PgCatalog $(liftType s) $(liftType n)|]
       , [d|instance Hashable $(liftType n)|]
       ])
-  [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass, ''PgRelation]
-  [ "pg_enum" :: Text, "pg_type", "pg_constraint", "pg_attribute", "pg_class"
-  , "pg_constraint" ]
+  [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass
+  , ''PgClassShort, ''PgRelation ]
+  [ pgc "pg_enum", pgc "pg_type", pgc "pg_constraint", pgc "pg_attribute"
+  , pgc "pg_class", pgc "pg_class", pgc "pg_constraint" ]

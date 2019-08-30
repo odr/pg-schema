@@ -34,7 +34,7 @@ withOrdWithPath
   . (forall t'. [OrdFld sch t'] -> r)
   -> [Text] -> OrdWithPath sch t -> Maybe r
 withOrdWithPath f path (OrdWithPath (Proxy :: Proxy p) ord) =
-  guard (path == toStar @_ @p) >> pure (f ord)
+  guard (path == toStar @p) >> pure (f ord)
 --
 withOrdsWithPath
   :: forall sch t r
@@ -54,7 +54,7 @@ convOrd :: Int -> [OrdFld sch t] -> Text
 convOrd (T.pack . show -> n) ofs = T.intercalate "," $ L.map showFld ofs
   where
     showFld (OrdFld (Proxy :: Proxy fld) (T.pack . show -> od)) =
-      "t"<>n<>"."<>(toStar @_ @fld)<>" "<>od
+      "t"<>n<>"."<>(toStar @fld)<>" "<>od
 
 ordByPath :: forall sch t. Int -> [Text] -> [OrdWithPath sch t] -> Text
 ordByPath num path = fromMaybe mempty . withOrdsWithPath (convOrd num) path

@@ -2,14 +2,10 @@
 module Util.ShowType where
 
 import Data.List as L
+import Data.Monoid ((<>))
 import Data.String
 import Data.Text as T
 
-
-#if !MIN_VERSION_base(4,11,0)
-(<>) :: Monoid a => a -> a -> a
-(<>) = mappend
-#endif
 
 class ShowType a where
   showType :: a -> Text

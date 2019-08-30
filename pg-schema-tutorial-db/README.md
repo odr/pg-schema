@@ -1,1 +1,0 @@
-# pg-schema-tutorial-db

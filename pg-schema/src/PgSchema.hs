@@ -16,3 +16,4 @@ import Database.Schema.Def as PGS hiding ((:====))
 import Database.Schema.Rec as PGS hiding ((:+++))
 import Database.Schema.TH as PGS (schemaRec)
 import Database.Types.SchList as PGS
+import Util.TH.LiftType as PGS
