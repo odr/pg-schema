@@ -79,13 +79,13 @@ getDefs
   :: ([PgType], [PgClass], [PgRelation])
   -> (Map NameNS TypDef
     , Map (NameNS,Text) FldDef
-    , Map NameNS TabDef
+    , Map NameNS (TabDef, [NameNS], [NameNS])
     , Map NameNS RelDef)
 getDefs (types,classes,relations) =
   ( M.fromList $ ptypDef <$> ntypes
   , M.fromList $ pfldDef <$> attrs
   , M.fromList $ ptabDef <$> classes
-  , M.fromList $ Mb.mapMaybe mbRelDef relations )
+  , M.fromList relDefs )
   where
     classAttrs = ((,) <$> tabKey <*> getSchList . attribute__class) <$> classes
     mClassAttrs =
@@ -113,8 +113,9 @@ getDefs (types,classes,relations) =
       => r -> NameNS
     tabKey r =
       NameNS (coerce $ getField @"class__namespace" r) (getField @"relname" r)
-    ptabDef c@(PgClass{..}) = (tabKey c, TabDef{..})
+    ptabDef c@(PgClass{..}) = (tabName, (TabDef{..}, froms, tos))
       where
+        tabName = tabKey c
         tdFlds = attname <$> coerce attribute__class
         tdKey = L.concat $ keysBy (=='p')
         tdUniq = keysBy (=='u')
@@ -125,6 +126,10 @@ getDefs (types,classes,relations) =
           where
             numToName a =
               attname <$> L.find ((==a) . attnum) (getSchList attribute__class)
+        [froms, tos] = getNames <$> [rdFrom, rdTo]
+          where
+            getNames f = fst <$> L.filter ((==tabName) . f . snd) relDefs
+    relDefs = Mb.mapMaybe mbRelDef relations
     mbRelDef PgRelation {..} = sequenceA
       ( NameNS (coerce $ constraint__namespace) conname
       , RelDef

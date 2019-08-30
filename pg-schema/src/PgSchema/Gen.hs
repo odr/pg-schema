@@ -11,6 +11,7 @@ import Util.ToStar
 data DotOper
   = ExcludeToTab NameNS Text
 
+
 genDot :: forall sch. CSchema sch => Bool -> [DotOper] -> Text
 genDot isQual dos = F.fold
   [ "digraph G {\n"
@@ -22,7 +23,7 @@ genDot isQual dos = F.fold
   ]
   where
     tabs = toStar @(TTabs sch)
-    rels = M.elems (relDefMap @sch)
+    rels = L.concatMap elems . elems $ tiFrom <$> tabInfoMap @sch
     tabsByName = M.fromListWith (<>)
       $ ((,) <$> nnsName <*> ((:[]) . nnsNamespace)) <$> tabs
     qName nns

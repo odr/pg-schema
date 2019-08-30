@@ -40,18 +40,29 @@ textTabDef sch tab = mkInst "TabDef" [sch, showType tab]
 textRelDef :: Text -> NameNS -> RelDef -> Text
 textRelDef sch rel = mkInst "RelDef" [sch, showType rel]
 
+textTabRel :: Text -> NameNS -> [NameNS] -> [NameNS] -> Text
+textTabRel sch tab froms tos
+  =  "instance CTabRels " <> pars <> " where\n"
+  <> "  type TFrom " <> pars <> " = \n"
+  <> "    " <> showSplit 6 70 froms <> "\n"
+  <> "  type TTo " <> pars <> " = \n"
+  <> "    " <> showSplit 6 70 tos <> "\n"
+  where
+    pars = T.intercalate " " [sch, showType tab]
+
 genModuleText
   :: Text -- ^ module name
   -> Text -- ^ schema name
   -> Int  -- ^ schema hash value
   -> (Map NameNS TypDef
     , Map (NameNS,Text) FldDef
-    , Map NameNS TabDef
+    , Map NameNS (TabDef, [NameNS], [NameNS])
     , Map NameNS RelDef)
   -> Text
 genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
   =  "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n"
+  <> "{-# OPTIONS_GHC -freduction-depth=300 #-}\n"
   <> "module " <> moduleName <> "(" <> schName <> ") where\n\n"
   <> "-- This file is generated and can't be edited.\n\n"
   <> "import GHC.Generics\n" -- for PGEnum if exists
@@ -59,13 +70,14 @@ genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
   <> "hashSchema :: Int\n"
   <> "hashSchema = " <> fromString (show hash) <> "\n\n"
   <> "data " <> schName <> "\n\n"
-  <> (mconcat $ L.map (uncurry $ textTypDef schName) $ toList mtyp)
-  <> (mconcat $ L.map (\((a,b),c) -> textFldDef schName a b c) $ toList mfld)
-  <> (mconcat $ L.map (uncurry $ textTabDef schName) $ toList mtab)
+  <> (mconcat $ (uncurry $ textTypDef schName) <$> toList mtyp)
+  <> (mconcat $ (\((a,b),c) -> textFldDef schName a b c) <$> toList mfld)
+  <> (mconcat $ (\(tab,(td,_,_)) -> textTabDef schName tab td) <$> toList mtab)
   <> (mconcat $ L.map (uncurry $ textRelDef schName) $ toList mrel)
+  <> (mconcat $ (\(tab,(_,froms,tos)) -> textTabRel schName tab froms tos)
+    <$> toList mtab)
   <> "instance CSchema " <> schName <> " where\n"
   <> "  type TTabs " <> schName <> " = " <> showSplit 4 70 (keys mtab) <> "\n"
-  <> "  type TRels " <> schName <> " = " <> showSplit 4 70 (keys mrel) <> "\n"
   <> "  type TTypes " <> schName <> " = " <> showSplit 4 70 (keys mtyp) <> "\n"
 
 showSplit :: ShowType a => Int -> Int -> a -> Text

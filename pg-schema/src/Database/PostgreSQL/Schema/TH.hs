@@ -52,11 +52,18 @@ thRelDef sch name rd = [d|
     type TRelDef $(liftType sch) $(liftType name) = $(liftType rd)
   |]
 
+thTabRels :: Name -> NameNS -> [NameNS] -> [NameNS] -> DecsQ
+thTabRels sch name froms tos = [d|
+  instance CTabRels $(liftType sch) $(liftType name) where
+    type TTo $(liftType sch) $(liftType name) = $(liftType tos)
+    type TFrom $(liftType sch) $(liftType name) = $(liftType froms)
+  |]
+
 thSchema
   :: Name -- ^ schema name
   -> (Map NameNS TypDef
     , Map (NameNS,Text) FldDef
-    , Map NameNS TabDef
+    , Map NameNS (TabDef, [NameNS], [NameNS])
     , Map NameNS RelDef)
   -> DecsQ
 thSchema schName (mtyp, mfld, mtab, mrel) =
@@ -64,12 +71,14 @@ thSchema schName (mtyp, mfld, mtab, mrel) =
     [ sequence [dataD (pure []) schName [] Nothing [] []]
     , L.concat <$> traverse (uncurry $ thTypDef schName) (M.toList mtyp)
     , L.concat <$> traverse (\((a,b),c) -> thFldDef schName a b c) (M.toList mfld)
-    , L.concat <$> traverse (uncurry $ thTabDef schName) (M.toList mtab)
+    , L.concat <$> traverse
+      (\(tab,(td,_,_)) -> thTabDef schName tab td) (M.toList mtab)
     , L.concat <$> traverse (uncurry $ thRelDef schName) (M.toList mrel)
+    , L.concat <$> traverse
+      (\(tab,(_,froms,tos)) -> thTabRels schName tab froms tos) (M.toList mtab)
     , [d|
         instance CSchema $(schQ) where
           type TTabs $(schQ) = $(liftType $ keys mtab)
-          type TRels $(schQ) = $(liftType $ keys mrel)
           type TTypes $(schQ) = $(liftType $ keys mtyp)
         |] ]
   where

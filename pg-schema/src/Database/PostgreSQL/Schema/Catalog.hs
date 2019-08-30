@@ -222,6 +222,36 @@ instance CRelDef PgCatalog (PGC "type__namespace") where
   type TRelDef PgCatalog (PGC "type__namespace") =
     'RelDef (PGC "pg_type") (PGC "pg_namespace") '[ '("typnamespace","oid")]
 
+----------- CTabRels ---------
+instance CTabRels PgCatalog (PGC "pg_attribute") where
+  type TFrom PgCatalog (PGC "pg_attribute") =
+    '[PGC "attribute__class", PGC "attribute__type"]
+  type TTo PgCatalog (PGC "pg_attribute") = '[]
+
+instance CTabRels PgCatalog (PGC "pg_class") where
+  type TFrom PgCatalog (PGC "pg_class") = '[PGC "class__namespace"]
+  type TTo PgCatalog (PGC "pg_class") = '[PGC "attribute__class"
+    , PGC "constraint__class", PGC "constraint__fclass"]
+
+instance CTabRels PgCatalog (PGC "pg_constraint") where
+  type TFrom PgCatalog (PGC "pg_constraint") =
+    '[PGC "constraint__class", PGC "constraint__fclass", PGC "constraint__namespace"]
+  type TTo PgCatalog (PGC "pg_constraint") = '[]
+
+instance CTabRels PgCatalog (PGC "pg_enum") where
+  type TFrom PgCatalog (PGC "pg_enum") = '[PGC "enum__type"]
+  type TTo PgCatalog (PGC "pg_enum") = '[]
+
+instance CTabRels PgCatalog (PGC "pg_namespace") where
+  type TFrom PgCatalog (PGC "pg_namespace") = '[]
+  type TTo PgCatalog (PGC "pg_namespace") =
+    '[PGC "type__namespace", PGC "class__namespace", PGC "constraint__namespace"]
+
+instance CTabRels PgCatalog (PGC "pg_type") where
+  type TFrom PgCatalog (PGC "pg_type") = '[PGC "type__namespace"]
+  type TTo PgCatalog (PGC "pg_type") = '[PGC "enum__type", PGC "attribute__type"]
+
+
 ----------- schema ----------
 
 instance CSchema PgCatalog where
@@ -234,16 +264,6 @@ instance CSchema PgCatalog where
     , (PGC "pg_enum")
     , (PGC "pg_namespace")
     , (PGC "pg_type")]
-
-  type TRels PgCatalog =
-    '[(PGC "attribute__class")
-    , (PGC "attribute__type")
-    , (PGC "constraint__namespace")
-    , (PGC "constraint__class")
-    , (PGC "constraint__fclass")
-    , (PGC "class__namespace")
-    , (PGC "enum__type")
-    , (PGC "type__namespace") ]
 
   type TTypes PgCatalog =
     '[PGC "oid",PGC "int2",PGC "int2[]",PGC "float4",PGC "bool",PGC "name"
