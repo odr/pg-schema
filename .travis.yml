@@ -3,8 +3,9 @@ language: generic
 env:
   # - STACK_YAML=stack.yaml
   # - STACK_YAML=ghc-8.0.yaml
-  - STACK_YAML=ghc-8.2.yaml
+  # - STACK_YAML=ghc-8.2.yaml
   - STACK_YAML=ghc-8.4.yaml
+  - STACK_YAML=ghc-8.6.yaml
 
 cache:
   directories:
