@@ -37,7 +37,7 @@ I suppose that is acceptable for a medium to big databases as well.
 We will use a set of tables which is described in [this file](sql/create.sql)
 Many GHC-extensions should be enabled. I use the following
 (maybe some of them is not necessary):
-```
+```haskell
   AllowAmbiguousTypes
 , ConstraintKinds
 , DataKinds
@@ -66,7 +66,7 @@ Many GHC-extensions should be enabled. I use the following
 
 ### TL;DR
 
-```
+```haskell
 ghci> import PgSchema
 
 ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" ["sch"]}
@@ -167,7 +167,7 @@ We will use ghci for tutorial. So in directory `pg-schema` run
 ```
 All necessary extensions are included in cabal file so they are activated by
 default. All modules from `pg-schema` are imported. So run
-```
+```haskell
 ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" ["sch"]}
 ghci> :i Tutorial
 
@@ -198,7 +198,7 @@ It is a type like `Tutorial` but defined "manually". It describes PostgreSQL sys
 Type `Sch` and instances for it are predefined here in Tutorial application. It is the same as our `Tutorial` type.
 
 With this instance we can get now:
-```
+```haskell
 ghci> tabInfoMap @Tutorial
 
 -- return Map of all tables with flds and "from" and "to" references
@@ -223,7 +223,7 @@ typDefMap @Tutorial :: Data.Map.Internal.Map NameNS TypDef
 ```
 
 The same info we can get on type level. Just import TypeLits first to make ghci answers more simple.
-```
+```haskell
 ghci> import GHC.TypeLits
 
 ghci> :kind! TTabs Tutorial
@@ -259,7 +259,7 @@ TFldDef Tutorial ('NameNS "sch" "addresses") ("street") :: FldDef' Symbol
 
 We can lift this from type level to the level of values using `toStar` (it is just `demote` from [singletons](http://hackage.haskell.org/package/singletons) but left to support different singletons-version):
 
-```
+```haskell
 ghci> toStar @(TFldDef Tutorial ('NameNS "sch" "addresses") ("street"))
 
 FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = True, fdHasDefault = False}
@@ -267,7 +267,7 @@ FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNulla
 
 The same information we can get about system schema PgCatalog. This information
 is defined in library and isn't imported from database really:
-```
+```haskell
 ghci> :i PgCatalog
 data PgCatalog
   	-- Defined at /home/odr/git/pg-schema/pg-schema/src/Database/PostgreSQL/Schema/Catalog.hs:7:1
@@ -285,7 +285,7 @@ type instance TTabs PgCatalog
 ```
 
 We can now generate dot-description of our schema:
-```
+```haskell
 ghci> import PgSchema.Gen
 ghci> genDot @Tutorial False []
 
@@ -319,21 +319,21 @@ digraph G {
 
 Having all this information what we can do now? We can define records and
 populate it with data. At first we'll define record and generate some instances (using TH-function `schemaRec`):
-```
+```haskell
 ghci> import Data.Time
 ghci> { data Ord1 = Ord1 { day :: Day, num :: Text, seller_id :: Int } deriving (Eq, Show); schemaRec @Tutorial id ''Ord1 }
 ```
 Define type synonym for convenience:
-```
+```haskell
 ghci> type SchN name = 'NameNS "sch" name
 ```
 
 Now just define the most important instance:
-```
+```haskell
 ghci> instance CQueryRecord PG Tutorial (SchN "orders") Ord1
 ```
 And we can get text of query for this record and try to run it now:
-```
+```haskell
 ghci> selectText @Tutorial @(SchN "orders") @Ord1 qpEmpty
 "select t0.day \"day\",t0.num \"num\",t0.seller_id \"seller_id\" from sch.orders t0 "
 
@@ -351,14 +351,14 @@ ghci> (rs :: [Ord1]) <- selectSch @Tutorial @(SchN "orders") conn qpEmpty
 ```
 Well, we have to define FromRow instance for Ord1. We can do it by hand or use
 Generics. I didn't derive Generic yet so have to enable an extension and make instances:
-```
+```haskell
 ghci> :set -XStandaloneDeriving
 ghci> deriving instance Generic Ord1
 ghci> instance FromRow Ord1
 ```
 
 and now:
-```
+```haskell
 ghci> selectSch @Tutorial @(SchN "orders") conn qpEmpty >>= mapM_ (print @Ord1)
 Ord1 {day = 2018-11-11, num = "n22", seller_id = 3}
 Ord1 {day = 2018-11-11, num = "n21", seller_id = 5}
@@ -368,7 +368,7 @@ Ord1 {day = 2018-11-11, num = "n1", seller_id = 1}
 ```
 
 What will be if we will use a wrong name of field?
-```
+```haskell
 ghci> { data Ord2 = Ord2 { day :: Day, num :: Text, seler_id :: Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Ord2 }
 
 ghci> instance CQueryRecord PG Tutorial (SchN "orders") Ord2
@@ -386,7 +386,7 @@ ghci> instance CQueryRecord PG Tutorial (SchN "orders") Ord2
 
 Well. A message is not so clear. But it is clear that something wrong with field "seler_id" in table "orders".
 Let's try to make record with a wrong type:
-```
+```haskell
 ghci> { data Ord3 = Ord3 { day :: Day, num :: Text, seller_id :: Char } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Ord3 }
 
 ghci> instance CQueryRecord PG Tutorial (SchN "orders") Ord3
@@ -404,7 +404,7 @@ We can see that we try to use "Char" for some field in table "orders" with db-ty
 
 Class `CanConvert1` has no methods and we can define it for new types as well.
 Now we can check is `seller_id` can be an `Integer`:
-```
+```haskell
 ghci> { data Ord4 = Ord4 { day :: Day, num :: Text, seller_id :: Integer } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Ord4 }
 
 ghci> instance CQueryRecord PG Tutorial (SchN "orders") Ord4
@@ -424,7 +424,7 @@ We can convert from "int4" to Integer but not in turn.
 What was generated by `schemaRec` and what is a class `CQueryRecord`?
 `schemaRec` generates instances for classes `CRecordInfo` and `CFieldType`.
 `CQueryRecord` has a default implementation. All these instances can be used in such way:
-```
+```haskell
 ghci> -- CRecordInfo
 
 ghci> recordInfo @Ord1
@@ -456,7 +456,7 @@ Each `order` has items (`order_positions`). And probably we want to select `sell
 Beside that order has an enumeration field `state`. We can add it also with type `Maybe (PGEnum Tutorial (SchN "order_state"))` where "order_state" is a name of type in database.
 
 Let's define types:
-```
+```haskell
 ghci> { data Company = Company { name :: Text, address_id :: Maybe Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Company }
 
 ghci> { data Article = Article { name :: Text, code :: Maybe Text } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Article }
@@ -476,7 +476,7 @@ ghci> instance CQueryRecord PG Tutorial (SchN "orders") Order
 Here `SchList` is a special list to get data from child tables.
 
 Well and now we'll try to get the text of select statement and populate data:
-```
+```haskell
 ghci> selectText @Tutorial @(SchN "orders") @Order qpEmpty
 
 ("select t0.day \"day\",t0.num \"num\",jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\",array_to_json(array(select jsonb_build_object('num',t2.num,'opos_article',jsonb_build_object('name',t3.name,'code',t3.code),'cnt',t2.cnt,'price',t2.price) from sch.order_positions t2 join sch.articles t3 on t2.article_id=t3.id where t2.order_id=t0.id)) \"opos_order\",t0.state \"state\" from sch.orders t0 join sch.companies t1 on t0.seller_id=t1.id",[])
@@ -493,7 +493,7 @@ ghci> os :: [Order] <- selectSch @Tutorial @(SchN "orders") conn qpEmpty
 ```
 
 We forgot to make an instance! It is simple:
-```
+```haskell
 ghci> instance FromRow Order
 
 <interactive>:22:10: error:
@@ -517,14 +517,14 @@ default `FromJSON` instance for `Generic` data. In real code TH-deriving will pr
 work better (both in compile-time and in run-time).
 
 Then I'll create a simple instance for `FromField`:
-```
+```haskell
 ghci> instance FromJSON Company
 
 ghci> instance FromField Company where fromField = fromJSONField
 ```
 
 Let's try again:
-```
+```haskell
 ghci> instance FromRow Order
 
 <interactive>:29:10: error:
@@ -539,7 +539,7 @@ ghci> instance FromRow Order
 ```
 
 Oh..
-```
+```haskell
 ghci> instance FromJSON OrdPos
 
 <interactive>:30:10: error:
@@ -554,14 +554,14 @@ ghci> instance FromJSON OrdPos
 ```
 
 Again...
-```
+```haskell
 ghci> instance FromJSON Article
 ghci> instance FromJSON OrdPos
 ghci> instance FromRow Order
 ```
 
 and now...
-```
+```haskell
 ghci> selectSch @Tutorial @(SchN "orders") conn qpEmpty >>= mapM_ (print @Order)
 
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
@@ -584,7 +584,7 @@ to get all information about tables, relations and types in database.
 
 We can add different `where` conditions and orders and limits/offsets on each part of the data tree.
 
-```
+```haskell
 ghci> :{
   mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn qpEmpty
   { qpConds = [cwp @'["opos_order"] (#cnt >? (5::Int))]
