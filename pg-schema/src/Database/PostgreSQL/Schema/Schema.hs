@@ -90,7 +90,8 @@ getDefs (types,classes,relations) =
     classAttrs = ((,) <$> tabKey <*> getSchList . attribute__class) <$> classes
     mClassAttrs =
       M.fromList [((c, attnum a), attname a)| (c,as) <- classAttrs, a <- as]
-    attrs :: [(NameNS, PgAttribute)] = L.concat $ (\(a,xs) -> (a,) <$> xs) <$> classAttrs
+    attrs :: [(NameNS, PgAttribute)] =
+      L.concat $ (\(a,xs) -> (a,) <$> xs) <$> classAttrs
     typKey = NameNS <$> (coerce . type__namespace) <*> typname
     ntypes = ntype <$> L.filter ((`S.member` attrsTypes) . typKey) types
       where

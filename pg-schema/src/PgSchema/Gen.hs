@@ -23,7 +23,8 @@ genDot isQual dos = F.fold
   ]
   where
     tabs = toStar @(TTabs sch)
-    rels = L.concatMap elems . elems $ tiFrom <$> tabInfoMap @sch
+    tim = tabInfoMap @sch
+    rels = L.concatMap elems . elems $ tiFrom <$> tim
     tabsByName = M.fromListWith (<>)
       $ ((,) <$> nnsName <*> ((:[]) . nnsNamespace)) <$> tabs
     qName nns
@@ -55,4 +56,12 @@ genDot isQual dos = F.fold
     relTxts = rel <$> L.filter notExcluded rels
       where
         notExcluded RelDef{..} = L.null [()|ExcludeToTab x _ <- dos, rdTo ==x]
-    rel RelDef {..} = "  " <> qNameQuo rdFrom <> "->" <> qNameQuo rdTo
+    rel RelDef {..} = "  " <> qNameQuo rdFrom <> "->" <> qNameQuo rdTo <> clr
+      where
+        clr = case mbTabFlds >>= isNullableRef of
+          Just True -> "[color=\"green\"]"
+          _         -> ""
+          where
+            mbTabFlds = tiFlds <$> M.lookup rdFrom tim
+            isNullableRef tabFlds = L.any fdNullable
+              <$> traverse (`M.lookup` tabFlds) (fst <$> rdCols)

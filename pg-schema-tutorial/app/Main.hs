@@ -64,7 +64,7 @@ data Order = Order
   , num        :: Text
   , ord_seller :: Company
   , opos_order :: SchList OrdPos
-  , state      :: Maybe (PGEnum Sch ('NameNS "sch" "order_state")) }
+  , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
   deriving (Eq, Show, Generic)
 
 L.concat

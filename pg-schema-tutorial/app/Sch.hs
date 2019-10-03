@@ -14,348 +14,347 @@ hashSchema = -4230393316157406418
 
 data Sch
 
-instance CTypDef Sch ( 'NameNS "pg_catalog" "date" ) where
-  type TTypDef Sch ( 'NameNS "pg_catalog" "date" ) = 
+instance CTypDef Sch ( "pg_catalog" ->> "date" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "date" ) = 
     'TypDef "D" 'Nothing '[  ]
 
-instance CTypDef Sch ( 'NameNS "pg_catalog" "int4" ) where
-  type TTypDef Sch ( 'NameNS "pg_catalog" "int4" ) = 
+instance CTypDef Sch ( "pg_catalog" ->> "int4" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "int4" ) = 
     'TypDef "N" 'Nothing '[  ]
 
-instance CTypDef Sch ( 'NameNS "pg_catalog" "numeric" ) where
-  type TTypDef Sch ( 'NameNS "pg_catalog" "numeric" ) = 
+instance CTypDef Sch ( "pg_catalog" ->> "numeric" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "numeric" ) = 
     'TypDef "N" 'Nothing '[  ]
 
-instance CTypDef Sch ( 'NameNS "pg_catalog" "text" ) where
-  type TTypDef Sch ( 'NameNS "pg_catalog" "text" ) = 
+instance CTypDef Sch ( "pg_catalog" ->> "text" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "text" ) = 
     'TypDef "S" 'Nothing '[  ]
 
-instance CTypDef Sch ( 'NameNS "pg_catalog" "timestamptz" ) where
-  type TTypDef Sch ( 'NameNS "pg_catalog" "timestamptz" ) = 
+instance CTypDef Sch ( "pg_catalog" ->> "timestamptz" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "timestamptz" ) = 
     'TypDef "D" 'Nothing '[  ]
 
-instance CTypDef Sch ( 'NameNS "sch" "order_state" ) where
-  type TTypDef Sch ( 'NameNS "sch" "order_state" ) = 
+instance CTypDef Sch ( "sch" ->> "order_state" ) where
+  type TTypDef Sch ( "sch" ->> "order_state" ) = 
     'TypDef "E" 'Nothing '[ "paid","booked","delivered" ]
 
-data instance PGEnum Sch ( 'NameNS "sch" "order_state" ) = 
+data instance PGEnum Sch ( "sch" ->> "order_state" ) = 
   Order_state_paid | Order_state_booked | Order_state_delivered
   deriving (Show, Read, Ord, Eq, Generic)
-instance CFldDef Sch ( 'NameNS "sch" "addresses" ) "app" where
-  type TFldDef Sch ( 'NameNS "sch" "addresses" ) "app" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "addresses" ) "app" where
+  type TFldDef Sch ( "sch" ->> "addresses" ) "app" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "addresses" ) "city_id" where
-  type TFldDef Sch ( 'NameNS "sch" "addresses" ) "city_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "addresses" ) "city_id" where
+  type TFldDef Sch ( "sch" ->> "addresses" ) "city_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "addresses" ) "home" where
-  type TFldDef Sch ( 'NameNS "sch" "addresses" ) "home" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "addresses" ) "home" where
+  type TFldDef Sch ( "sch" ->> "addresses" ) "home" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "addresses" ) "id" where
-  type TFldDef Sch ( 'NameNS "sch" "addresses" ) "id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "addresses" ) "id" where
+  type TFldDef Sch ( "sch" ->> "addresses" ) "id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "addresses" ) "street" where
-  type TFldDef Sch ( 'NameNS "sch" "addresses" ) "street" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "addresses" ) "street" where
+  type TFldDef Sch ( "sch" ->> "addresses" ) "street" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "addresses" ) "zipcode" where
-  type TFldDef Sch ( 'NameNS "sch" "addresses" ) "zipcode" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "addresses" ) "zipcode" where
+  type TFldDef Sch ( "sch" ->> "addresses" ) "zipcode" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "articles" ) "code" where
-  type TFldDef Sch ( 'NameNS "sch" "articles" ) "code" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "articles" ) "code" where
+  type TFldDef Sch ( "sch" ->> "articles" ) "code" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "articles" ) "created_at" where
-  type TFldDef Sch ( 'NameNS "sch" "articles" ) "created_at" = 
-    'FldDef ( 'NameNS "pg_catalog" "timestamptz" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "articles" ) "created_at" where
+  type TFldDef Sch ( "sch" ->> "articles" ) "created_at" = 
+    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "articles" ) "id" where
-  type TFldDef Sch ( 'NameNS "sch" "articles" ) "id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "articles" ) "id" where
+  type TFldDef Sch ( "sch" ->> "articles" ) "id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "articles" ) "name" where
-  type TFldDef Sch ( 'NameNS "sch" "articles" ) "name" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "articles" ) "name" where
+  type TFldDef Sch ( "sch" ->> "articles" ) "name" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "articles" ) "updated_at" where
-  type TFldDef Sch ( 'NameNS "sch" "articles" ) "updated_at" = 
-    'FldDef ( 'NameNS "pg_catalog" "timestamptz" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "articles" ) "updated_at" where
+  type TFldDef Sch ( "sch" ->> "articles" ) "updated_at" = 
+    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "cities" ) "country_id" where
-  type TFldDef Sch ( 'NameNS "sch" "cities" ) "country_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "cities" ) "country_id" where
+  type TFldDef Sch ( "sch" ->> "cities" ) "country_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "cities" ) "id" where
-  type TFldDef Sch ( 'NameNS "sch" "cities" ) "id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "cities" ) "id" where
+  type TFldDef Sch ( "sch" ->> "cities" ) "id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "cities" ) "name" where
-  type TFldDef Sch ( 'NameNS "sch" "cities" ) "name" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "cities" ) "name" where
+  type TFldDef Sch ( "sch" ->> "cities" ) "name" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "companies" ) "address_id" where
-  type TFldDef Sch ( 'NameNS "sch" "companies" ) "address_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "companies" ) "address_id" where
+  type TFldDef Sch ( "sch" ->> "companies" ) "address_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "companies" ) "created_at" where
-  type TFldDef Sch ( 'NameNS "sch" "companies" ) "created_at" = 
-    'FldDef ( 'NameNS "pg_catalog" "timestamptz" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "companies" ) "created_at" where
+  type TFldDef Sch ( "sch" ->> "companies" ) "created_at" = 
+    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "companies" ) "id" where
-  type TFldDef Sch ( 'NameNS "sch" "companies" ) "id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "companies" ) "id" where
+  type TFldDef Sch ( "sch" ->> "companies" ) "id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "companies" ) "name" where
-  type TFldDef Sch ( 'NameNS "sch" "companies" ) "name" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "companies" ) "name" where
+  type TFldDef Sch ( "sch" ->> "companies" ) "name" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "companies" ) "updated_at" where
-  type TFldDef Sch ( 'NameNS "sch" "companies" ) "updated_at" = 
-    'FldDef ( 'NameNS "pg_catalog" "timestamptz" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "companies" ) "updated_at" where
+  type TFldDef Sch ( "sch" ->> "companies" ) "updated_at" = 
+    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "countries" ) "code" where
-  type TFldDef Sch ( 'NameNS "sch" "countries" ) "code" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "countries" ) "code" where
+  type TFldDef Sch ( "sch" ->> "countries" ) "code" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "countries" ) "id" where
-  type TFldDef Sch ( 'NameNS "sch" "countries" ) "id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "countries" ) "id" where
+  type TFldDef Sch ( "sch" ->> "countries" ) "id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "countries" ) "name" where
-  type TFldDef Sch ( 'NameNS "sch" "countries" ) "name" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "countries" ) "name" where
+  type TFldDef Sch ( "sch" ->> "countries" ) "name" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "customers" ) "address_id" where
-  type TFldDef Sch ( 'NameNS "sch" "customers" ) "address_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "customers" ) "address_id" where
+  type TFldDef Sch ( "sch" ->> "customers" ) "address_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "customers" ) "created_at" where
-  type TFldDef Sch ( 'NameNS "sch" "customers" ) "created_at" = 
-    'FldDef ( 'NameNS "pg_catalog" "timestamptz" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "customers" ) "created_at" where
+  type TFldDef Sch ( "sch" ->> "customers" ) "created_at" = 
+    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "customers" ) "id" where
-  type TFldDef Sch ( 'NameNS "sch" "customers" ) "id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "customers" ) "id" where
+  type TFldDef Sch ( "sch" ->> "customers" ) "id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "customers" ) "name" where
-  type TFldDef Sch ( 'NameNS "sch" "customers" ) "name" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "customers" ) "name" where
+  type TFldDef Sch ( "sch" ->> "customers" ) "name" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "customers" ) "note" where
-  type TFldDef Sch ( 'NameNS "sch" "customers" ) "note" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "customers" ) "note" where
+  type TFldDef Sch ( "sch" ->> "customers" ) "note" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "customers" ) "updated_at" where
-  type TFldDef Sch ( 'NameNS "sch" "customers" ) "updated_at" = 
-    'FldDef ( 'NameNS "pg_catalog" "timestamptz" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "customers" ) "updated_at" where
+  type TFldDef Sch ( "sch" ->> "customers" ) "updated_at" = 
+    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "order_positions" ) "article_id" where
-  type TFldDef Sch ( 'NameNS "sch" "order_positions" ) "article_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "order_positions" ) "article_id" where
+  type TFldDef Sch ( "sch" ->> "order_positions" ) "article_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "order_positions" ) "cnt" where
-  type TFldDef Sch ( 'NameNS "sch" "order_positions" ) "cnt" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "order_positions" ) "cnt" where
+  type TFldDef Sch ( "sch" ->> "order_positions" ) "cnt" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "order_positions" ) "num" where
-  type TFldDef Sch ( 'NameNS "sch" "order_positions" ) "num" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "order_positions" ) "num" where
+  type TFldDef Sch ( "sch" ->> "order_positions" ) "num" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "order_positions" ) "order_id" where
-  type TFldDef Sch ( 'NameNS "sch" "order_positions" ) "order_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "order_positions" ) "order_id" where
+  type TFldDef Sch ( "sch" ->> "order_positions" ) "order_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "order_positions" ) "price" where
-  type TFldDef Sch ( 'NameNS "sch" "order_positions" ) "price" = 
-    'FldDef ( 'NameNS "pg_catalog" "numeric" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "order_positions" ) "price" where
+  type TFldDef Sch ( "sch" ->> "order_positions" ) "price" = 
+    'FldDef ( "pg_catalog" ->> "numeric" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "created_at" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "created_at" = 
-    'FldDef ( 'NameNS "pg_catalog" "timestamptz" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "orders" ) "created_at" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "created_at" = 
+    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "customer_id" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "customer_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "orders" ) "customer_id" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "customer_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "day" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "day" = 
-    'FldDef ( 'NameNS "pg_catalog" "date" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "orders" ) "day" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "day" = 
+    'FldDef ( "pg_catalog" ->> "date" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "id" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'True
+instance CFldDef Sch ( "sch" ->> "orders" ) "id" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "num" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "num" = 
-    'FldDef ( 'NameNS "pg_catalog" "text" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "orders" ) "num" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "num" = 
+    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "seller_id" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "seller_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'False 'False
+instance CFldDef Sch ( "sch" ->> "orders" ) "seller_id" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "seller_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "state" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "state" = 
-    'FldDef ( 'NameNS "sch" "order_state" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "orders" ) "state" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "state" = 
+    'FldDef ( "sch" ->> "order_state" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "trader_id" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "trader_id" = 
-    'FldDef ( 'NameNS "pg_catalog" "int4" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "orders" ) "trader_id" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "trader_id" = 
+    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
 
-instance CFldDef Sch ( 'NameNS "sch" "orders" ) "updated_at" where
-  type TFldDef Sch ( 'NameNS "sch" "orders" ) "updated_at" = 
-    'FldDef ( 'NameNS "pg_catalog" "timestamptz" ) 'True 'False
+instance CFldDef Sch ( "sch" ->> "orders" ) "updated_at" where
+  type TFldDef Sch ( "sch" ->> "orders" ) "updated_at" = 
+    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False
 
-instance CTabDef Sch ( 'NameNS "sch" "addresses" ) where
-  type TTabDef Sch ( 'NameNS "sch" "addresses" ) = 
+instance CTabDef Sch ( "sch" ->> "addresses" ) where
+  type TTabDef Sch ( "sch" ->> "addresses" ) = 
     'TabDef '[ "id","city_id","street","home","app","zipcode" ] '[ "id" ] '[  ]
 
-instance CTabDef Sch ( 'NameNS "sch" "articles" ) where
-  type TTabDef Sch ( 'NameNS "sch" "articles" ) = 
+instance CTabDef Sch ( "sch" ->> "articles" ) where
+  type TTabDef Sch ( "sch" ->> "articles" ) = 
     'TabDef '[ "id"
       ,"name","code","created_at","updated_at" ] '[ "id" ] '[ '[ "name" ] ]
 
-instance CTabDef Sch ( 'NameNS "sch" "cities" ) where
-  type TTabDef Sch ( 'NameNS "sch" "cities" ) = 
+instance CTabDef Sch ( "sch" ->> "cities" ) where
+  type TTabDef Sch ( "sch" ->> "cities" ) = 
     'TabDef '[ "id","country_id","name" ] '[ "id" ] '[  ]
 
-instance CTabDef Sch ( 'NameNS "sch" "companies" ) where
-  type TTabDef Sch ( 'NameNS "sch" "companies" ) = 
+instance CTabDef Sch ( "sch" ->> "companies" ) where
+  type TTabDef Sch ( "sch" ->> "companies" ) = 
     'TabDef '[ "id"
       ,"name","address_id","created_at","updated_at" ] '[ "id" ] '[  ]
 
-instance CTabDef Sch ( 'NameNS "sch" "countries" ) where
-  type TTabDef Sch ( 'NameNS "sch" "countries" ) = 
+instance CTabDef Sch ( "sch" ->> "countries" ) where
+  type TTabDef Sch ( "sch" ->> "countries" ) = 
     'TabDef '[ "id","name","code" ] '[ "id" ] '[  ]
 
-instance CTabDef Sch ( 'NameNS "sch" "customers" ) where
-  type TTabDef Sch ( 'NameNS "sch" "customers" ) = 
+instance CTabDef Sch ( "sch" ->> "customers" ) where
+  type TTabDef Sch ( "sch" ->> "customers" ) = 
     'TabDef '[ "id"
       ,"name","address_id","note","created_at","updated_at" ] '[ "id" ] '[  ]
 
-instance CTabDef Sch ( 'NameNS "sch" "order_positions" ) where
-  type TTabDef Sch ( 'NameNS "sch" "order_positions" ) = 
+instance CTabDef Sch ( "sch" ->> "order_positions" ) where
+  type TTabDef Sch ( "sch" ->> "order_positions" ) = 
     'TabDef '[ "order_id","num","article_id"
       ,"cnt","price" ] '[ "order_id","num" ] '[ '[ "order_id","article_id" ] ]
 
-instance CTabDef Sch ( 'NameNS "sch" "orders" ) where
-  type TTabDef Sch ( 'NameNS "sch" "orders" ) = 
+instance CTabDef Sch ( "sch" ->> "orders" ) where
+  type TTabDef Sch ( "sch" ->> "orders" ) = 
     'TabDef '[ "id","day","num","customer_id","seller_id"
       ,"trader_id","state","created_at","updated_at" ] '[ "id" ] '[  ]
 
-instance CRelDef Sch ( 'NameNS "sch" "address_city" ) where
-  type TRelDef Sch ( 'NameNS "sch" "address_city" ) = 
-    'RelDef ( 'NameNS "sch" "addresses" ) ( 'NameNS "sch" "cities" ) '[ '( "city_id"
+instance CRelDef Sch ( "sch" ->> "address_city" ) where
+  type TRelDef Sch ( "sch" ->> "address_city" ) = 
+    'RelDef ( "sch" ->> "addresses" ) ( "sch" ->> "cities" ) '[ '( "city_id"
       ,"id" ) ]
 
-instance CRelDef Sch ( 'NameNS "sch" "city_country" ) where
-  type TRelDef Sch ( 'NameNS "sch" "city_country" ) = 
-    'RelDef ( 'NameNS "sch" "cities" ) ( 'NameNS "sch" "countries" ) '[ '( "country_id"
+instance CRelDef Sch ( "sch" ->> "city_country" ) where
+  type TRelDef Sch ( "sch" ->> "city_country" ) = 
+    'RelDef ( "sch" ->> "cities" ) ( "sch" ->> "countries" ) '[ '( "country_id"
       ,"id" ) ]
 
-instance CRelDef Sch ( 'NameNS "sch" "comp_addr" ) where
-  type TRelDef Sch ( 'NameNS "sch" "comp_addr" ) = 
-    'RelDef ( 'NameNS "sch" "companies" ) ( 'NameNS "sch" "addresses" ) '[ '( "address_id"
+instance CRelDef Sch ( "sch" ->> "comp_addr" ) where
+  type TRelDef Sch ( "sch" ->> "comp_addr" ) = 
+    'RelDef ( "sch" ->> "companies" ) ( "sch" ->> "addresses" ) '[ '( "address_id"
       ,"id" ) ]
 
-instance CRelDef Sch ( 'NameNS "sch" "cust_addr" ) where
-  type TRelDef Sch ( 'NameNS "sch" "cust_addr" ) = 
-    'RelDef ( 'NameNS "sch" "customers" ) ( 'NameNS "sch" "addresses" ) '[ '( "address_id"
+instance CRelDef Sch ( "sch" ->> "cust_addr" ) where
+  type TRelDef Sch ( "sch" ->> "cust_addr" ) = 
+    'RelDef ( "sch" ->> "customers" ) ( "sch" ->> "addresses" ) '[ '( "address_id"
       ,"id" ) ]
 
-instance CRelDef Sch ( 'NameNS "sch" "opos_article" ) where
-  type TRelDef Sch ( 'NameNS "sch" "opos_article" ) = 
-    'RelDef ( 'NameNS "sch" "order_positions" ) ( 'NameNS "sch" "articles" ) '[ '( "article_id"
+instance CRelDef Sch ( "sch" ->> "opos_article" ) where
+  type TRelDef Sch ( "sch" ->> "opos_article" ) = 
+    'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "articles" ) '[ '( "article_id"
       ,"id" ) ]
 
-instance CRelDef Sch ( 'NameNS "sch" "opos_order" ) where
-  type TRelDef Sch ( 'NameNS "sch" "opos_order" ) = 
-    'RelDef ( 'NameNS "sch" "order_positions" ) ( 'NameNS "sch" "orders" ) '[ '( "order_id"
+instance CRelDef Sch ( "sch" ->> "opos_order" ) where
+  type TRelDef Sch ( "sch" ->> "opos_order" ) = 
+    'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "orders" ) '[ '( "order_id"
       ,"id" ) ]
 
-instance CRelDef Sch ( 'NameNS "sch" "ord_cust" ) where
-  type TRelDef Sch ( 'NameNS "sch" "ord_cust" ) = 
-    'RelDef ( 'NameNS "sch" "orders" ) ( 'NameNS "sch" "customers" ) '[ '( "customer_id"
+instance CRelDef Sch ( "sch" ->> "ord_cust" ) where
+  type TRelDef Sch ( "sch" ->> "ord_cust" ) = 
+    'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "customers" ) '[ '( "customer_id"
       ,"id" ) ]
 
-instance CRelDef Sch ( 'NameNS "sch" "ord_seller" ) where
-  type TRelDef Sch ( 'NameNS "sch" "ord_seller" ) = 
-    'RelDef ( 'NameNS "sch" "orders" ) ( 'NameNS "sch" "companies" ) '[ '( "seller_id"
+instance CRelDef Sch ( "sch" ->> "ord_seller" ) where
+  type TRelDef Sch ( "sch" ->> "ord_seller" ) = 
+    'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "seller_id"
       ,"id" ) ]
 
-instance CRelDef Sch ( 'NameNS "sch" "ord_trader" ) where
-  type TRelDef Sch ( 'NameNS "sch" "ord_trader" ) = 
-    'RelDef ( 'NameNS "sch" "orders" ) ( 'NameNS "sch" "companies" ) '[ '( "trader_id"
+instance CRelDef Sch ( "sch" ->> "ord_trader" ) where
+  type TRelDef Sch ( "sch" ->> "ord_trader" ) = 
+    'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "trader_id"
       ,"id" ) ]
 
-instance CTabRels Sch ( 'NameNS "sch" "addresses" ) where
-  type TFrom Sch ( 'NameNS "sch" "addresses" ) = 
-    '[ ( 'NameNS "sch" "address_city" ) ]
+instance CTabRels Sch ( "sch" ->> "addresses" ) where
+  type TFrom Sch ( "sch" ->> "addresses" ) = 
+    '[ ( "sch" ->> "address_city" ) ]
 
-  type TTo Sch ( 'NameNS "sch" "addresses" ) = 
-    '[ ( 'NameNS "sch" "comp_addr" ),( 'NameNS "sch" "cust_addr" ) ]
+  type TTo Sch ( "sch" ->> "addresses" ) = 
+    '[ ( "sch" ->> "comp_addr" ),( "sch" ->> "cust_addr" ) ]
 
-instance CTabRels Sch ( 'NameNS "sch" "articles" ) where
-  type TFrom Sch ( 'NameNS "sch" "articles" ) = 
+instance CTabRels Sch ( "sch" ->> "articles" ) where
+  type TFrom Sch ( "sch" ->> "articles" ) = 
     '[  ]
 
-  type TTo Sch ( 'NameNS "sch" "articles" ) = 
-    '[ ( 'NameNS "sch" "opos_article" ) ]
+  type TTo Sch ( "sch" ->> "articles" ) = 
+    '[ ( "sch" ->> "opos_article" ) ]
 
-instance CTabRels Sch ( 'NameNS "sch" "cities" ) where
-  type TFrom Sch ( 'NameNS "sch" "cities" ) = 
-    '[ ( 'NameNS "sch" "city_country" ) ]
+instance CTabRels Sch ( "sch" ->> "cities" ) where
+  type TFrom Sch ( "sch" ->> "cities" ) = 
+    '[ ( "sch" ->> "city_country" ) ]
 
-  type TTo Sch ( 'NameNS "sch" "cities" ) = 
-    '[ ( 'NameNS "sch" "address_city" ) ]
+  type TTo Sch ( "sch" ->> "cities" ) = 
+    '[ ( "sch" ->> "address_city" ) ]
 
-instance CTabRels Sch ( 'NameNS "sch" "companies" ) where
-  type TFrom Sch ( 'NameNS "sch" "companies" ) = 
-    '[ ( 'NameNS "sch" "comp_addr" ) ]
+instance CTabRels Sch ( "sch" ->> "companies" ) where
+  type TFrom Sch ( "sch" ->> "companies" ) = 
+    '[ ( "sch" ->> "comp_addr" ) ]
 
-  type TTo Sch ( 'NameNS "sch" "companies" ) = 
-    '[ ( 'NameNS "sch" "ord_seller" ),( 'NameNS "sch" "ord_trader" ) ]
+  type TTo Sch ( "sch" ->> "companies" ) = 
+    '[ ( "sch" ->> "ord_seller" ),( "sch" ->> "ord_trader" ) ]
 
-instance CTabRels Sch ( 'NameNS "sch" "countries" ) where
-  type TFrom Sch ( 'NameNS "sch" "countries" ) = 
+instance CTabRels Sch ( "sch" ->> "countries" ) where
+  type TFrom Sch ( "sch" ->> "countries" ) = 
     '[  ]
 
-  type TTo Sch ( 'NameNS "sch" "countries" ) = 
-    '[ ( 'NameNS "sch" "city_country" ) ]
+  type TTo Sch ( "sch" ->> "countries" ) = 
+    '[ ( "sch" ->> "city_country" ) ]
 
-instance CTabRels Sch ( 'NameNS "sch" "customers" ) where
-  type TFrom Sch ( 'NameNS "sch" "customers" ) = 
-    '[ ( 'NameNS "sch" "cust_addr" ) ]
+instance CTabRels Sch ( "sch" ->> "customers" ) where
+  type TFrom Sch ( "sch" ->> "customers" ) = 
+    '[ ( "sch" ->> "cust_addr" ) ]
 
-  type TTo Sch ( 'NameNS "sch" "customers" ) = 
-    '[ ( 'NameNS "sch" "ord_cust" ) ]
+  type TTo Sch ( "sch" ->> "customers" ) = 
+    '[ ( "sch" ->> "ord_cust" ) ]
 
-instance CTabRels Sch ( 'NameNS "sch" "order_positions" ) where
-  type TFrom Sch ( 'NameNS "sch" "order_positions" ) = 
-    '[ ( 'NameNS "sch" "opos_article" ),( 'NameNS "sch" "opos_order" ) ]
+instance CTabRels Sch ( "sch" ->> "order_positions" ) where
+  type TFrom Sch ( "sch" ->> "order_positions" ) = 
+    '[ ( "sch" ->> "opos_article" ),( "sch" ->> "opos_order" ) ]
 
-  type TTo Sch ( 'NameNS "sch" "order_positions" ) = 
+  type TTo Sch ( "sch" ->> "order_positions" ) = 
     '[  ]
 
-instance CTabRels Sch ( 'NameNS "sch" "orders" ) where
-  type TFrom Sch ( 'NameNS "sch" "orders" ) = 
-    '[ ( 'NameNS "sch" "ord_cust" )
-      ,( 'NameNS "sch" "ord_seller" ),( 'NameNS "sch" "ord_trader" ) ]
+instance CTabRels Sch ( "sch" ->> "orders" ) where
+  type TFrom Sch ( "sch" ->> "orders" ) = 
+    '[ ( "sch" ->> "ord_cust" )
+      ,( "sch" ->> "ord_seller" ),( "sch" ->> "ord_trader" ) ]
 
-  type TTo Sch ( 'NameNS "sch" "orders" ) = 
-    '[ ( 'NameNS "sch" "opos_order" ) ]
+  type TTo Sch ( "sch" ->> "orders" ) = 
+    '[ ( "sch" ->> "opos_order" ) ]
 
 instance CSchema Sch where
-  type TTabs Sch = '[ ( 'NameNS "sch" "addresses" ),( 'NameNS "sch" "articles" )
-    ,( 'NameNS "sch" "cities" ),( 'NameNS "sch" "companies" )
-    ,( 'NameNS "sch" "countries" ),( 'NameNS "sch" "customers" )
-    ,( 'NameNS "sch" "order_positions" ),( 'NameNS "sch" "orders" ) ]
+  type TTabs Sch = '[ ( "sch" ->> "addresses" ),( "sch" ->> "articles" )
+    ,( "sch" ->> "cities" ),( "sch" ->> "companies" )
+    ,( "sch" ->> "countries" ),( "sch" ->> "customers" )
+    ,( "sch" ->> "order_positions" ),( "sch" ->> "orders" ) ]
 
-  type TTypes Sch = '[ ( 'NameNS "pg_catalog" "date" )
-    ,( 'NameNS "pg_catalog" "int4" ),( 'NameNS "pg_catalog" "numeric" )
-    ,( 'NameNS "pg_catalog" "text" ),( 'NameNS "pg_catalog" "timestamptz" )
-    ,( 'NameNS "sch" "order_state" ) ]
+  type TTypes Sch = '[ ( "pg_catalog" ->> "date" ),( "pg_catalog" ->> "int4" )
+    ,( "pg_catalog" ->> "numeric" ),( "pg_catalog" ->> "text" )
+    ,( "pg_catalog" ->> "timestamptz" ),( "sch" ->> "order_state" ) ]
 

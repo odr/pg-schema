@@ -6,10 +6,10 @@ import Database.Schema.Def
 
 data PgCatalog
 
-type PGC name = 'NameNS "pg_catalog" name
+type PGC name = "pg_catalog" ->> name
 
 pgc :: Text -> NameNS
-pgc = NameNS "pg_catalog"
+pgc = ("pg_catalog" ->>)
 
 ------ tables ----------
 

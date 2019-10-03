@@ -96,6 +96,7 @@ library
     , ScopedTypeVariables
     , StandaloneDeriving
     , TemplateHaskell
+    , TypeOperators
     , TupleSections
     , TypeApplications
     , TypeFamilies

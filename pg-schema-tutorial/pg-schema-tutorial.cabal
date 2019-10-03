@@ -49,6 +49,7 @@ executable pg-schema-tutorial
     , TemplateHaskell
     , TypeApplications
     , TypeFamilies
+    , TypeOperators
 
 custom-setup
   setup-depends:
