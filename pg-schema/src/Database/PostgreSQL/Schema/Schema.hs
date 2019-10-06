@@ -143,29 +143,6 @@ getDefs (types,classes,relations) =
         getName t n = M.lookup (t,n) mClassAttrs
         getName2 n1 n2 = (,) <$> getName fromName n1 <*> getName toName n2
 
-{-
-getSchemaHash :: Connection -> Text -> IO Int
-getSchemaHash conn = fmap hash . getSchema conn
-
-getSchemaHash' :: ByteString -> Text -> IO Int
-getSchemaHash' connStr ns = connectPostgreSQL connStr >>= flip getSchemaHash ns
-
-updateSchemaHash :: ByteString -> Text -> FilePath -> IO Bool
-updateSchemaHash connStr dbSchema file = do
-  h <- getSchemaHash' connStr dbSchema
-  s <- readFile file
-  let
-    s' = L.unlines $ setHash h <$> L.lines s
-    -- check length to force close file. Where indirective...
-    isChanged = Prelude.length s > 0 && s /= s'
-  when isChanged $ writeFile file s'
-  pure isChanged
-  where
-    setHash h s = case L.words s of
-      ["hashSchema","=",x]
-        | (fst <$> reads x) /= [h]  -> "hashSchema = " <> show h
-      _                             -> s
--}
 updateSchemaFile
   :: String     -- ^ file name
   -> Either String ByteString

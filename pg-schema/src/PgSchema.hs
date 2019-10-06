@@ -14,6 +14,6 @@ import Database.PostgreSQL.Schema.Schema as PGS
 import Database.PostgreSQL.Schema.TH as PGS (mkSchema)
 import Database.Schema.Def as PGS hiding ((:====))
 import Database.Schema.Rec as PGS hiding ((:+++))
-import Database.Schema.TH as PGS (schemaRec)
+import Database.Schema.TH as PGS
 import Database.Types.SchList as PGS
 import Util.TH.LiftType as PGS

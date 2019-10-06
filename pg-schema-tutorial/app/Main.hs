@@ -67,17 +67,7 @@ data Order = Order
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
   deriving (Eq, Show, Generic)
 
-L.concat
-  <$> zipWithM (\n s ->
-    L.concat <$> sequenceA
-      [ deriveJSON defaultOptions n
-      , [d|instance FromRow $(liftType n)|]
-      , [d|instance ToRow $(liftType n)|]
-      , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-      , [d|instance ToField $(liftType n) where toField = toJSONField |]
-      , schemaRec @Sch id n
-      , [d|instance CQueryRecord PG Sch $(liftType s) $(liftType n)|]
-      ])
+deriveQueryRecord id [t|PG|] [t|Sch|]
   [ ''Country, ''City, ''Address, ''Company, ''Article ]
     -- , ''OrdPos, ''Order]
   [ "sch" ->> "countries", "sch" ->> "cities", "sch" ->> "addresses"
@@ -91,7 +81,7 @@ L.concat
       -- , [d|instance ToRow $(conT n)|]
       , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
       , [d|instance ToField $(liftType n) where toField = toJSONField |]
-      , schemaRec @Sch id n
+      , schemaRec id n
       , [d|instance CQueryRecord PG Sch $(liftType s) $(liftType n)|]
       ])
   [ ''OrdPos, ''Order]

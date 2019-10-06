@@ -115,7 +115,7 @@ with
           cross join (values (1,3,1,120),(2,1,2,10),(3,4,7,28)) v
       returning *
   )
-  select 1
+  select 1;
 
   with
     customers (_rid, name, address_id, note, orders) as (
@@ -197,6 +197,6 @@ with
           from i_orders o
           where o.customer_id = c.id
           ))
-      from i_customers c
-        
+      from i_customers c;
+
   -- based on https://stackoverflow.com/a/27996203/521370
