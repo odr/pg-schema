@@ -5,6 +5,7 @@ module Sch(Sch) where
 
 -- This file is generated and can't be edited.
 
+import Control.DeepSeq
 import GHC.Generics
 import PgSchema
 
@@ -41,6 +42,9 @@ instance CTypDef Sch ( "sch" ->> "order_state" ) where
 data instance PGEnum Sch ( "sch" ->> "order_state" ) = 
   Order_state_paid | Order_state_booked | Order_state_delivered
   deriving (Show, Read, Ord, Eq, Generic)
+
+instance NFData (PGEnum Sch ( "sch" ->> "order_state" ))
+
 instance CFldDef Sch ( "sch" ->> "addresses" ) "app" where
   type TFldDef Sch ( "sch" ->> "addresses" ) "app" = 
     'FldDef ( "pg_catalog" ->> "text" ) 'True 'False

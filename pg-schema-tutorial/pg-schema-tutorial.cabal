@@ -34,6 +34,7 @@ executable pg-schema-tutorial
     -- , pg-schema-tutorial-db
     , postgresql-simple
     , template-haskell
+    , deepseq
     , text
     , time
     , QuickCheck

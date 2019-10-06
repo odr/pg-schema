@@ -67,6 +67,7 @@ genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
   <> "{-# OPTIONS_GHC -freduction-depth=300 #-}\n"
   <> "module " <> moduleName <> "(" <> schName <> ") where\n\n"
   <> "-- This file is generated and can't be edited.\n\n"
+  <> "import Control.DeepSeq\n" -- for PGEnum if exist
   <> "import GHC.Generics\n" -- for PGEnum if exists
   <> "import PgSchema\n\n\n"
   <> "hashSchema :: Int\n"
