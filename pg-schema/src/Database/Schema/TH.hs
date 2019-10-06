@@ -1,6 +1,7 @@
 module Database.Schema.TH where
 
 import Data.List as L
+import Data.String
 import Data.Text as T
 import Database.Schema.Def
 import Database.Schema.Rec
@@ -8,7 +9,8 @@ import Language.Haskell.TH
 import Util.TH.LiftType
 
 
-schemaRec :: forall sch. CSchema sch => (Text -> Text) -> Name -> DecsQ
+schemaRec
+  :: forall sch. CSchema sch => (String -> String) -> Name -> DecsQ
 schemaRec toDbName rn = do
   fs <- reify rn >>= \case
     TyConI (DataD _ _ _ _ [RecC _ fs] _) -> pure fs
@@ -26,8 +28,10 @@ schemaRec toDbName rn = do
         type TFieldType $(liftType rn) $(liftType tname) = $(pure t)
       |]
 
-    getFieldInfo (pack . nameBase -> tname, _, _) =
-      [t|'FieldInfo $(liftType tname) $(liftType $ toDbName tname)|]
+    getFieldInfo (nameBase -> sname, _, _) =
+      [t|'FieldInfo $(liftType $ T.pack sname) $(liftType tDbName)|]
+      where
+        tDbName = fromString @Text $ toDbName sname
 
     recordInfoInst fis = [d|
       instance CRecordInfo $(liftType rn) where
