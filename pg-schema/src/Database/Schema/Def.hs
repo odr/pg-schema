@@ -126,7 +126,7 @@ type RelDef = RelDef' Text
 type TabRel = TabRel' Text
 type FldKind = FldKind' Text
 
-infixr 0 ->>
+infixr 9 ->>
 (->>) :: Text -> Text -> NameNS
 (->>) = NameNS
 

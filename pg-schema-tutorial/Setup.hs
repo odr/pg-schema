@@ -9,5 +9,5 @@ main = do
     (Left "PG_SCHEMA_TUTORIAL_DB")
     "Sch" -- ^ haskell module name to generate
     "Sch" -- ^ name of generated haskell type for schema
-    ["sch"] -- ^ name of schemas in database
+    (GenNames ["sch"] []) -- ^ name of schemas in database
   defaultMain

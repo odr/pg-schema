@@ -37,22 +37,27 @@ data ExceptionSch
 
 instance Exception ExceptionSch
 
+data GenNames = GenNames
+  { schemas :: [Text]   -- ^ generate data for all tables in these schemas
+  , tables  :: [NameNS] -- ^ generate data for these tables
+  }
+
 getSchema
   :: Connection -- ^ connection to PostgreSQL database
-  -> [Text]     -- ^ db-schema names
+  -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO ([PgType], [PgClass], [PgRelation])
-getSchema _ [] = pure mempty
-getSchema conn ns = do
+getSchema conn GenNames {..} = do
   types <- catch (selectSch @PgCatalog @(PGC "pg_type") @PgType conn qpTyp)
     ( throwM . GetDataException
       (selectText @PgCatalog @(PGC "pg_type") @PgType qpEmpty ) )
-  classes <- catch (selectSch @PgCatalog @(PGC "pg_class") @PgClass conn qpClass)
-    ( throwM . GetDataException
-      (selectText @PgCatalog @(PGC "pg_class") @PgClass qpClass) )
-  relations <- catch
-    (selectSch @PgCatalog @(PGC "pg_constraint") @PgRelation conn qpRel)
-    ( throwM . GetDataException
-      (selectText @PgCatalog @(PGC "pg_constraint") @PgRelation qpRel) )
+  classes <- L.filter checkClass <$>
+    catch (selectSch @PgCatalog @(PGC "pg_class") @PgClass conn qpClass)
+      ( throwM . GetDataException
+        (selectText @PgCatalog @(PGC "pg_class") @PgClass qpClass) )
+  relations <- L.filter checkRels <$>
+    catch (selectSch @PgCatalog @(PGC "pg_constraint") @PgRelation conn qpRel)
+      ( throwM . GetDataException
+        (selectText @PgCatalog @(PGC "pg_constraint") @PgRelation qpRel) )
   pure (types, classes, relations)
   where
     -- all data are ordered to provide stable `hashSchema`
@@ -62,18 +67,40 @@ getSchema conn ns = do
         , owp @'["enum__type"] [ascf @"enumsortorder"] ] }
     qpClass = qpEmpty
       { qpConds =
-        [ rootCond
-          $ pparent @(PGC "class__namespace") (pin @"nspname" ns)
-            &&& (pin @"relkind" (PgChar <$> "vr")) -- views & tables
+        [ rootCond $ condClass
+          &&& (pin @"relkind" (PgChar <$> "vr")) -- views & tables
         , cwp @'["attribute__class"] (#attnum >? (0::Int)) ]
       , qpOrds =
         [ rootOrd [ascf @"relname"]
         , owp @'["attribute__class"] [ascf @"attnum"]
         , owp @'["constraint__class"] [ascf @"conname"] ] }
+    condClass = condSchemas ||| condTabs
+      where
+        condSchemas =
+          pparent @(PGC "class__namespace") (pin @"nspname" schemas)
+        -- TODO checkTabs is wrong.
+        -- We need `(relnamespace->name, name) in tables` but can't do it now!
+        -- So we select more than needed and than filter
+        condTabs
+          = pparent @(PGC "class__namespace")
+            (pin @"nspname" $ nnsNamespace <$> tables)
+          &&& pin @"relname" (nnsName <$> tables)
     qpRel = qpEmpty
-      { qpConds =
-        [rootCond $ pparent @(PGC "constraint__namespace") (pin @"nspname" ns)]
+      { qpConds = [rootCond condRels]
       , qpOrds = [ rootOrd [ascf @"conname"] ] }
+      where
+        condRels
+          = pparent @(PGC "constraint__class") condClass
+          ||| pparent @(PGC "constraint__fclass") condClass
+    checkClass PgClass {..}
+      = (coerce class__namespace `L.elem` schemas)
+      || (coerce class__namespace ->> relname `L.elem` tables)
+    checkRels PgRelation {..} =
+      check constraint__class || check constraint__fclass
+      where
+        check PgClassShort {..}
+          = (coerce class__namespace `L.elem` schemas)
+          || (coerce class__namespace ->> relname `L.elem` tables)
 
 getDefs
   :: ([PgType], [PgClass], [PgRelation])
@@ -150,16 +177,16 @@ updateSchemaFile
     -- connect string as is.
     -- When this environment variable is not set or connect string is empty,
     -- we do nothing.
-  -> Text       -- ^ haskell module name to generate
-  -> Text       -- ^ name of generated haskell type for schema
-  -> [Text]     -- ^ name of schemas in database
+  -> Text     -- ^ haskell module name to generate
+  -> Text     -- ^ name of generated haskell type for schema
+  -> GenNames -- ^ names of schemas in database or tables to generate
   -> IO ()
-updateSchemaFile fileName ecs moduleName schName dbSchemaNames = do
+updateSchemaFile fileName ecs moduleName schName genNames = do
   connStr <- either getConnStr pure ecs
   unless (BS.null connStr) $ do
     fe <- doesFileExist fileName
     conn <- connectPostgreSQL connStr
-    (schema,h) <- ((,) <$> id <*> hash) <$> getSchema conn dbSchemaNames
+    (schema,h) <- ((,) <$> id <*> hash) <$> getSchema conn genNames
     needGen <- if fe
       then do
         mbhs

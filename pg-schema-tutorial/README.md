@@ -69,7 +69,7 @@ Many GHC-extensions should be enabled. I use the following
 ```haskell
 ghci> import PgSchema
 
-ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" ["sch"]}
+ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" (GenNames ["sch"] [])}
 
 ghci> { data Company = Company { name :: Text, address_id :: Maybe Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Company }
 
@@ -168,7 +168,7 @@ We will use ghci for tutorial. So in directory `pg-schema` run
 All necessary extensions are included in cabal file so they are activated by
 default. All modules from `pg-schema` are imported. So run
 ```haskell
-ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" ["sch"]}
+ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" (GenNames ["sch"] [])}
 ghci> :i Tutorial
 
 data Tutorial 	-- Defined at <interactive>:7:2
@@ -190,7 +190,7 @@ ghci> :info! Tutorial
 You will see many class instances for Tutorial. The "root" instance is instance
 for class `CSchema`.
 
-Note that our "Schema" can include many PG-schemas (namespaces). So we did `mkSchema` for the list of PG-schemas (`["sch"]`).
+Note that our "Schema" can include many PG-schemas (namespaces). So we did `mkSchema` for the list of PG-schemas (`["sch"]`). We can also set up a list of tables (as namespace->>tablename) to generate.
 
 There is predefined type `PgCatalog` in module `Database.PostgreSQL.Schema.Catalog`.
 It is a type like `Tutorial` but defined "manually". It describes PostgreSQL system schema.

@@ -190,8 +190,10 @@ convCond rootTabNum = \case
           fld' = fld ntab (toStar @n)
   In (_::Proxy n) vs -> tell (SomeToField <$> vs) >> go <$> ask
     where
-      go ntab = fld ntab (toStar @n)
-        <> " in (" <> (T.intercalate "," $ const "?" <$> vs) <> ")"
+      go ntab
+        | L.null vs = "false"
+        | otherwise = fld ntab (toStar @n)
+          <> " in (" <> (T.intercalate "," $ const "?" <$> vs) <> ")"
   Null (_::Proxy n) ->
     (\ntab -> format (text % int % "." % stext % " is null")
       (tabPref ntab) ntab (toStar @n))

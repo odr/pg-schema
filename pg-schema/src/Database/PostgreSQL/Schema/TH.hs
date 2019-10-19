@@ -84,10 +84,10 @@ thSchema schName (mtyp, mfld, mtab, mrel) =
   where
     schQ = liftType schName
 
-mkSchema :: ByteString -> String -> [Text] -> DecsQ
-mkSchema connStr schName dbSchNames = do
+mkSchema :: ByteString -> String -> GenNames -> DecsQ
+mkSchema connStr schName genNames = do
   defs <- fmap getDefs $ runIO $ do
     conn <-
       catch (connectPostgreSQL connStr) (throwM . ConnectException connStr)
-    getSchema conn dbSchNames
+    getSchema conn genNames
   thSchema (mkName schName) defs
