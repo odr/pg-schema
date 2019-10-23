@@ -32,6 +32,9 @@ newtype PgTagged a b = PgTagged (Tagged a b) deriving
 instance Hashable b => Hashable (PgTagged a b) where
   hashWithSalt s = hashWithSalt @b s . coerce
 
+pattern PgTag :: b -> PgTagged a b
+pattern PgTag b <- PgTagged (Tagged b)
+
 pgTag :: forall a b. b -> PgTagged a b
 pgTag = coerce
 

@@ -90,6 +90,7 @@ library
     , MultiParamTypeClasses
     , OverloadedStrings
     , OverloadedLabels
+    , PatternSynonyms
     , PolyKinds
     , QuasiQuotes
     , RankNTypes
