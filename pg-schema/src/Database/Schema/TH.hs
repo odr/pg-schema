@@ -1,6 +1,5 @@
 module Database.Schema.TH where
 
-import Control.Monad
 import Data.Aeson.TH
 import Data.List as L
 import Data.String
@@ -44,8 +43,8 @@ schemaRec toDbName rn = do
       |]
 
 deriveQueryRecord
-  :: (String -> String) -> TypeQ -> TypeQ -> [Name] -> [NameNS] -> DecsQ
-deriveQueryRecord flm pg sch typs = fmap L.concat . zipWithM (\n s ->
+  :: (String -> String) -> TypeQ -> TypeQ -> [(Name, TypeQ, NameNS)] -> DecsQ
+deriveQueryRecord flm pg sch = fmap L.concat . traverse (\(n,t,s) ->
   L.concat <$> sequenceA
     [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
     -- ^ In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
@@ -54,6 +53,5 @@ deriveQueryRecord flm pg sch typs = fmap L.concat . zipWithM (\n s ->
     , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
     , [d|instance ToField $(liftType n) where toField = toJSONField |]
     , schemaRec flm n
-    , [d|instance CQueryRecord $(pg) $(sch) $(liftType s) $(liftType n)|]
+    , [d|instance CQueryRecord $(pg) $(sch) $(liftType s) $(t)|]
     ])
-  typs

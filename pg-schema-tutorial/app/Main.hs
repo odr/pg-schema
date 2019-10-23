@@ -68,13 +68,13 @@ data Order = Order
   deriving (Eq, Show, Generic)
 
 deriveQueryRecord id [t|PG|] [t|Sch|]
-  [ ''Country, ''City, ''Address, ''Company, ''Article ]
-    -- , ''OrdPos, ''Order]
-  [ "sch" ->> "countries", "sch" ->> "cities", "sch" ->> "addresses"
-  , "sch" ->> "companies", "sch" ->> "articles" ]
-    -- , "order_positions", "orders"]
+  [ (''Country, [t|Country|], "sch" ->> "countries")
+  , (''City, [t|City|], "sch" ->> "cities")
+  , (''Address, [t|Address|], "sch" ->> "addresses")
+  , (''Company, [t|Company|], "sch" ->> "companies")
+  , (''Article, [t|Article|], "sch" ->> "articles") ]
 L.concat
-  <$> zipWithM (\n s ->
+  <$> traverse (\(n,s) ->
     L.concat <$> sequenceA
       [ deriveJSON defaultOptions n
       -- , [d|instance FromRow $(conT n)|]
@@ -84,8 +84,8 @@ L.concat
       , schemaRec id n
       , [d|instance CQueryRecord PG Sch $(liftType s) $(liftType n)|]
       ])
-  [ ''OrdPos, ''Order]
-  [ "sch" ->> "order_positions", "sch" ->> "orders"]
+  [ (''OrdPos, "sch" ->> "order_positions")
+  , (''Order, "sch" ->> "orders") ]
 
 type NSC name = 'NameNS "sch" name
 main :: IO ()
