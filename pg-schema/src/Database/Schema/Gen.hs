@@ -18,7 +18,7 @@ mkInst name pars a
     sgn = T.intercalate " " (name : pars)
 
 textTypDef :: Text -> NameNS -> TypDef -> Text
-textTypDef sch typ td@(TypDef {..}) = mkInst "TypDef" ss td <> pgEnum
+textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
   where
     ss = [sch, showType typ]
     st = T.intercalate " " ss
@@ -62,7 +62,8 @@ genModuleText
     , Map NameNS RelDef)
   -> Text
 genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
-  =  "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
+  =  "{- HLINT ignore -}\n"
+  <> "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n"
   <> "{-# OPTIONS_GHC -freduction-depth=300 #-}\n"
   <> "module " <> moduleName <> "(" <> schName <> ") where\n\n"
@@ -73,11 +74,11 @@ genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
   <> "hashSchema :: Int\n"
   <> "hashSchema = " <> fromString (show hash) <> "\n\n"
   <> "data " <> schName <> "\n\n"
-  <> (mconcat $ (uncurry $ textTypDef schName) <$> toList mtyp)
-  <> (mconcat $ (\((a,b),c) -> textFldDef schName a b c) <$> toList mfld)
-  <> (mconcat $ (\(tab,(td,_,_)) -> textTabDef schName tab td) <$> toList mtab)
-  <> (mconcat $ L.map (uncurry $ textRelDef schName) $ toList mrel)
-  <> (mconcat $ (\(tab,(_,froms,tos)) -> textTabRel schName tab froms tos)
+  <> mconcat (uncurry (textTypDef schName) <$> toList mtyp)
+  <> mconcat ((\((a,b),c) -> textFldDef schName a b c) <$> toList mfld)
+  <> mconcat ((\(tab,(td,_,_)) -> textTabDef schName tab td) <$> toList mtab)
+  <> mconcat (L.map (uncurry $ textRelDef schName) $ toList mrel)
+  <> mconcat ((\(tab,(_,froms,tos)) -> textTabRel schName tab froms tos)
     <$> toList mtab)
   <> "instance CSchema " <> schName <> " where\n"
   <> "  type TTabs " <> schName <> " = " <> showSplit 4 70 (keys mtab) <> "\n"
