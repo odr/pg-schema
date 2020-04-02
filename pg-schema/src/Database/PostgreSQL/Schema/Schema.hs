@@ -25,6 +25,7 @@ import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Gen
 import Database.Types.SchList
+import GHC.Int
 import GHC.Records
 import System.Directory
 import System.Environment
@@ -68,8 +69,8 @@ getSchema conn GenNames {..} = do
     qpClass = qpEmpty
       { qpConds =
         [ rootCond $ condClass
-          &&& (pin @"relkind" (PgChar <$> "vr")) -- views & tables
-        , cwp @'["attribute__class"] (#attnum >? (0::Int)) ]
+          &&& pin @"relkind" (PgChar <$> "vr") -- views & tables
+        , cwp @'["attribute__class"] (#attnum >? (0::Int16)) ]
       , qpOrds =
         [ rootOrd [ascf @"relname"]
         , owp @'["attribute__class"] [ascf @"attnum"]
@@ -123,9 +124,9 @@ getDefs (types,classes,relations) =
     ntypes = ntype <$> L.filter ((`S.member` attrsTypes) . typKey) types
       where
         ntype t = (t, typKey <$> M.lookup (typelem t) mtypes)
-        attrsTypes = S.fromList $ (typKey . attribute__type . snd) <$> attrs
+        attrsTypes = S.fromList $ typKey . attribute__type . snd <$> attrs
         mtypes = M.fromList $ (\x -> (oid x , x)) <$> types
-    ptypDef (x@(PgType{..}), typElem) = (typKey x, TypDef {..})
+    ptypDef (x@PgType{..}, typElem) = (typKey x, TypDef {..})
       where
         typCategory = T.singleton $ coerce typcategory
         typEnum = enumlabel <$> coerce enum__type
@@ -141,7 +142,7 @@ getDefs (types,classes,relations) =
       => r -> NameNS
     tabKey r =
       NameNS (coerce $ getField @"class__namespace" r) (getField @"relname" r)
-    ptabDef c@(PgClass{..}) = (tabName, (TabDef{..}, froms, tos))
+    ptabDef c@PgClass{..} = (tabName, (TabDef{..}, froms, tos))
       where
         tabName = tabKey c
         tdFlds = attname <$> coerce attribute__class
@@ -194,7 +195,7 @@ updateSchemaFile fileName ecs moduleName schName genNames = do
           <$> T.readFile fileName
         pure $ case mbhs of
           Just [_,_,x] | x == fromString (show h) -> False
-          _            -> True
+          _                                       -> True
       else (pure True)
     when needGen $ T.writeFile fileName $ moduleText h schema
   where

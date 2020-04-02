@@ -16,6 +16,7 @@ import Database.Schema.Rec
 import Database.Schema.TH
 import Database.Types.SchList
 import GHC.Generics
+import GHC.Int
 import Util.TH.LiftType
 
 
@@ -36,7 +37,7 @@ data PgClassShort = PgClassShort
 data PgAttribute = PgAttribute
   { attname         :: Text
   , attribute__type :: PgType
-  , attnum          :: Int
+  , attnum          :: Int16
   , attnotnull      :: Bool
   , atthasdef       :: Bool }
   deriving (Show,Eq,Generic)
@@ -45,7 +46,7 @@ data PgConstraint = PgConstraint
   { constraint__namespace :: PgTagged "nspname" Text
   , conname               :: Text
   , contype               :: PgChar
-  , conkey                :: PgArr Int }
+  , conkey                :: PgArr Int16 }
   deriving (Show,Eq,Generic)
 
 -- | Types info
@@ -69,8 +70,8 @@ data PgRelation = PgRelation
   , conname               :: Text
   , constraint__class     :: PgClassShort
   , constraint__fclass    :: PgClassShort
-  , conkey                :: PgArr Int
-  , confkey               :: PgArr Int }
+  , conkey                :: PgArr Int16
+  , confkey               :: PgArr Int16 }
   deriving (Show,Eq,Generic)
 
 L.concat

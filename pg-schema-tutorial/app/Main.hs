@@ -14,6 +14,7 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Generic.Random
 import GHC.Generics
+import GHC.Int
 import PgSchema
 import Sch
 import Test.QuickCheck
@@ -44,7 +45,7 @@ data Address = Address
 
 data Company = Company
   { name       :: Text
-  , address_id :: Maybe Int }
+  , address_id :: Maybe Int32 }
   deriving (Eq, Show, Generic)
 
 data Article = Article
@@ -53,9 +54,9 @@ data Article = Article
   deriving (Eq, Show, Generic)
 
 data OrdPos = OrdPos
-  { num          :: Int
+  { num          :: Int32
   , opos_article :: Article
-  , cnt          :: Int
+  , cnt          :: Int32
   , price        :: Centi }
   deriving (Eq, Show, Generic)
 
@@ -100,7 +101,7 @@ main = do
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
   cids <- insertSch @Sch @(NSC "countries") conn countries
-  mapM_ (print @(PgTagged "id" Int)) cids
+  mapM_ (print @(PgTagged "id" Int32)) cids
   selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
   T.putStrLn ""
   selectSch @Sch @(NSC "cities") @City conn qpEmpty >>= print

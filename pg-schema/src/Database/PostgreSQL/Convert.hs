@@ -18,6 +18,7 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import Database.Schema.Def
+import GHC.Int
 import Type.Reflection
 
 
@@ -40,9 +41,9 @@ instance CanConvert1 (TTypDef sch n) sch n t
   => CanConvert1 ('TypDef "A" ('Just n) y) sch x (PgArr t)
 
 instance CanConvert1 ('TypDef "B" x y) sch tn Bool
-instance CanConvert1 ('TypDef "N" x y) sch (PGC "int2") Int
-instance CanConvert1 ('TypDef "N" x y) sch (PGC "int4") Int
-instance CanConvert1 ('TypDef "N" x y) sch (PGC "int8") Integer
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "int2") Int16
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "int4") Int32
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "int8") Int64
 instance CanConvert1 ('TypDef "N" x y) sch (PGC "float4") Double
 instance CanConvert1 ('TypDef "N" x y) sch (PGC "float8") Double
 instance CanConvert1 ('TypDef "N" x y) sch (PGC "oid") Int
@@ -90,11 +91,11 @@ instance DefConvert1 (TTypDef sch n) sch n
 instance DefConvert1 ('TypDef "B" x y) sch tn where
   type DefType1 ('TypDef "B" x y) sch tn = Bool
 instance DefConvert1 ('TypDef "N" x y) sch (PGC "int2") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "int2") = Int
+  type DefType1 ('TypDef "N" x y) sch (PGC "int2") = Int16
 instance DefConvert1 ('TypDef "N" x y) sch (PGC "int4") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "int4") = Int
+  type DefType1 ('TypDef "N" x y) sch (PGC "int4") = Int32
 instance DefConvert1 ('TypDef "N" x y) sch (PGC "int8") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "int8") = Integer
+  type DefType1 ('TypDef "N" x y) sch (PGC "int8") = Int64
 instance DefConvert1 ('TypDef "N" x y) sch (PGC "float4") where
   type DefType1 ('TypDef "N" x y) sch (PGC "float4") = Double
 instance DefConvert1 ('TypDef "N" x y) sch (PGC "float8") where

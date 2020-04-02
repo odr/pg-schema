@@ -1,4 +1,4 @@
-resolver: lts-9.21
+resolver: lts-15.6
 packages:
 - pg-schema
 - pg-schema-tutorial
