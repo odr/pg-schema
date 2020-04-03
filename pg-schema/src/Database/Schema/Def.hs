@@ -83,10 +83,10 @@ promote [d|
 
   getRelTab froms tos s = find1 froms
     where
-      find1 []     = find2 tos
-      find1 (x:xs) = if nnsName (fst x) == s then rdTo (snd x) else find1 xs
-      find2 []     = error "No relation by name"
-      find2 (x:xs) = if nnsName (fst x) == s then rdFrom (snd x) else find2 xs
+      find1 []         = find2 tos
+      find1 ((a,b):xs) = if nnsName a == s then rdTo b else find1 xs
+      find2 []         = error "No relation by name"
+      find2 ((a,b):xs) = if nnsName a == s then rdFrom b else find2 xs
 
 
   -- getRelTab froms tos s =
@@ -102,16 +102,25 @@ promote [d|
     :: Eq s
     => TabDef' s -> [(NameNS' s, RelDef' s)] -> [(NameNS' s, RelDef' s)] -> s
     -> FldKind' s
-  getFldKind (TabDef flds _ _) froms tos s =
-    case L.find (== s) flds of
-      Just _ -> FldPlain
-      _ -> case L.find cmpName froms of
-        Just (_,x) -> FldFrom x
-        _      -> case L.find cmpName tos of
-          Just (_,x) -> FldTo x
-          _          -> FldUnknown s
+  getFldKind (TabDef flds _ _) froms tos s = find1 flds
     where
-      cmpName (NameNS _ r,_) = r == s
+      find1 []     = find2 froms
+      find1 (x:xs) = if x == s then FldPlain else find1 xs
+      find2 []         = find3 tos
+      find2 ((a,b):xs) = if nnsName a == s then FldFrom b else find2 xs
+      find3 []         = FldUnknown s
+      find3 ((a,b):xs) = if nnsName a == s then FldTo b else find3 xs
+
+  -- getFldKind (TabDef flds _ _) froms tos s =
+  --   case L.find (== s) flds of
+  --     Just _ -> FldPlain
+  --     _ -> case L.find cmpName froms of
+  --       Just (_,x) -> FldFrom x
+  --       _      -> case L.find cmpName tos of
+  --         Just (_,x) -> FldTo x
+  --         _          -> FldUnknown s
+  --   where
+  --     cmpName (NameNS _ r,_) = r == s
 
   isAllMandatory' :: Eq s => (s -> FldDef' s) -> [s] -> [s] -> Bool
   isAllMandatory' f tabFlds recFlds =
