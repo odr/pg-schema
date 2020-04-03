@@ -77,27 +77,16 @@ singletons [d|
   |]
 
 promote [d|
-  -- getRelTab
-  --   :: Eq s
-  --   => [(NameNS' s, RelDef' s)] -> [(NameNS' s, RelDef' s)] -> s -> NameNS' s
-  -- getRelTab [] [] s = error "No relation by name"
-  -- getRelTab [] ((NameNS _ x, rd) : _) s =
-  --   | x == s = rdFrom rd
-  --   | otherwise =
+  getRelTab
+    :: Eq s
+    => [(NameNS' s, RelDef' s)] -> [(NameNS' s, RelDef' s)] -> s -> NameNS' s
 
-  getRelTab froms tos s =
-    case find' cmpName froms of
-      Just (_,rd) -> rdTo rd
-      _ -> case find' cmpName tos of
-        Just (_,rd) -> rdFrom rd
-        _           -> error "No relation by name"
+  getRelTab froms tos s = find1 froms
     where
-      cmpName (NameNS _ r,_) = r == s
-      find' p [] = Nothing
-      find' p (x:xs) = go (p x) x xs
-        where
-          go True _ _   = Just x
-          go False _ xs = find' p xs
+      find1 []     = find2 tos
+      find1 (x:xs) = if nnsName (fst x) == s then rdTo (snd x) else find1 xs
+      find2 []     = error "No relation by name"
+      find2 (x:xs) = if nnsName (fst x) == s then rdFrom (snd x) else find2 xs
 
 
   -- getRelTab froms tos s =
@@ -297,7 +286,6 @@ type family TabOnPath sch (t :: NameNSK) (path :: [Symbol]) :: NameNSK where
   TabOnPath sch t '[] = t
   TabOnPath sch t (x ': xs) = TabOnPath sch (TRelTab sch t x) xs
 --
--- TODO: Does it check anything?
 type family TabPath sch (t :: NameNSK) (path :: [Symbol]) :: Constraint where
   TabPath sch t '[] = ()
   TabPath sch t (x ': xs) = TabPath sch (TRelTab sch t x) xs
