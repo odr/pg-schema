@@ -74,12 +74,21 @@ deriveQueryRecord id [t|PG|] [t|Sch|]
   , (''Address, [t|Address|], "sch" ->> "addresses")
   , (''Company, [t|Company|], "sch" ->> "companies")
   , (''Article, [t|Article|], "sch" ->> "articles") ]
+
+  -- No instance for (ToField (Data.Fixed.Fixed E2))
+  -- so these not compiled:
+  --
+  -- , (''OrdPos, [t|OrdPos|], "sch" ->> "order_positions")
+  -- , (''Order, [t|Order|], "sch" ->> "orders") ]
+
 L.concat
   <$> traverse (\(n,s) ->
     L.concat <$> sequenceA
       [ deriveJSON defaultOptions n
       -- , [d|instance FromRow $(conT n)|]
+      -- No instance for (ToField (Data.Fixed.Fixed E2))
       -- , [d|instance ToRow $(conT n)|]
+      -- No instance for (ToField (Data.Fixed.Fixed E2))
       , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
       , [d|instance ToField $(liftType n) where toField = toJSONField |]
       , schemaRec id n
