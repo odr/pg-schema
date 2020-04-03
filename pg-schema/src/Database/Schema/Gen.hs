@@ -66,7 +66,7 @@ genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
   <> "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n"
   <> "{-# OPTIONS_GHC -freduction-depth=300 #-}\n"
-  <> "module " <> moduleName " where\n\n"
+  <> "module " <> moduleName <> " where\n\n"
   <> "-- This file is generated and can't be edited.\n\n"
   <> "import Control.DeepSeq\n" -- for PGEnum if exist
   <> "import GHC.Generics\n" -- for PGEnum if exists
