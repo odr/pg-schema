@@ -56,13 +56,13 @@ singletons [d|
     deriving (Show, Eq, Ord)
 
   zip2With :: (a -> b -> c) -> [a] -> [[b]] -> [[c]]
-  zip2With f as = L.zipWith (\a -> L.map (f a)) as
+  zip2With f = L.zipWith (L.map . f)
 
   map2 :: (a -> b) -> [a] -> [(a,b)]
-  map2 f as = L.map (\a -> (a, f a)) as
+  map2 f = L.map (\a -> (a, f a))
 
   map3 :: (b -> c) -> (a -> [b]) -> [a] -> [[(b,c)]]
-  map3 f g xs = L.map (map2 f . g) xs
+  map3 f g = L.map (map2 f . g)
 
   data FldKind' s
     = FldPlain
@@ -77,15 +77,37 @@ singletons [d|
   |]
 
 promote [d|
-  getRelTab
-    :: Eq s => [(NameNS' s, RelDef' s)] -> [(NameNS' s, RelDef' s)] -> s -> NameNS' s
-  getRelTab froms tos s = case L.find cmpName froms of
-    Just (_,rd) -> rdTo rd
-    _ -> case L.find cmpName tos of
-      Just (_,rd) -> rdFrom rd
-      _           -> error "No relation by name"
+  -- getRelTab
+  --   :: Eq s
+  --   => [(NameNS' s, RelDef' s)] -> [(NameNS' s, RelDef' s)] -> s -> NameNS' s
+  -- getRelTab [] [] s = error "No relation by name"
+  -- getRelTab [] ((NameNS _ x, rd) : _) s =
+  --   | x == s = rdFrom rd
+  --   | otherwise =
+
+  getRelTab froms tos s =
+    case find' cmpName froms of
+      Just (_,rd) -> rdTo rd
+      _ -> case find' cmpName tos of
+        Just (_,rd) -> rdFrom rd
+        _           -> error "No relation by name"
     where
-      cmpName ((NameNS _ r),_) = r == s
+      cmpName (NameNS _ r,_) = r == s
+      find' p [] = Nothing
+      find' p (x:xs) = go (p x) x xs
+        where
+          go True _ _   = Just x
+          go False _ xs = find' p xs
+
+
+  -- getRelTab froms tos s =
+  --   case L.find cmpName froms of
+  --     Just (_,rd) -> rdTo rd
+  --     _ -> case L.find cmpName tos of
+  --       Just (_,rd) -> rdFrom rd
+  --       _           -> error "No relation by name"
+  --   where
+  --     cmpName (NameNS _ r,_) = r == s
 
   getFldKind
     :: Eq s
@@ -100,7 +122,7 @@ promote [d|
           Just (_,x) -> FldTo x
           _          -> FldUnknown s
     where
-      cmpName ((NameNS _ r),_) = r == s
+      cmpName (NameNS _ r,_) = r == s
 
   isAllMandatory' :: Eq s => (s -> FldDef' s) -> [s] -> [s] -> Bool
   isAllMandatory' f tabFlds recFlds =
@@ -275,6 +297,7 @@ type family TabOnPath sch (t :: NameNSK) (path :: [Symbol]) :: NameNSK where
   TabOnPath sch t '[] = t
   TabOnPath sch t (x ': xs) = TabOnPath sch (TRelTab sch t x) xs
 --
+-- TODO: Does it check anything?
 type family TabPath sch (t :: NameNSK) (path :: [Symbol]) :: Constraint where
   TabPath sch t '[] = ()
   TabPath sch t (x ': xs) = TabPath sch (TRelTab sch t x) xs
