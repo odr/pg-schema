@@ -97,13 +97,13 @@ selectM QueryRecord {..} = do
       % stext % stext % stext
 
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text)
-fieldM (FieldPlain name dbname _) = do
+fieldM (FieldPlain _ dbname _) = do
   n <- qrCurrTabNum <$> ask
-  pure (sformat fmt n dbname, name)
+  pure (sformat fmt n dbname, dbname)
   where
     fmt = "t" % int % "." % stext
 
-fieldM (FieldFrom name dbname QueryRecord {..} refs) = do
+fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
   QueryRead {..} <- ask
   modify (\QueryState{..} -> QueryState
     (qsLastTabNum+1)
@@ -114,7 +114,7 @@ fieldM (FieldFrom name dbname QueryRecord {..} refs) = do
     <$> local (\qr -> qr
       { qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
         (traverse fieldM queryFields)
-  pure (f, name)
+  pure (f, dbname)
   where
     joinText n1 n2 =
       sformat fmt outer (qualName tableName) n2 (refCond n1 n2 refs)
@@ -125,7 +125,7 @@ fieldM (FieldFrom name dbname QueryRecord {..} refs) = do
           | L.any (fdNullable . fromDef) refs = "left outer "
           | otherwise = ""
 
-fieldM (FieldTo name dbname rec refs) = do
+fieldM (FieldTo _ dbname rec refs) = do
   QueryRead {..} <- ask
   (QueryState ltn joins _ _ _) <- get
   modify (const $ QueryState (ltn+1) [] False "" "")
@@ -136,7 +136,7 @@ fieldM (FieldTo name dbname rec refs) = do
   modify (\qs -> qs { qsJoins = joins })
   (QueryState _ _ isWhere ordText loText) <- get
   pure (sformat fmt selText (if isWhere then "and" else "where")
-    (refCond (ltn+1) qrCurrTabNum refs) ordText loText, name)
+    (refCond (ltn+1) qrCurrTabNum refs) ordText loText, dbname)
   where
     fmt = "array_to_json(array("%stext%" "%text%" "%stext%stext%stext%"))"
 
