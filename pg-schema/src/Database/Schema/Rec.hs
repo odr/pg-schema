@@ -32,7 +32,7 @@ promote [d|
     Just fi -> f1 $ fieldName fi
     Nothing -> case L.find ((==n) . fieldName) rs2 of
       Just fi -> f2 $ fieldName fi
-      Nothing -> error $ "riFieldType: No field found"
+      Nothing -> error "riFieldType: No field found"
 
   orField :: Eq s => [FieldInfo' s] -> [FieldInfo' s] -> s -> Bool
   orField rs1 rs2 n = case L.find ((==n) . fieldName) rs1 of
@@ -87,8 +87,8 @@ data QueryRef = QueryRef
 
 data QueryField
   = FieldPlain Text Text FldDef -- name dbname flddef
-  | FieldTo    Text QueryRecord [QueryRef]
-  | FieldFrom  Text QueryRecord [QueryRef]
+  | FieldTo    Text Text QueryRecord [QueryRef]
+  | FieldFrom  Text Text QueryRecord [QueryRef]
   deriving Show
 
 class
@@ -146,11 +146,13 @@ instance
   , fdsTo ~ SP.Map (TFldDefSym2 sch tabTo) (Snd uncols)
   , ToStar fds
   , ToStar fdsTo
-  , ToStar n )
+  , ToStar n
+  , ToStar dbname )
   => CQueryFieldT ('FldFrom rd) db sch t '( 'FieldInfo n dbname, recTo)
   where
   getQueryFieldT =
-    FieldFrom (toStar @n) (getQueryRecord @db @sch @tabTo @recTo) refs
+    FieldFrom (toStar @n) (toStar @dbname)
+      (getQueryRecord @db @sch @tabTo @recTo) refs
     where
       refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
         (toStar @cols) (toStar @fds) (toStar @fdsTo)
@@ -165,10 +167,12 @@ instance
   , fdsFrom ~ SP.Map (TFldDefSym2 sch tabFrom) (Fst uncols)
   , ToStar fds
   , ToStar fdsFrom
-  , ToStar n )
+  , ToStar n
+  , ToStar dbname )
   => CQueryFieldT ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) where
   getQueryFieldT =
-    FieldTo (toStar @n) (getQueryRecord @db @sch @tabFrom @recFrom) refs
+    FieldTo (toStar @n) (toStar @dbname)
+      (getQueryRecord @db @sch @tabFrom @recFrom) refs
     where
       refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
         (toStar @cols) (toStar @fdsFrom) (toStar @fds)

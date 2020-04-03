@@ -18,9 +18,9 @@ import Formatting
 
 
 data QueryParam sch t = QueryParam
-  { qpConds :: !([CondWithPath sch t])
-  , qpOrds  :: !([OrdWithPath sch t])
-  , qpLOs   :: !([LimOffWithPath sch t]) }
+  { qpConds :: ![CondWithPath sch t]
+  , qpOrds  :: ![OrdWithPath sch t]
+  , qpLOs   :: ![LimOffWithPath sch t] }
 
 qpEmpty :: forall sch t. QueryParam sch t
 qpEmpty = QueryParam [] [] []
@@ -28,12 +28,12 @@ qpEmpty = QueryParam [] [] []
 data QueryRead sch t = QueryRead
   { qrCurrTabNum :: !Int
   , qrIsRoot     :: !Bool
-  , qrPath       :: !([Text])
+  , qrPath       :: ![Text]
   , qrParam      :: !(QueryParam sch t) }
 
 data QueryState = QueryState
   { qsLastTabNum :: !Int
-  , qsJoins      :: !([Text])
+  , qsJoins      :: ![Text]
   , qsWhere      :: !Bool
   , qsOrd        :: !Text
   , qsLimOff     :: !Text }
@@ -99,11 +99,11 @@ selectM QueryRecord {..} = do
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text)
 fieldM (FieldPlain name dbname _) = do
   n <- qrCurrTabNum <$> ask
-  pure $ (sformat fmt n dbname, name)
+  pure (sformat fmt n dbname, name)
   where
     fmt = "t" % int % "." % stext
 
-fieldM (FieldFrom name QueryRecord {..} refs) = do
+fieldM (FieldFrom name dbname QueryRecord {..} refs) = do
   QueryRead {..} <- ask
   modify (\QueryState{..} -> QueryState
     (qsLastTabNum+1)
@@ -112,7 +112,7 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
   n2 <- qsLastTabNum <$> get
   f <- jsonPairing
     <$> local (\qr -> qr
-      { qrCurrTabNum = n2, qrIsRoot = False, qrPath = name : qrPath })
+      { qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
         (traverse fieldM queryFields)
   pure (f, name)
   where
@@ -125,13 +125,13 @@ fieldM (FieldFrom name QueryRecord {..} refs) = do
           | L.any (fdNullable . fromDef) refs = "left outer "
           | otherwise = ""
 
-fieldM (FieldTo name rec refs) = do
+fieldM (FieldTo name dbname rec refs) = do
   QueryRead {..} <- ask
   (QueryState ltn joins _ _ _) <- get
   modify (const $ QueryState (ltn+1) [] False "" "")
   selText <- local
     (\qr -> qr
-      { qrCurrTabNum = ltn+1, qrIsRoot = False, qrPath = name : qrPath })
+      { qrCurrTabNum = ltn+1, qrIsRoot = False, qrPath = dbname : qrPath })
     (selectM rec)
   modify (\qs -> qs { qsJoins = joins })
   (QueryState _ _ isWhere ordText loText) <- get

@@ -83,12 +83,12 @@ insertM qrIn _qrOut _rs = do
     fldsIn = T.intercalate ","  $ fst . fldDbName <$> queryFields qrIn
     fldDbName = \case
       FieldPlain _ dbn _ -> (dbn,True)
-      FieldTo refName _ _ -> (refName, False)
-      FieldFrom refName _ _ -> (refName, False)
+      FieldTo _ refName _ _ -> (refName, False)
+      FieldFrom _ refName _ _ -> (refName, False)
     fldsIn' = T.intercalate ","
-      $ ("v."<>) . (\(s,b) -> if b then s else (s <> "::jsonb")) . fldDbName
+      $ ("v."<>) . (\(s,b) -> if b then s else s <> "::jsonb") . fldDbName
       <$> queryFields qrIn
-    quests = T.intercalate "," $ const "?" <$> queryFields qrIn
+    quests = T.intercalate "," $ "?" <$ queryFields qrIn
     fldsFk = "<fldsFk>"
 
 insertTextM
