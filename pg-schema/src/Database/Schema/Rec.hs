@@ -109,13 +109,24 @@ class
   => CQueryFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
   getQueryFields :: [QueryField]
 
-class CQueryFieldT (ft::FldKindK) db sch (t::NameNSK)
-  (fi::(FieldInfoK,Type)) where
-  getQueryFieldT :: QueryField
+class CQueryFieldT (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
+  where
+    getQueryFieldT :: QueryField
 --
+class CQueryFieldTB (nullable:: Bool) rd db sch t (fi::(FieldInfoK,Type))
+  where
+    getQueryFieldTB :: QueryField
+
+instance CQueryFieldTB (IsMaybe r) rd db sch t '(fi, r)
+  => CQueryFieldT ('FldTo rd) db sch t '(fi, r) where
+  getQueryFieldT = getQueryFieldTB @(IsMaybe r) @rd @db @sch @t @'(fi, r)
 
 instance (CSchema sch, CTabDef sch t) => CQueryFields db sch t '[] where
   getQueryFields = []
+
+type family IsMaybe (x :: Type) :: Bool where
+  IsMaybe (Maybe a) = 'True
+  IsMaybe x = 'False
 
 instance
   ( CQueryFieldT (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
@@ -134,7 +145,6 @@ instance
   => CQueryFieldT 'FldPlain db sch t '( 'FieldInfo n dbname, ftype) where
   getQueryFieldT =
     FieldPlain (toStar @n) (toStar @dbname) (fldDef @sch @t @dbname)
-
 
 instance
   ( tabTo ~ RdTo rd
@@ -165,12 +175,33 @@ instance
   , uncols ~ Unzip cols
   , fds ~ SP.Map (TFldDefSym2 sch t) (Snd uncols)
   , fdsFrom ~ SP.Map (TFldDefSym2 sch tabFrom) (Fst uncols)
+  , HasNullable fdsFrom ~ False
   , ToStar fds
   , ToStar fdsFrom
   , ToStar n
   , ToStar dbname )
-  => CQueryFieldT ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) where
-  getQueryFieldT =
+  => CQueryFieldTB 'False rd db sch t '( 'FieldInfo n dbname, recFrom) where
+  getQueryFieldTB =
+    FieldTo (toStar @n) (toStar @dbname)
+      (getQueryRecord @db @sch @tabFrom @recFrom) refs
+    where
+      refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
+        (toStar @cols) (toStar @fdsFrom) (toStar @fds)
+--
+instance
+  ( tabFrom ~ RdFrom rd
+  , CQueryRecord db sch tabFrom recFrom
+  , cols ~ RdCols rd
+  , ToStar cols
+  , uncols ~ Unzip cols
+  , fds ~ SP.Map (TFldDefSym2 sch t) (Snd uncols)
+  , fdsFrom ~ SP.Map (TFldDefSym2 sch tabFrom) (Fst uncols)
+  , ToStar fds
+  , ToStar fdsFrom
+  , ToStar n
+  , ToStar dbname )
+  => CQueryFieldTB 'True rd db sch t '( 'FieldInfo n dbname, Maybe recFrom) where
+  getQueryFieldTB =
     FieldTo (toStar @n) (toStar @dbname)
       (getQueryRecord @db @sch @tabFrom @recFrom) refs
     where
