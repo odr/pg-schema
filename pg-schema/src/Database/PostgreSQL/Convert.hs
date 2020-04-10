@@ -140,7 +140,7 @@ newtype PgArr a = PgArr { getPgArr :: [a] }
   -- ^ PGArray has no JSON instances. [] has JSON, but no PG.
   -- This one has both.
   deriving (Show, Eq, Ord, Read, FromJSON, ToJSON, Functor, Applicative, Monad
-    , MonadZip, Foldable, Hashable)
+    , MonadZip, Foldable, Hashable, Semigroup, Monoid)
 
 instance (FromField a, Typeable a) => FromField (PgArr a) where
   fromField = (fmap (coerce @(PGArray a)) .) . fromField
