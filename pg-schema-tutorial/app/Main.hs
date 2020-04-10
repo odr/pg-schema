@@ -32,7 +32,7 @@ instance Arbitrary Country where
 
 data City = City
   { name         :: Maybe Text
-  , city_country :: Country }
+  , city_country :: Maybe Country }
   deriving (Eq, Show, Ord, Generic)
 
 data Address = Address
@@ -40,7 +40,7 @@ data Address = Address
   , home         :: Maybe Text
   , app          :: Maybe Text
   , zipcode      :: Maybe Text
-  , address_city :: City } -- PgTagged "name" (Maybe Text) }
+  , address_city :: Maybe City } -- PgTagged "name" (Maybe Text) }
   deriving (Eq, Show, Ord, Generic)
 
 data Company = Company
