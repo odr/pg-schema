@@ -129,7 +129,7 @@ fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
       | otherwise = jsonPairing flds
       where
         fmt = "case when " % stext % " then null else " % stext % " end"
-        isNull = T.intercalate " and " $ (<> " is null") . snd <$> flds
+        isNull = T.intercalate " and " $ (<> " is null") . fst <$> flds
 
 fieldM (FieldTo _ dbname rec refs) = do
   QueryRead {..} <- ask
