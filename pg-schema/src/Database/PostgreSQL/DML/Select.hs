@@ -110,20 +110,26 @@ fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
     (joinText qrCurrTabNum (qsLastTabNum+1) : qsJoins)
     False "" "")
   n2 <- qsLastTabNum <$> get
-  f <- jsonPairing
-    <$> local (\qr -> qr
-      { qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
-        (traverse fieldM queryFields)
-  pure (f, dbname)
+  flds <- local
+    (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
+    $ traverse fieldM queryFields
+  pure (fld flds, dbname)
   where
+    nullable = L.any (fdNullable . fromDef) refs
     joinText n1 n2 =
       sformat fmt outer (qualName tableName) n2 (refCond n1 n2 refs)
       where
         fmt = stext % "join " % stext % " t" % int
           % " on " % stext
         outer
-          | L.any (fdNullable . fromDef) refs = "left outer "
+          | nullable = "left outer "
           | otherwise = ""
+    fld flds
+      | nullable = sformat fmt isNull (jsonPairing flds)
+      | otherwise = jsonPairing flds
+      where
+        fmt = "case when " % stext % " then null else " % stext % " end"
+        isNull = T.intercalate " and " $ (<> " is null") . snd <$> flds
 
 fieldM (FieldTo _ dbname rec refs) = do
   QueryRead {..} <- ask
