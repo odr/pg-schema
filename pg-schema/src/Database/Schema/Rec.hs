@@ -28,18 +28,20 @@ promote [d|
   riFieldType
     :: Eq s
     => (s -> t) -> (s -> t) -> [FieldInfo' s] -> [FieldInfo' s] -> s -> t
-  riFieldType f1 f2 rs1 rs2 n = case L.find ((==n) . fieldName) rs1 of
-    Just fi -> f1 $ fieldName fi
-    Nothing -> case L.find ((==n) . fieldName) rs2 of
-      Just fi -> f2 $ fieldName fi
-      Nothing -> error "riFieldType: No field found"
+  riFieldType f1 f2 rs1 rs2 n = find1 rs1
+    where
+      find1 []     = find2 rs2
+      find1 (x:xs) = if fieldName x == n then f1 n else find1 xs
+      find2 []     = error "riFieldType: No field found"
+      find2 (x:xs) = if fieldName x == n then f2 n else find2 xs
 
   orField :: Eq s => [FieldInfo' s] -> [FieldInfo' s] -> s -> Bool
-  orField rs1 rs2 n = case L.find ((==n) . fieldName) rs1 of
-    Just _ -> True
-    Nothing -> case L.find ((==n) . fieldName) rs2 of
-      Just _  -> True
-      Nothing -> False
+  orField rs1 rs2 n = find1 rs1
+    where
+      find1 []     = find2 rs2
+      find1 (x:xs) = fieldName x == n || find1 xs
+      find2 []     = False
+      find2 (x:xs) = fieldName x == n || find2 xs
   |]
 
 #if !MIN_VERSION_base(4,11,0)

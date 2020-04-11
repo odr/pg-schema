@@ -28,13 +28,13 @@ singletons [d|
     { typCategory :: s
     , typElem     :: Maybe (NameNS' s)
     , typEnum     :: [s] }
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq)
 
   data FldDef' s = FldDef
     { fdType        :: NameNS' s
     , fdNullable    :: Bool
     , fdHasDefault  :: Bool }
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq)
 
   data TabDef' s = TabDef
     { tdFlds       :: [s]
@@ -42,18 +42,18 @@ singletons [d|
     , tdUniq       :: [[s]] }
     -- , tdFrom       :: [NameNS' s]
     -- , tdTo         :: [NameNS' s] }
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq)
 
   data RelDef' s = RelDef
     { rdFrom    :: NameNS' s
     , rdTo      :: NameNS' s
     , rdCols    :: [(s,s)] }
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq)
 
   data TabRel' s = TabRel
     { trFrom       :: [NameNS' s]
     , trTo         :: [NameNS' s] }
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq)
 
   zip2With :: (a -> b -> c) -> [a] -> [[b]] -> [[c]]
   zip2With f = L.zipWith (L.map . f)
@@ -72,7 +72,7 @@ singletons [d|
     | FldFrom (RelDef' s)
     -- ^ field points to another record
     | FldUnknown s
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq)
   |]
 
 promote [d|
@@ -239,7 +239,7 @@ data TabInfo = TabInfo
   , tiFlds :: M.Map Text FldDef
   , tiFrom :: M.Map NameNS RelDef
   , tiTo   :: M.Map NameNS RelDef }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq)
 
 tabInfoMap :: forall sch. CSchema sch => M.Map NameNS TabInfo
 tabInfoMap = M.fromList
