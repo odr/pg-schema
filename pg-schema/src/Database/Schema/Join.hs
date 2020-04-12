@@ -7,7 +7,7 @@ import Data.Singletons.TH
 import Data.Text (Text)
 import Database.Schema.Def
 import GHC.TypeLits
-import Util.ToStar
+import PgSchema.Util
 
 
 singletons [d|

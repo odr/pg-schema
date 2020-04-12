@@ -6,19 +6,20 @@ import           Data.Aeson (FromJSON(..), ToJSON(..))
 import           Data.Kind (Type)
 import           Data.List as L
 import           Data.Maybe
-import           Data.Maybe (isJust)
 import           Data.Proxy (Proxy(..))
+import           Data.Singletons
 import qualified Data.Text as T.S
 import           Data.Text.Lazy as T
 import           Data.Tuple
-import           Database.PostgreSQL.Convert
 import           Database.PostgreSQL.Simple.ToField
-import           Database.Schema.Def
 import           Formatting
 import           GHC.Generics (Generic)
 import           GHC.OverloadedLabels (IsLabel(..))
 import           GHC.TypeLits
-import           Util.ToStar
+
+import           Database.PostgreSQL.Convert
+import           Database.Schema.Def
+import           PgSchema.Util
 
 
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like {isCaseSesnsitive :: Bool}
@@ -187,31 +188,31 @@ convCond rootTabNum = \case
           Like False -> "upper(" <> fld' <> ") like upper(?)"
           op         -> fld' <> " " <> showCmp op <> " ?"
         where
-          fld' = fld ntab (toStar @n)
+          fld' = fld ntab (demote @n)
   In (_::Proxy n) vs -> tell (SomeToField <$> vs) >> go <$> ask
     where
       go ntab
         | L.null vs = "false"
-        | otherwise = fld ntab (toStar @n)
-          <> " in (" <> (T.intercalate "," $ const "?" <$> vs) <> ")"
+        | otherwise = fld ntab (demote @n)
+          <> " in (" <> T.intercalate "," ("?" <$ vs) <> ")"
   Null (_::Proxy n) ->
     (\ntab -> format (text % int % "." % stext % " is null")
-      (tabPref ntab) ntab (toStar @n))
+      (tabPref ntab) ntab (demote @n))
     <$> ask
   Not c -> getNot <$> convCond rootTabNum c
   BoolOp bo c1 c2 ->
     getBoolOp bo <$> convCond rootTabNum c1 <*> convCond rootTabNum c2
   Child (_ :: Proxy ref) (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
-    getRef True (toStar @(RdFrom (TRelDef sch ref)))
-      (toStar @(TRelDef sch ref)) (convCond rootTabNum cond)
+    getRef True (demote @(RdFrom (TRelDef sch ref)))
+      (demote @(TRelDef sch ref)) (convCond rootTabNum cond)
   Parent (_ :: Proxy ref) (cond::Cond sch (RdTo (TRelDef sch ref))) ->
-    getRef False (toStar @(RdTo (TRelDef sch ref)))
-      (toStar @(TRelDef sch ref)) (convCond rootTabNum cond)
+    getRef False (demote @(RdTo (TRelDef sch ref)))
+      (demote @(TRelDef sch ref)) (convCond rootTabNum cond)
   where
     tabPref ntab
       | ntab == 0 = format ("t" % int) rootTabNum
       | otherwise = format ("t" % int % "q" % int) rootTabNum ntab
-    fld ntab name = format (text % "." % stext) (tabPref ntab) name
+    fld ntab = format (text % "." % stext) (tabPref ntab)
     getNot c
       | c == mempty = mempty
       | otherwise   = format ("not (" % text % ")") c
@@ -233,12 +234,12 @@ convCond rootTabNum = \case
             (qualName tn) (tabPref cnum)
             (T.intercalate " and "
               (
-                ( (\(ch,pr) -> format
-                  (text % "." % stext % " = " % text % "." % stext)
-                    (tabPref cnum) ch (tabPref pnum) pr)
-                  . (if isChild then id else swap) )
+               (\(ch,pr) -> format
+                (text % "." % stext % " = " % text % "." % stext)
+                  (tabPref cnum) ch (tabPref pnum) pr)
+                . (if isChild then id else swap)
               <$> rdCols rd)
-              <> (if T.null c then (""::T.Text) else (" and (" <> c <> ")")))
+              <> if T.null c then (""::T.Text) else " and (" <> c <> ")")
 
 pgCond
   :: forall sch t. CSchema sch => Int -> Cond sch t -> (Text, [SomeToField])
@@ -281,7 +282,7 @@ withCondWithPath
   . (forall t'. Cond sch t' -> r)
   -> [T.S.Text] -> CondWithPath sch t -> Maybe r
 withCondWithPath f path (CondWithPath (Proxy :: Proxy path') cond) =
-  guard (path == toStar @path') >> pure (f cond)
+  guard (path == demote @path') >> pure (f cond)
 
 withCondsWithPath
   :: forall sch t r

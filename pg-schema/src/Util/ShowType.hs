@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Util.ShowType where
 
 import Data.List as L

@@ -4,16 +4,17 @@ module Database.PostgreSQL.Enum where
 import Data.Aeson
 import Data.Kind
 import Data.List as L
-import Data.Semigroup ((<>))
+import Data.Singletons
 import Data.Text as T
 import Data.Text.Encoding as T
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
-import Database.Schema.Def
 import GHC.Generics
 import Type.Reflection
-import Util.ToStar
+
+import Database.Schema.Def
+import PgSchema.Util
 
 
 data family PGEnum sch (name :: NameNSK) :: Type
@@ -26,11 +27,11 @@ instance
       Just [(x,"")] -> pure x
       _             -> returnError Incompatible f ""
     where
-      parse = reads . unpack . ((toTitle (nnsName $ toStar @name) <> "_") <>)
+      parse = reads . unpack . ((toTitle (nnsName $ demote @name) <> "_") <>)
 
 instance
   (Show (PGEnum sch name), ToStar name) => ToField (PGEnum sch name) where
-  toField = toField . L.drop (T.length (nnsName $ toStar @name) + 1) . show
+  toField = toField . L.drop (T.length (nnsName $ demote @name) + 1) . show
 
 instance
   ( TTypDef sch name ~ 'TypDef "E" 'Nothing es

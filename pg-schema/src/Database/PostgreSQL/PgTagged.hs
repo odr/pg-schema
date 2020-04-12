@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP                  #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.PgTagged where
 
@@ -16,18 +15,13 @@ import Database.PostgreSQL.Simple.ToRow as PG
 import Database.Schema.Def
 import Database.Schema.Rec
 import GHC.TypeLits
+import PgSchema.Util
 import Type.Reflection
-import Util.ToStar
 
 
-#if MIN_VERSION_base(4,11,0)
 newtype PgTagged a b = PgTagged (Tagged a b) deriving
   ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
   , Semigroup )
-#else
-newtype PgTagged a b = PgTagged (Tagged a b) deriving
-  ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid )
-#endif
 
 instance Hashable b => Hashable (PgTagged a b) where
   hashWithSalt s = hashWithSalt @b s . coerce
@@ -46,10 +40,10 @@ rePgTag = coerce
 
 instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
   parseJSON =
-    withObject "PgTagged " $ \v -> pgTag <$> v .: toStar @a
+    withObject "PgTagged " $ \v -> pgTag <$> v .: demote @a
 
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
-  toJSON v = object [toStar @a .= unPgTag v]
+  toJSON v = object [demote @a .= unPgTag v]
 
 instance
   (FromJSON a, Typeable a, KnownSymbol n)
@@ -69,13 +63,8 @@ instance
 instance
   (ToStar n, CRecordInfo (PgTagged n r), CRecordInfo (PgTagged (n1 ':ns) r1))
   => CRecordInfo (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
-#if MIN_VERSION_singletons(2,4,0)
   type TRecordInfo (PgTagged (n ': n1 ':ns) (r,r1)) =
     TRecordInfo (PgTagged n r) ++ TRecordInfo (PgTagged (n1 ': ns) r1)
-#else
-  type TRecordInfo (PgTagged (n ': n1 ':ns) (r,r1)) =
-    TRecordInfo (PgTagged n r) :++ TRecordInfo (PgTagged (n1 ': ns) r1)
-#endif
 
 instance CFieldType (PgTagged (n::Symbol) r) n where
   type TFieldType (PgTagged n r) n = r
@@ -83,19 +72,11 @@ instance CFieldType (PgTagged (n::Symbol) r) n where
 instance CFieldType (PgTagged ('[n]::[Symbol]) r) n where
   type TFieldType (PgTagged '[n] r) n = r
 
-#if MIN_VERSION_singletons(2,4,0)
 instance
   CFieldTypeB (n==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
   => CFieldType (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) x where
   type TFieldType (PgTagged (n ':n1 ':ns) (r,r1)) x=
     TFieldTypeB (n==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
-#else
-instance
-  CFieldTypeB (n:==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
-  => CFieldType (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) x where
-  type TFieldType (PgTagged (n ':n1 ':ns) (r,r1)) x=
-    TFieldTypeB (n:==x) (PgTagged (n ': n1 ':ns) (r,r1)) x
-#endif
 
 class CFieldTypeB (b :: Bool) (r :: Type) (n :: Symbol) where
   type TFieldTypeB b r n :: Type

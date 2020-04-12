@@ -5,10 +5,12 @@ import Data.List as L
 import Data.Maybe
 import Data.Proxy
 import Data.Semigroup ((<>))
+import Data.Singletons
 import Data.Text as T
 import Database.Schema.Def
 import GHC.TypeLits
-import Util.ToStar
+
+import PgSchema.Util
 
 
 data OrdDirection = Asc | Desc deriving Show
@@ -34,7 +36,7 @@ withOrdWithPath
   . (forall t'. [OrdFld sch t'] -> r)
   -> [Text] -> OrdWithPath sch t -> Maybe r
 withOrdWithPath f path (OrdWithPath (Proxy :: Proxy p) ord) =
-  guard (path == toStar @p) >> pure (f ord)
+  f ord <$ guard (path == demote @p)
 --
 withOrdsWithPath
   :: forall sch t r
@@ -51,10 +53,10 @@ rootOrd :: forall sch t. [OrdFld sch t] -> OrdWithPath sch t
 rootOrd = owp @'[]
 
 convOrd :: Int -> [OrdFld sch t] -> Text
-convOrd (T.pack . show -> n) ofs = T.intercalate "," $ L.map showFld ofs
+convOrd (show' -> n) ofs = T.intercalate "," $ L.map showFld ofs
   where
-    showFld (OrdFld (Proxy :: Proxy fld) (T.pack . show -> od)) =
-      "t"<>n<>"."<>(toStar @fld)<>" "<>od
+    showFld (OrdFld (Proxy :: Proxy fld) (show' -> od)) =
+      "t" <> n <> "." <> (demote @fld) <> " " <> od
 
 ordByPath :: forall sch t. Int -> [Text] -> [OrdWithPath sch t] -> Text
 ordByPath num path = fromMaybe mempty . withOrdsWithPath (convOrd num) path

@@ -4,11 +4,13 @@ import Control.Monad.RWS
 import Data.Bifunctor
 import Data.String
 import Data.Text as T
-import Database.PostgreSQL.DB
 import Database.PostgreSQL.Simple
+import GHC.Int
+
+import Database.PostgreSQL.DB
 import Database.Schema.Def
 import Database.Schema.Rec
-import GHC.Int
+import PgSchema.Util
 
 
 -- TODO: Insert tree
@@ -32,7 +34,7 @@ insertText
 insertText = insertText_ @sch @t @r `mappend` " returning " `mappend` fs'
   where
     qr' = getQueryRecord @PG @sch @t @r'
-    fs' = fromString $ T.unpack
+    fs' = fromText
       $ T.intercalate "," [ dbn | (FieldPlain _ dbn _) <- queryFields qr']
 
 insertText_
@@ -44,7 +46,7 @@ insertText_ = "insert into " `mappend` tn
     qr = getQueryRecord @PG @sch @t @r
     (fs,qs) = bimap inter inter
       $ unzip [ (dbn,"?") | (FieldPlain _ dbn _) <- queryFields qr]
-    toQ = fromString . T.unpack
+    toQ = fromText
     tn = toQ $ qualName $ tableName qr
     inter = toQ . T.intercalate ","
 
@@ -70,13 +72,13 @@ insertM qrIn _qrOut _rs = do
   modify (+1)
   pure $ case mbParent of
     Nothing ->
-      "t" <> T.pack (show num) <> "(_rid," <> fldsIn
+      "t" <> show' num <> "(_rid," <> fldsIn
         <> ") as (select row_number() over(), " <> fldsIn'
         <> " from (values (" <> quests <> ")) v(" <> fldsIn <> ")"
     Just parentNum ->
-      "t" <> T.pack (show num) <> "(_rid," <> fldsFk <> fldsIn
+      "t" <> show' num <> "(_rid," <> fldsFk <> fldsIn
         <> ") as (select row_number() over()," <> fldsFk <> fldsIn
-        <> " from i_t" <> T.pack (show parentNum) <> "_res ip"
+        <> " from i_t" <> show' parentNum <> "_res ip"
         <> ")"
   -- traverse () $ queryFields qrIn
   where

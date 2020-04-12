@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP                     #-}
 {-# LANGUAGE UndecidableInstances    #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 module Database.Schema.Rec where
@@ -11,7 +10,7 @@ import Data.Singletons.TH
 import Data.Text (Text)
 import Database.PostgreSQL.Simple.Types as PG
 import Database.Schema.Def
-import Util.ToStar
+import PgSchema.Util
 
 
 singletons [d|
@@ -44,12 +43,6 @@ promote [d|
       find2 (x:xs) = fieldName x == n || find2 xs
   |]
 
-#if !MIN_VERSION_base(4,11,0)
-type (:+++) a b = (:++) a b
-#else
-type (:+++) a b = (++) a b
-#endif
-
 type FieldInfoK = FieldInfo' Symbol
 type FieldInfo = FieldInfo' Text
 
@@ -70,10 +63,10 @@ class ToStar (TRecordInfo r) => CRecordInfo r where
 
 instance (CRecordInfo r1, CRecordInfo r2, ToStar (TRecordInfo (r1 PG.:. r2)))
   => CRecordInfo (r1 PG.:. r2) where
-  type TRecordInfo (r1 PG.:. r2) = TRecordInfo r1 :+++ TRecordInfo r2
+  type TRecordInfo (r1 PG.:. r2) = TRecordInfo r1 ++ TRecordInfo r2
 
 recordInfo :: forall r. CRecordInfo r => [FieldInfo]
-recordInfo = toStar @(TRecordInfo r)
+recordInfo = demote @(TRecordInfo r)
 
 data QueryRecord = QueryRecord
   { tableName   :: NameNS
@@ -100,7 +93,7 @@ class
   getQueryRecord :: QueryRecord
   getQueryRecord = QueryRecord {..}
     where
-      tableName = toStar @t
+      tableName = demote @t
       queryFields = getQueryFields
         @db @sch @t @(FiWithType (TFieldTypeSym1 r) (TRecordInfo r))
 
@@ -146,7 +139,7 @@ instance
   , ToStar n )
   => CQueryFieldT 'FldPlain db sch t '( 'FieldInfo n dbname, ftype) where
   getQueryFieldT =
-    FieldPlain (toStar @n) (toStar @dbname) (fldDef @sch @t @dbname)
+    FieldPlain (demote @n) (demote @dbname) (fldDef @sch @t @dbname)
 
 instance
   ( tabTo ~ RdTo rd
@@ -164,11 +157,11 @@ instance
   => CQueryFieldTB 'False rd db sch t '( 'FieldInfo n dbname, recTo)
   where
   getQueryFieldTB =
-    FieldFrom (toStar @n) (toStar @dbname)
+    FieldFrom (demote @n) (demote @dbname)
       (getQueryRecord @db @sch @tabTo @recTo) refs
     where
       refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
-        (toStar @cols) (toStar @fds) (toStar @fdsTo)
+        (demote @cols) (demote @fds) (demote @fdsTo)
 --
 instance
   ( tabTo ~ RdTo rd
@@ -185,11 +178,11 @@ instance
   => CQueryFieldTB 'True rd db sch t '( 'FieldInfo n dbname, Maybe recTo)
   where
   getQueryFieldTB =
-    FieldFrom (toStar @n) (toStar @dbname)
+    FieldFrom (demote @n) (demote @dbname)
       (getQueryRecord @db @sch @tabTo @recTo) refs
     where
       refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
-        (toStar @cols) (toStar @fds) (toStar @fdsTo)
+        (demote @cols) (demote @fds) (demote @fdsTo)
 
 instance
   ( tabFrom ~ RdFrom rd
@@ -205,10 +198,10 @@ instance
   , ToStar dbname )
   => CQueryFieldT ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) where
   getQueryFieldT =
-    FieldTo (toStar @n) (toStar @dbname)
+    FieldTo (demote @n) (demote @dbname)
       (getQueryRecord @db @sch @tabFrom @recFrom) refs
     where
       refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
-        (toStar @cols) (toStar @fdsFrom) (toStar @fds)
+        (demote @cols) (demote @fdsFrom) (demote @fds)
 type AllMandatory sch t r =
   IsAllMandatory sch t (Map FieldDbNameSym0 (TRecordInfo r)) ~ 'True

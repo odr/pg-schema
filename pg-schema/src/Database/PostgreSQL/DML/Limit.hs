@@ -4,12 +4,13 @@ import Control.Monad
 import Data.List as L
 import Data.Maybe
 import Data.Proxy
-import Data.Semigroup ((<>))
+import Data.Singletons
 import Data.Text as T
-import Database.Schema.Def
 import GHC.Natural
 import GHC.TypeLits
-import Util.ToStar
+
+import Database.Schema.Def
+import PgSchema.Util
 
 
 data LO = LO
@@ -24,7 +25,7 @@ data LimOffWithPath sch t
 withLOWithPath
   :: forall sch t r. (LO -> r) -> [Text] -> LimOffWithPath sch t -> Maybe r
 withLOWithPath f path (LimOffWithPath (Proxy :: Proxy p) lo) =
-  guard (path == toStar @p) >> pure (f lo)
+  guard (path == demote @p) >> pure (f lo)
 
 withLOsWithPath
   :: forall sch t r. (LO -> r) -> [Text] -> [LimOffWithPath sch t] -> Maybe r
@@ -40,8 +41,8 @@ rootLO = lowp @'[]
 
 convLO :: LO -> Text
 convLO (LO ml mo) =
-  fromMaybe "" ((" limit " <>) . T.pack . show <$> ml)
-   <> fromMaybe "" ((" offset " <>) . T.pack . show <$> mo)
+  maybe "" ((" limit " <>) . show') ml
+   <> maybe "" ((" offset " <>) . show') mo
 
 loByPath :: forall sch t. [Text] -> [LimOffWithPath sch t] -> Text
 loByPath path = fromMaybe mempty . withLOsWithPath convLO path

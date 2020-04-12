@@ -257,10 +257,10 @@ TFldDef Tutorial ('NameNS "sch" "addresses") ("street") :: FldDef' Symbol
 
 ```
 
-We can lift this from type level to the level of values using `toStar` (it is just `demote` from [singletons](http://hackage.haskell.org/package/singletons) but left to support different singletons-version):
+We can lift this from type level to the level of values using `demote` (it is just `demote` from [singletons](http://hackage.haskell.org/package/singletons) but left to support different singletons-version):
 
 ```haskell
-ghci> toStar @(TFldDef Tutorial ('NameNS "sch" "addresses") ("street"))
+ghci> demote @(TFldDef Tutorial ('NameNS "sch" "addresses") ("street"))
 
 FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = True, fdHasDefault = False}
 ```

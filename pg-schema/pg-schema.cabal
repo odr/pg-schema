@@ -40,18 +40,17 @@ library
     Database.PostgreSQL.Schema.Schema
     Database.PostgreSQL.Enum
     Database.PostgreSQL.Schema.TH
-    -- Database.PostgreSQL.Schema.GenFile
     Database.Schema.Gen
     Database.Schema.Def
     Database.Schema.Rec
     Database.Schema.TH
     Database.Types.SchList
     TH.Rec.Update
-    -- Util.MRF
     Util.ShowType
-    Util.ToStar
+    -- PgSchema.Util
     Util.TH.LiftType
     PgSchema.Gen
+    PgSchema.Util
   other-modules:
     Paths_pg_schema
   hs-source-dirs:

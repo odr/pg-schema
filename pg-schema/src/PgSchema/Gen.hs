@@ -3,9 +3,11 @@ module PgSchema.Gen where
 import Data.Foldable as F
 import Data.List as L
 import Data.Map as M
+import Data.Singletons
 import Data.Text as T
+
 import PgSchema
-import Util.ToStar
+import PgSchema.Util
 
 
 data DotOper
@@ -22,7 +24,7 @@ genDot isQual dos = F.fold
   , "}\n"
   ]
   where
-    tabs = toStar @(TTabs sch)
+    tabs = demote @(TTabs sch)
     tim = tabInfoMap @sch
     rels = L.concatMap elems . elems $ tiFrom <$> tim
     tabsByName = M.fromListWith (<>)
@@ -40,7 +42,7 @@ genDot isQual dos = F.fold
     qName' nns = case exTo of
       [] -> nns'
       _  -> nns' <> " [label=\"" <> fst (qName nns) <> ": "
-        <> (T.unwords exTo) <> "\"]"
+        <> T.unwords exTo <> "\"]"
       where
         nns' = qNameQuo nns
         exTo = [t | ExcludeToTab x t <- dos, RelDef {..} <- rels

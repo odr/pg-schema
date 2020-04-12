@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP                     #-}
 {-# LANGUAGE NoDuplicateRecordFields #-}
 {-# LANGUAGE UndecidableInstances    #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
@@ -12,9 +11,9 @@ import Data.Singletons.Prelude as SP
 import Data.Singletons.Prelude.List as SP
 import Data.Singletons.TH
 import Data.Text as T
+import PgSchema.Util
 import Util.ShowType
 import Util.TH.LiftType
-import Util.ToStar
 
 
 singletons [d|
@@ -141,7 +140,7 @@ class
   type TTypDef sch name :: TypDefK
 
 typDef :: forall sch name. CTypDef sch name => TypDef
-typDef = toStar @(TTypDef sch name)
+typDef = demote @(TTypDef sch name)
 genDefunSymbols [''TTypDef]
 
 -- CFldDef
@@ -154,7 +153,7 @@ class
   type TFldDef sch tname fname :: FldDefK
 
 fldDef :: forall sch tname fname. CFldDef sch tname fname => FldDef
-fldDef = toStar @(TFldDef sch tname fname)
+fldDef = demote @(TFldDef sch tname fname)
 
 genDefunSymbols [''TFldDef]
 
@@ -250,23 +249,17 @@ tabInfoMap = M.fromList
       (M.fromList <$> tabRelFroms)
       (M.fromList <$> tabRelTos)
   where
-    tabs = toStar @(TTabs sch)
-    tabDefs = toStar @(TTabDefs sch)
-    tabFlds = toStar @(TTabFlds sch)
-    tabFldDefs = toStar @(TTabFldDefs sch)
-    tabRelFroms = toStar @(TTabRelFroms sch)
-    tabRelTos = toStar @(TTabRelTos sch)
+    tabs = demote @(TTabs sch)
+    tabDefs = demote @(TTabDefs sch)
+    tabFlds = demote @(TTabFlds sch)
+    tabFldDefs = demote @(TTabFldDefs sch)
+    tabRelFroms = demote @(TTabRelFroms sch)
+    tabRelTos = demote @(TTabRelTos sch)
 
 typDefMap :: forall sch. CSchema sch => M.Map NameNS TypDef
 typDefMap = M.fromList $ L.zip
-  (toStar @(TTypes sch))
-  (toStar @(SP.Map (TTypDefSym1 sch) (TTypes sch)))
-
-#if !MIN_VERSION_base(4,11,0)
-type (:====) a b = (:==) a b
-#else
-type (:====) a b = (==) a b
-#endif
+  (demote @(TTypes sch))
+  (demote @(SP.Map (TTypDefSym1 sch) (TTypes sch)))
 
 type TRelTab sch t name = GetRelTab
   (Map2 (TRelDefSym1 sch) (TFrom sch t)) (Map2 (TRelDefSym1 sch) (TTo sch t))
