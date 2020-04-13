@@ -4,9 +4,9 @@ module Database.Schema.Rec where
 
 import Data.Kind
 import Data.List as L
-import Data.Singletons.Prelude as SP
+import Data.Singletons.Prelude as SP hiding ((:.))
 import Data.Singletons.Prelude.List as SP
-import Data.Singletons.TH
+import Data.Singletons.TH hiding ((:.))
 import Data.Text (Text)
 import Database.PostgreSQL.Simple.Types as PG
 import Database.Schema.Def
@@ -65,6 +65,13 @@ instance (CRecordInfo r1, CRecordInfo r2, ToStar (TRecordInfo (r1 PG.:. r2)))
   => CRecordInfo (r1 PG.:. r2) where
   type TRecordInfo (r1 PG.:. r2) = TRecordInfo r1 ++ TRecordInfo r2
 
+instance
+  ( CQueryRecord db sch t r1, CQueryRecord db sch t r2
+  -- , CQueryFields db sch t (TRecordInfo (r1 :. r2))
+  , CQueryFields db sch t (FiTypeInfo (r1 :. r2))
+  )
+  => CQueryRecord db sch t (r1 :. r2)
+
 recordInfo :: forall r. CRecordInfo r => [FieldInfo]
 recordInfo = demote @(TRecordInfo r)
 
@@ -86,9 +93,9 @@ data QueryField
   | FieldFrom  Text Text QueryRecord [QueryRef]
   deriving Show
 
+type FiTypeInfo r = FiWithType (TFieldTypeSym1 r) (TRecordInfo r)
 class
-  ( CSchema sch, ToStar t
-  , CQueryFields db sch t (FiWithType (TFieldTypeSym1 r) (TRecordInfo r)) )
+  ( CSchema sch, ToStar t, CQueryFields db sch t (FiTypeInfo r) )
   => CQueryRecord (db::Type) (sch::Type) (t::NameNSK) (r::Type) where
   getQueryRecord :: QueryRecord
   getQueryRecord = QueryRecord {..}

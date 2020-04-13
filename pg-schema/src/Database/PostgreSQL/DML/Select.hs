@@ -7,14 +7,15 @@ import Data.List as L
 import Data.String
 import Data.Text as T
 import Data.Text.Lazy (toStrict)
+import Database.PostgreSQL.Simple
+import Formatting
+
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Condition
 import Database.PostgreSQL.DML.Limit
 import Database.PostgreSQL.DML.Order
-import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Rec
-import Formatting
 
 
 data QueryParam sch t = QueryParam

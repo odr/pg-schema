@@ -34,6 +34,7 @@ library
     Database.PostgreSQL.DML.Limit
     Database.PostgreSQL.DML.Select
     Database.PostgreSQL.DML.Insert
+    -- Database.PostgreSQL.DML.Update
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
     Database.PostgreSQL.Schema.Info
@@ -47,7 +48,6 @@ library
     Database.Types.SchList
     TH.Rec.Update
     Util.ShowType
-    -- PgSchema.Util
     Util.TH.LiftType
     PgSchema.Gen
     PgSchema.Util

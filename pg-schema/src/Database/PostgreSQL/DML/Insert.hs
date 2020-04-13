@@ -27,11 +27,13 @@ insertSch_
   => Connection -> [r] -> IO Int64
 insertSch_ conn = executeMany conn (insertText_ @sch @t @r)
 
+-- TODO: We can set returning only for "Plain" (and monoidal) fields.
+-- It doesn't checked now!
 insertText
   :: forall sch t r r'
   . (AllMandatory sch t r, CQueryRecord PG sch t r, CQueryRecord PG sch t r')
   => Query
-insertText = insertText_ @sch @t @r `mappend` " returning " `mappend` fs'
+insertText = insertText_ @sch @t @r <> " returning " <> fs'
   where
     qr' = getQueryRecord @PG @sch @t @r'
     fs' = fromText
@@ -46,9 +48,8 @@ insertText_ = "insert into " `mappend` tn
     qr = getQueryRecord @PG @sch @t @r
     (fs,qs) = bimap inter inter
       $ unzip [ (dbn,"?") | (FieldPlain _ dbn _) <- queryFields qr]
-    toQ = fromText
-    tn = toQ $ qualName $ tableName qr
-    inter = toQ . T.intercalate ","
+    tn = fromText $ qualName $ tableName qr
+    inter = fromText . T.intercalate ","
 
 -- insertText
 --   :: forall sch t r r'

@@ -176,7 +176,8 @@ deriving instance Show SomeToField
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 --
-convCond :: forall sch t. CSchema sch => Int -> Cond sch t -> CondMonad Text
+convCond
+  :: forall sch t. CSchema sch => Maybe Int -> Cond sch t -> CondMonad Text
 convCond rootTabNum = \case
   EmptyCond -> pure mempty
   Cmp (_::Proxy n) cmp v -> ask >>= go
@@ -210,8 +211,9 @@ convCond rootTabNum = \case
       (demote @(TRelDef sch ref)) (convCond rootTabNum cond)
   where
     tabPref ntab
-      | ntab == 0 = format ("t" % int) rootTabNum
-      | otherwise = format ("t" % int % "q" % int) rootTabNum ntab
+      | ntab == 0 = maybe "t" (format $ "t" % int) rootTabNum
+      | otherwise = maybe
+        (format $ "tq" % int) (format $ "t" % int % "q" % int) rootTabNum ntab
     fld ntab = format (text % "." % stext) (tabPref ntab)
     getNot c
       | c == mempty = mempty
@@ -242,7 +244,8 @@ convCond rootTabNum = \case
               <> if T.null c then (""::T.Text) else " and (" <> c <> ")")
 
 pgCond
-  :: forall sch t. CSchema sch => Int -> Cond sch t -> (Text, [SomeToField])
+  :: forall sch t. CSchema sch
+  => Maybe Int -> Cond sch t -> (Text, [SomeToField])
 pgCond n = runCond . convCond n
 
 {-
@@ -302,4 +305,5 @@ rootCond = cwp @'[]
 condByPath
   :: forall sch t. CSchema sch
   => Int -> [T.S.Text] ->[CondWithPath sch t] -> (Text, [SomeToField])
-condByPath num path = fromMaybe mempty . withCondsWithPath (pgCond num) path
+condByPath num path =
+  fromMaybe mempty . withCondsWithPath (pgCond $ Just num) path
