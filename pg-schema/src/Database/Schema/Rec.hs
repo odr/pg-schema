@@ -67,7 +67,6 @@ instance (CRecordInfo r1, CRecordInfo r2, ToStar (TRecordInfo (r1 PG.:. r2)))
 
 instance
   ( CQueryRecord db sch t r1, CQueryRecord db sch t r2
-  -- , CQueryFields db sch t (TRecordInfo (r1 :. r2))
   , CQueryFields db sch t (FiTypeInfo (r1 :. r2))
   )
   => CQueryRecord db sch t (r1 :. r2)
