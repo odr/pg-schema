@@ -153,7 +153,7 @@ newtype PgOid = PgOid { fromPgOid :: Oid }
   deriving (Show, Eq, Read, Ord, FromField, ToField)
 
 instance Hashable PgOid where
-  hashWithSalt _ = 0
+  hashWithSalt _ _ = 0
   -- we don't want to distinguish oids only real structure
   -- e.g. if we recreate some table or constraint
 
