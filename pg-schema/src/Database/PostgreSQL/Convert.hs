@@ -153,7 +153,9 @@ newtype PgOid = PgOid { fromPgOid :: Oid }
   deriving (Show, Eq, Read, Ord, FromField, ToField)
 
 instance Hashable PgOid where
-  hashWithSalt s = hashWithSalt s . show
+  hashWithSalt _ = 0
+  -- we don't want to distinguish oids only real structure
+  -- e.g. if we recreate some table or constraint
 
 instance FromJSON PgOid where
   parseJSON = fmap (PgOid . read . ("Oid " ++)) . parseJSON
