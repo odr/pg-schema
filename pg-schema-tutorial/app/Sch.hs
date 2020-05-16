@@ -1,7 +1,8 @@
+{- HLINT ignore -}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_GHC -freduction-depth=300 #-}
-module Sch(Sch) where
+module Sch where
 
 -- This file is generated and can't be edited.
 
@@ -11,7 +12,7 @@ import PgSchema
 
 
 hashSchema :: Int
-hashSchema = -6868291278663801447
+hashSchema = 6752757316872369154
 
 data Sch
 

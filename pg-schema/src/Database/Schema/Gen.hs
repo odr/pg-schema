@@ -25,9 +25,10 @@ textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
     pgEnum
       | L.null typEnum = ""
       | otherwise
-        =  "data instance PGEnum " <> st <> " = \n"
-        <> "  " <> T.intercalate " | "
-          (((toTitle (nnsName typ) <> "_") <>) <$> typEnum)
+        = "data instance PGEnum " <> st <> " = \n"
+        <> showSplit' "|" 2 70
+          ( T.intercalate " | "
+            $ ((toTitle (nnsName typ) <> "_") <>) <$> typEnum )
         <> "\n"
         <> "  deriving (Show, Read, Ord, Eq, Generic)\n\n"
         <> "instance NFData (PGEnum " <> st <> ")\n\n"
@@ -85,13 +86,16 @@ genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
   <> "  type TTypes " <> schName <> " = " <> showSplit 4 70 (keys mtyp) <> "\n"
 
 showSplit :: ShowType a => Int -> Int -> a -> Text
-showSplit shift width
-  = T.unlines . mapTail ((T.replicate shift " " <>) . (","<>))
-  . L.map (T.intercalate ",") . fst . mkLines . showType
+showSplit shift width = showSplit' "," shift width . showType
+
+showSplit' :: Text -> Int -> Int -> Text -> Text
+showSplit' delim shift width
+  = T.unlines . mapTail ((T.replicate shift " " <>) . (delim <>))
+  . L.map (T.intercalate delim) . fst . mkLines
   where
     mapTail _ []     = []
     mapTail f (x:xs) = x : L.map f xs
-    mkLines = L.foldr step ([],0). T.splitOn ","
+    mkLines = L.foldr step ([],0). T.splitOn delim
       where
         step t (xs,len)
           | tlen + len > width = ([t] : xs, tlen)
