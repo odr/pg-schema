@@ -25,7 +25,7 @@ textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
     pgEnum
       | L.null typEnum = ""
       | otherwise
-        = "data instance PGEnum " <> st <> " = \n"
+        = "data instance PGEnum " <> st <> "\n  = "
         <> showSplit' "|" 2 70
           ( T.intercalate " | "
             $ ((toTitle (nnsName typ) <> "_") <>) <$> typEnum )
