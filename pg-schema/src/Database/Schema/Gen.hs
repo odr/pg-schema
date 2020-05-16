@@ -29,7 +29,6 @@ textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
         <> showSplit' "|" 2 70
           ( T.intercalate " | "
             $ ((toTitle (nnsName typ) <> "_") <>) <$> typEnum )
-        <> "\n"
         <> "  deriving (Show, Read, Ord, Eq, Generic)\n\n"
         <> "instance NFData (PGEnum " <> st <> ")\n\n"
 
