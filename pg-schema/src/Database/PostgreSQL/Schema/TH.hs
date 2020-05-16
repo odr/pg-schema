@@ -1,7 +1,9 @@
 module Database.PostgreSQL.Schema.TH where
 
+import Control.DeepSeq
 import Control.Monad.Catch
 import Data.ByteString as BS
+import Data.Hashable
 import Data.List as L
 import Data.Map as M
 import Data.Semigroup ((<>))
@@ -16,17 +18,22 @@ import Util.TH.LiftType
 
 
 thTypDef :: Name -> NameNS -> TypDef -> DecsQ
-thTypDef sch name td@(TypDef{..}) = (++)
+thTypDef sch name td@TypDef{..} = (++)
   <$> [d|
   instance CTypDef $(liftType sch) $(liftType name) where
     type TTypDef $(liftType sch) $(liftType name) = $(liftType td)
   |]
-  <*> if L.null typEnum then pure [] else
-    sequence
+  <*> if L.null typEnum then pure [] else (++)
+    <$> sequence
       [ dataInstD (pure []) ''PGEnum [liftType sch, liftType name] Nothing
         enumsQ
         [ derivClause Nothing
-          [[t|Show|], [t|Read|], [t|Ord|], [t|Eq|], [t|Generic|]] ] ]
+          [ [t|Show|], [t|Read|], [t|Ord|], [t|Eq|], [t|Generic|]
+          , [t|Bounded|], [t|Enum|] ] ] ]
+    <*> [d|
+      instance Hashable (PGEnum $(liftType sch) $(liftType name))
+      instance NFData (PGEnum $(liftType sch) $(liftType name))
+      |]
   where
     enumsQ
       = flip normalC [] . mkName . T.unpack

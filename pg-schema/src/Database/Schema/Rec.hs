@@ -3,9 +3,7 @@
 module Database.Schema.Rec where
 
 import Data.Kind
-import Data.List as L
 import Data.Singletons.Prelude as SP hiding ((:.))
-import Data.Singletons.Prelude.List as SP
 import Data.Singletons.TH hiding ((:.))
 import Data.Text (Text)
 import Database.PostgreSQL.Simple.Types as PG

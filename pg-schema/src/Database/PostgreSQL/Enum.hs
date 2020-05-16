@@ -4,7 +4,6 @@ module Database.PostgreSQL.Enum(PGEnum) where
 import Control.Monad
 import Data.Aeson
 import Data.Kind
-import Data.List as L
 import Data.Maybe
 import Data.Singletons
 import Data.Text as T
@@ -12,7 +11,6 @@ import Data.Text.Encoding as T
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
-import GHC.Generics
 import Type.Reflection
 
 import Database.Schema.Def

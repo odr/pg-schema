@@ -13,8 +13,8 @@ import Type.Reflection
 
 
 newtype SchList a = SchList { getSchList :: [a] } deriving
-  ( Show, Eq, Ord, FromJSON, ToJSON, Functor, Hashable, Semigroup, Monoid
-  , Applicative, Alternative, Foldable, Traversable )
+  ( Show, Eq, Ord, FromJSON, ToJSON, Hashable, Semigroup, Monoid
+  , Functor, Applicative, Alternative, Foldable, Traversable )
 
 instance (FromJSON a, Typeable a) => FromField (SchList a) where
   fromField = fromJSONField

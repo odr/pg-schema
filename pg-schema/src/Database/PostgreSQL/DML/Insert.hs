@@ -2,7 +2,6 @@ module Database.PostgreSQL.DML.Insert where
 
 import Control.Monad.RWS
 import Data.Bifunctor
-import Data.String
 import Data.Text as T
 import Database.PostgreSQL.Simple
 import GHC.Int

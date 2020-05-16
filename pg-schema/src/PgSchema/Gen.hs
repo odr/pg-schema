@@ -7,7 +7,6 @@ import Data.Singletons
 import Data.Text as T
 
 import PgSchema
-import PgSchema.Util
 
 
 data DotOper

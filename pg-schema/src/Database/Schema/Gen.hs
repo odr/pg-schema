@@ -29,7 +29,8 @@ textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
         <> showSplit' "|" 2 70
           ( T.intercalate " | "
             $ ((toTitle (nnsName typ) <> "_") <>) <$> typEnum )
-        <> "  deriving (Show, Read, Ord, Eq, Generic)\n\n"
+        <> "  deriving (Show, Read, Ord, Eq, Generic, Bounded, Enum)\n\n"
+        <> "instance Hashable (PGEnum " <> st <> ")\n\n"
         <> "instance NFData (PGEnum " <> st <> ")\n\n"
 
 textFldDef :: Text -> NameNS -> Text -> FldDef -> Text
@@ -69,6 +70,7 @@ genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
   <> "module " <> moduleName <> " where\n\n"
   <> "-- This file is generated and can't be edited.\n\n"
   <> "import Control.DeepSeq\n" -- for PGEnum if exist
+  <> "import Data.Hashable\n" -- for PGEnum if exist
   <> "import GHC.Generics\n" -- for PGEnum if exists
   <> "import PgSchema\n\n\n"
   <> "hashSchema :: Int\n"
