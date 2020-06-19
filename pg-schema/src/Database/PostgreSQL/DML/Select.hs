@@ -60,10 +60,10 @@ selectText
 selectText cond = evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
   (QueryRead 0 True [] cond) (QueryState 0 [] False "" "")
 
-jsonPairing :: [(Text, Text)] -> Text
+jsonPairing :: [(Text, Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
   where
-    pairs = L.map (\(a,b) -> "'" <> b <> "'," <> a) fs
+    pairs = L.map (\(a,b,_) -> "'" <> b <> "'," <> a) fs
 
 selectM :: MonadQuery sch t m => QueryRecord -> m Text
 selectM QueryRecord {..} = do
@@ -75,7 +75,7 @@ selectM QueryRecord {..} = do
       condByPath qrCurrTabNum (L.reverse qrPath) $ qpConds qrParam
     sel
       | qrIsRoot    =
-        T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") fields
+        T.intercalate "," $ L.map (\(a,b,_) -> a <> " \"" <> b <> "\"") fields
       | otherwise = jsonPairing fields
     j = T.intercalate " " joins
     whereText
@@ -97,10 +97,13 @@ selectM QueryRecord {..} = do
       % " from " % stext % " t" % int % " " % stext
       % stext % stext % stext
 
-fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text)
+-- | return text for field, alias and expression to check is empty
+-- (not obvious for FieldTo)
+fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text, Text)
 fieldM (FieldPlain _ dbname _) = do
   n <- qrCurrTabNum <$> ask
-  pure (sformat fmt n dbname, dbname)
+  let val = sformat fmt n dbname
+  pure (val, dbname, val <> " is null")
   where
     fmt = "t" % int % "." % stext
 
@@ -114,7 +117,8 @@ fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
   flds <- local
     (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
     $ traverse fieldM queryFields
-  pure (fld flds, dbname)
+  let val = fld flds
+  pure (val, dbname, val <> " is null")
   where
     nullable = L.any (fdNullable . fromDef) refs
     joinText n1 n2 =
@@ -130,7 +134,7 @@ fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
       | otherwise = jsonPairing flds
       where
         fmt = "case when " % stext % " then null else " % stext % " end"
-        isNull = T.intercalate " and " $ (<> " is null") . fst <$> flds
+        isNull = T.intercalate " and " $ (\(_,_,x) -> x) <$> flds
 
 fieldM (FieldTo _ dbname rec refs) = do
   QueryRead {..} <- ask
@@ -142,10 +146,14 @@ fieldM (FieldTo _ dbname rec refs) = do
     (selectM rec)
   modify (\qs -> qs { qsJoins = joins })
   (QueryState _ _ isWhere ordText loText) <- get
-  pure (sformat fmt selText (if isWhere then "and" else "where")
-    (refCond (ltn+1) qrCurrTabNum refs) ordText loText, dbname)
+  let
+    val = sformat fmt0 selText (if isWhere then "and" else "where")
+      (refCond (ltn+1) qrCurrTabNum refs) ordText loText
+  pure (sformat fmt1 val, dbname, sformat fmt2 val)
   where
-    fmt = "array_to_json(array("%stext%" "%text%" "%stext%stext%stext%"))"
+    fmt0 = "array(" % stext % " " % text % " " % stext % stext % stext % ")"
+    fmt1 = "array_to_json(" % stext % ")"
+    fmt2 = stext % " = '{}'"
 
 refCond :: Int -> Int -> [QueryRef] -> Text
 refCond nFrom nTo = T.intercalate " and " . L.map compFlds
