@@ -47,7 +47,7 @@ deriveQueryRecord
 deriveQueryRecord flm pg sch = fmap L.concat . traverse (\(n,t,s) ->
   L.concat <$> sequenceA
     [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
-    -- ^ In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
+    -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
     , [d|instance FromRow $(liftType n)|]
     , [d|instance ToRow $(liftType n)|]
     , [d|instance FromField $(liftType n) where fromField = fromJSONField |]

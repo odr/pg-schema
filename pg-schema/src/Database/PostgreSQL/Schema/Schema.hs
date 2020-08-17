@@ -79,9 +79,6 @@ getSchema conn GenNames {..} = do
       where
         condSchemas =
           pparent @(PGC "class__namespace") (pin @"nspname" schemas)
-        -- TODO checkTabs is wrong.
-        -- We need `(relnamespace->name, name) in tables` but can't do it now!
-        -- So we select more than needed and than filter
         condTabs
           = pparent @(PGC "class__namespace")
             (pin @"nspname" $ nnsNamespace <$> tables)
@@ -160,11 +157,9 @@ getDefs (types,classes,relations) =
             getNames f = fst <$> L.filter ((==tabName) . f . snd) relDefs
     relDefs = Mb.mapMaybe mbRelDef relations
     mbRelDef PgRelation {..} = sequenceA
-      ( NameNS (coerce $ constraint__namespace) conname
-      , RelDef
-        <$> pure fromName
-        <*> pure toName
-        <*> sequenceA (coerce $ mzipWith getName2 conkey confkey) )
+      ( NameNS (coerce constraint__namespace) conname
+      , RelDef fromName toName
+        <$> sequenceA (coerce $ mzipWith getName2 conkey confkey) )
       where
         fromName = tabKey constraint__class
         toName = tabKey constraint__fclass
@@ -196,7 +191,7 @@ updateSchemaFile fileName ecs moduleName schName genNames = do
         pure $ case mbhs of
           Just [_,_,x] | x == fromString (show h) -> False
           _                                       -> True
-      else (pure True)
+      else pure True
     when needGen $ T.writeFile fileName $ moduleText h schema
   where
     getConnStr env =
