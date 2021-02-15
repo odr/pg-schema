@@ -90,7 +90,7 @@ library
     , MultiParamTypeClasses
     , NoStarIsType
     , OverloadedStrings
-    , OverloadedLabels
+    -- , OverloadedLabels
     , PatternSynonyms
     , PolyKinds
     , QuasiQuotes

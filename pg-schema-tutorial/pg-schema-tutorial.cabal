@@ -45,7 +45,7 @@ executable pg-schema-tutorial
     , DeriveGeneric
     , FlexibleInstances
     , MultiParamTypeClasses
-    , OverloadedLabels
+    -- , OverloadedLabels
     , OverloadedStrings
     , TemplateHaskell
     , TypeApplications

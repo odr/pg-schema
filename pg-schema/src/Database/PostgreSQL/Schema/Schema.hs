@@ -70,7 +70,7 @@ getSchema conn GenNames {..} = do
       { qpConds =
         [ rootCond $ condClass
           &&& pin @"relkind" (PgChar <$> "vr") -- views & tables
-        , cwp @'["attribute__class"] (#attnum >? (0::Int16)) ]
+        , cwp @'["attribute__class"] (fld @"attnum" >? (0::Int16)) ]
       , qpOrds =
         [ rootOrd [ascf @"relname"]
         , owp @'["attribute__class"] [ascf @"attnum"]

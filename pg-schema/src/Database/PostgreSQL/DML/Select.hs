@@ -117,7 +117,7 @@ fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
   flds <- local
     (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
     $ traverse fieldM queryFields
-  let val = fld flds
+  let val = fldt flds
   pure (val, dbname, val <> " is null")
   where
     nullable = L.any (fdNullable . fromDef) refs
@@ -129,7 +129,7 @@ fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
         outer
           | nullable = "left outer "
           | otherwise = ""
-    fld flds
+    fldt flds
       | nullable = sformat fmt isNull (jsonPairing flds)
       | otherwise = jsonPairing flds
       where
@@ -158,8 +158,9 @@ fieldM (FieldTo _ dbname rec refs) = do
 refCond :: Int -> Int -> [QueryRef] -> Text
 refCond nFrom nTo = T.intercalate " and " . L.map compFlds
   where
-    fld = "t" % int % "." % stext
-    compFlds QueryRef {..} = sformat (fld % "=" % fld) nFrom fromName nTo toName
+    fldt = "t" % int % "." % stext
+    compFlds QueryRef {..} =
+      sformat (fldt % "=" % fldt) nFrom fromName nTo toName
 
 --
 -- {-

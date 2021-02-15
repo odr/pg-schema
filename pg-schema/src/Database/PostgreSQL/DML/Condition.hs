@@ -14,7 +14,7 @@ import           Data.Tuple
 import           Database.PostgreSQL.Simple.ToField
 import           Formatting
 import           GHC.Generics (Generic)
-import           GHC.OverloadedLabels (IsLabel(..))
+-- import           GHC.OverloadedLabels (IsLabel(..))
 import           GHC.TypeLits
 
 import           Database.PostgreSQL.Convert
@@ -111,14 +111,22 @@ pparent
   => Cond sch (RdTo rel) -> Cond sch (RdFrom rel)
 pparent = Parent @sch @(RdFrom rel) @name Proxy
 
--- --
-instance
-  ( CFldDef sch tab fld, Show v, ToField v
-  , CanConvertPG sch (FdType (TFldDef sch tab fld))
-    (FdNullable (TFldDef sch tab fld)) v )
-  => IsLabel fld (Cmp -> v -> Cond sch tab) where
-  fromLabel = Cmp @_ @_ @fld Proxy
+-- -- --
+-- instance
+--   ( CFldDef sch tab fld, Show v, ToField v
+--   , CanConvertPG sch (FdType (TFldDef sch tab fld))
+--     (FdNullable (TFldDef sch tab fld)) v )
+--   => IsLabel fld (Cmp -> v -> Cond sch tab) where
+--   fromLabel = Cmp @_ @_ @fld Proxy
 --
+
+fld
+  :: forall fld sch tab v
+    . ( CFldDef sch tab fld, Show v, ToField v
+      , CanConvertPG sch (FdType (TFldDef sch tab fld))
+        (FdNullable (TFldDef sch tab fld)) v )
+  => Cmp -> v -> Cond sch tab
+fld = Cmp @_ @_ @fld Proxy
 
 pnot :: Cond sch tab -> Cond sch tab
 pnot = Not
@@ -185,16 +193,16 @@ convCond rootTabNum = \case
       go ntab = do
         tell [SomeToField v]
         pure $ case cmp of
-          Like True  -> fld' <> " like ?"
-          Like False -> "upper(" <> fld' <> ") like upper(?)"
-          op         -> fld' <> " " <> showCmp op <> " ?"
+          Like True  -> fldt' <> " like ?"
+          Like False -> "upper(" <> fldt' <> ") like upper(?)"
+          op         -> fldt' <> " " <> showCmp op <> " ?"
         where
-          fld' = fld ntab (demote @n)
+          fldt' = fldt ntab (demote @n)
   In (_::Proxy n) vs -> tell (SomeToField <$> vs) >> go <$> ask
     where
       go ntab
         | L.null vs = "false"
-        | otherwise = fld ntab (demote @n)
+        | otherwise = fldt ntab (demote @n)
           <> " in (" <> T.intercalate "," ("?" <$ vs) <> ")"
   Null (_::Proxy n) ->
     (\ntab -> format (text % int % "." % stext % " is null")
@@ -214,7 +222,7 @@ convCond rootTabNum = \case
       | ntab == 0 = maybe "t" (format $ "t" % int) rootTabNum
       | otherwise = maybe
         (format $ "tq" % int) (format $ "t" % int % "q" % int) rootTabNum ntab
-    fld ntab = format (text % "." % stext) (tabPref ntab)
+    fldt ntab = format (text % "." % stext) (tabPref ntab)
     getNot c
       | c == mempty = mempty
       | otherwise   = format ("not (" % text % ")") c
