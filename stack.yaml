@@ -12,3 +12,5 @@ packages:
 # extra-deps:
 # - git: https://github.com/odr/singletons.git
 #   commit: ad8a595ab1811d0e7f17d6829b7edf29a7eaa96a
+nix:
+  packages: [zip postgresql]
