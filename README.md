@@ -7,7 +7,7 @@ Look at [Tutorial](https://github.com/odr/pg-schema/tree/master/pg-schema-tutori
 
 ## Brief
 
-In compile time system information is getting from DB: tables, keys (private, unique, foreign), types (including arrays and enumerations). All information is moved to Type Level. I.e. you can wrote any statically-checked functions. E.g. there is a static guarantees that all db-field could be convert to haskell-field.
+In compile time system information is getting from DB: tables, keys (private, unique, foreign), types (including arrays and enumerations). All information is moved to Type Level. I.e. you can write any statically-checked functions. E.g. there is a static guarantees that all db-field could be convert to haskell-field.
 
 There are two ways of generation this info:
 - file generation (recommended). It can be done in project's Setup.hs. In this case on each compilation db will checked and info will be regenerated if there are some changes (checking is very fast). If db is not available you will use file which was generated before
