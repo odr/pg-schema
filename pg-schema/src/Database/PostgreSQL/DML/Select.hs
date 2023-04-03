@@ -16,6 +16,7 @@ import Database.PostgreSQL.DML.Limit
 import Database.PostgreSQL.DML.Order
 import Database.Schema.Def
 import Database.Schema.Rec
+import Database.Schema.ShowType
 
 
 data QueryParam sch t = QueryParam

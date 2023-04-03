@@ -7,7 +7,7 @@ Type provider from PostgreSQL. With some batteries.
 You have to have [postgresql](https://www.postgresql.org/) and [stack](https://docs.haskellstack.org/en/stable/README/) installed before. Than
 ```
 > git clone git@github.com:odr/pg-schema.git
-> cd pg-schema
+> cd pg-schema-tutorial
 > cd sql && ./db && cd ..
 > stack install pg-schema-tutorial
 
@@ -71,16 +71,16 @@ ghci> import PgSchema
 
 ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" (GenNames ["sch"] [])}
 
-ghci> { data Company = Company { name :: Text, address_id :: Maybe Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Company }
+ghci> { data Company = Company { name :: Text, address_id :: Maybe Int32 } deriving (Eq, Show, Generic); schemaRec id ''Company }
 
-ghci> { data Article = Article { name :: Text, code :: Maybe Text } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Article }
+ghci> { data Article = Article { name :: Text, code :: Maybe Text } deriving (Eq, Show, Generic); schemaRec id ''Article }
 
 ghci> import Data.Fixed
-ghci> { data OrdPos = OrdPos { num :: Int, opos_article :: Article, cnt :: Int, price :: Centi } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''OrdPos }
+ghci> { data OrdPos = OrdPos { num :: Int32, opos_article :: Article, cnt :: Int32, price :: Centi } deriving (Eq, Show, Generic); schemaRec id ''OrdPos }
 
 ghci> import Data.Time
 ghci> import Database.Types.SchList
-ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: Maybe (PGEnum Tutorial ('NameNS "sch" "order_state")) } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
+ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: Maybe (PGEnum Tutorial ('NameNS "sch" "order_state")) } deriving (Eq, Show, Generic); schemaRec id ''Order }
 
 ghci> instance CQueryRecord PG Tutorial ('NameNS "sch" "companies") Company
 ghci> instance CQueryRecord PG Tutorial ('NameNS "sch" "articles") Article
@@ -108,19 +108,14 @@ Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", ad
 
 -- orders where exists position with cnt > 5
 
-ghci> mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn qpEmpty { qpConds = [rootCond $ pchild @('NameNS "sch" "opos_order") (#cnt >? (5::Int))] }
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn qpEmpty { qpConds = [rootCond $ pchild @('NameNS "sch" "opos_order") (fld @"cnt" >? (5::Int32))] }
 
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 2, opos_article = Article {name = "article1", code = Just "a1"}, cnt = 2, price = 10.00},OrdPos {num = 1, opos_article = Article {name = "article3", code = Just "a3"}, cnt = 1, price = 120.00},OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 
 -- all orders sorted decendant by field `num` and with filtered positions.
 -- Included only top 2 positions (by cnt) with cnt > 5
 
-ghci> mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn qpEmpty
-  { qpConds = [cwp @'["opos_order"] (#cnt >? (5::Int))]
-  , qpOrds =
-    [ rootOrd [descf @"num"]
-    , owp @'["opos_order"] [descf @"cnt"] ]
-  , qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn qpEmpty { qpConds = [cwp @'["opos_order"] (fld @"cnt" >? (5::Int32))], qpOrds = [ rootOrd [descf @"num"], owp @'["opos_order"] [descf @"cnt"] ], qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
 
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Nothing}
@@ -130,12 +125,7 @@ Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", ad
 
 -- query text for the last query (formatted by hand...):
 
-ghci> selectText @Tutorial @('NameNS "sch" "orders") @Order qpEmpty
-  { qpConds = [cwp @'["opos_order"] (#cnt >? (5::Int))]
-  , qpOrds =
-    [ rootOrd [descf @"num"]
-    , owp @'["opos_order"] [descf @"cnt"] ]
-  , qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
+ghci> selectText @Tutorial @('NameNS "sch" "orders") @Order qpEmpty { qpConds = [cwp @'["opos_order"] (fld @"cnt" >? (5::Int32))], qpOrds =[ rootOrd [descf @"num"], owp @'["opos_order"] [descf @"cnt"] ], qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
 
 ("select t0.day \"day\", t0.num \"num\"
   , jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\"
@@ -281,13 +271,13 @@ type instance TTabs PgCatalog
   = '[PGC "pg_attribute", PGC "pg_class", PGC "pg_constraint",
       PGC "pg_enum", PGC "pg_namespace", PGC "pg_type"]
   	-- Defined at /home/odr/git/pg-schema/pg-schema/src/Database/PostgreSQL/Schema/Catalog.hs:260:8
-...    
+...
 ```
 
 We can now generate dot-description of our schema:
 ```haskell
 ghci> import PgSchema.Gen
-ghci> genDot @Tutorial False []
+ghci> mapM_ T.putStrLn $ T.lines $ genDot @Tutorial False []
 
 digraph G {
   penwidth=2
@@ -321,7 +311,7 @@ Having all this information what we can do now? We can define records and
 populate it with data. At first we'll define record and generate some instances (using TH-function `schemaRec`):
 ```haskell
 ghci> import Data.Time
-ghci> { data Ord1 = Ord1 { day :: Day, num :: Text, seller_id :: Int } deriving (Eq, Show); schemaRec @Tutorial id ''Ord1 }
+ghci> { data Ord1 = Ord1 { day :: Day, num :: Text, seller_id :: Int32 } deriving (Eq, Show); schemaRec id ''Ord1 }
 ```
 Define type synonym for convenience:
 ```haskell
@@ -369,7 +359,7 @@ Ord1 {day = 2018-11-11, num = "n1", seller_id = 1}
 
 What will be if we will use a wrong name of field?
 ```haskell
-ghci> { data Ord2 = Ord2 { day :: Day, num :: Text, seler_id :: Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Ord2 }
+ghci> { data Ord2 = Ord2 { day :: Day, num :: Text, seler_id :: Int32 } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Ord2 }
 
 ghci> instance CQueryRecord PG Tutorial (SchN "orders") Ord2
 <interactive>:88:10: error:
@@ -457,15 +447,15 @@ Beside that order has an enumeration field `state`. We can add it also with type
 
 Let's define types:
 ```haskell
-ghci> { data Company = Company { name :: Text, address_id :: Maybe Int } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Company }
+ghci> { data Company = Company { name :: Text, address_id :: Maybe Int32 } deriving (Eq, Show, Generic); schemaRec id ''Company }
 
-ghci> { data Article = Article { name :: Text, code :: Maybe Text } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Article }
+ghci> { data Article = Article { name :: Text, code :: Maybe Text } deriving (Eq, Show, Generic); schemaRec ''Article }
 
 ghci> import Data.Fixed
-ghci> { data OrdPos = OrdPos { num :: Int, opos_article :: Article, cnt :: Int, price :: Centi } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''OrdPos }
+ghci> { data OrdPos = OrdPos { num :: Int, opos_article :: Article, cnt :: Int32, price :: Centi } deriving (Eq, Show, Generic); schemaRec id ''OrdPos }
 
 ghci> import Data.Time
-ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: Maybe (PGEnum Tutorial (SchN "order_state")) } deriving (Eq, Show, Generic); schemaRec @Tutorial id ''Order }
+ghci> { data Order = Order { day :: Day, num :: Text, ord_seller :: Company, opos_order :: SchList OrdPos, state :: Maybe (PGEnum Tutorial (SchN "order_state")) } deriving (Eq, Show, Generic); schemaRec id ''Order }
 
 ghci> instance CQueryRecord PG Tutorial (SchN "companies") Company
 ghci> instance CQueryRecord PG Tutorial (SchN "articles") Article
@@ -593,7 +583,7 @@ ghci> :{
     , owp @'["opos_order"] [descf @"cnt"] ]
   , qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
   :}
-```  
+```
 
 ### Generation of schema
 

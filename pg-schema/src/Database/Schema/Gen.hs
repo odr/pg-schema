@@ -2,11 +2,10 @@ module Database.Schema.Gen where
 
 import Data.List as L
 import Data.Map as M
-import Data.Semigroup ((<>))
 import Data.String
 import Data.Text as T
 import Database.Schema.Def
-import Util.ShowType
+import Database.Schema.ShowType
 
 
 mkInst :: ShowType a => Text -> [Text] -> a -> Text

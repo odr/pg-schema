@@ -1,18 +1,19 @@
 {-# LANGUAGE NoDuplicateRecordFields #-}
-{-# LANGUAGE UndecidableInstances    #-}
+{-# LANGUAGE NoOverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 module Database.Schema.Def where
 
 import Data.Kind
 import Data.List as L
+import Data.List.Singletons as SP
 import Data.Map as M
-import Data.Semigroup ((<>))
-import Data.Singletons.Prelude as SP
-import Data.Singletons.Prelude.List as SP
+import Data.Ord.Singletons
 import Data.Singletons.TH
 import Data.Text as T
 import PgSchema.Util
-import Util.ShowType
+import Prelude.Singletons as SP
+import Text.Show.Singletons
 import Util.TH.LiftType
 
 
@@ -22,7 +23,6 @@ singletons [d|
     { nnsNamespace  :: s
     , nnsName       :: s }
     deriving (Show, Eq, Ord)
-
   data TypDef' s = TypDef
     { typCategory :: s
     , typElem     :: Maybe (NameNS' s)
@@ -293,25 +293,3 @@ instance LiftType RelDef where
   liftType RelDef{..} =
     [t| 'RelDef $(liftType rdFrom) $(liftType rdTo) $(liftType rdCols) |]
 --
-instance ShowType NameNS where
-  showType NameNS{..} =
-    "( " <> showType nnsNamespace <> " ->> " <> showType nnsName <> " )"
-
-instance ShowType TypDef where
-  showType TypDef{..} = "'TypDef " <> T.intercalate " "
-    [showType typCategory, showType typElem, showType typEnum]
-
-instance ShowType FldDef where
-  showType FldDef{..} = "'FldDef " <> T.intercalate " "
-    [showType fdType, showType fdNullable, showType fdHasDefault]
-
-instance ShowType TabDef where
-  showType TabDef{..} = "'TabDef " <> T.intercalate " "
-    [showType tdFlds, showType tdKey, showType tdUniq]
-
-instance ShowType RelDef where
-  showType RelDef{..} = "'RelDef " <> T.intercalate " "
-    [showType rdFrom, showType rdTo, showType rdCols]
-
-qualName :: NameNS -> Text
-qualName NameNS {..} = nnsNamespace <> "." <> nnsName

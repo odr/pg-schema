@@ -30,6 +30,7 @@ executable pg-schema-tutorial
       aeson
     , base >=4.7 && <5
     , generic-random
+    , hashable
     , pg-schema
     -- , pg-schema-tutorial-db
     , postgresql-simple

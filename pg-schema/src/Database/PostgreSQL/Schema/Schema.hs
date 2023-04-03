@@ -3,6 +3,7 @@ module Database.PostgreSQL.Schema.Schema where
 import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.Zip
+import Data.Bifunctor
 import Data.ByteString as BS hiding (readFile, writeFile)
 import Data.Coerce
 import Data.Hashable
@@ -116,7 +117,7 @@ getDefs (types,classes,relations) =
     mClassAttrs =
       M.fromList [((c, attnum a), attname a)| (c,as) <- classAttrs, a <- as]
     attrs :: [(NameNS, PgAttribute)] =
-      L.concat $ (\(a,xs) -> (a,) <$> xs) <$> classAttrs
+      L.concatMap (\(a,xs) -> (a,) <$> xs) classAttrs
     typKey = NameNS <$> (coerce . type__namespace) <*> typname
     ntypes = ntype <$> L.filter ((`S.member` attrsTypes) . typKey) types
       where
@@ -146,13 +147,13 @@ getDefs (types,classes,relations) =
         tdKey = L.concat $ keysBy (=='p')
         tdUniq = keysBy (=='u')
         keysBy f
-          = catMaybes -- if something is wrong exclude such constraint
-          $ traverse numToName . coerce . (\PgConstraint {..} -> conkey)
-          <$> L.filter (f . coerce . contype) (coerce constraint__class)
+          = Mb.mapMaybe -- if something is wrong exclude such constraint
+          (traverse numToName . coerce . (\PgConstraint {..} -> conkey))
+          $ L.filter (f . coerce . contype) (coerce constraint__class)
           where
             numToName a =
               attname <$> L.find ((==a) . attnum) (getSchList attribute__class)
-        [froms, tos] = getNames <$> [rdFrom, rdTo]
+        (froms, tos) = bimap getNames getNames (rdFrom, rdTo)
           where
             getNames f = fst <$> L.filter ((==tabName) . f . snd) relDefs
     relDefs = Mb.mapMaybe mbRelDef relations

@@ -1,14 +1,16 @@
-{-# LANGUAGE UndecidableInstances    #-}
+{-# LANGUAGE NoOverloadedStrings #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 module Database.Schema.Rec where
 
 import Data.Kind
-import Data.Singletons.Prelude as SP hiding ((:.))
-import Data.Singletons.TH hiding ((:.))
+import Data.Singletons.TH
 import Data.Text (Text)
 import Database.PostgreSQL.Simple.Types as PG
 import Database.Schema.Def
 import PgSchema.Util
+import Prelude.Singletons as SP
+import Text.Show.Singletons
 
 
 singletons [d|

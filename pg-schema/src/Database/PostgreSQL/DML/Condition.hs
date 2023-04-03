@@ -1,25 +1,25 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.DML.Condition where
 
-import           Control.Monad.RWS
-import           Data.Aeson (FromJSON(..), ToJSON(..))
-import           Data.Kind (Type)
-import           Data.List as L
-import           Data.Maybe
-import           Data.Proxy (Proxy(..))
-import           Data.Singletons
+import Control.Monad.RWS
+import Data.Aeson (FromJSON(..), ToJSON(..))
+import Data.Kind (Type)
+import Data.List as L
+import Data.Maybe
+import Data.Singletons
 import qualified Data.Text as T.S
-import           Data.Text.Lazy as T
-import           Data.Tuple
-import           Database.PostgreSQL.Simple.ToField
-import           Formatting
-import           GHC.Generics (Generic)
+import Data.Text.Lazy as T
+import Data.Tuple
+import Database.PostgreSQL.Simple.ToField
+import Formatting
+import GHC.Generics (Generic)
 -- import           GHC.OverloadedLabels (IsLabel(..))
-import           GHC.TypeLits
+import GHC.TypeLits
 
-import           Database.PostgreSQL.Convert
-import           Database.Schema.Def
-import           PgSchema.Util
+import Database.PostgreSQL.Convert
+import Database.Schema.Def
+import Database.Schema.ShowType
+import PgSchema.Util
 
 
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like {isCaseSesnsitive :: Bool}

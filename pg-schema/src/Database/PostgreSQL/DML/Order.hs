@@ -4,7 +4,6 @@ import Control.Monad
 import Data.List as L
 import Data.Maybe
 import Data.Proxy
-import Data.Semigroup ((<>))
 import Data.Singletons
 import Data.Text as T
 import Database.Schema.Def

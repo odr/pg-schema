@@ -6,7 +6,6 @@ import Data.ByteString as BS
 import Data.Hashable
 import Data.List as L
 import Data.Map as M
-import Data.Semigroup ((<>))
 import Data.Text as T
 import Database.PostgreSQL.Enum
 import Database.PostgreSQL.Schema.Schema
@@ -84,9 +83,9 @@ thSchema schName (mtyp, mfld, mtab, mrel) =
     , L.concat <$> traverse
       (\(tab,(_,froms,tos)) -> thTabRels schName tab froms tos) (M.toList mtab)
     , [d|
-        instance CSchema $(schQ) where
-          type TTabs $(schQ) = $(liftType $ keys mtab)
-          type TTypes $(schQ) = $(liftType $ keys mtyp)
+        instance CSchema $schQ where
+          type TTabs $schQ = $(liftType $ keys mtab)
+          type TTypes $schQ = $(liftType $ keys mtyp)
         |] ]
   where
     schQ = liftType schName

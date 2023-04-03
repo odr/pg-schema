@@ -7,12 +7,13 @@ module Sch where
 -- This file is generated and can't be edited.
 
 import Control.DeepSeq
+import Data.Hashable
 import GHC.Generics
 import PgSchema
 
 
 hashSchema :: Int
-hashSchema = 6752757316872369154
+hashSchema = 437095890944702619
 
 data Sch
 
@@ -40,9 +41,11 @@ instance CTypDef Sch ( "sch" ->> "order_state" ) where
   type TTypDef Sch ( "sch" ->> "order_state" ) = 
     'TypDef "E" 'Nothing '[ "paid","booked","delivered" ]
 
-data instance PGEnum Sch ( "sch" ->> "order_state" ) = 
-  Order_state_paid | Order_state_booked | Order_state_delivered
-  deriving (Show, Read, Ord, Eq, Generic)
+data instance PGEnum Sch ( "sch" ->> "order_state" )
+  = Order_state_paid | Order_state_booked | Order_state_delivered
+  deriving (Show, Read, Ord, Eq, Generic, Bounded, Enum)
+
+instance Hashable (PGEnum Sch ( "sch" ->> "order_state" ))
 
 instance NFData (PGEnum Sch ( "sch" ->> "order_state" ))
 

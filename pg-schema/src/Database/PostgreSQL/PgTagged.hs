@@ -5,8 +5,9 @@ import Data.Aeson
 import Data.Coerce
 import Data.Hashable
 import Data.Kind
-import Data.Singletons.Prelude
+import Data.String
 import Data.Tagged
+import Data.Text as T
 import Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.FromField as PG
 import Database.PostgreSQL.Simple.FromRow as PG
@@ -16,6 +17,7 @@ import Database.Schema.Def
 import Database.Schema.Rec
 import GHC.TypeLits
 import PgSchema.Util
+import Prelude.Singletons
 import Type.Reflection
 
 
@@ -39,11 +41,11 @@ rePgTag :: forall a b c. PgTagged a c -> PgTagged b c
 rePgTag = coerce
 
 instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
-  parseJSON =
-    withObject "PgTagged " $ \v -> pgTag <$> v .: demote @a
+  parseJSON = withObject "PgTagged " \v ->
+    pgTag <$> v .: fromString (T.unpack $ demote @a)
 
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
-  toJSON v = object [demote @a .= unPgTag v]
+  toJSON v = object [fromString (T.unpack $ demote @a) .= unPgTag v]
 
 instance
   (FromJSON a, Typeable a, KnownSymbol n)
