@@ -23,7 +23,7 @@ through TH
 and referenced data
 * getting effective select query to populate such records
 * ~~getting effective insert/update/delete command to save such records in db~~
-(not realised yet)
+(not implemented yet)
 
 A number of possible problems with db-interaction could be resolved in
 compile time.
