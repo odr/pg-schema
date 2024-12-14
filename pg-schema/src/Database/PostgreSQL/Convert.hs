@@ -61,13 +61,13 @@ instance CanConvert1 ('TypDef "S" x y) sch (PGC "char") PgChar
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "name") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "text") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "varchar") Text
-instance CanConvert1 ('TypDef "S" x y) sch (PGC "uuid") UUID
 
 -- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
 -- used only in the root table
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.S.ByteString)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.L.ByteString)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") Value
+instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
 
 
 class CanConvertPG sch tn nullable (DefType sch tn nullable)
@@ -123,13 +123,13 @@ instance DefConvert1 ('TypDef "S" x y) sch (PGC "text") where
   type DefType1 ('TypDef "S" x y) sch (PGC "text") = Text
 instance DefConvert1 ('TypDef "S" x y) sch (PGC "varchar") where
   type DefType1 ('TypDef "S" x y) sch (PGC "varchar") = Text
-instance DefConvert1 ('TypDef "S" x y) sch (PGC "uuid") where
-  type DefType1 ('TypDef "S" x y) sch (PGC "uuid") = UUID
 
 instance DefConvert1 ('TypDef "U" x y) sch (PGC "bytea") where
   type DefType1 ('TypDef "U" x y) sch (PGC "bytea") = (Binary B.L.ByteString)
 instance DefConvert1 ('TypDef "U" x y) sch (PGC "jsonb") where
   type DefType1 ('TypDef "U" x y) sch (PGC "jsonb") = Value
+instance DefConvert1 ('TypDef "S" x y) sch (PGC "uuid") where
+  type DefType1 ('TypDef "U" x y) sch (PGC "uuid") = UUID
 
 
 -- Char has no ToField instance so make own char
