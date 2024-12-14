@@ -68,11 +68,11 @@ instance CanConvert1 ('TypDef "S" x y) sch (PGC "varchar") Text
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.S.ByteString)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.L.ByteString)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") Value
-instance (FromJSON a, ToJSON a) =>
-  CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") (Aeson a)
+instance (FromJSON a, ToJSON a) => CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") a
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
 
 
+{-
 class CanConvertPG sch tn nullable (DefType sch tn nullable)
   => DefConvertPG sch tn nullable where
   type DefType sch tn nullable :: Type
@@ -135,7 +135,7 @@ instance DefConvert1 ('TypDef "U" x y) sch (PGC "jsonb") where
 --   type DefType1 ('TypDef "U" x y) sch (PGC "jsonb") = Aeson a
 instance DefConvert1 ('TypDef "U" x y) sch (PGC "uuid") where
   type DefType1 ('TypDef "U" x y) sch (PGC "uuid") = UUID
-
+-}
 
 -- Char has no ToField instance so make own char
 newtype PgChar = PgChar { unPgChar :: Char }
