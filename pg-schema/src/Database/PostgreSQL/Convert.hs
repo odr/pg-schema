@@ -13,6 +13,7 @@ import Data.Kind
 import Data.List as L
 import Data.Text as T
 import Data.Time
+import Data.UUID
 import Database.PostgreSQL.Schema.Catalog (PGC)
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
@@ -60,6 +61,7 @@ instance CanConvert1 ('TypDef "S" x y) sch (PGC "char") PgChar
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "name") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "text") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "varchar") Text
+instance CanConvert1 ('TypDef "S" x y) sch (PGC "uuid") UUID
 
 -- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
 -- used only in the root table
@@ -121,11 +123,14 @@ instance DefConvert1 ('TypDef "S" x y) sch (PGC "text") where
   type DefType1 ('TypDef "S" x y) sch (PGC "text") = Text
 instance DefConvert1 ('TypDef "S" x y) sch (PGC "varchar") where
   type DefType1 ('TypDef "S" x y) sch (PGC "varchar") = Text
+instance DefConvert1 ('TypDef "S" x y) sch (PGC "uuid") where
+  type DefType1 ('TypDef "S" x y) sch (PGC "uuid") = UUID
 
 instance DefConvert1 ('TypDef "U" x y) sch (PGC "bytea") where
   type DefType1 ('TypDef "U" x y) sch (PGC "bytea") = (Binary B.L.ByteString)
 instance DefConvert1 ('TypDef "U" x y) sch (PGC "jsonb") where
   type DefType1 ('TypDef "U" x y) sch (PGC "jsonb") = Value
+
 
 -- Char has no ToField instance so make own char
 newtype PgChar = PgChar { unPgChar :: Char }
