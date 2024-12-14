@@ -16,6 +16,7 @@ import Data.Time
 import Data.UUID
 import Database.PostgreSQL.Schema.Catalog (PGC)
 import Database.PostgreSQL.Simple.FromField
+import Database.PostgreSQL.Simple.Newtypes
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import Database.Schema.Def
@@ -67,6 +68,7 @@ instance CanConvert1 ('TypDef "S" x y) sch (PGC "varchar") Text
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.S.ByteString)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.L.ByteString)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") Value
+instance FromJSON a => CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") (Aeson a)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
 
 
@@ -128,6 +130,8 @@ instance DefConvert1 ('TypDef "U" x y) sch (PGC "bytea") where
   type DefType1 ('TypDef "U" x y) sch (PGC "bytea") = (Binary B.L.ByteString)
 instance DefConvert1 ('TypDef "U" x y) sch (PGC "jsonb") where
   type DefType1 ('TypDef "U" x y) sch (PGC "jsonb") = Value
+-- instance DefConvert1 ('TypDef "U" x y) sch (PGC "jsonb") where
+--   type DefType1 ('TypDef "U" x y) sch (PGC "jsonb") = Aeson a
 instance DefConvert1 ('TypDef "U" x y) sch (PGC "uuid") where
   type DefType1 ('TypDef "U" x y) sch (PGC "uuid") = UUID
 
