@@ -1,5 +1,6 @@
 {-# LANGUAGE UndecidableInstances    #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE DerivingStrategies #-}
 module Database.PostgreSQL.Convert where
 
 import Control.Monad.Zip
@@ -62,7 +63,7 @@ instance CanConvert1 ('TypDef "S" x y) sch (PGC "char") PgChar
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "name") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "text") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "varchar") Text
-
+instance CanConvert1 ('TypDef "S" Nothing '[]) sch (PGC "citext") TextCI
 -- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
 -- used only in the root table
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.S.ByteString)
@@ -71,7 +72,11 @@ instance CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") Value
 instance (FromJSON a, ToJSON a) => CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") a
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
 
+newtype TextCI = TextCI { unTextCI :: Text }
+  deriving newtype (Show, FromJSON, ToJSON, FromField, ToField)
 
+instance Eq TextCI where
+  TextCI a == TextCI b = T.toLower a == T.toLower b
 {-
 class CanConvertPG sch tn nullable (DefType sch tn nullable)
   => DefConvertPG sch tn nullable where
