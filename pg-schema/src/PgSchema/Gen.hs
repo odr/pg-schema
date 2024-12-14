@@ -28,7 +28,7 @@ genDot isQual dos = F.fold
     tim = tabInfoMap @sch
     rels = L.concatMap elems . elems $ tiFrom <$> tim
     tabsByName = M.fromListWith (<>)
-      $ ((,) <$> nnsName <*> ((:[]) . nnsNamespace)) <$> tabs
+      $ ((,) <$> nnsName <*> pure . nnsNamespace) <$> tabs
     qName nns
       | isQual    = q
       | otherwise = case M.lookup (nnsName nns) tabsByName of
@@ -66,4 +66,4 @@ genDot isQual dos = F.fold
           where
             mbTabFlds = tiFlds <$> M.lookup rdFrom tim
             isNullableRef tabFlds = L.any fdNullable
-              <$> traverse (`M.lookup` tabFlds) (fst <$> rdCols)
+              <$> traverse ((`M.lookup` tabFlds) . fst) rdCols

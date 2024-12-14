@@ -2,6 +2,7 @@
 module Database.PostgreSQL.DML.Condition where
 
 import Control.Monad.RWS
+import Control.Monad
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Kind (Type)
 import Data.List as L

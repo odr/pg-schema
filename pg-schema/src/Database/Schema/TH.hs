@@ -53,5 +53,5 @@ deriveQueryRecord flm pg sch = fmap L.concat . traverse (\(n,t,s) ->
     , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
     , [d|instance ToField $(liftType n) where toField = toJSONField |]
     , schemaRec flm n
-    , [d|instance CQueryRecord $(pg) $(sch) $(liftType s) $(t)|]
+    , [d|instance CQueryRecord $pg $sch $(liftType s) $t|]
     ])

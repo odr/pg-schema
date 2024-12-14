@@ -21,7 +21,7 @@ source-repository head
 executable pg-schema-tutorial
   main-is: Main.hs
   other-modules:
-      Paths_pg_schema_tutorial
+      -- Paths_pg_schema_tutorial
       Sch
   hs-source-dirs:
       app
@@ -32,7 +32,6 @@ executable pg-schema-tutorial
     , generic-random
     , hashable
     , pg-schema
-    -- , pg-schema-tutorial-db
     , postgresql-simple
     , template-haskell
     , deepseq
@@ -46,7 +45,6 @@ executable pg-schema-tutorial
     , DeriveGeneric
     , FlexibleInstances
     , MultiParamTypeClasses
-    -- , OverloadedLabels
     , OverloadedStrings
     , TemplateHaskell
     , TypeApplications
@@ -55,6 +53,6 @@ executable pg-schema-tutorial
 
 custom-setup
   setup-depends:
-    base >= 4.7 && <5,
+    base >= 4.8 && <5,
     Cabal,
     pg-schema
