@@ -2,6 +2,7 @@
 module Database.PostgreSQL.DML.Select where
 
 import Control.Monad.RWS
+import Control.Monad
 import Data.Bifunctor
 import Data.List as L
 import Data.String

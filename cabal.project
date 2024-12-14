@@ -1,0 +1,12 @@
+optimization: False
+
+with-compiler: ghc-9.6.6
+-- 48 / 250 MiB
+
+-- with-compiler: ghc-9.8.2
+
+--with-compiler: ghc-9.10.1
+
+packages:
+  pg-schema
+  pg-schema-tutorial
