@@ -10,14 +10,12 @@ import Data.ByteString.Lazy as B.L
 import Data.Coerce
 import Data.Fixed
 import Data.Hashable
-import Data.Kind
 import Data.List as L
 import Data.Text as T
 import Data.Time
 import Data.UUID
 import Database.PostgreSQL.Schema.Catalog (PGC)
 import Database.PostgreSQL.Simple.FromField
-import Database.PostgreSQL.Simple.Newtypes
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import Database.Schema.Def

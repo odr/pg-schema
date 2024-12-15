@@ -69,7 +69,8 @@ library
     , text
     , time
     , uuid
-
+  ghc-options:
+    -Wall
   if impl(ghc >= 9.10.1)
     default-extensions: TypeAbstractions
   default-language: Haskell2010

@@ -12,8 +12,10 @@ import Data.Singletons
 import qualified Data.Text as T.S
 import Data.Text.Lazy as T
 import Data.Tuple
+import Database.PostgreSQL.DML.Limit
+import Database.PostgreSQL.DML.Order
 import Database.PostgreSQL.Simple.ToField
-import Formatting
+import Formatting hiding (ords)
 import GHC.Generics (Generic)
 -- import           GHC.OverloadedLabels (IsLabel(..))
 import GHC.TypeLits
@@ -74,8 +76,8 @@ data Cond (sch::Type) (tab::NameNSK)
     , tab ~ RdTo rel
     , CTabDef sch (RdFrom rel)
     , CRelDef sch ref )
-    => Child (Proxy ref) (Cond sch (RdFrom rel))
-  --
+    => Child (Proxy ref) [OrdFld sch (RdFrom rel)] LO (Cond sch (RdFrom rel))
+  -- condition "JOIN"
   | forall ref rel .
     ( rel ~ TRelDef sch ref
     , tab ~ RdFrom rel
@@ -110,7 +112,7 @@ pchild
   :: forall name sch tab rel .
     ( rel ~ TRelDef sch name, tab ~ RdTo rel
     , CTabDef sch (RdFrom rel), CRelDef sch name )
-  => Cond sch (RdFrom rel) -> Cond sch tab
+  => [OrdFld sch (RdFrom rel)] -> LO -> Cond sch (RdFrom rel) -> Cond sch tab
 pchild = Child @sch @tab @name Proxy
 
 pparent
@@ -211,18 +213,19 @@ convCond rootTabNum = \case
       go ntab = fldt ntab (demote @n)
           <> " in (" <> T.intercalate "," ("?" <$ vs) <> ")"
   Null (_::Proxy n) ->
-    (\ntab -> format (text % int % "." % stext % " is null")
-      (tabPref ntab) ntab (demote @n))
+    (\ntab -> tabPref ntab <> show' ntab <> "." <> fromStrict (demote @n) <> " is null")
     <$> ask
   Not c -> getNot <$> convCond rootTabNum c
   BoolOp bo c1 c2 ->
     getBoolOp bo <$> convCond rootTabNum c1 <*> convCond rootTabNum c2
-  Child (_ :: Proxy ref) (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
+  Child (_ :: Proxy ref) ords lo (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
     getRef True (demote @(RdFrom (TRelDef sch ref)))
-      (demote @(TRelDef sch ref)) (convCond rootTabNum cond)
+      (demote @(TRelDef sch ref)) (\n -> fromStrict $ convOrd n ords)
+      (fromStrict $ convLO lo) (convCond rootTabNum cond)
   Parent (_ :: Proxy ref) (cond::Cond sch (RdTo (TRelDef sch ref))) ->
     getRef False (demote @(RdTo (TRelDef sch ref)))
-      (demote @(TRelDef sch ref)) (convCond rootTabNum cond)
+      (demote @(TRelDef sch ref)) (pure mempty) mempty (convCond rootTabNum cond)
+  -- First ord cond ->
   where
     tabPref ntab
       | ntab == 0 = maybe "t" (format $ "t" % int) rootTabNum
@@ -237,25 +240,30 @@ convCond rootTabNum = \case
       | cc2 == mempty = cc1
       | otherwise = format ("(" % text % ") " % string % " (" % text % ")")
         cc1 (show bo) cc2
-    getRef :: Bool -> NameNS -> RelDef -> CondMonad Text -> CondMonad Text
-    getRef isChild tn rd cc = do
+    getRef :: Bool -> NameNS -> RelDef -> (Int -> Text) -> Text -> CondMonad Text -> CondMonad Text
+    getRef isChild tn rd fOrd lo cc = do
       pnum <- ask
       modify (+1)
       cnum <- get
       mkExists pnum cnum <$> local (const cnum) cc
       where
         mkExists pnum cnum c =
-          format ("exists (select 1 from " % stext % " " % text %
-            " where " % text % ")")
-            (qualName tn) (tabPref cnum)
-            (T.intercalate " and "
+          "exists (select 1 from "
+            <> case (fOrd cnum, lo) of
+              ("", "") -> fromStrict (qualName tn)
+              ("", _) -> "(select * from " <> fromStrict (qualName tn) <> " "
+                <> tabPref cnum <> lo <> ")"
+              (tOrd, _) -> "(select * from " <> fromStrict (qualName tn) <> " "
+                <> tabPref cnum <> " order by " <> tOrd <> lo <> ")"
+            <> tabPref cnum <> " where "
+            <> (T.intercalate " and "
               (
-               (\(ch,pr) -> format
-                (text % "." % stext % " = " % text % "." % stext)
-                  (tabPref cnum) ch (tabPref pnum) pr)
+               (\(ch,pr) -> tabPref cnum <> "." <> fromStrict ch <> " = "
+                <> tabPref pnum <> "." <> fromStrict pr)
                 . (if isChild then id else swap)
               <$> rdCols rd)
               <> if T.null c then (""::T.Text) else " and (" <> c <> ")")
+            <> ")"
 
 pgCond
   :: forall sch t. CSchema sch
