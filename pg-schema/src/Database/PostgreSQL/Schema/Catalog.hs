@@ -258,12 +258,8 @@ instance CSchema PgCatalog where
   -- type TSchema PgCatalog = "pg_catalog"
 
   type TTabs PgCatalog =
-    '[ (PGC "pg_attribute")
-    , (PGC "pg_class")
-    , (PGC "pg_constraint")
-    , (PGC "pg_enum")
-    , (PGC "pg_namespace")
-    , (PGC "pg_type")]
+    '[ PGC "pg_attribute", PGC "pg_class", PGC "pg_constraint", PGC "pg_enum"
+    , PGC "pg_namespace", PGC "pg_type" ]
 
   type TTypes PgCatalog =
     '[PGC "oid",PGC "int2",PGC "int2[]",PGC "float4",PGC "bool",PGC "name"
