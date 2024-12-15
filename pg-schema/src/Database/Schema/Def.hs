@@ -181,6 +181,7 @@ class
   ( ToStar name, ToStar (TRelDef sch name)
   , CTabDef sch (TFromTab sch name)
   , CTabDef sch (TToTab sch name)
+  , ToStar (RdCols (TRelDef sch name))
   , ToStar (SP.Map (TFldDefSym2 sch (TFromTab sch name)) (TFromFlds sch name))
   , ToStar (SP.Map (TFldDefSym2 sch (TToTab sch name)) (TToFlds sch name))
   )
