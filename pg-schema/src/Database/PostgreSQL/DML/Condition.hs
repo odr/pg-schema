@@ -240,7 +240,9 @@ convCond rootTabNum = \case
       | cc2 == mempty = cc1
       | otherwise = format ("(" % text % ") " % string % " (" % text % ")")
         cc1 (show bo) cc2
-    getRef :: Bool -> NameNS -> RelDef -> (Int -> Text) -> Text -> CondMonad Text -> CondMonad Text
+    getRef
+      :: Bool -> NameNS -> RelDef -> (Int -> Text) -> Text
+      -> CondMonad Text -> CondMonad Text
     getRef isChild tn rd fOrd lo cc = do
       pnum <- ask
       modify (+1)
@@ -255,7 +257,7 @@ convCond rootTabNum = \case
                 <> tabPref cnum <> lo <> ")"
               (tOrd, _) -> "(select * from " <> fromStrict (qualName tn) <> " "
                 <> tabPref cnum <> " order by " <> tOrd <> lo <> ")"
-            <> tabPref cnum <> " where "
+            <> " " <> tabPref cnum <> " where "
             <> (T.intercalate " and "
               (
                (\(ch,pr) -> tabPref cnum <> "." <> fromStrict ch <> " = "
