@@ -17,6 +17,8 @@ data OrdDirection = Asc | Desc deriving Show
 data OrdFld sch tab
   = forall fld. CFldDef sch tab fld => OrdFld (Proxy fld) OrdDirection
 
+deriving instance Show (OrdFld sch tab)
+
 ordf :: forall fld sch tab. CFldDef sch tab fld => OrdDirection -> OrdFld sch tab
 ordf = OrdFld (Proxy @fld)
 

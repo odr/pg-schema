@@ -18,6 +18,9 @@ data LO = LO
   , offset :: Maybe Natural }
   deriving Show
 
+defLO :: LO
+defLO = LO Nothing Nothing
+
 data LimOffWithPath sch t
   = forall (path :: [Symbol]). (TabPath sch t path, ToStar path)
   => LimOffWithPath (Proxy path) LO
