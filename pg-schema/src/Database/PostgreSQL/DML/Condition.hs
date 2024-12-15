@@ -6,6 +6,7 @@ import Control.Monad
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Kind (Type)
 import Data.List as L
+import Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Singletons
 import qualified Data.Text as T.S
@@ -61,7 +62,7 @@ data Cond (sch::Type) (tab::NameNSK)
     , ToField v, Show v
     , CanConvertPG sch (FdType (TFldDef sch tab fld))
       (FdNullable (TFldDef sch tab fld)) v )
-    => In (Proxy fld) [v]
+    => In (Proxy fld) (NonEmpty v)
   | forall fld .
     (CFldDef sch tab fld, FdNullable (TFldDef sch tab fld) ~ 'True)
     => Null (Proxy fld)
@@ -143,7 +144,7 @@ pin
     ( CFldDef sch tab name, Show v, ToField v
     , CanConvertPG sch (FdType (TFldDef sch tab name))
       (FdNullable (TFldDef sch tab name)) v )
-  => [v] -> Cond sch tab
+  => NonEmpty v -> Cond sch tab
 pin = In @sch @tab @name Proxy
 
 (&&&), (|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
@@ -205,11 +206,9 @@ convCond rootTabNum = \case
           op         -> fldt' <> " " <> showCmp op <> " ?"
         where
           fldt' = fldt ntab (demote @n)
-  In (_::Proxy n) vs -> tell (SomeToField <$> vs) >> go <$> ask
+  In (_::Proxy n) (toList -> vs) -> tell (SomeToField <$> vs) >> go <$> ask
     where
-      go ntab
-        | L.null vs = "false"
-        | otherwise = fldt ntab (demote @n)
+      go ntab = fldt ntab (demote @n)
           <> " in (" <> T.intercalate "," ("?" <$ vs) <> ")"
   Null (_::Proxy n) ->
     (\ntab -> format (text % int % "." % stext % " is null")

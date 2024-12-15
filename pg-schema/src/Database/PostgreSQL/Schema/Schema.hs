@@ -8,6 +8,7 @@ import Data.ByteString as BS hiding (readFile, writeFile)
 import Data.Coerce
 import Data.Hashable
 import Data.List as L
+import Data.List.NonEmpty as NE
 import Data.Map as M
 import Data.Maybe as Mb
 import Data.Set as S
@@ -70,7 +71,7 @@ getSchema conn GenNames {..} = do
     qpClass = qpEmpty
       { qpConds =
         [ rootCond $ condClass
-          &&& pin @"relkind" (PgChar <$> "vr") -- views & tables
+          &&& pin @"relkind" (PgChar <$> 'v' :| "r") -- views & tables
         , cwp @'["attribute__class"] (fld @"attnum" >? (0::Int16)) ]
       , qpOrds =
         [ rootOrd [ascf @"relname"]
@@ -78,12 +79,12 @@ getSchema conn GenNames {..} = do
         , owp @'["constraint__class"] [ascf @"conname"] ] }
     condClass = condSchemas ||| condTabs
       where
-        condSchemas =
-          pparent @(PGC "class__namespace") (pin @"nspname" schemas)
+        condSchemas = pparent @(PGC "class__namespace")
+          $ foldMap (pin @"nspname") $ nonEmpty schemas
         condTabs
           = pparent @(PGC "class__namespace")
-            (pin @"nspname" $ nnsNamespace <$> tables)
-          &&& pin @"relname" (nnsName <$> tables)
+            (foldMap (pin @"nspname" . fmap nnsNamespace) (nonEmpty tables))
+          &&& foldMap (pin @"relname" . fmap nnsName) (nonEmpty tables)
     qpRel = qpEmpty
       { qpConds = [rootCond condRels]
       , qpOrds = [ rootOrd [ascf @"conname"] ] }
