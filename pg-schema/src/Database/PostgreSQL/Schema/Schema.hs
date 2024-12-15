@@ -29,6 +29,7 @@ import Database.Schema.Gen
 import Database.Types.SchList
 import GHC.Int
 import GHC.Records
+import Prelude as P
 import System.Directory
 import System.Environment
 
@@ -184,7 +185,9 @@ updateSchemaFile fileName ecs moduleName schName genNames = do
   unless (BS.null connStr) $ do
     fe <- doesFileExist fileName
     conn <- connectPostgreSQL connStr
+    P.putStrLn "Trying to get schema"
     (schema,h) <- ((,) <$> id <*> hash) <$> getSchema conn genNames
+    P.putStrLn "Trying to get old hash"
     needGen <- if fe
       then do
         mbhs
@@ -194,6 +197,7 @@ updateSchemaFile fileName ecs moduleName schName genNames = do
           Just [_,_,x] | x == fromString (show h) -> False
           _                                       -> True
       else pure True
+    P.putStrLn $ "Need to generate file: " <> show needGen
     when needGen $ T.writeFile fileName $ moduleText h schema
   where
     getConnStr env =
