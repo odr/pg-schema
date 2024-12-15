@@ -91,6 +91,7 @@ library
     , LambdaCase
     , MultiParamTypeClasses
     , NoStarIsType
+    , OverloadedRecordDot
     , OverloadedStrings
     , PatternSynonyms
     , PolyKinds

@@ -47,9 +47,7 @@ showCmp = \case
   (:>)    -> ">"
   Like _  -> " like "
 
--- https://github.com/emmanueljs1/ghc-proposals/blob
--- /5a685faf899a2b00361b221d7e945a4922bf7863
--- /existental-type-variables.rst#implementation-plan
+-- https://github.com/emmanueljs1/ghc-proposals/blob/5a685faf899a2b00361b221d7e945a4922bf7863/existental-type-variables.rst#implementation-plan
 -- we have to add Proxy to existensials while ^ this proposal isn't implemented
 data Cond (sch::Type) (tab::NameNSK)
   = EmptyCond
@@ -76,7 +74,7 @@ data Cond (sch::Type) (tab::NameNSK)
     , tab ~ RdTo rel
     , CTabDef sch (RdFrom rel)
     , CRelDef sch ref )
-    => Child (Proxy ref) [OrdFld sch (RdFrom rel)] LO (Cond sch (RdFrom rel))
+    => Child (Proxy ref) (TabParam sch (RdFrom rel)) (Cond sch (RdFrom rel))
   -- condition "JOIN"
   | forall ref rel .
     ( rel ~ TRelDef sch ref
@@ -92,6 +90,15 @@ instance Semigroup (Cond sch tab) where
 
 instance Monoid (Cond sch tab) where
   mempty = EmptyCond
+
+data TabParam sch tab = TabParam
+  { cond :: Cond sch tab
+  , order :: [OrdFld sch tab]
+  , lo :: LO }
+  deriving Show
+
+defTabParam :: TabParam sch tab
+defTabParam = TabParam mempty mempty defLO
 
 --
 pcmp
@@ -112,7 +119,7 @@ pchild
   :: forall name sch tab rel .
     ( rel ~ TRelDef sch name, tab ~ RdTo rel
     , CTabDef sch (RdFrom rel), CRelDef sch name )
-  => [OrdFld sch (RdFrom rel)] -> LO -> Cond sch (RdFrom rel) -> Cond sch tab
+  => TabParam sch (RdFrom rel) -> Cond sch (RdFrom rel) -> Cond sch tab
 pchild = Child @sch @tab @name Proxy
 
 pparent
@@ -181,7 +188,7 @@ infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 -- ghci> :t #id =? x ||| pchild @"ord_cust" (#id =? x||| pnot (pchild @"opos_order" (#price >? y)))
 -- :: Cond Sch "customers"
 
--- <номер таблицы родителя> <номер дочерней таблицы>
+-- <номер таблицы родителя> <list of params> <номер дочерней таблицы>
 type CondMonad = RWS Int [SomeToField] Int
 runCond :: CondMonad a -> (a,[SomeToField])
 runCond x = evalRWS x 0 0
@@ -218,13 +225,12 @@ convCond rootTabNum = \case
   Not c -> getNot <$> convCond rootTabNum c
   BoolOp bo c1 c2 ->
     getBoolOp bo <$> convCond rootTabNum c1 <*> convCond rootTabNum c2
-  Child (_ :: Proxy ref) ords lo (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
-    getRef True (demote @(RdFrom (TRelDef sch ref)))
-      (demote @(TRelDef sch ref)) (\n -> fromStrict $ convOrd n ords)
-      (fromStrict $ convLO lo) (convCond rootTabNum cond)
-  Parent (_ :: Proxy ref) (cond::Cond sch (RdTo (TRelDef sch ref))) ->
-    getRef False (demote @(RdTo (TRelDef sch ref)))
-      (demote @(TRelDef sch ref)) (pure mempty) mempty (convCond rootTabNum cond)
+  Child (_ :: Proxy ref) tabParam cond -> -- (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
+    getRef @(RdFrom (TRelDef sch ref)) True (demote @(RdCols (TRelDef sch ref)))
+      tabParam cond
+  Parent (_ :: Proxy ref) cond -> -- (cond::Cond sch (RdTo (TRelDef sch ref))) ->
+    getRef @(RdTo (TRelDef sch ref)) False (demote @(RdCols (TRelDef sch ref)))
+      defTabParam cond
   -- First ord cond ->
   where
     tabPref ntab
@@ -241,29 +247,35 @@ convCond rootTabNum = \case
       | otherwise = format ("(" % text % ") " % string % " (" % text % ")")
         cc1 (show bo) cc2
     getRef
-      :: Bool -> NameNS -> RelDef -> (Int -> Text) -> Text
-      -> CondMonad Text -> CondMonad Text
-    getRef isChild tn rd fOrd lo cc = do
+      :: forall tab. CTabDef sch tab
+      => Bool -> [(T.S.Text, T.S.Text)] -> TabParam sch tab -> Cond sch tab
+      -> CondMonad Text
+    getRef isChild cols tabParam cond = do
       pnum <- ask
       modify (+1)
       cnum <- get
-      mkExists pnum cnum <$> local (const cnum) cc
+      tabSel <- sel cnum
+      mkExists pnum cnum tabSel <$> local (const cnum) (convCond rootTabNum cond)
       where
-        mkExists pnum cnum c =
-          "exists (select 1 from "
-            <> case (fOrd cnum, lo) of
-              ("", "") -> fromStrict (qualName tn)
-              ("", _) -> "(select * from " <> fromStrict (qualName tn) <> " "
-                <> tabPref cnum <> lo <> ")"
-              (tOrd, _) -> "(select * from " <> fromStrict (qualName tn) <> " "
-                <> tabPref cnum <> " order by " <> tOrd <> lo <> ")"
-            <> " " <> tabPref cnum <> " where "
+        tn = fromStrict $ qualName $ demote @tab
+        sel :: Int -> CondMonad Text
+        sel cnum = case tabParam of
+          TabParam EmptyCond [] (LO Nothing Nothing) -> pure tn
+          TabParam cond' (fromStrict . convOrd cnum -> ordTxt)
+            (fromStrict . convLO -> loTxt) -> do
+            condTxt <- convCond (Just cnum) cond'
+            pure $ "(select * from " <> tn <> " " <> tabPref cnum
+              <> if T.null condTxt then "" else (" where " <> condTxt)
+              <> if T.null ordTxt then "" else (" order by " <> ordTxt)
+              <> loTxt <> ")"
+        mkExists pnum cnum tabSel c =
+          "exists (select 1 from " <> tabSel <> " " <> tabPref cnum <> " where "
             <> (T.intercalate " and "
               (
                (\(ch,pr) -> tabPref cnum <> "." <> fromStrict ch <> " = "
                 <> tabPref pnum <> "." <> fromStrict pr)
                 . (if isChild then id else swap)
-              <$> rdCols rd)
+              <$> cols)
               <> if T.null c then (""::T.Text) else " and (" <> c <> ")")
             <> ")"
 
