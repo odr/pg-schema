@@ -84,6 +84,12 @@ data Cond (sch::Type) (tab::NameNSK)
 --
 deriving instance Show (Cond sch tab)
 
+instance Semigroup (Cond sch tab) where
+  c1 <> c2 = c1 &&& c2
+
+instance Monoid (Cond sch tab) where
+  mempty = EmptyCond
+
 --
 pcmp
   :: forall name sch tab v .

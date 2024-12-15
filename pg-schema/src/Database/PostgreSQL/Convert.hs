@@ -152,7 +152,7 @@ instance ToField PgChar where
   toField = toField . (:[]) . unPgChar
 
 --
-newtype PgArr a = PgArr { getPgArr :: [a] }
+newtype PgArr a = PgArr { unPgArr :: [a] }
   -- ^ PGArray has no JSON instances. [] has JSON, but no PG.
   -- This one has both.
   deriving (Show, Eq, Ord, Read, FromJSON, ToJSON, Functor, Applicative, Monad
