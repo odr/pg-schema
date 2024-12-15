@@ -21,6 +21,9 @@ data LO = LO
 defLO :: LO
 defLO = LO Nothing Nothing
 
+lo1 :: LO
+lo1 = LO (Just 1) Nothing
+
 data LimOffWithPath sch t
   = forall (path :: [Symbol]). (TabPath sch t path, ToStar path)
   => LimOffWithPath (Proxy path) LO
