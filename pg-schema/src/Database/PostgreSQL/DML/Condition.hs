@@ -200,6 +200,7 @@ deriving instance Show SomeToField
 
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
+
 --
 convCond
   :: forall sch t. CSchema sch => Maybe Int -> Cond sch t -> CondMonad Text
@@ -254,30 +255,33 @@ convCond rootTabNum = \case
       pnum <- ask
       modify (+1)
       cnum <- get
-      tabSel <- sel cnum
+      tabSel <- local (const cnum) tabOrSel
       mkExists pnum cnum tabSel <$> local (const cnum) (convCond rootTabNum cond)
       where
-        tn = fromStrict $ qualName $ demote @tab
-        sel :: Int -> CondMonad Text
-        sel cnum = case tabParam of
-          TabParam EmptyCond [] (LO Nothing Nothing) -> pure tn
-          TabParam cond' (fromStrict . convOrd cnum -> ordTxt)
-            (fromStrict . convLO -> loTxt) -> do
-            condTxt <- convCond (Just cnum) cond'
-            pure $ "(select * from " <> tn <> " " <> tabPref cnum
+        -- sel in "vacuum". With current num but without parent
+        tabOrSel = case tabParam of
+          TabParam EmptyCond [] (LO Nothing Nothing) -> pure $ Left tn
+          TabParam cond' ord (fromStrict . convLO -> loTxt) -> do
+            pnum <- ask
+            let ordTxt = fromStrict $ convOrd pnum ord
+            condTxt <- convCond Nothing cond'
+            pure $ Right $ "select * from " <> tn <> " " <> tabPref pnum
               <> if T.null condTxt then "" else (" where " <> condTxt)
               <> if T.null ordTxt then "" else (" order by " <> ordTxt)
-              <> loTxt <> ")"
-        mkExists pnum cnum tabSel c =
-          "exists (select 1 from " <> tabSel <> " " <> tabPref cnum <> " where "
-            <> (T.intercalate " and "
-              (
-               (\(ch,pr) -> tabPref cnum <> "." <> fromStrict ch <> " = "
-                <> tabPref pnum <> "." <> fromStrict pr)
-                . (if isChild then id else swap)
-              <$> cols)
-              <> if T.null c then (""::T.Text) else " and (" <> c <> ")")
-            <> ")"
+              <> loTxt
+          where
+            tn = fromStrict $ qualName $ demote @tab
+        mkExists pnum cnum tabSel c
+          = "exists (select 1 from " <> either id (\t -> "(" <> t <> ")") tabSel
+          <> " " <> tabPref cnum <> " where "
+          <> (T.intercalate " and "
+            (
+              (\(ch,pr) -> tabPref cnum <> "." <> fromStrict ch <> " = "
+              <> tabPref pnum <> "." <> fromStrict pr)
+              . (if isChild then id else swap)
+            <$> cols)
+            <> if T.null c then (""::T.Text) else " and (" <> c <> ")")
+          <> ")"
 
 pgCond
   :: forall sch t. CSchema sch
