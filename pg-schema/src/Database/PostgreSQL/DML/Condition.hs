@@ -255,33 +255,31 @@ convCond rootTabNum = \case
       pnum <- ask
       modify (+1)
       cnum <- get
-      tabSel <- local (const cnum) tabOrSel
-      mkExists pnum cnum tabSel <$> local (const cnum) (convCond rootTabNum cond)
+      condInternal <- local (const cnum) $ convCond rootTabNum tabParam.cond
+      condExternal <- local (const cnum) $ convCond rootTabNum cond
+      pure $ mkExists pnum cnum condInternal condExternal
       where
-        -- sel in "vacuum". With current num but without parent
-        tabOrSel = case tabParam of
-          TabParam EmptyCond [] (LO Nothing Nothing) -> pure $ Left tn
-          TabParam cond' ord (fromStrict . convLO -> loTxt) -> do
-            pnum <- ask
-            let ordTxt = fromStrict $ convOrd pnum ord
-            condTxt <- convCond Nothing cond'
-            pure $ Right $ "select * from " <> tn <> " " <> tabPref pnum
-              <> if T.null condTxt then "" else (" where " <> condTxt)
-              <> if T.null ordTxt then "" else (" order by " <> ordTxt)
-              <> loTxt
-          where
-            tn = fromStrict $ qualName $ demote @tab
-        mkExists pnum cnum tabSel c
-          = "exists (select 1 from " <> either id (\t -> "(" <> t <> ")") tabSel
-          <> " " <> tabPref cnum <> " where "
-          <> (T.intercalate " and "
-            (
-              (\(ch,pr) -> tabPref cnum <> "." <> fromStrict ch <> " = "
-              <> tabPref pnum <> "." <> fromStrict pr)
+        mkExists pnum cnum cin cout
+          = "exists (select 1 from (select * from " <> tn <> " " <> tpc
+          <> "where "
+          <> T.intercalate " and " (
+              (\(ch,pr) -> tpc <> "." <> fromStrict ch <> " = "
+                <> tpp <> "." <> fromStrict pr)
               . (if isChild then id else swap)
             <$> cols)
-            <> if T.null c then (""::T.Text) else " and (" <> c <> ")")
+          <> (if T.null cin then "" else " and " <> cin)
+          <> case tabParam of
+            TabParam EmptyCond [] (LO Nothing Nothing) -> ""
+            TabParam _ (fromStrict . convOrd cnum -> ord)
+              (fromStrict . convLO -> loTxt) ->
+              (if T.null ord then "" else " order by " <> ord) <> loTxt
+          <> ") " <> tpc
+          <> (if T.null cout then "" else " where " <> cout)
           <> ")"
+          where
+            tn = fromStrict $ qualName $ demote @tab
+            tpc = tabPref cnum
+            tpp = tabPref pnum
 
 pgCond
   :: forall sch t. CSchema sch
