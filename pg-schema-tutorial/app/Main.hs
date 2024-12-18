@@ -125,6 +125,6 @@ main = do
       { qpConds =
         [rootCond
           (pparent @(NSC "address_city")
-            $ pparent @(NSC "city_country") (fld @"code" =? Just @Text "RU"))]
+            $ pparent @(NSC "city_country") (pcmp @"code" =? Just @Text "RU"))]
       , qpOrds = [ rootOrd [ascf @"street"] ] }
     qp' = qp { qpLOs = [rootLO $ LO (Just 1) (Just 1)] }
