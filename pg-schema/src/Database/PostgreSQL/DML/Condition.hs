@@ -26,7 +26,7 @@ import Database.Schema.ShowType
 import PgSchema.Util
 
 
-data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like {isCaseSesnsitive :: Bool}
+data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like | ILike
   deriving (Show, Eq, Generic)
 
 instance FromJSON Cmp
@@ -40,12 +40,13 @@ instance ToJSON BoolOp
 
 showCmp :: Cmp -> Text
 showCmp = \case
-  (:=)    -> "="
-  (:<=)   -> "<="
-  (:>=)   -> ">="
-  (:<)    -> "<"
-  (:>)    -> ">"
-  Like _  -> " like "
+  (:=)  -> "="
+  (:<=) -> "<="
+  (:>=) -> ">="
+  (:<)  -> "<"
+  (:>)  -> ">"
+  Like  -> "like"
+  ILike -> "ilike"
 
 -- https://github.com/emmanueljs1/ghc-proposals/blob/5a685faf899a2b00361b221d7e945a4922bf7863/existental-type-variables.rst#implementation-plan
 -- we have to add Proxy to existensials while ^ this proposal isn't implemented
@@ -136,15 +137,6 @@ pparent = Parent @sch @(RdFrom rel) @name Proxy
 --   => IsLabel fld (Cmp -> v -> Cond sch tab) where
 --   fromLabel = Cmp @_ @_ @fld Proxy
 --
-
-fld
-  :: forall fld sch tab v
-    . ( CFldDef sch tab fld, Show v, ToField v
-      , CanConvertPG sch (FdType (TFldDef sch tab fld))
-        (FdNullable (TFldDef sch tab fld)) v )
-  => Cmp -> v -> Cond sch tab
-fld = Cmp @_ @_ @fld Proxy
-
 pnot :: Cond sch tab -> Cond sch tab
 pnot = Not
 
@@ -169,8 +161,8 @@ x >? b  = x (:>)  b
 x <=? b = x (:<=) b
 x >=? b = x (:>=) b
 x =? b = x (:=) b
-x ~=? b  = x (Like True) b
-x ~~? b  = x (Like False) b
+x ~=? b  = x Like b
+x ~~? b  = x ILike b
 infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 --
 -- ghci> :t pcmp @"id" @Sch @"customers" =? (1::Int) ||| pchild @"ord_cust"
@@ -206,16 +198,9 @@ convCond
   :: forall sch t. CSchema sch => Maybe Int -> Cond sch t -> CondMonad Text
 convCond rootTabNum = \case
   EmptyCond -> pure mempty
-  Cmp (_::Proxy n) cmp v -> ask >>= go
+  Cmp (_::Proxy n) cmp v -> tell [SomeToField v] >> render <$> ask
     where
-      go ntab = do
-        tell [SomeToField v]
-        pure $ case cmp of
-          Like True  -> fldt' <> " like ?"
-          Like False -> "upper(" <> fldt' <> ") like upper(?)"
-          op         -> fldt' <> " " <> showCmp op <> " ?"
-        where
-          fldt' = fldt ntab (demote @n)
+      render ntab = fldt ntab (demote @n) <> " " <> showCmp cmp <> " ?"
   In (_::Proxy n) (toList -> vs) -> tell (SomeToField <$> vs) >> go <$> ask
     where
       go ntab = fldt ntab (demote @n)
@@ -261,7 +246,7 @@ convCond rootTabNum = \case
       where
         mkExists pnum cnum cin cout
           = "exists (select 1 from (select * from " <> tn <> " " <> tpc
-          <> "where "
+          <> " where "
           <> T.intercalate " and " (
               (\(ch,pr) -> tpc <> "." <> fromStrict ch <> " = "
                 <> tpp <> "." <> fromStrict pr)
