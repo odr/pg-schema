@@ -56,7 +56,6 @@ library
     , directory
     , deepseq
     , exceptions
-    , formatting
     , mtl
     , postgresql-simple
     , bytestring

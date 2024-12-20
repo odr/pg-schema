@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Database.PostgreSQL.DML.Select where
 
 import Control.Monad.RWS
@@ -7,9 +8,7 @@ import Data.Bifunctor
 import Data.List as L
 import Data.String
 import Data.Text as T
-import Data.Text.Lazy (toStrict)
 import Database.PostgreSQL.Simple
-import Formatting
 
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Condition
@@ -18,6 +17,7 @@ import Database.PostgreSQL.DML.Order
 import Database.Schema.Def
 import Database.Schema.Rec
 import Database.Schema.ShowType
+import PgSchema.Util
 
 
 data QueryParam sch t = QueryParam
@@ -37,7 +37,7 @@ data QueryRead sch t = QueryRead
 data QueryState = QueryState
   { qsLastTabNum :: !Int
   , qsJoins      :: ![Text]
-  , qsWhere      :: !Bool
+  , qsHasWhere   :: !Bool
   , qsOrd        :: !Text
   , qsLimOff     :: !Text }
   deriving Show
@@ -59,63 +59,82 @@ selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 selectText
   :: forall sch tab r. CQueryRecord PG sch tab r
   => QueryParam sch tab -> (Text,[SomeToField])
-selectText cond = evalRWS (selectM (getQueryRecord @PG @sch @tab @r))
-  (QueryRead 0 True [] cond) (QueryState 0 [] False "" "")
+selectText qp = evalRWS (selectM (getQueryRecord @PG @sch @tab @r)) (qr0 qp) qs0
 
-jsonPairing :: [(Text, Text, Text)] -> Text
+qr0 :: QueryParam sch t -> QueryRead sch t
+qr0 qrParam = QueryRead
+    { qrCurrTabNum = 0
+    , qrIsRoot = True
+    , qrPath = []
+    , qrParam }
+
+qs0 :: QueryState
+qs0 = QueryState
+    { qsLastTabNum = 0
+    , qsJoins = []
+    , qsHasWhere = False
+    , qsOrd = ""
+    , qsLimOff = "" }
+
+two :: (a,b,c) -> (a,b)
+two (a,b,_c) = (a,b)
+
+third :: (a,b,c) -> c
+third (_a,_b,c) = c
+
+jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
   where
-    pairs = L.map (\(a,b,_) -> "'" <> b <> "'," <> a) fs
+    pairs = L.map (\(a,b) -> "'" <> b <> "'," <> a) fs
 
 selectM :: MonadQuery sch t m => QueryRecord -> m Text
 selectM QueryRecord {..} = do
   QueryRead {..} <- ask
   fields <- traverse fieldM queryFields
-  joins <- L.reverse . qsJoins <$> get
+  joins <- gets $ L.reverse . qsJoins
   let
     (condText, pars) =
       condByPath qrCurrTabNum (L.reverse qrPath) $ qpConds qrParam
     sel
       | qrIsRoot    =
         T.intercalate "," $ L.map (\(a,b,_) -> a <> " \"" <> b <> "\"") fields
-      | otherwise = jsonPairing fields
-    j = T.intercalate " " joins
+      | otherwise = jsonPairing $ two <$> fields
     whereText
       | condText == mempty = ""
-      | otherwise       = " where " <> toStrict condText
-    ordText
+      | otherwise       = " where " <> condText
+    qsOrd
       | t == mempty = ""
       | otherwise = " order by " <> t
       where
         t = ordByPath qrCurrTabNum (L.reverse qrPath) $ qpOrds qrParam
-    loText = loByPath (L.reverse qrPath) $ qpLOs qrParam
-  modify (\qs -> qs { qsWhere = whereText /= mempty })
-  unless qrIsRoot $ modify (\qs -> qs { qsOrd = ordText, qsLimOff = loText })
+    qsLimOff = loByPath (L.reverse qrPath) $ qpLOs qrParam
+  modify (\qs -> qs { qsHasWhere = whereText /= mempty })
+  unless qrIsRoot $ modify (\qs -> qs { qsOrd, qsLimOff })
   tell pars
-  pure $ sformat fmt sel (qualName tableName) qrCurrTabNum j whereText
-    (if qrIsRoot then ordText else "") (if qrIsRoot then loText else "")
-  where
-    fmt = "select " % stext
-      % " from " % stext % " t" % int % " " % stext
-      % stext % stext % stext
+  pure $ "select " <> sel
+    <> " from " <> qualName tableName <> " t" <> show' qrCurrTabNum
+    <> " " <> T.unwords joins
+    <> whereText
+    <> (if qrIsRoot then qsOrd else "")
+    <> (if qrIsRoot then qsLimOff else "")
 
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text, Text)
 fieldM (FieldPlain _ dbname _) = do
-  n <- qrCurrTabNum <$> ask
-  let val = sformat fmt n dbname
+  n <- asks qrCurrTabNum
+  let val = "t" <> show' n <> "." <> dbname
   pure (val, dbname, val <> " is null")
-  where
-    fmt = "t" % int % "." % stext
 
-fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
+fieldM (FieldFrom _ dbname QueryRecord{..} refs) = do
   QueryRead {..} <- ask
-  modify (\QueryState{..} -> QueryState
-    (qsLastTabNum+1)
-    (joinText qrCurrTabNum (qsLastTabNum+1) : qsJoins)
-    False "" "")
-  n2 <- qsLastTabNum <$> get
+  modify \QueryState{qsLastTabNum, qsJoins} -> QueryState
+    { qsLastTabNum = qsLastTabNum+1
+    , qsJoins = joinText qrCurrTabNum (qsLastTabNum+1) : qsJoins
+    , qsHasWhere = False
+    , qsOrd = ""
+    , qsLimOff = "" }
+  n2 <- gets qsLastTabNum
   flds <- local
     (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
     $ traverse fieldM queryFields
@@ -124,45 +143,43 @@ fieldM (FieldFrom _ dbname QueryRecord {..} refs) = do
   where
     nullable = L.any (fdNullable . fromDef) refs
     joinText n1 n2 =
-      sformat fmt outer (qualName tableName) n2 (refCond n1 n2 refs)
+      outer <> "join " <> qualName tableName <> " t" <> show' n2
+          <> " on " <> refCond n1 n2 refs
       where
-        fmt = stext % "join " % stext % " t" % int
-          % " on " % stext
         outer
           | nullable = "left outer "
           | otherwise = ""
     fldt flds
-      | nullable = sformat fmt isNull (jsonPairing flds)
-      | otherwise = jsonPairing flds
+      | nullable = "case when " <> isNull <>
+          " then null else " <> jsonPairing (two <$> flds) <> " end"
+      | otherwise = jsonPairing $ two <$> flds
       where
-        fmt = "case when " % stext % " then null else " % stext % " end"
-        isNull = T.intercalate " and " $ (\(_,_,x) -> x) <$> flds
+        isNull = T.intercalate " and " $ third <$> flds
 
 fieldM (FieldTo _ dbname rec refs) = do
-  QueryRead {..} <- ask
-  (QueryState ltn joins _ _ _) <- get
-  modify (const $ QueryState (ltn+1) [] False "" "")
+  QueryRead{..} <- ask
+  QueryState {qsLastTabNum, qsJoins} <- get
+  modify (const $ QueryState (qsLastTabNum+1) [] False "" "")
   selText <- local
     (\qr -> qr
-      { qrCurrTabNum = ltn+1, qrIsRoot = False, qrPath = dbname : qrPath })
+      { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False, qrPath = dbname : qrPath })
     (selectM rec)
-  modify (\qs -> qs { qsJoins = joins })
-  (QueryState _ _ isWhere ordText loText) <- get
+  modify (\qs -> qs { qsJoins = qsJoins })
+  QueryState{qsHasWhere, qsOrd, qsLimOff} <- get
   let
-    val = sformat fmt0 selText (if isWhere then "and" else "where")
-      (refCond (ltn+1) qrCurrTabNum refs) ordText loText
-  pure (sformat fmt1 val, dbname, sformat fmt2 val)
-  where
-    fmt0 = "array(" % stext % " " % text % " " % stext % stext % stext % ")"
-    fmt1 = "array_to_json(" % stext % ")"
-    fmt2 = stext % " = '{}'"
+    val = "array(" <> selText <> " " <> (if qsHasWhere then "and" else "where")
+      <> " " <> refCond (qsLastTabNum+1) qrCurrTabNum refs
+      <> qsOrd <> qsLimOff <> ")"
+  pure ("array_to_json(" <> val <> ")", dbname, val <> " = '{}'")
 
 refCond :: Int -> Int -> [QueryRef] -> Text
-refCond nFrom nTo = T.intercalate " and " . L.map compFlds
+refCond nFrom nTo = T.intercalate " and " . fmap compFlds
   where
-    fldt = "t" % int % "." % stext
-    compFlds QueryRef {..} =
-      sformat (fldt % "=" % fldt) nFrom fromName nTo toName
+    compFlds QueryRef {fromName, toName} =
+      fldt nFrom fromName <> "=" <> fldt nTo toName
+      where
+        fldt n = (("t" <> show' n <> ".") <>)
+
 
 --
 -- {-
@@ -199,7 +216,7 @@ refCond nFrom nTo = T.intercalate " and " . L.map compFlds
 --           and con.conrelid = rel.oid))
 --   from pg_catalog.pg_class rel
 --     join pg_catalog.pg_namespace nsp on rel.relnamespace = nsp.oid
---   where nsp.nspname = 'tinkoff'
+--   where nsp.nspname = 'test'
 --         and rel.relkind in ('r','v')
 -- "
 -- -}

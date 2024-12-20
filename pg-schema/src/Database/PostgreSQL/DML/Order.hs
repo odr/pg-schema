@@ -53,11 +53,12 @@ owp = OrdWithPath (Proxy @path)
 rootOrd :: forall sch t. [OrdFld sch t] -> OrdWithPath sch t
 rootOrd = owp @'[]
 
-convOrd :: Int -> [OrdFld sch t] -> Text
-convOrd (show' -> n) ofs = T.intercalate "," $ L.map showFld ofs
+convOrd :: Text -> [OrdFld sch t] -> Text
+convOrd pref ofs = T.intercalate "," $ L.map showFld ofs
   where
-    showFld (OrdFld (Proxy :: Proxy fld) (show' -> od)) =
-      "t" <> n <> "." <> (demote @fld) <> " " <> od
+    showFld (OrdFld (Proxy @fld) (show' -> od)) =
+      pref <> "." <> (demote @fld) <> " " <> od
 
 ordByPath :: forall sch t. Int -> [Text] -> [OrdWithPath sch t] -> Text
-ordByPath num path = fromMaybe mempty . withOrdsWithPath (convOrd num) path
+ordByPath num path =
+  fromMaybe mempty . withOrdsWithPath (convOrd $ "t" <> show' num) path
