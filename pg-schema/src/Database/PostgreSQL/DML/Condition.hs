@@ -10,7 +10,7 @@ import Data.List as L
 import Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Singletons
-import qualified Data.Text as T
+import Data.Text as T
 -- import Data.Text.Lazy as T
 import Data.Tuple
 import Database.PostgreSQL.DML.Limit
@@ -38,7 +38,7 @@ data BoolOp = And | Or
 instance FromJSON BoolOp
 instance ToJSON BoolOp
 
-showCmp :: Cmp -> T.Text
+showCmp :: Cmp -> Text
 showCmp = \case
   (:=)  -> "="
   (:<=) -> "<="
@@ -83,8 +83,9 @@ data Cond (sch::Type) (tab::NameNSK)
     , CTabDef sch (RdTo rel)
     , CRelDef sch ref )
     => Parent (Proxy ref) (Cond sch (RdTo rel))
+  | UnsafeCond (CondMonad Text)
 --
-deriving instance Show (Cond sch tab)
+-- deriving instance Show (Cond sch tab)
 
 instance Semigroup (Cond sch tab) where
   c1 <> c2 = c1 &&& c2
@@ -96,7 +97,7 @@ data TabParam sch tab = TabParam
   { cond :: Cond sch tab
   , order :: [OrdFld sch tab]
   , lo :: LO }
-  deriving Show
+  -- deriving Show
 
 defTabParam :: TabParam sch tab
 defTabParam = TabParam mempty mempty defLO
@@ -139,6 +140,9 @@ pparent = Parent @sch @(RdFrom rel) @name Proxy
 --
 pnot :: Cond sch tab -> Cond sch tab
 pnot = Not
+
+pUnsafeCond :: CondMonad Text -> Cond sch tab
+pUnsafeCond = UnsafeCond
 
 pin
   :: forall name sch tab v .
@@ -198,7 +202,7 @@ deriving instance Show SomeToField
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 
-tabPref :: CondMonad T.Text
+tabPref :: CondMonad Text
 tabPref = ask <&> \case
   n :| []
     | n == 0 -> "t"
@@ -207,12 +211,12 @@ tabPref = ask <&> \case
     | n == 0 -> "t" <> show' np
     | otherwise -> "t" <> show' np <> "q" <> show' n
 
-qual :: T.Text -> CondMonad T.Text
+qual :: Text -> CondMonad Text
 qual t = tabPref <&> (<> "." <> t)
 
 --
 convCond
-  :: forall sch t. CSchema sch => Cond sch t -> CondMonad T.Text
+  :: forall sch t. CSchema sch => Cond sch t -> CondMonad Text
 convCond = \case
   EmptyCond -> pure mempty
   Cmp (_::Proxy n) cmp v -> do
@@ -230,6 +234,7 @@ convCond = \case
   Parent (_ :: Proxy ref) cond ->
     getRef @(RdTo (TRelDef sch ref)) False (demote @(RdCols (TRelDef sch ref)))
       defTabParam cond
+  UnsafeCond m -> m
   where
     getNot c
       | c == mempty = mempty
@@ -240,8 +245,8 @@ convCond = \case
       | otherwise = "(" <> cc1 <> ") " <> show' bo <> " (" <> cc2 <>  ")"
     getRef
       :: forall tab. CTabDef sch tab
-      => Bool -> [(T.Text, T.Text)] -> TabParam sch tab -> Cond sch tab
-      -> CondMonad T.Text
+      => Bool -> [(Text, Text)] -> TabParam sch tab -> Cond sch tab
+      -> CondMonad Text
     getRef isChild cols tabParam cond = do
       tpp <- tabPref
       modify (+1)
@@ -272,7 +277,7 @@ convCond = \case
 
 pgCond
   :: forall sch t. CSchema sch
-  => Maybe Int -> Cond sch t -> (T.Text, [SomeToField])
+  => Maybe Int -> Cond sch t -> (Text, [SomeToField])
 pgCond n = runCond n . convCond
 
 {-
@@ -310,14 +315,14 @@ data CondWithPath sch t
 withCondWithPath
   :: forall sch t r
   . (forall t'. Cond sch t' -> r)
-  -> [T.Text] -> CondWithPath sch t -> Maybe r
+  -> [Text] -> CondWithPath sch t -> Maybe r
 withCondWithPath f path (CondWithPath (Proxy :: Proxy path') cond) =
   guard (path == demote @path') >> pure (f cond)
 
 withCondsWithPath
   :: forall sch t r
   . (forall t'. Cond sch t' -> r)
-  -> [T.Text] -> [CondWithPath sch t] -> Maybe r
+  -> [Text] -> [CondWithPath sch t] -> Maybe r
 withCondsWithPath f path =
   join . L.find isJust . L.map (withCondWithPath f path)
 
@@ -331,6 +336,6 @@ rootCond = cwp @'[]
 
 condByPath
   :: forall sch t. CSchema sch
-  => Int -> [T.Text] ->[CondWithPath sch t] -> (T.Text, [SomeToField])
+  => Int -> [Text] ->[CondWithPath sch t] -> (Text, [SomeToField])
 condByPath num path =
   fromMaybe mempty . withCondsWithPath (pgCond $ Just num) path
