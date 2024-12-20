@@ -9,13 +9,12 @@ import Data.List as L
 import Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Singletons
-import qualified Data.Text as T.S
-import Data.Text.Lazy as T
+import qualified Data.Text as T
+-- import Data.Text.Lazy as T
 import Data.Tuple
 import Database.PostgreSQL.DML.Limit
 import Database.PostgreSQL.DML.Order
 import Database.PostgreSQL.Simple.ToField
-import Formatting hiding (ords)
 import GHC.Generics (Generic)
 -- import           GHC.OverloadedLabels (IsLabel(..))
 import GHC.TypeLits
@@ -38,7 +37,7 @@ data BoolOp = And | Or
 instance FromJSON BoolOp
 instance ToJSON BoolOp
 
-showCmp :: Cmp -> Text
+showCmp :: Cmp -> T.Text
 showCmp = \case
   (:=)  -> "="
   (:<=) -> "<="
@@ -195,7 +194,7 @@ instance ToField SomeToField where
 
 --
 convCond
-  :: forall sch t. CSchema sch => Maybe Int -> Cond sch t -> CondMonad Text
+  :: forall sch t. CSchema sch => Maybe Int -> Cond sch t -> CondMonad T.Text
 convCond rootTabNum = \case
   EmptyCond -> pure mempty
   Cmp (_::Proxy n) cmp v -> tell [SomeToField v] >> render <$> ask
@@ -206,7 +205,7 @@ convCond rootTabNum = \case
       go ntab = fldt ntab (demote @n)
           <> " in (" <> T.intercalate "," ("?" <$ vs) <> ")"
   Null (_::Proxy n) ->
-    (\ntab -> tabPref ntab <> show' ntab <> "." <> fromStrict (demote @n) <> " is null")
+    (\ntab -> tabPref ntab <> show' ntab <> "." <> demote @n <> " is null")
     <$> ask
   Not c -> getNot <$> convCond rootTabNum c
   BoolOp bo c1 c2 ->
@@ -220,22 +219,21 @@ convCond rootTabNum = \case
   -- First ord cond ->
   where
     tabPref ntab
-      | ntab == 0 = maybe "t" (format $ "t" % int) rootTabNum
-      | otherwise = maybe
-        (format $ "tq" % int) (format $ "t" % int % "q" % int) rootTabNum ntab
-    fldt ntab = format (text % "." % stext) (tabPref ntab)
+      | ntab == 0 = maybe "t" (("t" <>) . show') rootTabNum
+      | otherwise = maybe ("tq" <> show' ntab)
+        (\rt -> "t" <> show' rt <> "q" <> show' ntab) rootTabNum
+    fldt ntab = ((tabPref ntab <> ".") <>)
     getNot c
       | c == mempty = mempty
-      | otherwise   = format ("not (" % text % ")") c
+      | otherwise   = "not (" <> c <> ")"
     getBoolOp bo cc1 cc2
       | cc1 == mempty = cc2
       | cc2 == mempty = cc1
-      | otherwise = format ("(" % text % ") " % string % " (" % text % ")")
-        cc1 (show bo) cc2
+      | otherwise = "(" <> cc1 <> ") " <> show' bo <> " (" <> cc2 <>  ")"
     getRef
       :: forall tab. CTabDef sch tab
-      => Bool -> [(T.S.Text, T.S.Text)] -> TabParam sch tab -> Cond sch tab
-      -> CondMonad Text
+      => Bool -> [(T.Text, T.Text)] -> TabParam sch tab -> Cond sch tab
+      -> CondMonad T.Text
     getRef isChild cols tabParam cond = do
       pnum <- ask
       modify (+1)
@@ -248,27 +246,27 @@ convCond rootTabNum = \case
           = "exists (select 1 from (select * from " <> tn <> " " <> tpc
           <> " where "
           <> T.intercalate " and " (
-              (\(ch,pr) -> tpc <> "." <> fromStrict ch <> " = "
-                <> tpp <> "." <> fromStrict pr)
+              (\(ch,pr) -> tpc <> "." <> ch <> " = "
+                <> tpp <> "." <> pr)
               . (if isChild then id else swap)
             <$> cols)
           <> (if T.null cin then "" else " and " <> cin)
           <> case tabParam of
             TabParam EmptyCond [] (LO Nothing Nothing) -> ""
-            TabParam _ (fromStrict . convOrd cnum -> ord)
-              (fromStrict . convLO -> loTxt) ->
+            TabParam _ (convOrd tpc -> ord)
+              (convLO -> loTxt) ->
               (if T.null ord then "" else " order by " <> ord) <> loTxt
           <> ") " <> tpc
           <> (if T.null cout then "" else " where " <> cout)
           <> ")"
           where
-            tn = fromStrict $ qualName $ demote @tab
+            tn = qualName $ demote @tab
             tpc = tabPref cnum
             tpp = tabPref pnum
 
 pgCond
   :: forall sch t. CSchema sch
-  => Maybe Int -> Cond sch t -> (Text, [SomeToField])
+  => Maybe Int -> Cond sch t -> (T.Text, [SomeToField])
 pgCond n = runCond . convCond n
 
 {-
@@ -306,14 +304,14 @@ data CondWithPath sch t
 withCondWithPath
   :: forall sch t r
   . (forall t'. Cond sch t' -> r)
-  -> [T.S.Text] -> CondWithPath sch t -> Maybe r
+  -> [T.Text] -> CondWithPath sch t -> Maybe r
 withCondWithPath f path (CondWithPath (Proxy :: Proxy path') cond) =
   guard (path == demote @path') >> pure (f cond)
 
 withCondsWithPath
   :: forall sch t r
   . (forall t'. Cond sch t' -> r)
-  -> [T.S.Text] -> [CondWithPath sch t] -> Maybe r
+  -> [T.Text] -> [CondWithPath sch t] -> Maybe r
 withCondsWithPath f path =
   join . L.find isJust . L.map (withCondWithPath f path)
 
@@ -327,6 +325,6 @@ rootCond = cwp @'[]
 
 condByPath
   :: forall sch t. CSchema sch
-  => Int -> [T.S.Text] ->[CondWithPath sch t] -> (Text, [SomeToField])
+  => Int -> [T.Text] ->[CondWithPath sch t] -> (T.Text, [SomeToField])
 condByPath num path =
   fromMaybe mempty . withCondsWithPath (pgCond $ Just num) path

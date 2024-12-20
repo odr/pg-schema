@@ -93,18 +93,21 @@ data QueryField
   deriving Show
 
 type FiTypeInfo r = FiWithType (TFieldTypeSym1 r) (TRecordInfo r)
+
+-- record over table
 class
-  ( CSchema sch, ToStar t, CQueryFields db sch t (FiTypeInfo r) )
-  => CQueryRecord (db::Type) (sch::Type) (t::NameNSK) (r::Type) where
+  ( CSchema sch, ToStar tab, CQueryFields db sch tab (FiTypeInfo r) )
+  => CQueryRecord (db::Type) (sch::Type) (tab::NameNSK) (r::Type) where
   getQueryRecord :: QueryRecord
   getQueryRecord = QueryRecord {..}
     where
-      tableName = demote @t
+      tableName = demote @tab
       queryFields = getQueryFields
-        @db @sch @t @(FiWithType (TFieldTypeSym1 r) (TRecordInfo r))
+        @db @sch @tab @(FiWithType (TFieldTypeSym1 r) (TRecordInfo r))
 
 class CTypDef sch tn => CanConvert db sch (tn::NameNSK) (nullable::Bool) t
 
+-- classify fields of record over table: Plain, RefTo, RefFrom
 class
   (CSchema sch, CTabDef sch t)
   => CQueryFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
