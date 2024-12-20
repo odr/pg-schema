@@ -4,6 +4,7 @@ module Database.PostgreSQL.DML.Condition where
 import Control.Monad.RWS
 import Control.Monad
 import Data.Aeson (FromJSON(..), ToJSON(..))
+import Data.Functor
 import Data.Kind (Type)
 import Data.List as L
 import Data.List.NonEmpty as NE
@@ -179,10 +180,15 @@ infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 -- ghci> :t #id =? x ||| pchild @"ord_cust" (#id =? x||| pnot (pchild @"opos_order" (#price >? y)))
 -- :: Cond Sch "customers"
 
--- <номер таблицы родителя> <list of params> <номер дочерней таблицы>
-type CondMonad = RWS Int [SomeToField] Int
-runCond :: CondMonad a -> (a,[SomeToField])
-runCond x = evalRWS x 0 0
+{- | Monad to generate condition.
+Read: Stack of numbers of parent tables. The last one is "current table"
+Write: List of placeholder-values.
+  Note: We have to generate sql from top to bottom to correct order of fields
+State: Maximal number of tables "in use"
+-}
+type CondMonad = RWS (NonEmpty Int) [SomeToField] Int
+runCond :: Maybe Int -> CondMonad a -> (a,[SomeToField])
+runCond n x = evalRWS x (0 :| maybeToList n) 0
 
 data SomeToField where
   SomeToField :: (ToField a, Show a) => a -> SomeToField
@@ -192,37 +198,39 @@ deriving instance Show SomeToField
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 
+tabPref :: CondMonad T.Text
+tabPref = ask <&> \case
+  n :| []
+    | n == 0 -> "t"
+    | otherwise -> "tq" <> show' n
+  n :| (np : _)
+    | n == 0 -> "t" <> show' np
+    | otherwise -> "t" <> show' np <> "q" <> show' n
+
+qual :: T.Text -> CondMonad T.Text
+qual t = tabPref <&> (<> "." <> t)
+
 --
 convCond
-  :: forall sch t. CSchema sch => Maybe Int -> Cond sch t -> CondMonad T.Text
-convCond rootTabNum = \case
+  :: forall sch t. CSchema sch => Cond sch t -> CondMonad T.Text
+convCond = \case
   EmptyCond -> pure mempty
-  Cmp (_::Proxy n) cmp v -> tell [SomeToField v] >> render <$> ask
-    where
-      render ntab = fldt ntab (demote @n) <> " " <> showCmp cmp <> " ?"
-  In (_::Proxy n) (toList -> vs) -> tell (SomeToField <$> vs) >> go <$> ask
-    where
-      go ntab = fldt ntab (demote @n)
-          <> " in (" <> T.intercalate "," ("?" <$ vs) <> ")"
-  Null (_::Proxy n) ->
-    (\ntab -> tabPref ntab <> show' ntab <> "." <> demote @n <> " is null")
-    <$> ask
-  Not c -> getNot <$> convCond rootTabNum c
-  BoolOp bo c1 c2 ->
-    getBoolOp bo <$> convCond rootTabNum c1 <*> convCond rootTabNum c2
-  Child (_ :: Proxy ref) tabParam cond -> -- (cond::Cond sch (RdFrom (TRelDef sch ref))) ->
+  Cmp (_::Proxy n) cmp v -> do
+    tell [SomeToField v]
+    qual (demote @n) <&> (<> " " <> showCmp cmp <> " ?")
+  In (_::Proxy n) (toList -> vs) -> do
+    tell (SomeToField <$> vs)
+    qual (demote @n) <&> (<> " in (" <> T.intercalate "," ("?" <$ vs) <> ")")
+  Null (_::Proxy n) -> qual (demote @n) <&> (<> " is null")
+  Not c -> getNot <$> convCond c
+  BoolOp bo c1 c2 -> getBoolOp bo <$> convCond c1 <*> convCond c2
+  Child (_ :: Proxy ref) tabParam cond ->
     getRef @(RdFrom (TRelDef sch ref)) True (demote @(RdCols (TRelDef sch ref)))
       tabParam cond
-  Parent (_ :: Proxy ref) cond -> -- (cond::Cond sch (RdTo (TRelDef sch ref))) ->
+  Parent (_ :: Proxy ref) cond ->
     getRef @(RdTo (TRelDef sch ref)) False (demote @(RdCols (TRelDef sch ref)))
       defTabParam cond
-  -- First ord cond ->
   where
-    tabPref ntab
-      | ntab == 0 = maybe "t" (("t" <>) . show') rootTabNum
-      | otherwise = maybe ("tq" <> show' ntab)
-        (\rt -> "t" <> show' rt <> "q" <> show' ntab) rootTabNum
-    fldt ntab = ((tabPref ntab <> ".") <>)
     getNot c
       | c == mempty = mempty
       | otherwise   = "not (" <> c <> ")"
@@ -235,14 +243,14 @@ convCond rootTabNum = \case
       => Bool -> [(T.Text, T.Text)] -> TabParam sch tab -> Cond sch tab
       -> CondMonad T.Text
     getRef isChild cols tabParam cond = do
-      pnum <- ask
+      tpp <- tabPref
       modify (+1)
       cnum <- get
-      condInternal <- local (const cnum) $ convCond rootTabNum tabParam.cond
-      condExternal <- local (const cnum) $ convCond rootTabNum cond
-      pure $ mkExists pnum cnum condInternal condExternal
+      (tpc, condInt, condExt) <- local (cnum <|)
+        $ (,,) <$> tabPref <*> convCond tabParam.cond <*> convCond cond
+      pure $ mkExists tpp tpc condInt condExt
       where
-        mkExists pnum cnum cin cout
+        mkExists tpp tpc cin cout
           = "exists (select 1 from (select * from " <> tn <> " " <> tpc
           <> " where "
           <> T.intercalate " and " (
@@ -261,13 +269,11 @@ convCond rootTabNum = \case
           <> ")"
           where
             tn = qualName $ demote @tab
-            tpc = tabPref cnum
-            tpp = tabPref pnum
 
 pgCond
   :: forall sch t. CSchema sch
   => Maybe Int -> Cond sch t -> (T.Text, [SomeToField])
-pgCond n = runCond . convCond n
+pgCond n = runCond n . convCond
 
 {-
 ghci> pgCond
