@@ -242,7 +242,9 @@ convCond = \case
     getBoolOp bo cc1 cc2
       | cc1 == mempty = cc2
       | cc2 == mempty = cc1
-      | otherwise = "(" <> cc1 <> ") " <> show' bo <> " (" <> cc2 <>  ")"
+      | otherwise = case bo of
+        And -> cc1 <> " and " <> cc2
+        Or -> "(" <> cc1 <> " or " <> cc2 <>  ")"
     getRef
       :: forall tab. CTabDef sch tab
       => Bool -> [(Text, Text)] -> TabParam sch tab -> Cond sch tab
