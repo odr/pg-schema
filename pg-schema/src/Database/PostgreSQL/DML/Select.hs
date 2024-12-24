@@ -345,3 +345,4 @@ convOrd ofs = T.intercalate "," <$> traverse showFld ofs
           rels pp p = mkRel . f <$> rdCols
             where
               mkRel (cp,c) = pp <> "." <> cp <> "=" <> p <> "." <> c
+      UnsafeOrd m -> m
