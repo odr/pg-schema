@@ -17,9 +17,8 @@ import Data.Tagged
 import Data.Text as T
 import Data.Text.IO as T
 import Database.PostgreSQL.Convert
-import Database.PostgreSQL.DML.Condition
-import Database.PostgreSQL.DML.Order
 import Database.PostgreSQL.DML.Select
+import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Schema.Info
