@@ -213,8 +213,7 @@ data OrdFld sch tab where
         (TypeError (TE.Text "Relation " :<>: TE.ShowType rel
           :<>: TE.Text " is not connected to table " :<>: TE.ShowType tab))) )
     => Cond sch t -> [OrdFld sch t] -> OrdDirection -> OrdFld sch tab
-
--- deriving instance Show (OrdFld sch tab)
+  UnsafeOrd :: CondMonad Text -> OrdFld sch tab
 
 ordf :: forall fld sch tab. CFldDef sch tab fld => OrdDirection -> OrdFld sch tab
 ordf = OrdFld @fld
