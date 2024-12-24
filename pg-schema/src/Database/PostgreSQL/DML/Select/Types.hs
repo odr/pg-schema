@@ -212,7 +212,7 @@ data OrdFld sch tab where
       (If (RdFrom rd == tab) (RdTo rd ~ t)
         (TypeError (TE.Text "Relation " :<>: TE.ShowType rel
           :<>: TE.Text " is not connected to table " :<>: TE.ShowType tab))) )
-    => Cond sch t -> OrdDirection -> OrdFld sch tab
+    => Cond sch t -> [OrdFld sch t] -> OrdDirection -> OrdFld sch tab
 
 -- deriving instance Show (OrdFld sch tab)
 

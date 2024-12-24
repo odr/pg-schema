@@ -324,17 +324,19 @@ convOrd ofs = T.intercalate "," <$> traverse showFld ofs
       OrdFld @fld (show' -> od) -> do
         fld <- qual @fld
         pure $ fld <> " " <> od <> " nulls last"
-      SelFld @rel @fld @t cond (show' -> od) -> do
+      SelFld @rel @fld @t cond ofs' (show' -> od) -> do
         modify (+1)
         n <- get
         prefPar <- tabPref
         local (second (n <|)) do
           condText <- convCond cond
+          ordText <- convOrd ofs'
           fld <- qual @fld
           pref <- tabPref
           pure $ "(select " <> fld
             <> " from " <> qualName (demote @t) <> " " <> pref
             <> " where " <> T.intercalate " and " (condText : rels prefPar pref)
+            <> (if T.null ordText then "" else " order by " <> ordText)
             <> " limit 1) " <> od <> " nulls last"
         where
           RelDef{..} = demote @(TRelDef sch rel)
