@@ -2,11 +2,9 @@ module PgSchema (module PGS) where
 
 import Database.PostgreSQL.Convert as PGS
 import Database.PostgreSQL.DB as PGS
-import Database.PostgreSQL.DML.Condition as PGS
 import Database.PostgreSQL.DML.Insert as PGS
-import Database.PostgreSQL.DML.Limit as PGS
-import Database.PostgreSQL.DML.Order as PGS
 import Database.PostgreSQL.DML.Select as PGS
+import Database.PostgreSQL.DML.Select.Types as PGS
 import Database.PostgreSQL.Enum as PGS
 import Database.PostgreSQL.PgTagged as PGS
 import Database.PostgreSQL.Schema.Catalog as PGS

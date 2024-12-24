@@ -23,10 +23,11 @@ library
     PgSchema
     Database.PostgreSQL.Convert
     Database.PostgreSQL.DB
-    Database.PostgreSQL.DML.Condition
-    Database.PostgreSQL.DML.Order
-    Database.PostgreSQL.DML.Limit
+    -- Database.PostgreSQL.DML.Condition
+    -- Database.PostgreSQL.DML.Order
+    -- Database.PostgreSQL.DML.Limit
     Database.PostgreSQL.DML.Select
+    Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Insert
     -- Database.PostgreSQL.DML.Update
     Database.PostgreSQL.PgTagged
