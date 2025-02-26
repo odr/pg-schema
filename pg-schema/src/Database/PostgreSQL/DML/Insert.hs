@@ -111,23 +111,58 @@ insertTextM' rs r = fst . evalRWS
     (getQueryRecord @PG @sch @tab @r) (getQueryRecord @PG @sch @tab @r') rs ) r
 
 {-
--- flds* - где нужно ':: jsonb'
 with
-  t1 (_rid, <flds>) as (
-    select row_number() over(), <v.flds*>
-      from (values <vs,>)
-        ) v(<flds)
+--  t1 (_rid, <flds>) as (
+--    select row_number() over(), <v.flds*>
+--      from (values <vs,>)
+--        ) v(<flds)
+--  ),
+--  i_t1 (<pkey>,<rflds>) as (
+--    insert into <tab1>(<flds_plain>)
+--      select <flds_plain> from <tab1> tab
+--      returning <rflds>
+--  ),
+--  i_t1_res (_rid,<pkey>) as (
+--    select row_number() over(), <pkey>
+--      from i_t1
+--  ),
+  customers (_rid, name, note, orders) as (
+	select row_number() over (), v.name, v.note, v.orders
+	  from (values
+	  	('Ivan', 'Ivanov',
+		  '[ { "day": "2025-02-26", "num":"123", "seller_id": 3, "state": "paid"
+		  	 , "pos":
+			   [ {"num": 1, "article_id": 3, "cnt": 7, "price": 12.1}
+			   , {"num": 2, "article_id": 4, "cnt": 2, "price": 15.1} ]
+			 }
+		   , { "day": "2025-02-27", "num":"124", "seller_id": 2
+		  	 , "pos":
+			   [ {"num": 1, "article_id": 2, "cnt": 5, "price": 11.1}
+			   , {"num": 2, "article_id": 3, "cnt": 4, "price": 153} ]
+			 } ]' :: jsonb),
+	    ('Petr', 'Petrov',
+		  '[ { "day": "2024-02-26", "num":"423", "seller_id": 3, "state": "paid"
+		  	 , "pos":
+			   [ {"num": 1, "article_id": 3, "cnt": 7, "price": 212.1}
+			   , {"num": 2, "article_id": 4, "cnt": 2, "price": 215.1} ]
+			 }
+		   , { "day": "2023-02-27", "num":"424", "seller_id": 2
+		  	 , "pos":
+			   [ {"num": 1, "article_id": 2, "cnt": 5, "price": 211.1}
+			   , {"num": 2, "article_id": 3, "cnt": 4, "price": 2153} ]
+			 } ]' :: jsonb)
+		) v(name, note, orders)
   ),
-  i_t1 (<pkey>,<rflds>) as (
-    insert into <tab1>(<flds_plain>)
-      select <flds_plain> from <tab1> tab
-      returning <rflds>
+  i_customers(id, name) as (
+	insert into sch.customers(name, note)
+	  select name, note from customers
+	    returning id, name
   ),
-  i_t1_res (_rid,<pkey>) as (
-    select row_number() over(), <pkey>
-      from i_t1
+  i_customers_res(_rid, id) as (
+	select row_number() over(), id
+		from i_customers
   ),
-  orders (_rid, cu_rid, customer_id, day,num, seller_id, state, pos) as (
+  orders (_rid, cu_rid, customer_id, day, num, seller_id, state, pos) as (
     select row_number() over(), icr._rid, icr.id, o.day, o.num, o.seller_id, o.state, o.pos
       from i_customers_res icr
 	      join customers c on c._rid = icr._rid
@@ -139,8 +174,8 @@ with
       select customer_id, day, num, seller_id, state from orders
       returning id, customer_id, num, state
   ),
-  i_orders_res(_rid,id) as (
-    select row_number() over(), id
+  i_orders_res(_rid,id, num, state) as (
+    select row_number() over(), id, num, state
       from i_orders
   ),
   poss (ord_rid, order_id, num, article_id, cnt, price) as (
