@@ -168,19 +168,14 @@ getDefs (types,classes,relations) =
         getName t n = M.lookup (t,n) mClassAttrs
         getName2 n1 n2 = (,) <$> getName fromName n1 <*> getName toName n2
 
-updateSchemaFile
+updateSchemaFile'
   :: String     -- ^ file name
-  -> Either String ByteString
-    -- ^ name of environment variable with connect string or
-    -- connect string as is.
-    -- When this environment variable is not set or connect string is empty,
-    -- we do nothing.
+  -> ByteString -- ^ connect string
   -> Text     -- ^ haskell module name to generate
   -> Text     -- ^ name of generated haskell type for schema
   -> GenNames -- ^ names of schemas in database or tables to generate
   -> IO ()
-updateSchemaFile fileName ecs moduleName schName genNames = do
-  connStr <- either getConnStr pure ecs
+updateSchemaFile' fileName connStr moduleName schName genNames = do
   unless (BS.null connStr) $ do
     fe <- doesFileExist fileName
     conn <- connectPostgreSQL connStr
@@ -199,10 +194,26 @@ updateSchemaFile fileName ecs moduleName schName genNames = do
     P.putStrLn $ "Need to generate file: " <> show needGen
     when needGen $ T.writeFile fileName $ moduleText h schema
   where
-    getConnStr env =
-      handle (const @_ @SomeException $ pure "") (fromString <$> getEnv env)
     moduleText h = genModuleText moduleName schName h . getDefs
     -- for eager file read
     lines' s
       | T.length s == 0 = []
       | otherwise = T.lines s
+
+updateSchemaFile
+  :: String     -- ^ file name
+  -> Either String ByteString
+    -- ^ name of environment variable with connect string or
+    -- connect string as is.
+    -- When this environment variable is not set or connect string is empty,
+    -- we do nothing.
+  -> Text     -- ^ haskell module name to generate
+  -> Text     -- ^ name of generated haskell type for schema
+  -> GenNames -- ^ names of schemas in database or tables to generate
+  -> IO ()
+updateSchemaFile fileName ecs moduleName schName genNames = do
+  connStr <- either getConnStr pure ecs
+  updateSchemaFile' fileName connStr moduleName schName genNames
+  where
+    getConnStr env =
+      handle (const @_ @SomeException $ pure "") (fromString <$> getEnv env)
