@@ -40,9 +40,7 @@ insertText = insertText_ @sch @t @r <> " returning " <> fs'
 
 insertText_
   :: forall sch t r. CQueryRecord PG sch t r => Query
-insertText_ = "insert into " `mappend` tn
-  `mappend` "(" `mappend` fs `mappend` ") values (" `mappend` qs
-  `mappend` ")"
+insertText_ = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
   where
     qr = getQueryRecord @PG @sch @t @r
     (fs,qs) = bimap inter inter
@@ -50,6 +48,16 @@ insertText_ = "insert into " `mappend` tn
     tn = fromText $ qualName $ tableName qr
     inter = fromText . T.intercalate ","
 
+{-
+Хотим вставлять дерево и возвращать дерево.
+Вход:
+- корень:
+  - есть все обязательные (not null | with default) поля
+  - все поля только вида Plain или FieldFrom (данные дочерних таблиц)
+  - удовлетворены ограничения для дочерних данных
+- дочерние данные: то же, но поля-ссылки должны быть исключены из обязательных полей
+
+-}
 -- insertText
 --   :: forall sch t r r'
 --   . (AllMandatory sch t r, CQueryRecord PG sch t r, CQueryRecord PG sch t r')
