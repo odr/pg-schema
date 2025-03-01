@@ -63,10 +63,17 @@ promote [d|
   noFieldTo :: [QueryField' s] -> Bool
   noFieldTo = all \case { FieldTo{} -> False; _ -> True }
 
-  mkRefs :: [(s,s)] -> [FldDef' s] -> [FldDef' s] -> [QueryRef' s]
-  mkRefs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
+  mkRefs :: RelDef' s -> (s -> FldDef' s) -> (s -> FldDef' s) -> [QueryRef' s]
+  mkRefs rd f1 f2 = mkRefs' cols (map f1 cols1) (map f2 cols2)
+    where
+      mkRefs' = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
+      cols = rdCols rd
+      (cols1, cols2) = unzip cols
 
+  hasNullableRefTo :: RelDef' s -> (s -> FldDef' s) -> Bool
+  hasNullableRefTo rd f = any (fdNullable . f) $ fst $ unzip $ rdCols rd
   |]
+
 
 type FieldInfoK = FieldInfo' Symbol
 type QueryRecordK = QueryRecord' Symbol
@@ -115,12 +122,6 @@ class
   type TQueryRecord db sch tab r :: QueryRecordK
   type TQueryRecord db sch tab r = 'QueryRecord tab
     (TQueryFields db sch tab (FiWithType (TFieldTypeSym1 r) (TRecordInfo r)))
-  -- getQueryRecord :: QueryRecord
-  -- getQueryRecord = QueryRecord {..}
-  --   where
-  --     tableName = demote @tab
-  --     queryFields = getQueryFields
-  --       @db @sch @tab @(FiWithType (TFieldTypeSym1 r) (TRecordInfo r))
 
 getQueryRecord
   :: forall db sch tab r. CQueryRecord db sch tab r => QueryRecord
@@ -137,42 +138,20 @@ class
 getQueryFields :: forall db sch t fis. CQueryFields db sch t fis => [QueryField]
 getQueryFields = demote @(TQueryFields db sch t fis)
 
-
-class CQueryFieldT (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
-  where
-    type TQueryFieldT ft db sch t fi :: QueryFieldK
-    -- getQueryFieldT :: QueryField
---
-class CQueryFieldTB (nullable :: Bool) rd db sch t (fi::(FieldInfoK,Type))
-  where
-    type TQueryFieldTB nullable rd db sch t fi :: QueryFieldK
-    -- getQueryFieldTB :: QueryField
-
-instance CQueryFieldTB (IsMaybe r) rd db sch t '(fi, r)
-  => CQueryFieldT ('FldFrom rd) db sch t '(fi, r)
-  where
-    type TQueryFieldT ('FldFrom rd) db sch t '(fi, r) =
-      TQueryFieldTB (IsMaybe r) rd db sch t '(fi, r)
-  -- getQueryFieldT = getQueryFieldTB @(IsMaybe r) @rd @db @sch @t @'(fi, r)
-
 instance (CSchema sch, CTabDef sch t) => CQueryFields db sch t '[] where
   type TQueryFields db sch t '[] = '[]
 
-type family IsMaybe (x :: Type) :: Bool where
-  IsMaybe (Maybe a) = 'True
-  IsMaybe x = 'False
-
 instance
   ( CQueryFieldT (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
-  , CQueryFields db sch t xs, CSchema sch, CTabDef sch t
-  , ToStar (TQueryFields db sch t (x ': xs)))
+  , CQueryFields db sch t xs, ToStar (TQueryFields db sch t (x ': xs)))
   => CQueryFields db sch t (x ': xs) where
   type TQueryFields db sch t (x ': xs) =
     TQueryFieldT (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
     ': TQueryFields db sch t xs
-  -- getQueryFields
-  --   = getQueryFieldT @(TFieldKind sch t (FieldDbName (Fst x))) @db @sch @t @x
-  --   : getQueryFields @db @sch @t @xs
+
+class CQueryFieldT (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
+  where
+    type TQueryFieldT ft db sch t fi :: QueryFieldK
 
 instance
   ( CFldDef sch t dbname, fdef ~ TFldDef sch t dbname, ToStar n
@@ -181,75 +160,27 @@ instance
   where
     type TQueryFieldT 'FldPlain db sch t '( 'FieldInfo n dbname, ftype) =
       'FieldPlain n dbname (TFldDef sch t dbname)
-  -- getQueryFieldT =
-  --   FieldPlain (demote @n) (demote @dbname) (fldDef @sch @t @dbname)
 
 instance
-  ( tabTo ~ RdTo rd, CQueryRecord db sch tabTo recTo
-  , cols ~ RdCols rd, uncols ~ Unzip cols
-  , fds ~ SP.Map (TFldDefSym2 sch t) (Fst uncols)
-  , HasNullable fds ~ 'False
-  , fdsTo ~ SP.Map (TFldDefSym2 sch tabTo) (Snd uncols)
-  , ToStar cols, ToStar fds, ToStar fdsTo, ToStar n, ToStar dbname )
-  => CQueryFieldTB 'False rd db sch t '( 'FieldInfo n dbname, recTo)
-  where
-    -- type TQueryFieldTB 'False rd db sch t '( 'FieldInfo n dbname, recTo) =
-    --   'FieldFrom n dbname (TQueryRecord db sch tabTo recTo) (MkRefs cols fds fdsTo)
-    type TQueryFieldTB 'False rd db sch t '( 'FieldInfo n dbname, recTo) =
-      'FieldFrom n dbname
-        (TQueryRecord db sch (RdTo rd) recTo)
-        (MkRefs (RdCols rd)
-          (SP.Map (TFldDefSym2 sch t) (Fst (Unzip (RdCols rd))))
-          (SP.Map (TFldDefSym2 sch (RdTo rd)) (Snd (Unzip (RdCols rd)))))
-
-  -- getQueryFieldTB = FieldFrom (demote @n) (demote @dbname)
-  --   (getQueryRecord @db @sch @tabTo @recTo) refs
-  --   where
-  --     refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
-  --       (demote @cols) (demote @fds) (demote @fdsTo)
---
-instance
-  ( tabTo ~ RdTo rd, CQueryRecord db sch tabTo recTo
-  , cols ~ RdCols rd, uncols ~ Unzip cols
-  , fds ~ SP.Map (TFldDefSym2 sch t) (Fst uncols)
-  , fdsTo ~ SP.Map (TFldDefSym2 sch tabTo) (Snd uncols)
-  , ToStar cols, ToStar fds, ToStar fdsTo, ToStar n, ToStar dbname )
-  => CQueryFieldTB 'True rd db sch t '( 'FieldInfo n dbname, Maybe recTo)
-  where
-    -- type TQueryFieldTB 'True rd db sch t '( 'FieldInfo n dbname, Maybe recTo) =
-    --   FieldFrom n dbname (TQueryRecord db sch tabTo recTo) (MkRefs cols fds fdsTo)
-    type TQueryFieldTB 'True rd db sch t '( 'FieldInfo n dbname, Maybe recTo) =
-      'FieldFrom n dbname (TQueryRecord db sch (RdTo rd) recTo)
-        (MkRefs (RdCols rd)
-          (SP.Map (TFldDefSym2 sch t) (Fst (Unzip (RdCols rd))))
-          (SP.Map (TFldDefSym2 sch (RdTo rd)) (Snd (Unzip (RdCols rd)))))
-
-    -- getQueryFieldTB = FieldFrom (demote @n) (demote @dbname)
-    --   (getQueryRecord @db @sch @tabTo @recTo) refs
-    --   where
-    --     refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
-    --       (demote @cols) (demote @fds) (demote @fdsTo)
-
-instance
-  ( tabFrom ~ RdFrom rd, CQueryRecord db sch tabFrom recFrom
-  , cols ~ RdCols rd, uncols ~ Unzip cols
-  , fds ~ SP.Map (TFldDefSym2 sch t) (Snd uncols)
-  , fdsFrom ~ SP.Map (TFldDefSym2 sch tabFrom) (Fst uncols)
-  , ToStar cols, ToStar fds, ToStar fdsFrom, ToStar n, ToStar dbname )
+  ( CQueryRecord db sch (RdFrom rd) recFrom )
   => CQueryFieldT ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) where
-  -- type TQueryFieldT = 'FieldTo n dbname (TQueryRecord db sch tabFrom recFrom)
-  --   (MkRefs cols fdsFrom fds)
     type TQueryFieldT ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) =
       'FieldTo n dbname (TQueryRecord db sch (RdFrom rd) recFrom)
-        (MkRefs (RdCols rd)
-          (SP.Map (TFldDefSym2 sch (RdFrom rd)) (Fst (Unzip (RdCols rd))))
-          (SP.Map (TFldDefSym2 sch t) (Snd (Unzip (RdCols rd)))))
+        (MkRefs rd (TFldDefSym2 sch (RdFrom rd)) (TFldDefSym2 sch t))
 
-  -- getQueryFieldT = FieldTo (demote @n) (demote @dbname)
-  --   (getQueryRecord @db @sch @tabFrom @recFrom) refs
-  --   where
-  --     refs = zipWith3 (\(fromName,toName) fromDef toDef -> QueryRef {..})
-  --       (demote @cols) (demote @fdsFrom) (demote @fds)
+instance
+  ( CQueryRecord db sch (RdTo rd) (Snd (UnMaybe recTo))
+  , HasNullableRefTo rd (TFldDefSym2 sch t) ~ Fst (UnMaybe recTo) )
+  => CQueryFieldT ('FldFrom rd) db sch t '( 'FieldInfo n dbname, recTo)
+  where
+    type TQueryFieldT ('FldFrom rd) db sch t '( 'FieldInfo n dbname, recTo) =
+      'FieldFrom n dbname (TQueryRecord db sch (RdTo rd) (Snd (UnMaybe recTo)))
+        (MkRefs rd (TFldDefSym2 sch t) (TFldDefSym2 sch (RdTo rd)))
+--
+
+type family UnMaybe (x :: Type) :: (Bool, Type) where
+  UnMaybe (Maybe a) = '( 'True, a)
+  UnMaybe a = '( 'False, a)
 
 type AllMandatory sch t r =
   IsAllMandatory sch t (Map FieldDbNameSym0 (TRecordInfo r)) ~ 'True
