@@ -99,15 +99,11 @@ promote [d|
       find3 []         = FldUnknown s
       find3 ((a,b):xs) = if nnsName a == s then FldTo b else find3 xs
 
-  isAllMandatory' :: Eq s => (s -> FldDef' s) -> [s] -> [s] -> Bool
-  isAllMandatory' f tabFlds recFlds =
-    L.null $ L.filter (isMandatory . f) tabFlds L.\\ recFlds
+  isAllMandatory' :: Eq s => (s -> FldDef' s) -> TabDef' s -> [s] -> Bool
+  isAllMandatory' f td recFlds =
+    L.null $ L.filter (isMandatory . f) (tdFlds td) L.\\ recFlds
     where
       isMandatory fd = not (fdNullable fd || fdHasDefault fd)
-
-  hasNullable :: [FldDef' s] -> Bool
-  hasNullable = L.any fdNullable
-
   |]
 
 type NameNSK = NameNS' Symbol
@@ -202,7 +198,7 @@ class CTabRels sch (tab :: NameNSK) where
 genDefunSymbols [''TFrom, ''TTo]
 
 type IsAllMandatory sch t rs =
-  IsAllMandatory' (TFldDefSym2 sch t) (TdFlds (TTabDef sch t)) rs
+  IsAllMandatory' (TFldDefSym2 sch t) (TTabDef sch t) rs
 
 type TFieldKind sch tab name =
   GetFldKind (TTabDef sch tab) (TTabRelFrom sch tab) (TTabRelTo sch tab) name
