@@ -15,37 +15,33 @@ import PgSchema.Util
 -- TODO: Insert tree
 insertSch
   :: forall sch t r r'
-  . ( AllMandatory sch t r, CQueryRecord PG sch t r
-    , CQueryRecord PG sch t r', ToRow r, FromRow r' )
+  . ( CInsertRecord PG sch t r, CQueryRecord PG sch t r', ToRow r, FromRow r' )
   => Connection -> [r] -> IO [r']
 insertSch conn = returning conn (insertText @sch @t @r @r')
 
 insertSch_
-  :: forall sch t r
-  . (AllMandatory sch t r, CQueryRecord PG sch t r, ToRow r)
+  :: forall sch t r. (CInsertRecord PG sch t r, ToRow r)
   => Connection -> [r] -> IO Int64
 insertSch_ conn = executeMany conn (insertText_ @sch @t @r)
 
 -- TODO: We can set returning only for "Plain" (and monoidal) fields.
 -- It doesn't checked now!
 insertText
-  :: forall sch t r r'
-  . (AllMandatory sch t r, CQueryRecord PG sch t r, CQueryRecord PG sch t r')
+  :: forall sch t r r'. (CInsertRecord PG sch t r, CQueryRecord PG sch t r')
   => Query
 insertText = insertText_ @sch @t @r <> " returning " <> fs'
   where
     qr' = getQueryRecord @PG @sch @t @r'
     fs' = fromText
-      $ T.intercalate "," [ dbn | (FieldPlain _ dbn _) <- queryFields qr']
+      $ T.intercalate "," [ dbn | (QFieldPlain _ dbn _) <- qFields qr']
 
-insertText_
-  :: forall sch t r. CQueryRecord PG sch t r => Query
+insertText_ :: forall sch t r. CInsertRecord PG sch t r => Query
 insertText_ = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
   where
-    qr = getQueryRecord @PG @sch @t @r
+    ir = getInsertRecord @PG @sch @t @r
     (fs,qs) = bimap inter inter
-      $ unzip [ (dbn,"?") | (FieldPlain _ dbn _) <- queryFields qr]
-    tn = fromText $ qualName $ tableName qr
+      $ unzip [ (dbn,"?") | (IFieldPlain _ dbn _) <- iFields ir]
+    tn = fromText $ qualName $ iTableName ir
     inter = fromText . T.intercalate ","
 
 {-
@@ -73,8 +69,8 @@ insertText_ = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
 
 type MonadInsert m = MonadRWS (Maybe Int) () Int m
 
-insertM :: MonadInsert m => QueryRecord -> QueryRecord -> [r] -> m Text
-insertM qrIn _qrOut _rs = do
+insertM :: MonadInsert m => InsertRecord -> QueryRecord -> [r] -> m Text
+insertM ir _qrOut _rs = do
   mbParent <- ask
   num <- get
   modify (+1)
@@ -90,33 +86,32 @@ insertM qrIn _qrOut _rs = do
         <> ")"
   -- traverse () $ queryFields qrIn
   where
-    fldsIn = T.intercalate ","  $ fst . fldDbName <$> queryFields qrIn
+    fldsIn = T.intercalate ","  $ fst . fldDbName <$> iFields ir
     fldDbName = \case
-      FieldPlain _ dbn _ -> (dbn,True)
-      FieldTo _ refName _ _ -> (refName, False)
-      FieldFrom _ refName _ _ -> (refName, False)
+      IFieldPlain _ dbn _ -> (dbn,True)
+      IFieldTo _ refName _ _ -> (refName, False)
     fldsIn' = T.intercalate ","
       $ ("v."<>) . (\(s,b) -> if b then s else s <> "::jsonb") . fldDbName
-      <$> queryFields qrIn
-    quests = T.intercalate "," $ "?" <$ queryFields qrIn
+      <$> iFields ir
+    quests = T.intercalate "," $ "?" <$ iFields ir
     fldsFk = "<fldsFk>"
 
 insertTextM
   :: forall sch tab r r'
-  . (CQueryRecord PG sch tab r, CQueryRecord PG sch tab r')
+  . (CInsertRecord PG sch tab r, CQueryRecord PG sch tab r')
   => [r] -> Text
 insertTextM rs = fst $ evalRWS
   ( insertM
-    (getQueryRecord @PG @sch @tab @r) (getQueryRecord @PG @sch @tab @r') rs )
+    (getInsertRecord @PG @sch @tab @r) (getQueryRecord @PG @sch @tab @r') rs )
   Nothing 0
 
 insertTextM'
   :: forall sch tab r r'
-  . (CQueryRecord PG sch tab r, CQueryRecord PG sch tab r')
+  . (CInsertRecord PG sch tab r, CQueryRecord PG sch tab r')
   => [r] -> Maybe Int -> Int -> Text
 insertTextM' rs r = fst . evalRWS
   ( insertM
-    (getQueryRecord @PG @sch @tab @r) (getQueryRecord @PG @sch @tab @r') rs ) r
+    (getInsertRecord @PG @sch @tab @r) (getQueryRecord @PG @sch @tab @r') rs ) r
 
 {-
 with
