@@ -68,7 +68,7 @@ jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
 selectM :: MonadQuery sch t m => QueryRecord -> m Text
 selectM QueryRecord {..} = do
   QueryRead {..} <- ask
-  (fmap two -> fields) <- traverse fieldM queryFields
+  (fmap two -> flds) <- traverse fieldM qFields
   joins <- gets $ L.reverse . qsJoins
   let
     (condText, condPars) =
@@ -77,8 +77,8 @@ selectM QueryRecord {..} = do
       ordByPath qrCurrTabNum (L.reverse qrPath) $ qpOrds qrParam
     sel
       | qrIsRoot =
-        T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") fields
-      | otherwise = jsonPairing fields
+        T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") flds
+      | otherwise = jsonPairing flds
     whereText
       | condText == mempty = ""
       | otherwise = " where " <> condText
@@ -90,7 +90,7 @@ selectM QueryRecord {..} = do
   unless qrIsRoot $ modify (\qs -> qs { qsOrd = orderText, qsLimOff })
   tell $ condPars <> ordPars
   pure $ "select " <> sel
-    <> " from " <> qualName tableName <> " t" <> show' qrCurrTabNum
+    <> " from " <> qualName qTableName <> " t" <> show' qrCurrTabNum
     <> " " <> T.unwords joins
     <> whereText
     <> (if qrIsRoot then orderText else "")
@@ -99,12 +99,12 @@ selectM QueryRecord {..} = do
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text, Text)
-fieldM (FieldPlain _ dbname _) = do
+fieldM (QFieldPlain _ dbname _) = do
   n <- asks qrCurrTabNum
   let val = "t" <> show' n <> "." <> dbname
   pure (val, dbname, val <> " is null")
 
-fieldM (FieldFrom _ dbname QueryRecord{..} refs) = do
+fieldM (QFieldFrom _ dbname QueryRecord{..} refs) = do
   QueryRead {..} <- ask
   modify \QueryState{qsLastTabNum, qsJoins} -> QueryState
     { qsLastTabNum = qsLastTabNum+1
@@ -115,13 +115,13 @@ fieldM (FieldFrom _ dbname QueryRecord{..} refs) = do
   n2 <- gets qsLastTabNum
   flds <- local
     (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
-    $ traverse fieldM queryFields
+    $ traverse fieldM qFields
   let val = fldt flds
   pure (val, dbname, val <> " is null")
   where
     nullable = L.any (fdNullable . fromDef) refs
     joinText n1 n2 =
-      outer <> "join " <> qualName tableName <> " t" <> show' n2
+      outer <> "join " <> qualName qTableName <> " t" <> show' n2
           <> " on " <> refCond n1 n2 refs
       where
         outer
@@ -134,7 +134,7 @@ fieldM (FieldFrom _ dbname QueryRecord{..} refs) = do
       where
         isNull = T.intercalate " and " $ third <$> flds
 
-fieldM (FieldTo _ dbname rec refs) = do
+fieldM (QFieldTo _ dbname rec refs) = do
   QueryRead{..} <- ask
   QueryState {qsLastTabNum, qsJoins} <- get
   modify (const $ QueryState (qsLastTabNum+1) [] False "" "")
@@ -150,10 +150,10 @@ fieldM (FieldTo _ dbname rec refs) = do
       <> qsOrd <> qsLimOff <> ")"
   pure ("array_to_json(" <> val <> ")", dbname, val <> " = '{}'")
 
-refCond :: Int -> Int -> [QueryRef] -> Text
+refCond :: Int -> Int -> [Ref] -> Text
 refCond nFrom nTo = T.intercalate " and " . fmap compFlds
   where
-    compFlds QueryRef {fromName, toName} =
+    compFlds Ref {fromName, toName} =
       fldt nFrom fromName <> "=" <> fldt nTo toName
       where
         fldt n = (("t" <> show' n <> ".") <>)

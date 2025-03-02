@@ -9,6 +9,7 @@ import Data.List as L
 import Data.Text as T
 import Data.Text.IO as T
 import Data.Time
+import Data.Singletons
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
@@ -68,12 +69,13 @@ data Order = Order
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
   deriving (Eq, Show, Generic)
 
-deriveQueryRecord id [t|PG|] [t|Sch|]
-  [ (''Country, [t|Country|], "sch" ->> "countries")
-  , (''City, [t|City|], "sch" ->> "cities")
-  , (''Address, [t|Address|], "sch" ->> "addresses")
-  , (''Company, [t|Company|], "sch" ->> "companies")
-  , (''Article, [t|Article|], "sch" ->> "articles") ]
+deriveDmlRecord id ''Sch [ (''Country, "sch" ->> "countries") ]
+
+deriveQueryRecord id ''Sch
+  [ (''City, "sch" ->> "cities")
+  , (''Address, "sch" ->> "addresses")
+  , (''Company, "sch" ->> "companies")
+  , (''Article, "sch" ->> "articles") ]
 
   -- No instance for (ToField (Data.Fixed.Fixed E2))
   -- so these not compiled:

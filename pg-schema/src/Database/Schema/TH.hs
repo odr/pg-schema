@@ -4,6 +4,7 @@ import Data.Aeson.TH
 import Data.List as L
 import Data.String
 import Data.Text as T
+import Database.PostgreSQL.DB
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
@@ -43,8 +44,37 @@ schemaRec toDbName rn = do
       |]
 
 deriveQueryRecord
-  :: (String -> String) -> TypeQ -> TypeQ -> [(Name, TypeQ, NameNS)] -> DecsQ
-deriveQueryRecord flm pg sch = fmap L.concat . traverse (\(n,t,s) ->
+  :: (String -> String) -> Name -> [(Name, NameNS)] -> DecsQ
+deriveQueryRecord flm sch = fmap L.concat . traverse (\(n,s) ->
+  L.concat <$> sequenceA
+    [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
+    -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
+    , [d|instance FromRow $(liftType n)|]
+    , [d|instance ToRow $(liftType n)|] -- for insert TODO: DELME
+    , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
+    , [d|instance ToField $(liftType n) where toField = toJSONField |]
+    , schemaRec flm n
+    , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
+    ])
+
+deriveInsertRecord
+  :: (String -> String) -> Name -> [(Name, NameNS)] -> DecsQ
+deriveInsertRecord flm sch = fmap L.concat . traverse (\(n,s) ->
+  L.concat <$> sequenceA
+    [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
+    -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
+    -- , [d|instance FromRow $(liftType n)|]
+    , [d|instance ToRow $(liftType n)|]
+    , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
+    , [d|instance ToField $(liftType n) where toField = toJSONField |]
+    , schemaRec flm n
+    -- , [d|instance CQueryRecord $pg $sch $(liftType s) $t|]
+    , [d|instance CInsertRecord PG $(conT sch) $(liftType s) $(conT n)|]
+    ])
+
+deriveDmlRecord
+  :: (String -> String) -> Name -> [(Name, NameNS)] -> DecsQ
+deriveDmlRecord flm sch = fmap L.concat . traverse (\(n,s) ->
   L.concat <$> sequenceA
     [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
     -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
@@ -53,5 +83,6 @@ deriveQueryRecord flm pg sch = fmap L.concat . traverse (\(n,t,s) ->
     , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
     , [d|instance ToField $(liftType n) where toField = toJSONField |]
     , schemaRec flm n
-    , [d|instance CQueryRecord $pg $sch $(liftType s) $t|]
+    , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
+    , [d|instance CInsertRecord PG $(conT sch) $(liftType s) $(conT n)|]
     ])
