@@ -54,6 +54,7 @@ executable pg-schema-tutorial
       DataKinds
     , DeriveGeneric
     , FlexibleInstances
+    , ImportQualifiedPost
     , MultiParamTypeClasses
     , OverloadedStrings
     , TemplateHaskell

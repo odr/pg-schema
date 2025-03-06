@@ -20,21 +20,28 @@ import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import Database.Schema.Def
 import GHC.Int
+import GHC.TypeLits as TL
+-- import GHC.TypeError as TL
 import Type.Reflection
 
 
 -- | Many to many relation between (db-type, is nullable field) and Haskell type
 class CTypDef sch tn => CanConvertPG sch (tn::NameNSK) (nullable :: Bool) t
 
--- It is possible to do better
--- but there are too much complexity without clear profit
 instance CanConvertPG sch tn 'False t => CanConvertPG sch tn 'True (Maybe t)
+
+instance {-# OVERLAPPING #-} (CTypDef sch tn
+  , TL.TypeError (TL.Text "You can't use Maybe for mandatory fields"
+    :$$: TL.Text "Table: " :<>: TL.ShowType tn
+    :$$: TL.Text "Field type: " :<>: TL.ShowType (Maybe t))
+  )
+  => CanConvertPG sch tn 'False (Maybe t)
 
 -- | Many to many relation between db-type and Haskell type (not nullable)
 -- Param `sch` is needed to describe complex types (e.g. arrays)
 class CanConvert1 (td::TypDefK) sch (tn::NameNSK) t
 
-instance
+instance {-# OVERLAPPABLE #-}
   (CTypDef sch tn, CanConvert1 (TTypDef sch tn) sch tn t)
   => CanConvertPG sch tn 'False t
 

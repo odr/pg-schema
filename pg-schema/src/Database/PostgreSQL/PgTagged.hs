@@ -98,6 +98,13 @@ instance
     (FiWithType (TFieldTypeSym1 (PgTagged ns r)) (TRecordInfo (PgTagged ns r))) )
   => CQueryRecord db sch t (PgTagged ns r) where
 
+instance
+  ( CSchema sch
+  , CInsertFields db sch t
+    (FiWithType (TFieldTypeSym1 (PgTagged ns r)) (TRecordInfo (PgTagged ns r)))
+  , AllMandatory sch t (PgTagged ns r) '[] )
+  => CInsertRecord db sch t (PgTagged ns r) where
+
 instance FromRow (Only b) => FromRow (PgTagged (n::Symbol) b) where
   fromRow = coerce @(Only b) <$> fromRow
 
