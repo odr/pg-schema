@@ -29,6 +29,7 @@ library
     Database.PostgreSQL.DML.Select
     Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Insert
+    Database.PostgreSQL.DML.Insert2
     -- Database.PostgreSQL.DML.Update
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
@@ -87,6 +88,7 @@ library
     , FunctionalDependencies
     , GADTs
     , GeneralizedNewtypeDeriving
+    , ImportQualifiedPost
     , InstanceSigs
     , LambdaCase
     , MultiParamTypeClasses

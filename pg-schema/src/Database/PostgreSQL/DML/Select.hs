@@ -99,12 +99,12 @@ selectM QueryRecord {..} = do
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text, Text)
-fieldM (QFieldPlain _ dbname _) = do
+fieldM (QFieldPlain FieldPlain{fpDbName}) = do
   n <- asks qrCurrTabNum
-  let val = "t" <> show' n <> "." <> dbname
-  pure (val, dbname, val <> " is null")
+  let val = "t" <> show' n <> "." <> fpDbName
+  pure (val, fpDbName, val <> " is null")
 
-fieldM (QFieldFrom _ dbname QueryRecord{..} refs) = do
+fieldM (QFieldFrom fr) = do
   QueryRead {..} <- ask
   modify \QueryState{qsLastTabNum, qsJoins} -> QueryState
     { qsLastTabNum = qsLastTabNum+1
@@ -114,15 +114,15 @@ fieldM (QFieldFrom _ dbname QueryRecord{..} refs) = do
     , qsLimOff = "" }
   n2 <- gets qsLastTabNum
   flds <- local
-    (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = dbname : qrPath })
-    $ traverse fieldM qFields
+    (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = fr.frDbName : qrPath })
+    $ traverse fieldM fr.frRec.qFields
   let val = fldt flds
-  pure (val, dbname, val <> " is null")
+  pure (val, fr.frDbName, val <> " is null")
   where
-    nullable = L.any (fdNullable . fromDef) refs
+    nullable = L.any (fdNullable . fromDef) fr.frRefs
     joinText n1 n2 =
-      outer <> "join " <> qualName qTableName <> " t" <> show' n2
-          <> " on " <> refCond n1 n2 refs
+      outer <> "join " <> qualName fr.frRec.qTableName <> " t" <> show' n2
+          <> " on " <> refCond n1 n2 fr.frRefs
       where
         outer
           | nullable = "left outer "
@@ -134,21 +134,21 @@ fieldM (QFieldFrom _ dbname QueryRecord{..} refs) = do
       where
         isNull = T.intercalate " and " $ third <$> flds
 
-fieldM (QFieldTo _ dbname rec refs) = do
+fieldM (QFieldTo fr) = do
   QueryRead{..} <- ask
   QueryState {qsLastTabNum, qsJoins} <- get
   modify (const $ QueryState (qsLastTabNum+1) [] False "" "")
   selText <- local
     (\qr -> qr
-      { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False, qrPath = dbname : qrPath })
-    (selectM rec)
+      { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False, qrPath = fr.frDbName : qrPath })
+    (selectM fr.frRec)
   modify (\qs -> qs { qsJoins = qsJoins })
   QueryState{qsHasWhere, qsOrd, qsLimOff} <- get
   let
     val = "array(" <> selText <> " " <> (if qsHasWhere then "and" else "where")
-      <> " " <> refCond (qsLastTabNum+1) qrCurrTabNum refs
+      <> " " <> refCond (qsLastTabNum+1) qrCurrTabNum fr.frRefs
       <> qsOrd <> qsLimOff <> ")"
-  pure ("array_to_json(" <> val <> ")", dbname, val <> " = '{}'")
+  pure ("array_to_json(" <> val <> ")", fr.frDbName, val <> " = '{}'")
 
 refCond :: Int -> Int -> [Ref] -> Text
 refCond nFrom nTo = T.intercalate " and " . fmap compFlds

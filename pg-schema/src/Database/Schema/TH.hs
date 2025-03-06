@@ -50,9 +50,9 @@ deriveQueryRecord flm sch = fmap L.concat . traverse (\(n,s) ->
     [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
     -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
     , [d|instance FromRow $(liftType n)|]
-    , [d|instance ToRow $(liftType n)|] -- for insert TODO: DELME
+    -- , [d|instance ToRow $(liftType n)|] -- for insert TODO: DELME
     , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-    , [d|instance ToField $(liftType n) where toField = toJSONField |]
+    -- , [d|instance ToField $(liftType n) where toField = toJSONField |]
     , schemaRec flm n
     , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
     ])

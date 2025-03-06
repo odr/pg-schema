@@ -17,6 +17,7 @@ import Generic.Random
 import GHC.Generics
 import GHC.Int
 import PgSchema
+import Database.PostgreSQL.DML.Insert2 qualified as I2
 import Sch
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
@@ -61,6 +62,8 @@ data OrdPos = OrdPos
   , price        :: Centi }
   deriving (Eq, Show, Generic)
 
+-- data Customer = Customer
+--   { }
 data Order = Order
   { day        :: Day
   , num        :: Text
@@ -68,6 +71,35 @@ data Order = Order
   , opos_order :: SchList OrdPos
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
   deriving (Eq, Show, Generic)
+
+data OrdPosI = OrdPosI
+  { num          :: Int32
+  , article_id   :: Int32
+  , cnt          :: Int32
+  , price        :: Centi }
+  deriving (Eq, Show, Generic)
+
+data OrderI = OrderI
+  { day        :: Day
+  , num        :: Text
+  , seller_id  :: Int32
+  , opos_order :: SchList OrdPosI
+  , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
+  deriving (Eq, Show, Generic)
+
+data CustomerI = CustomerI
+  { name :: Text
+  -- , ord_cust :: SchList (PgTagged
+  --   '["num", "opos_order", "day", "seller_id"]
+  --   (Text, (SchList OrdPosI, (Day, Int32))))
+  , ord_cust :: SchList OrderI
+  }
+  deriving (Eq, Show, Generic)
+
+schemaRec id ''OrderI
+schemaRec id ''OrdPosI
+schemaRec id ''CustomerI
+instance CInsertRecord PG Sch ("sch" ->> "customers") CustomerI
 
 deriveDmlRecord id ''Sch [ (''Country, "sch" ->> "countries") ]
 
@@ -113,6 +145,7 @@ main = do
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
   cids <- insertSch @Sch @(NSC "countries") conn countries
   mapM_ (print @(PgTagged "id" Int32)) cids
+  T.putStrLn $ I2.insertText @Sch @(NSC "customers") @CustomerI @(PgTagged "id" Int32)
   selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
   T.putStrLn ""
   selectSch @Sch @(NSC "cities") @City conn qpEmpty >>= print

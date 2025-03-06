@@ -6,6 +6,7 @@ import Control.Monad.Zip
 import Data.Bifunctor
 import Data.ByteString as BS hiding (readFile, writeFile)
 import Data.Coerce
+import Data.Functor
 import Data.Hashable
 import Data.List as L
 import Data.List.NonEmpty as NE
@@ -139,8 +140,7 @@ getDefs (types,classes,relations) =
         ( HasField "class__namespace" r (PgTagged "nspname" Text)
         , HasField "relname" r Text )
       => r -> NameNS
-    tabKey r =
-      NameNS (coerce $ getField @"class__namespace" r) (getField @"relname" r)
+    tabKey r = NameNS (coerce r.class__namespace) r.relname
     ptabDef c@PgClass{..} = (tabName, (TabDef{..}, froms, tos))
       where
         tabName = tabKey c
@@ -159,14 +159,15 @@ getDefs (types,classes,relations) =
             getNames f = fst <$> L.filter ((==tabName) . f . snd) relDefs
     relDefs = Mb.mapMaybe mbRelDef relations
     mbRelDef PgRelation {..} = sequenceA
-      ( NameNS (coerce constraint__namespace) conname
-      , RelDef fromName toName
-        <$> sequenceA (coerce $ mzipWith getName2 conkey confkey) )
+      ( rdName
+      , sequenceA (coerce $ mzipWith getName2 conkey confkey)
+        <&> \rdCols -> RelDef{..})
       where
-        fromName = tabKey constraint__class
-        toName = tabKey constraint__fclass
+        rdName = NameNS (coerce constraint__namespace) conname
+        rdFrom = tabKey constraint__class
+        rdTo = tabKey constraint__fclass
         getName t n = M.lookup (t,n) mClassAttrs
-        getName2 n1 n2 = (,) <$> getName fromName n1 <*> getName toName n2
+        getName2 n1 n2 = (,) <$> getName rdFrom n1 <*> getName rdTo n2
 
 updateSchemaFile'
   :: String     -- ^ file name
