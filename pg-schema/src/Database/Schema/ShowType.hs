@@ -47,4 +47,6 @@ instance ShowType RelDef where
     [showType rdFrom, showType rdTo, showType rdCols]
 
 qualName :: NameNS -> Text
-qualName NameNS {..} = nnsNamespace <> "." <> nnsName
+qualName NameNS {..}
+  | nnsNamespace == "pg_catalog" = nnsName
+  | otherwise = nnsNamespace <> "." <> nnsName

@@ -21,7 +21,8 @@ import Prelude.Singletons
 import Type.Reflection
 
 
-newtype PgTagged a b = PgTagged (Tagged a b) deriving
+newtype PgTagged a b = PgTagged (Tagged a b)
+  deriving
   ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
   , Semigroup )
 
@@ -44,8 +45,30 @@ instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
   parseJSON = withObject "PgTagged " \v ->
     pgTag <$> v .: fromString (T.unpack $ demote @a)
 
+instance (ToStar a, FromJSON b) => FromJSON (PgTagged ('[a]::[Symbol]) b) where
+  parseJSON = withObject "PgTagged " \v ->
+    pgTag <$> v .: fromString (T.unpack $ demote @a)
+
+instance (FromJSON (PgTagged n r), FromJSON (PgTagged (n1 ': ns) r1))
+  => FromJSON (PgTagged (n ': n1 ': ns::[Symbol]) (r,r1)) where
+  parseJSON v = do
+    o1 <- parseJSON @(PgTagged n r) v
+    o2 <- parseJSON @(PgTagged (n1 ': ns) r1) v
+    pure $ pgTag (unPgTag o1, unPgTag o2)
+
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
   toJSON v = object [fromString (T.unpack $ demote @a) .= unPgTag v]
+
+instance (ToStar a, ToJSON b) => ToJSON (PgTagged ('[a]::[Symbol]) b) where
+  toJSON v = object [fromString (T.unpack $ demote @a) .= unPgTag v]
+
+instance (ToJSON (PgTagged n r), ToJSON (PgTagged (n1 ': ns) r1))
+  => ToJSON (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) where
+  toJSON (PgTagged (Tagged (r,r1))) =
+    case (toJSON $ pgTag @n r, toJSON $ pgTag @(n1 ': ns) r1) of
+      (Object x1, Object x2) -> Object $ x1 <> x2
+      _ -> error "PgTagged instances should be always objects"
+
 
 instance
   (FromJSON a, Typeable a, KnownSymbol n)
