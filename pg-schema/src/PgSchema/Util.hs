@@ -15,4 +15,7 @@ show' = fromString . show
 intercalate' :: Monoid a => a -> [a] -> a
 intercalate' a = mconcat . L.intersperse a
 
+unlines' :: (Monoid a, IsString a) => [a] -> a
+unlines' = intercalate' "\n"
+
 type ToStar a = (SingKind (KindOf a), SingI a)
