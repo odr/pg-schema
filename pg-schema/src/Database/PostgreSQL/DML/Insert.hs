@@ -13,12 +13,13 @@ import PgSchema.Util
 
 insertSch
   :: forall sch t r r'
-  . ( InsertReturning PG sch t r r', ToRow r, FromRow r' )
+  . ( InsertReturning PG sch t r r'
+  , AllDmlPlain PG sch t r, ToRow r, FromRow r' )
   => Connection -> [r] -> IO [r']
 insertSch conn = returning conn (insertText @sch @t @r @r')
 
 insertSch_
-  :: forall sch t r. (CDmlRecord PG sch t r, ToRow r)
+  :: forall sch t r. (CDmlRecord PG sch t r, ToRow r, AllDmlPlain PG sch t r)
   => Connection -> [r] -> IO Int64
 insertSch_ conn = executeMany conn (insertText_ @sch @t @r)
 

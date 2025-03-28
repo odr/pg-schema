@@ -121,6 +121,12 @@ promote [d|
             sameFieldTo (DmlFieldTo (FieldRef _ dbname2 ir2' _)) Nothing =
               if dbname1 == dbname2 then Just ir2' else Nothing
             sameFieldTo _ justR = justR
+
+  allDmlPlainB :: DmlRecord' s -> Bool
+  allDmlPlainB  (DmlRecord _tn flds) = all isPlain flds
+    where
+      isPlain (DmlFieldPlain _) = True
+      isPlain _ = False
   |]
 
 
@@ -248,6 +254,13 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
       ((TL.Text "Not all mandatory fields for table " :<>: TL.ShowType t
         :<>: TL.Text " in type " :<>: TL.ShowType r)
         :$$: TL.Text "Probably you have to add: " :<>: TL.ShowType (RestMand sch t r rFlds)))
+
+type family AllDmlPlain db sch tab r where
+  AllDmlPlain db sch t r = Assert
+    (AllDmlPlainB (TDmlRecord db sch t r))
+    (TL.TypeError
+      ((TL.Text "Not all fields in record are 'plain' fields " :<>: TL.ShowType t
+        :<>: TL.Text " in type " :<>: TL.ShowType r)))
 
 class ( ToStar (TDmlRecord db sch tab r)
   , CDmlFields db sch tab (FiTypeInfo r))
