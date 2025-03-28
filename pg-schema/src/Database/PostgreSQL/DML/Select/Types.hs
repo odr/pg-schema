@@ -5,6 +5,7 @@ import Control.Monad.RWS
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Kind
 import Data.List.NonEmpty as NE
+import Data.String
 import Data.Text as T
 import Data.Type.Bool
 import Data.Type.Equality
@@ -63,7 +64,7 @@ data BoolOp = And | Or
 instance FromJSON BoolOp
 instance ToJSON BoolOp
 
-showCmp :: Cmp -> Text
+showCmp :: IsString s => Cmp -> s
 showCmp = \case
   (:=)  -> "="
   (:<=) -> "<="

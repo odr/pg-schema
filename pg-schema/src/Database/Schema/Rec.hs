@@ -319,15 +319,21 @@ instance (CDmlRecordChild db sch rd recFrom)
         ('FieldRef n dbname (TDmlRecordChild db sch rd recFrom)
         (MkRefs rd (TFldDefSym2 sch (RdFrom rd)) (TFldDefSym2 sch t)))
 
+type SubDml db sch t r r' = Assert
+  (SubDmlRecord (TQueryRecord db sch t r') (TDmlRecord db sch t r))
+  (TL.TypeError
+    (TL.Text "Result record doesn't correspond to input record"
+    :$$: TL.Text "Input: " :<>: TL.ShowType r
+    :$$: TL.Text "Result: " :<>: TL.ShowType r'))
+
 type InsertReturning db sch t r r' =
-  ( InsertNonReturning db sch t r, CQueryRecord db sch t r'
-  , Assert
-    (SubDmlRecord (TQueryRecord db sch t r') (TDmlRecord db sch t r))
-    (TL.TypeError
-      (TL.Text "Returning record doesn't correspond to Inserted record")))
+  (InsertNonReturning db sch t r, CQueryRecord db sch t r', SubDml db sch t r r')
 
 type InsertNonReturning db sch t r =
   (CDmlRecord db sch t r, AllMandatory sch t r '[])
+
+type UpdateReturning db sch t r r' =
+  (CDmlRecord db sch t r, CQueryRecord db sch t r', SubDml db sch t r r')
 
 instance CRecordInfo r => CRecordInfo (SchList r) where
   type TRecordInfo (SchList r) = TRecordInfo r

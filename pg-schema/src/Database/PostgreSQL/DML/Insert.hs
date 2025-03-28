@@ -19,7 +19,8 @@ insertSch
 insertSch conn = returning conn (insertText @sch @t @r @r')
 
 insertSch_
-  :: forall sch t r. (CDmlRecord PG sch t r, ToRow r, AllDmlPlain PG sch t r)
+  :: forall sch t r
+    . (InsertNonReturning PG sch t r, ToRow r, AllDmlPlain PG sch t r)
   => Connection -> [r] -> IO Int64
 insertSch_ conn = executeMany conn (insertText_ @sch @t @r)
 
@@ -40,12 +41,3 @@ insertText_ = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
       $ unzip [ (ifp.fpDbName,"?") | (DmlFieldPlain ifp) <- ir.iFields]
     tn = fromText $ qualName ir.iTableName
     inter = fromText . T.intercalate ","
-
-insertText'
-  :: forall sch t r r'. (CDmlRecord PG sch t r, CQueryRecord PG sch t r')
-  => Query
-insertText' = insertText_ @sch @t @r <> " returning " <> fs'
-  where
-    qr' = getQueryRecord @PG @sch @t @r'
-    fs' = fromText
-      $ T.intercalate "," [ qfp.fpDbName | (QFieldPlain qfp) <- qFields qr']

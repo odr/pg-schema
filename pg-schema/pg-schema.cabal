@@ -30,7 +30,7 @@ library
     Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Insert
     Database.PostgreSQL.DML.InsertJSON
-    -- Database.PostgreSQL.DML.Update
+    Database.PostgreSQL.DML.Update
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
     Database.PostgreSQL.Schema.Info

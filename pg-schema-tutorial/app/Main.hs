@@ -22,6 +22,7 @@ import GHC.Generics
 import GHC.Int
 import PgSchema
 import Database.PostgreSQL.DML.InsertJSON qualified as I2
+import Database.PostgreSQL.DML.Update
 import Sch
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
@@ -185,6 +186,9 @@ main = do
   as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
     <- I2.insertJSON @Sch @(NSC "addresses") @AddressI conn insData
   -- as1 :: [PgTagged "id" Int32] <- I2.insertJSON @Sch @(NSC "addresses") @AddressI conn insData
+  void $ updateByCond_ @Sch @(NSC "addresses") conn
+    (pgTag @"zipcode" (Just @Text "zip_new"))
+    $ pcmp @"street" =? Just @Text "street2"
   Prelude.putStrLn $ show as1
   selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
   T.putStrLn ""

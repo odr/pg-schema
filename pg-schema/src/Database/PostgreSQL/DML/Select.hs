@@ -72,9 +72,9 @@ selectM QueryRecord {..} = do
   joins <- gets $ L.reverse . qsJoins
   let
     (condText, condPars) =
-      condByPath qrCurrTabNum (L.reverse qrPath) $ qpConds qrParam
+      condByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpConds
     (ordText, ordPars) =
-      ordByPath qrCurrTabNum (L.reverse qrPath) $ qpOrds qrParam
+      ordByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpOrds
     sel
       | qrIsRoot =
         T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") flds
@@ -195,7 +195,7 @@ qual :: forall (fld :: Symbol). ToStar fld => CondMonad Text
 qual = tabPref <&> (<> "." <> (demote @fld))
 
 --
-convCond :: forall sch t. Cond sch t -> CondMonad Text
+convCond :: forall sch t . Cond sch t -> CondMonad Text
 convCond = \case
   EmptyCond -> pure mempty
   Cmp @n cmp v -> do
@@ -256,7 +256,7 @@ convCond = \case
           where
             tn = qualName $ demote @tab
 
-pgCond :: forall sch t. Int -> Cond sch t -> (Text, [SomeToField])
+pgCond :: forall sch t . Int -> Cond sch t -> (Text, [SomeToField])
 pgCond n cond = evalRWS (convCond cond) ("q", pure n) 0
 
 pgOrd :: forall sch t. Int -> [OrdFld sch t] -> (Text, [SomeToField])
