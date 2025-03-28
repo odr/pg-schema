@@ -118,7 +118,7 @@ schemaRec id ''OrdPosI
 schemaRec id ''CustomerI
 schemaRec id ''CompanyI
 schemaRec id ''AddressI
-instance CInsertRecord PG Sch ("sch" ->> "addresses") AddressI
+instance CDmlRecord PG Sch ("sch" ->> "addresses") AddressI
 
 deriveDmlRecord id ''Sch [ (''Country, "sch" ->> "countries") ]
 

@@ -69,5 +69,5 @@ deriveDmlRecord flm sch = fmap L.concat . traverse (\(n,s) ->
     , [d|instance ToField $(liftType n) where toField = toJSONField |]
     , schemaRec flm n
     , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
-    , [d|instance CInsertRecord PG $(conT sch) $(liftType s) $(conT n)|]
+    , [d|instance CDmlRecord PG $(conT sch) $(liftType s) $(conT n)|]
     ])

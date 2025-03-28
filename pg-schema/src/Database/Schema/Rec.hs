@@ -41,7 +41,7 @@ singletons [d|
     | QFieldFrom  (FieldRef' (QueryRecord' s) s) -- (parent)
     deriving Show
 
-  data InsertRecord' s = InsertRecord
+  data DmlRecord' s = DmlRecord
     { iTableName   :: NameNS' s
     , iFields :: [DmlField' s] }
     deriving Show
@@ -61,7 +61,7 @@ singletons [d|
 
   data DmlField' s
     = DmlFieldPlain (FieldPlain' s)
-    | DmlFieldTo (FieldRef' (InsertRecord' s) s) -- (children)
+    | DmlFieldTo (FieldRef' (DmlRecord' s) s) -- (children)
     deriving Show
   |]
 
@@ -101,12 +101,12 @@ promote [d|
   justIPlain (DmlFieldPlain ifp) = Just ifp
   justIPlain _ = Nothing
 
-  justITo :: DmlField' s -> Maybe (FieldRef' (InsertRecord' s) s)
+  justITo :: DmlField' s -> Maybe (FieldRef' (DmlRecord' s) s)
   justITo (DmlFieldTo ift) = Just ift
   justITo _ = Nothing
 
-  subInsertRecord :: Eq s => QueryRecord' s -> InsertRecord' s -> Bool
-  subInsertRecord (QueryRecord tn flds) ir2 =
+  subDmlRecord :: Eq s => QueryRecord' s -> DmlRecord' s -> Bool
+  subDmlRecord (QueryRecord tn flds) ir2 =
     tn == iTableName ir2 && all check flds
     where
       check = \case
@@ -115,7 +115,7 @@ promote [d|
         QFieldTo (FieldRef _ dbname1 qr1' _) ->
           case foldr sameFieldTo Nothing (iFields ir2) of
             Nothing -> False
-            Just ir2' -> subInsertRecord qr1' ir2'
+            Just ir2' -> subDmlRecord qr1' ir2'
           where
             sameFieldTo DmlFieldPlain{} Nothing = Nothing
             sameFieldTo (DmlFieldTo (FieldRef _ dbname2 ir2' _)) Nothing =
@@ -128,7 +128,7 @@ type FieldInfoK = FieldInfo' Symbol
 type RefK = Ref' Symbol
 type QueryRecordK = QueryRecord' Symbol
 type QueryFieldK = QueryField' Symbol
-type InsertRecordK = InsertRecord' Symbol
+type DmlRecordK = DmlRecord' Symbol
 type DmlFieldK = DmlField' Symbol
 type DmlFieldToK = FieldRef' Symbol
 type FieldPlaink = FieldPlain' Symbol
@@ -136,7 +136,7 @@ type FieldInfo = FieldInfo' Text
 type Ref = Ref' Text
 type QueryRecord = QueryRecord' Text
 type QueryField = QueryField' Text
-type InsertRecord = InsertRecord' Text
+type DmlRecord = DmlRecord' Text
 type DmlField = DmlField' Text
 type DmlFieldTo = FieldRef' Text
 type FieldPlain = FieldPlain' Text
@@ -249,16 +249,16 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
         :<>: TL.Text " in type " :<>: TL.ShowType r)
         :$$: TL.Text "Probably you have to add: " :<>: TL.ShowType (RestMand sch t r rFlds)))
 
-class ( ToStar (TInsertRecord db sch tab r), AllMandatory sch tab r '[]
+class ( ToStar (TDmlRecord db sch tab r)
   , CDmlFields db sch tab (FiTypeInfo r))
-  => CInsertRecord (db::Type) (sch::Type) (tab::NameNSK) (r::Type) where
-  type TInsertRecord db sch tab r :: InsertRecordK
-  type TInsertRecord db sch tab r = 'InsertRecord tab
+  => CDmlRecord (db::Type) (sch::Type) (tab::NameNSK) (r::Type) where
+  type TDmlRecord db sch tab r :: DmlRecordK
+  type TDmlRecord db sch tab r = 'DmlRecord tab
     (TDmlFields db sch tab (FiTypeInfo r))
 
-getInsertRecord
-  :: forall db sch tab r. CInsertRecord db sch tab r => InsertRecord
-getInsertRecord  = demote @(TInsertRecord db sch tab r)
+getDmlRecord
+  :: forall db sch tab r. CDmlRecord db sch tab r => DmlRecord
+getDmlRecord  = demote @(TDmlRecord db sch tab r)
 
 class (CSchema sch, CTabDef sch t, ToStar (TDmlFields db sch t fis))
   => CDmlFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
@@ -289,29 +289,32 @@ instance
 
 class
   ( CDmlFields db sch (RdFrom rd) (FiTypeInfo r)
-  , ToStar (TInsertRecordChild db sch rd r)
+  , ToStar (TDmlRecordChild db sch rd r)
   , AllMandatory sch (RdFrom rd) r (Map FstSym0 ((RdCols rd)))
   )
-  => CInsertRecordChild (db::Type) (sch::Type) (rd::RelDefK) (r::Type)
+  => CDmlRecordChild (db::Type) (sch::Type) (rd::RelDefK) (r::Type)
   where
-    type TInsertRecordChild db sch rd r :: InsertRecordK
-    type TInsertRecordChild db sch rd r = 'InsertRecord (RdFrom rd)
+    type TDmlRecordChild db sch rd r :: DmlRecordK
+    type TDmlRecordChild db sch rd r = 'DmlRecord (RdFrom rd)
       (TDmlFields db sch (RdFrom rd) (FiTypeInfo r))
 
-instance (CInsertRecordChild db sch rd recFrom)
+instance (CDmlRecordChild db sch rd recFrom)
   => CDmlField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom)
   where
     type TDmlField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) =
       'DmlFieldTo
-        ('FieldRef n dbname (TInsertRecordChild db sch rd recFrom)
+        ('FieldRef n dbname (TDmlRecordChild db sch rd recFrom)
         (MkRefs rd (TFldDefSym2 sch (RdFrom rd)) (TFldDefSym2 sch t)))
 
 type InsertReturning db sch t r r' =
-  ( CInsertRecord db sch t r, CQueryRecord db sch t r'
+  ( InsertNonReturning db sch t r, CQueryRecord db sch t r'
   , Assert
-    (SubInsertRecord (TQueryRecord db sch t r') (TInsertRecord db sch t r))
+    (SubDmlRecord (TQueryRecord db sch t r') (TDmlRecord db sch t r))
     (TL.TypeError
       (TL.Text "Returning record doesn't correspond to Inserted record")))
+
+type InsertNonReturning db sch t r =
+  (CDmlRecord db sch t r, AllMandatory sch t r '[])
 
 instance CRecordInfo r => CRecordInfo (SchList r) where
   type TRecordInfo (SchList r) = TRecordInfo r
@@ -326,4 +329,4 @@ instance
   ( CDmlFields db sch (RdFrom rd) (FiTypeInfo (SchList r))
   , AllMandatory sch (RdFrom rd) (SchList r) (Map FstSym0 (RdCols rd))
   )
-  => CInsertRecordChild db sch rd (SchList r) where
+  => CDmlRecordChild db sch rd (SchList r) where

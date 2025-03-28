@@ -35,15 +35,31 @@ insertJSON conn rs = do
     [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
     pure res
 
+insertJSON_
+  :: forall sch t r. (InsertNonReturning PG sch t r, ToJSON r)
+  => Connection -> [r] -> IO ()
+insertJSON_ conn rs = do
+  isInTrans <- any (isJust @Int64 . fromOnly)
+    <$> query_ conn "SELECT txid_current_if_assigned()"
+  (if isInTrans then id else withTransaction conn) do
+    void $ execute_ conn $ insertJSONText_ @sch @t @r
+    void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
+
+insertJSONText_
+  :: forall sch t r s
+    . (IsString s, Monoid s, InsertNonReturning PG sch t r, ToJSON r)
+  => s
+insertJSONText_ = insertJSONText' @s (getDmlRecord @PG @sch @t @r) []
+
 insertJSONText
   :: forall sch t r r' s
     . (IsString s, Monoid s, InsertReturning PG sch t r r', ToJSON r)
   => s
-insertJSONText = insertJSONText' @s (getInsertRecord @PG @sch @t @r)
+insertJSONText = insertJSONText' @s (getDmlRecord @PG @sch @t @r)
   (getQueryRecord @PG @sch @t @r').qFields
 
 insertJSONText'
-  :: forall s. (IsString s, Monoid s) => InsertRecord -> [QueryField] -> s
+  :: forall s. (IsString s, Monoid s) => DmlRecord -> [QueryField] -> s
 insertJSONText' ir qfs = unlines'
   [ maybe
     "create or replace procedure pg_temp.__ins(data_0 jsonb) as $$"
@@ -62,7 +78,7 @@ insertJSONText' ir qfs = unlines'
 type MonadInsert s = RWS (s, Int) ([s],[s]) Int
 insertJSONTextM
   :: forall s. (IsString s, Monoid s)
-  => InsertRecord -> [QueryField] -> [s] -> [s] -> MonadInsert s (Maybe s)
+  => DmlRecord -> [QueryField] -> [s] -> [s] -> MonadInsert s (Maybe s)
 insertJSONTextM ir qfs fromFields toVars = do
   (spaces, n) <- ask
   let
