@@ -11,7 +11,6 @@ import Database.Schema.ShowType
 import PgSchema.Util
 
 
--- TODO: Insert tree
 insertSch
   :: forall sch t r r'
   . ( InsertReturning PG sch t r r', ToRow r, FromRow r' )
@@ -23,8 +22,6 @@ insertSch_
   => Connection -> [r] -> IO Int64
 insertSch_ conn = executeMany conn (insertText_ @sch @t @r)
 
--- TODO: We can set returning only for "Plain" (and monoidal) fields.
--- It doesn't checked now!
 insertText
   :: forall sch t r r'. (InsertReturning  PG sch t r r')
   => Query
@@ -39,7 +36,7 @@ insertText_ = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
   where
     ir = getInsertRecord @PG @sch @t @r
     (fs,qs) = bimap inter inter
-      $ unzip [ (ifp.fpDbName,"?") | (IFieldPlain ifp) <- ir.iFields]
+      $ unzip [ (ifp.fpDbName,"?") | (DmlFieldPlain ifp) <- ir.iFields]
     tn = fromText $ qualName ir.iTableName
     inter = fromText . T.intercalate ","
 

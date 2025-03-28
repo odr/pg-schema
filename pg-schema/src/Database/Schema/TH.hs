@@ -57,21 +57,6 @@ deriveQueryRecord flm sch = fmap L.concat . traverse (\(n,s) ->
     , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
     ])
 
-deriveInsertRecord
-  :: (String -> String) -> Name -> [(Name, NameNS)] -> DecsQ
-deriveInsertRecord flm sch = fmap L.concat . traverse (\(n,s) ->
-  L.concat <$> sequenceA
-    [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
-    -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
-    -- , [d|instance FromRow $(liftType n)|]
-    , [d|instance ToRow $(liftType n)|]
-    , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-    , [d|instance ToField $(liftType n) where toField = toJSONField |]
-    , schemaRec flm n
-    -- , [d|instance CQueryRecord $pg $sch $(liftType s) $t|]
-    , [d|instance CInsertRecord PG $(conT sch) $(liftType s) $(conT n)|]
-    ])
-
 deriveDmlRecord
   :: (String -> String) -> Name -> [(Name, NameNS)] -> DecsQ
 deriveDmlRecord flm sch = fmap L.concat . traverse (\(n,s) ->

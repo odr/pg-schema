@@ -4,13 +4,11 @@ import Control.Monad
 import Control.Monad.RWS
 import Data.Aeson as A
 import Data.Bifunctor
--- import Data.ByteString.Lazy.Char8 as BS
 import Data.Foldable as F
 import Data.Function
 import Data.Functor
 import Data.List as L
 import Data.Maybe
--- import qualified Data.Text.IO as T
 import Data.Traversable
 import Database.PostgreSQL.DB
 import Database.PostgreSQL.Simple
@@ -19,6 +17,7 @@ import Database.Schema.Rec
 import Database.Schema.ShowType (qualName)
 import Database.Types.SchList
 import Data.String
+import GHC.Int
 import PgSchema.Util
 import Prelude as P
 import Data.Typeable
@@ -28,14 +27,13 @@ insertJSON
   :: forall sch t r r'
     . (InsertReturning PG sch t r r', ToJSON r, FromJSON r', Typeable r')
   => Connection -> [r] -> IO [r']
-insertJSON conn rs = withTransaction conn do
-  void $ execute_ conn qProc
-  -- T.putStrLn $ insertJSONText @sch @t @r @r'
-  [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
-  -- BS.putStrLn $ A.encode $ SchList rs
-  pure res
-  where
-    qProc = insertJSONText @sch @t @r @r'
+insertJSON conn rs = do
+  isInTrans <- any (isJust @Int64 . fromOnly)
+    <$> query_ conn "SELECT txid_current_if_assigned()"
+  (if isInTrans then id else withTransaction conn) do
+    void $ execute_ conn $ insertJSONText @sch @t @r @r'
+    [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
+    pure res
 
 insertJSONText
   :: forall sch t r r' s
@@ -43,8 +41,6 @@ insertJSONText
   => s
 insertJSONText = insertJSONText' @s (getInsertRecord @PG @sch @t @r)
   (getQueryRecord @PG @sch @t @r').qFields
-  -- $ fromText
-  -- $ T.decodeUtf8 $ LBS.toStrict $ encode rs
 
 insertJSONText'
   :: forall s. (IsString s, Monoid s) => InsertRecord -> [QueryField] -> s
@@ -56,11 +52,7 @@ insertJSONText' ir qfs = unlines'
   , "declare"
   , unlines' $ ("  " <>) <$> decl
   , "begin"
-  -- , "  create temp table results (result_data jsonb);"
-  -- , "  data_0 := '" <> jsonData <> "';"
   , unlines' body
-  -- , foldMap (\r -> "  insert into results (result_data) values (to_jsonb("
-  --   <> r <> "));") mbRes
   , maybe "" (\r ->"  return to_jsonb(" <> r <> ");") mbRes
   , "end; "
   , "$$ language plpgsql;" ]
@@ -74,7 +66,6 @@ insertJSONTextM
 insertJSONTextM ir qfs fromFields toVars = do
   (spaces, n) <- ask
   let
-    -- (unlines'' :: [s] -> s) = unlines' . fmap (fromString (replicate nLev ' ') <>)
     sn = show' n
     dataN = "data_" <> sn
     rowN  = "row_" <> sn
@@ -134,8 +125,8 @@ insertJSONTextM ir qfs fromFields toVars = do
   pure mbArrN
   where
     (iplains, ichildren) = P.foldr (\case
-      IFieldPlain ifp -> first (ifp :)
-      IFieldTo ift -> second (ift:)) mempty ir.iFields
+      DmlFieldPlain ifp -> first (ifp :)
+      DmlFieldTo ift -> second (ift:)) mempty ir.iFields
     (qplains, qchildren) = P.foldr (\case
       QFieldPlain qfp -> first (qfp:)
       QFieldTo qft -> second (qft:)

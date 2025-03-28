@@ -43,7 +43,7 @@ singletons [d|
 
   data InsertRecord' s = InsertRecord
     { iTableName   :: NameNS' s
-    , iFields :: [InsertField' s] }
+    , iFields :: [DmlField' s] }
     deriving Show
 
   data FieldRef' r s = FieldRef
@@ -59,9 +59,9 @@ singletons [d|
     , fpFldDef :: FldDef' s }
     deriving Show
 
-  data InsertField' s
-    = IFieldPlain (FieldPlain' s)
-    | IFieldTo (FieldRef' (InsertRecord' s) s) -- (children)
+  data DmlField' s
+    = DmlFieldPlain (FieldPlain' s)
+    | DmlFieldTo (FieldRef' (InsertRecord' s) s) -- (children)
     deriving Show
   |]
 
@@ -97,12 +97,12 @@ promote [d|
   hasNullableRefTo :: RelDef' s -> (s -> FldDef' s) -> Bool
   hasNullableRefTo rd f = any (fdNullable . f) $ fst $ unzip $ rdCols rd
 
-  justIPlain :: InsertField' s -> Maybe (FieldPlain' s)
-  justIPlain (IFieldPlain ifp) = Just ifp
+  justIPlain :: DmlField' s -> Maybe (FieldPlain' s)
+  justIPlain (DmlFieldPlain ifp) = Just ifp
   justIPlain _ = Nothing
 
-  justITo :: InsertField' s -> Maybe (FieldRef' (InsertRecord' s) s)
-  justITo (IFieldTo ift) = Just ift
+  justITo :: DmlField' s -> Maybe (FieldRef' (InsertRecord' s) s)
+  justITo (DmlFieldTo ift) = Just ift
   justITo _ = Nothing
 
   subInsertRecord :: Eq s => QueryRecord' s -> InsertRecord' s -> Bool
@@ -117,8 +117,8 @@ promote [d|
             Nothing -> False
             Just ir2' -> subInsertRecord qr1' ir2'
           where
-            sameFieldTo IFieldPlain{} Nothing = Nothing
-            sameFieldTo (IFieldTo (FieldRef _ dbname2 ir2' _)) Nothing =
+            sameFieldTo DmlFieldPlain{} Nothing = Nothing
+            sameFieldTo (DmlFieldTo (FieldRef _ dbname2 ir2' _)) Nothing =
               if dbname1 == dbname2 then Just ir2' else Nothing
             sameFieldTo _ justR = justR
   |]
@@ -129,16 +129,16 @@ type RefK = Ref' Symbol
 type QueryRecordK = QueryRecord' Symbol
 type QueryFieldK = QueryField' Symbol
 type InsertRecordK = InsertRecord' Symbol
-type InsertFieldK = InsertField' Symbol
-type InsertFieldToK = FieldRef' Symbol
+type DmlFieldK = DmlField' Symbol
+type DmlFieldToK = FieldRef' Symbol
 type FieldPlaink = FieldPlain' Symbol
 type FieldInfo = FieldInfo' Text
 type Ref = Ref' Text
 type QueryRecord = QueryRecord' Text
 type QueryField = QueryField' Text
 type InsertRecord = InsertRecord' Text
-type InsertField = InsertField' Text
-type InsertFieldTo = FieldRef' Text
+type DmlField = DmlField' Text
+type DmlFieldTo = FieldRef' Text
 type FieldPlain = FieldPlain' Text
 
 
@@ -250,45 +250,45 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
         :$$: TL.Text "Probably you have to add: " :<>: TL.ShowType (RestMand sch t r rFlds)))
 
 class ( ToStar (TInsertRecord db sch tab r), AllMandatory sch tab r '[]
-  , CInsertFields db sch tab (FiTypeInfo r))
+  , CDmlFields db sch tab (FiTypeInfo r))
   => CInsertRecord (db::Type) (sch::Type) (tab::NameNSK) (r::Type) where
   type TInsertRecord db sch tab r :: InsertRecordK
   type TInsertRecord db sch tab r = 'InsertRecord tab
-    (TInsertFields db sch tab (FiTypeInfo r))
+    (TDmlFields db sch tab (FiTypeInfo r))
 
 getInsertRecord
   :: forall db sch tab r. CInsertRecord db sch tab r => InsertRecord
 getInsertRecord  = demote @(TInsertRecord db sch tab r)
 
-class (CSchema sch, CTabDef sch t, ToStar (TInsertFields db sch t fis))
-  => CInsertFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
-  type TInsertFields db sch t fis :: [InsertFieldK]
+class (CSchema sch, CTabDef sch t, ToStar (TDmlFields db sch t fis))
+  => CDmlFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
+  type TDmlFields db sch t fis :: [DmlFieldK]
 
-instance (CSchema sch, CTabDef sch t) => CInsertFields db sch t '[] where
-  type TInsertFields db sch t '[] = '[]
+instance (CSchema sch, CTabDef sch t) => CDmlFields db sch t '[] where
+  type TDmlFields db sch t '[] = '[]
 
 instance
-  ( CInsertField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
-  , CInsertFields db sch t xs, ToStar (TInsertFields db sch t (x ': xs)))
-  => CInsertFields db sch t (x ': xs) where
-  type TInsertFields db sch t (x ': xs) =
-    TInsertField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
-    ': TInsertFields db sch t xs
+  ( CDmlField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
+  , CDmlFields db sch t xs, ToStar (TDmlFields db sch t (x ': xs)))
+  => CDmlFields db sch t (x ': xs) where
+  type TDmlFields db sch t (x ': xs) =
+    TDmlField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
+    ': TDmlFields db sch t xs
 
-class CInsertField (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
+class CDmlField (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
   where
-    type TInsertField ft db sch t fi :: InsertFieldK
+    type TDmlField ft db sch t fi :: DmlFieldK
 
 instance
   ( CFldDef sch t dbname, fdef ~ TFldDef sch t dbname --, ToStar n
   , CanConvert db sch (FdType fdef) (FdNullable fdef) ftype )
-  => CInsertField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype)
+  => CDmlField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype)
   where
-    type TInsertField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype) =
-      IFieldPlain ('FieldPlain n dbname (TFldDef sch t dbname))
+    type TDmlField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype) =
+      DmlFieldPlain ('FieldPlain n dbname (TFldDef sch t dbname))
 
 class
-  ( CInsertFields db sch (RdFrom rd) (FiTypeInfo r)
+  ( CDmlFields db sch (RdFrom rd) (FiTypeInfo r)
   , ToStar (TInsertRecordChild db sch rd r)
   , AllMandatory sch (RdFrom rd) r (Map FstSym0 ((RdCols rd)))
   )
@@ -296,13 +296,13 @@ class
   where
     type TInsertRecordChild db sch rd r :: InsertRecordK
     type TInsertRecordChild db sch rd r = 'InsertRecord (RdFrom rd)
-      (TInsertFields db sch (RdFrom rd) (FiTypeInfo r))
+      (TDmlFields db sch (RdFrom rd) (FiTypeInfo r))
 
 instance (CInsertRecordChild db sch rd recFrom)
-  => CInsertField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom)
+  => CDmlField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom)
   where
-    type TInsertField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) =
-      'IFieldTo
+    type TDmlField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) =
+      'DmlFieldTo
         ('FieldRef n dbname (TInsertRecordChild db sch rd recFrom)
         (MkRefs rd (TFldDefSym2 sch (RdFrom rd)) (TFldDefSym2 sch t)))
 
@@ -323,7 +323,7 @@ instance ( CQueryFields db sch t (FiTypeInfo (SchList r)) )
   => CQueryRecord db sch t (SchList r) where
 
 instance
-  ( CInsertFields db sch (RdFrom rd) (FiTypeInfo (SchList r))
+  ( CDmlFields db sch (RdFrom rd) (FiTypeInfo (SchList r))
   , AllMandatory sch (RdFrom rd) (SchList r) (Map FstSym0 (RdCols rd))
   )
   => CInsertRecordChild db sch rd (SchList r) where
