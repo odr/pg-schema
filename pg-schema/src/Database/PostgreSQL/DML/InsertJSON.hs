@@ -27,25 +27,25 @@ insertJSON
   :: forall sch t r r'
     . (InsertReturning PG sch t r r', ToJSON r, FromJSON r', Typeable r')
   => Connection -> [r] -> IO [r']
-insertJSON conn rs = do
+insertJSON conn rs = withTransactionIfNot conn do
+  void $ execute_ conn $ insertJSONText @sch @t @r @r'
+  [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
+  void $ execute_ conn "drop function pg_temp.__ins"
+  pure res
+
+withTransactionIfNot :: Connection -> IO a -> IO a
+withTransactionIfNot conn act = do
   isInTrans <- any (isJust @Int64 . fromOnly)
     <$> query_ conn "SELECT txid_current_if_assigned()"
-  (if isInTrans then id else withTransaction conn) do
-    void $ execute_ conn $ insertJSONText @sch @t @r @r'
-    [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
-    void $ execute_ conn "drop function pg_temp.__ins"
-    pure res
+  (if isInTrans then id else withTransaction conn) act
 
 insertJSON_
   :: forall sch t r. (InsertNonReturning PG sch t r, ToJSON r)
   => Connection -> [r] -> IO ()
-insertJSON_ conn rs = do
-  isInTrans <- any (isJust @Int64 . fromOnly)
-    <$> query_ conn "SELECT txid_current_if_assigned()"
-  (if isInTrans then id else withTransaction conn) do
-    void $ execute_ conn $ insertJSONText_ @sch @t @r
-    void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
-    void $ execute_ conn "drop procedure pg_temp.__ins"
+insertJSON_ conn rs = withTransactionIfNot conn do
+  void $ execute_ conn $ insertJSONText_ @sch @t @r
+  void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
+  void $ execute_ conn "drop procedure pg_temp.__ins"
 
 insertJSONText_
   :: forall sch t r s
