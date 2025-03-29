@@ -33,7 +33,7 @@ insertJSON conn rs = do
   (if isInTrans then id else withTransaction conn) do
     void $ execute_ conn $ insertJSONText @sch @t @r @r'
     [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
-    void $ execute_ conn $ "drop function pg_temp.__ins"
+    void $ execute_ conn "drop function pg_temp.__ins"
     pure res
 
 insertJSON_
@@ -45,7 +45,7 @@ insertJSON_ conn rs = do
   (if isInTrans then id else withTransaction conn) do
     void $ execute_ conn $ insertJSONText_ @sch @t @r
     void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
-    void $ execute_ conn $ "drop procedure pg_temp.__ins"
+    void $ execute_ conn "drop procedure pg_temp.__ins"
 
 insertJSONText_
   :: forall sch t r s
