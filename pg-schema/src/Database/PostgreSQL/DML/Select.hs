@@ -23,21 +23,20 @@ import GHC.TypeLits
 import PgSchema.Util
 
 
-selectSch
-  :: forall sch tab r. (FromRow r, CQueryRecord PG sch tab r)
-  => Connection -> QueryParam sch tab -> IO [r]
-selectSch conn qp = let (q,c) = selectQuery @sch @tab @r qp in
+selectSch :: forall r. forall sch tab ->
+  (CQueryRecord PG sch tab r, FromRow r) =>
+  Connection -> QueryParam sch tab -> IO [r]
+selectSch sch tab conn qp = let (q,c) = selectQuery @r sch tab qp in
   query conn q c
 
-selectQuery
-  :: forall sch tab r. CQueryRecord PG sch tab r
-  => QueryParam sch tab -> (Query,[SomeToField])
-selectQuery = first (fromString . unpack) . selectText @sch @tab @r
+selectQuery :: forall r. forall sch tab -> CQueryRecord PG sch tab r =>
+  QueryParam sch tab -> (Query,[SomeToField])
+selectQuery sch tab = first (fromString . unpack) . selectText @r sch tab
 
-selectText
-  :: forall sch tab r. CQueryRecord PG sch tab r
-  => QueryParam sch tab -> (Text,[SomeToField])
-selectText qp = evalRWS (selectM (getQueryRecord @PG @sch @tab @r)) (qr0 qp) qs0
+selectText :: forall r. forall sch tab -> CQueryRecord PG sch tab r =>
+  QueryParam sch tab -> (Text,[SomeToField])
+selectText sch tab qp =
+  evalRWS (selectM (getQueryRecord @PG @sch @tab @r)) (qr0 qp) qs0
 
 qr0 :: QueryParam sch t -> QueryRead sch t
 qr0 qrParam = QueryRead
@@ -140,7 +139,8 @@ fieldM (QFieldTo fr) = do
   modify (const $ QueryState (qsLastTabNum+1) [] False "" "")
   selText <- local
     (\qr -> qr
-      { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False, qrPath = fr.frDbName : qrPath })
+      { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False
+      , qrPath = fr.frDbName : qrPath })
     (selectM fr.frRec)
   modify (\qs -> qs { qsJoins = qsJoins })
   QueryState{qsHasWhere, qsOrd, qsLimOff} <- get
@@ -167,13 +167,12 @@ withLOsWithPath
   :: forall sch t r. (LO -> r) -> [Text] -> [LimOffWithPath sch t] -> Maybe r
 withLOsWithPath f path = join . L.find isJust . L.map (withLOWithPath f path)
 
-lowp
-  :: forall (path::[Symbol]) sch t. (ToStar path, TabPath sch t path)
-  => LO -> LimOffWithPath sch t
-lowp = LimOffWithPath @path
+lowp :: forall sch t. forall (path::[Symbol]) ->
+  (ToStar path, TabPath sch t path) => LO -> LimOffWithPath sch t
+lowp path = LimOffWithPath @path
 
 rootLO :: forall sch t. LO -> LimOffWithPath sch t
-rootLO = lowp @'[]
+rootLO = lowp []
 
 convLO :: LO -> Text
 convLO (LO ml mo) =
@@ -219,7 +218,7 @@ convCond = \case
       | c == mempty = mempty
       | otherwise   = "not (" <> c <> ")"
     getBoolOp bo cc1 cc2
-      | cc1 == mempty = cc2
+      | cc1 == mempty = cc2 -- so EmptyCond works both with &&& and |||
       | cc2 == mempty = cc1
       | otherwise = case bo of
         And -> cc1 <> " and " <> cc2
@@ -262,60 +261,49 @@ pgCond n cond = evalRWS (convCond cond) ("q", pure n) 0
 pgOrd :: forall sch t. Int -> [OrdFld sch t] -> (Text, [SomeToField])
 pgOrd n cond = evalRWS (convOrd cond) ("o", pure n) 0
 
-withCondWithPath
-  :: forall sch t r
-  . (forall t'. Cond sch t' -> r)
-  -> [Text] -> CondWithPath sch t -> Maybe r
+withCondWithPath :: forall sch t r. (forall t'. Cond sch t' -> r) ->
+  [Text] -> CondWithPath sch t -> Maybe r
 withCondWithPath f path (CondWithPath @path' cond) =
   f cond <$ guard (path == demote @path')
 
-withCondsWithPath
-  :: forall sch t r
-  . (forall t'. Cond sch t' -> r)
-  -> [Text] -> [CondWithPath sch t] -> Maybe r
+withCondsWithPath :: forall sch t r. (forall t'. Cond sch t' -> r) ->
+  [Text] -> [CondWithPath sch t] -> Maybe r
 withCondsWithPath f path =
   join . L.find isJust . L.map (withCondWithPath f path)
 
-cwp
-  :: forall path sch t t1. (t1 ~ TabOnPath sch t path, ToStar path)
-  => Cond sch t1 -> CondWithPath sch t
-cwp = CondWithPath @path
+cwp :: forall path -> forall sch t t1.
+  (t1 ~ TabOnPath sch t path, ToStar path) => Cond sch t1 -> CondWithPath sch t
+cwp path = CondWithPath @path
 
 rootCond :: forall sch t. Cond sch t -> CondWithPath sch t
-rootCond = cwp @'[]
+rootCond = cwp []
 
-condByPath
-  :: forall sch t. CSchema sch
-  => Int -> [Text] ->[CondWithPath sch t] -> (Text, [SomeToField])
+condByPath :: forall sch t. CSchema sch => Int -> [Text]
+  -> [CondWithPath sch t] -> (Text, [SomeToField])
 condByPath num path =
   fromMaybe mempty . withCondsWithPath (pgCond num) path
 
-ordByPath
-  :: forall sch t. CSchema sch
-  => Int -> [Text] -> [OrdWithPath sch t] -> (Text, [SomeToField])
+ordByPath :: forall sch t. CSchema sch => Int -> [Text]
+  -> [OrdWithPath sch t] -> (Text, [SomeToField])
 ordByPath num path =
   fromMaybe mempty . withOrdsWithPath (pgOrd num) path
 
-withOrdWithPath
-  :: forall sch t r
-  . (forall t'. [OrdFld sch t'] -> r)
-  -> [Text] -> OrdWithPath sch t -> Maybe r
+withOrdWithPath :: forall sch t r. (forall t'. [OrdFld sch t'] -> r) ->
+  [Text] -> OrdWithPath sch t -> Maybe r
 withOrdWithPath f path (OrdWithPath @p ord) =
   f ord <$ guard (path == demote @p)
 --
-withOrdsWithPath
-  :: forall sch t r
-  . (forall t'. [OrdFld sch t'] -> r)
-  -> [Text] -> [OrdWithPath sch t] -> Maybe r
+withOrdsWithPath :: forall sch t r . (forall t'. [OrdFld sch t'] -> r) ->
+  [Text] -> [OrdWithPath sch t] -> Maybe r
 withOrdsWithPath f path = join . L.find isJust . L.map (withOrdWithPath f path)
 
-owp
-  :: forall path sch t t'. (ToStar path, TabOnPath sch t path ~ t')
-  => [OrdFld sch t'] -> OrdWithPath sch t
-owp = OrdWithPath @path
+owp :: forall path -> forall sch t t'.
+  (ToStar path, TabOnPath sch t path ~ t') =>
+  [OrdFld sch t'] -> OrdWithPath sch t
+owp path = OrdWithPath @path
 
 rootOrd :: forall sch t. [OrdFld sch t] -> OrdWithPath sch t
-rootOrd = owp @'[]
+rootOrd = owp []
 
 convOrd :: forall sch tab. [OrdFld sch tab] -> CondMonad Text
 convOrd ofs = T.intercalate "," <$> traverse showFld ofs

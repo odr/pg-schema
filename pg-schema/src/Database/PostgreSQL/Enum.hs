@@ -20,22 +20,22 @@ import PgSchema.Util hiding (fromText)
 data family PGEnum sch (name :: NameNSK) :: Type
 
 instance
-  (Read (PGEnum sch name), ToStar name, Typeable sch, Typeable name)
-  => FromField (PGEnum sch name) where
+  (Read (PGEnum sch n), ToStar n, Typeable sch, Typeable n)
+  => FromField (PGEnum sch n) where
   fromField f mbs =
     case mbs >>= fromText . decodeUtf8 of
       Just x -> pure x
       _      -> returnError Incompatible f ""
 
 instance
-  (Show (PGEnum sch name), ToStar name) => ToField (PGEnum sch name) where
+  (Show (PGEnum sch n), ToStar n) => ToField (PGEnum sch n) where
   toField = toField . toText
 
 instance
-  ( TTypDef sch name ~ 'TypDef "E" 'Nothing es
-  , FromJSON (PGEnum sch name)
-  , ToJSON (PGEnum sch name) )
-  => CanConvert1 ('TypDef "E" 'Nothing es) sch name (PGEnum sch name)
+  ( TTypDef sch n ~ 'TypDef "E" 'Nothing es
+  , FromJSON (PGEnum sch n)
+  , ToJSON (PGEnum sch n) )
+  => CanConvert1 ('TypDef "E" 'Nothing es) sch n (PGEnum sch n)
 
 instance (Read (PGEnum sch t), ToStar t) => FromJSON (PGEnum sch t) where
     parseJSON = parseJSON >=> maybe mzero pure . fromText

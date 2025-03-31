@@ -27,7 +27,7 @@ import Sch
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
 
-data Country = Country
+data Country = MkCountry
   { code :: Maybe Text
   , name :: Text }
   -- TODO: cycle references lead to halt! Should check to avoid it
@@ -37,12 +37,12 @@ data Country = Country
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
 
-data City = City
+data City = MkCity
   { name         :: Maybe Text
   , city_country :: Maybe Country }
   deriving (Eq, Show, Ord, Generic)
 
-data Address = Address
+data Address = MkAddress
   { street       :: Maybe Text
   , home         :: Maybe Text
   , app          :: Maybe Text
@@ -50,17 +50,17 @@ data Address = Address
   , address_city :: Maybe City } -- PgTagged "name" (Maybe Text) }
   deriving (Eq, Show, Ord, Generic)
 
-data Company = Company
+data Company = MkCompany
   { name       :: Text
   , address_id :: Maybe Int32 }
   deriving (Eq, Show, Generic)
 
-data Article = Article
+data Article = MkArticle
   { name :: Text
   , code :: Maybe Text }
   deriving (Eq, Show, Generic)
 
-data OrdPos = OrdPos
+data OrdPos = MkOrdPos
   { num          :: Int32
   , opos_article :: Article
   , cnt          :: Int32
@@ -69,7 +69,7 @@ data OrdPos = OrdPos
 
 -- data Customer = Customer
 --   { }
-data Order = Order
+data Order = MkOrder
   { day        :: Day
   , num        :: Text
   , ord_seller :: Company
@@ -77,7 +77,7 @@ data Order = Order
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
   deriving (Eq, Show, Generic)
 
-data OrdPosI = OrdPosI
+data OrdPosI = MkOrdPosI
   { num          :: Int32
   , article_id   :: Int32
   , cnt          :: Int32
@@ -85,7 +85,7 @@ data OrdPosI = OrdPosI
   deriving (Eq, Show, Generic)
   deriving anyclass ToJSON
 
-data OrderI = OrderI
+data OrderI = MkOrderI
   { day        :: Day
   , num        :: Text
   , seller_id  :: Int32
@@ -93,7 +93,7 @@ data OrderI = OrderI
   , opos_order :: SchList OrdPosI }
   deriving (Eq, Show, Generic, ToJSON)
 
-data CustomerI = CustomerI
+data CustomerI = MkCustomerI
   { name :: Text
   -- , ord_cust :: SchList (PgTagged
   --   '["num", "opos_order", "day", "seller_id"]
@@ -102,11 +102,11 @@ data CustomerI = CustomerI
   }
   deriving (Eq, Show, Generic, ToJSON)
 
-data CompanyI = CompanyI
+data CompanyI = MkCompanyI
   { name :: Text }
   deriving (Eq, Show, Generic, ToJSON)
 
-data AddressI = AddressI
+data AddressI = MkAddressI
   { street :: Maybe Text
   , zipcode :: Maybe Text
   , cust_addr :: SchList CustomerI
@@ -156,11 +156,11 @@ main :: IO ()
 main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selectText @Sch @(NSC "countries") @Country qpEmpty
-    , selectText @Sch @(NSC "cities") @City qpEmpty
-    , selectText @Sch @(NSC "addresses") @Address qpEmpty
-    , selectText @Sch @(NSC "addresses") @Address qp
-    , selectText @Sch @(NSC "addresses") @Address qp'
+    [ selectText @Country Sch (NSC "countries") qpEmpty
+    , selectText @City Sch (NSC "cities") qpEmpty
+    , selectText @Address Sch (NSC "addresses") qpEmpty
+    , selectText @Address Sch (NSC "addresses") qp
+    , selectText @Address Sch (NSC "addresses") qp'
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
   cids <- insertSch @Sch @(NSC "countries") conn countries
@@ -169,41 +169,43 @@ main = do
   -- T.putStrLn $ I2.insertJSONText @Sch @(NSC "addresses") @AddressI @(PgTagged "id" Int32)
   let
     insData =
-      [ AddressI (Just "street") Nothing (SchList
-        [ CustomerI "Ivan" $ SchList
-          [ OrderI d "1" 1 (Just Order_state_paid) $ SchList
-            [ OrdPosI 1 2 3 4, OrdPosI 2 3 4 5 ]
-          , OrderI d "2a" 3 (Just Order_state_booked) $ SchList
-            [ OrdPosI 3 2 3 4, OrdPosI 1 3 4 5.1 ] ]
-        , CustomerI "Petr" $ SchList
-          [ OrderI d "1v" 4 (Just Order_state_paid) $ SchList
-            [ OrdPosI 1 2 3 4, OrdPosI 2 3 4 5 ]
-          , OrderI d "xx" 5 (Just Order_state_delivered) $ SchList
-            [ OrdPosI 5 6 3 4, OrdPosI 1 3 3 5.1 ] ] ]) mempty
-      , AddressI Nothing (Just "zipcode") mempty $ SchList [CompanyI "Typeable"]
-      , AddressI (Just "street2") (Just "zip2") (SchList [CustomerI "Dima" mempty])
-        $ SchList [CompanyI "WellTyped"] ]
+      [ MkAddressI (Just "street") Nothing (SchList
+        [ MkCustomerI "Ivan" $ SchList
+          [ MkOrderI d "1" 1 (Just Order_state_paid) $ SchList
+            [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
+          , MkOrderI d "2a" 3 (Just Order_state_booked) $ SchList
+            [ MkOrdPosI 3 2 3 4, MkOrdPosI 1 3 4 5.1 ] ]
+        , MkCustomerI "Petr" $ SchList
+          [ MkOrderI d "1v" 4 (Just Order_state_paid) $ SchList
+            [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
+          , MkOrderI d "xx" 5 (Just Order_state_delivered) $ SchList
+            [ MkOrdPosI 5 6 3 4, MkOrdPosI 1 3 3 5.1 ] ] ]) mempty
+      , MkAddressI Nothing (Just "zipcode") mempty $ SchList [MkCompanyI "Typeable"]
+      , MkAddressI (Just "street2") (Just "zip2") (SchList [MkCustomerI "Dima" mempty])
+        $ SchList [MkCompanyI "WellTyped"] ]
   as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
-    <- I2.insertJSON @Sch @(NSC "addresses") @AddressI conn insData
-  -- as1 :: [PgTagged "id" Int32] <- I2.insertJSON @Sch @(NSC "addresses") @AddressI conn insData
-  void $ updateByCond_ @Sch @(NSC "addresses") conn
+    <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
+  T.putStrLn "\n\n\n"
+  T.putStrLn $ I2.insertJSONText_ @AddressI Sch (NSC "addresses")
+  T.putStrLn "\n\n\n"
+  void $ updateByCond_ conn Sch (NSC "addresses")
     (pgTag @"zipcode" (Just @Text "zip_new"))
-    $ pcmp @"street" =? Just @Text "street2"
+    $ "street" =? Just @Text "street2"
   Prelude.putStrLn $ show as1
-  selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
+  selectSch @Country Sch (NSC "countries") conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @(NSC "cities") @City conn qpEmpty >>= print
+  selectSch @City Sch (NSC "cities") conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @(NSC "addresses") @Address conn qpEmpty >>= print
+  selectSch @Address Sch (NSC "addresses") conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @(NSC "addresses") @Address conn qp >>= print
+  selectSch @Address Sch (NSC "addresses") conn qp >>= print
   T.putStrLn ""
-  selectSch @Sch @(NSC "addresses") @Address conn qp' >>= print
+  selectSch @Address Sch (NSC "addresses") conn qp' >>= print
   where
     qp = qpEmpty
       { qpConds =
         [rootCond
-          (pparent @(NSC "address_city")
-            $ pparent @(NSC "city_country") (pcmp @"code" =? Just @Text "RU"))]
-      , qpOrds = [ rootOrd [ascf @"street"] ] }
+          (pparent (NSC "address_city")
+            $ pparent (NSC "city_country") ("code" =? Just @Text "RU"))]
+      , qpOrds = [ rootOrd [ascf "street"] ] }
     qp' = qp { qpLOs = [rootLO $ LO (Just 1) (Just 1)] }

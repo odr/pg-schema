@@ -51,48 +51,48 @@ getSchema
   -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn GenNames {..} = do
-  types <- catch (selectSch @PgCatalog @(PGC "pg_type") @PgType conn qpTyp)
+  types <- catch (selectSch PgCatalog (PGC "pg_type") conn qpTyp)
     ( throwM . GetDataException
-      (selectText @PgCatalog @(PGC "pg_type") @PgType qpEmpty ) )
+      (selectText @PgType PgCatalog (PGC "pg_type") qpEmpty ) )
   classes <- L.filter checkClass <$>
-    catch (selectSch @PgCatalog @(PGC "pg_class") @PgClass conn qpClass)
+    catch (selectSch PgCatalog (PGC "pg_class") conn qpClass)
       ( throwM . GetDataException
-        (selectText @PgCatalog @(PGC "pg_class") @PgClass qpClass) )
+        (selectText @PgClass PgCatalog (PGC "pg_class") qpClass) )
   relations <- L.filter checkRels <$>
-    catch (selectSch @PgCatalog @(PGC "pg_constraint") @PgRelation conn qpRel)
+    catch (selectSch PgCatalog (PGC "pg_constraint") conn qpRel)
       ( throwM . GetDataException
-        (selectText @PgCatalog @(PGC "pg_constraint") @PgRelation qpRel) )
+        (selectText @PgRelation PgCatalog (PGC "pg_constraint") qpRel) )
   pure (types, classes, relations)
   where
     -- all data are ordered to provide stable `hashSchema`
     qpTyp = qpEmpty
       { qpOrds =
-        [ rootOrd [ascf @"typname"]
-        , owp @'["enum__type"] [ascf @"enumsortorder"] ] }
+        [ rootOrd [ascf "typname"]
+        , owp ["enum__type"] [ascf "enumsortorder"] ] }
     qpClass = qpEmpty
       { qpConds =
         [ rootCond $ condClass
-          &&& pin @"relkind" (PgChar <$> 'v' :| "r") -- views & tables
-        , cwp @'["attribute__class"] (pcmp @"attnum" >? (0::Int16)) ]
+          &&& pin "relkind" (PgChar <$> 'v' :| "r") -- views & tables
+        , cwp ["attribute__class"] ("attnum" >? (0::Int16)) ]
       , qpOrds =
-        [ rootOrd [ascf @"relname"]
-        , owp @'["attribute__class"] [ascf @"attnum"]
-        , owp @'["constraint__class"] [ascf @"conname"] ] }
+        [ rootOrd [ascf "relname"]
+        , owp ["attribute__class"] [ascf "attnum"]
+        , owp ["constraint__class"] [ascf "conname"] ] }
     condClass = condSchemas ||| condTabs
       where
-        condSchemas = pparent @(PGC "class__namespace")
-          $ foldMap (pin @"nspname") $ nonEmpty schemas
+        condSchemas = pparent (PGC "class__namespace")
+          $ foldMap (pin "nspname") $ nonEmpty schemas
         condTabs
-          = pparent @(PGC "class__namespace")
-            (foldMap (pin @"nspname" . fmap nnsNamespace) (nonEmpty tables))
-          &&& foldMap (pin @"relname" . fmap nnsName) (nonEmpty tables)
+          = pparent (PGC "class__namespace")
+            (foldMap (pin "nspname" . fmap nnsNamespace) (nonEmpty tables))
+          &&& foldMap (pin "relname" . fmap nnsName) (nonEmpty tables)
     qpRel = qpEmpty
       { qpConds = [rootCond condRels]
-      , qpOrds = [ rootOrd [ascf @"conname"] ] }
+      , qpOrds = [ rootOrd [ascf "conname"] ] }
       where
         condRels
-          = pparent @(PGC "constraint__class") condClass
-          ||| pparent @(PGC "constraint__fclass") condClass
+          = pparent (PGC "constraint__class") condClass
+          ||| pparent (PGC "constraint__fclass") condClass
     checkClass PgClass {..}
       = (coerce class__namespace `L.elem` schemas)
       || (coerce class__namespace ->> relname `L.elem` tables)

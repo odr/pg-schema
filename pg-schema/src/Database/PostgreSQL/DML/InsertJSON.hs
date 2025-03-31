@@ -23,12 +23,11 @@ import Prelude as P
 import Data.Typeable
 
 
-insertJSON
-  :: forall sch t r r'
-    . (InsertReturning PG sch t r r', ToJSON r, FromJSON r', Typeable r')
-  => Connection -> [r] -> IO [r']
-insertJSON conn rs = withTransactionIfNot conn do
-  void $ execute_ conn $ insertJSONText @sch @t @r @r'
+insertJSON :: forall r r'. forall sch t ->
+  (InsertReturning PG sch t r r', ToJSON r, FromJSON r', Typeable r') =>
+  Connection -> [r] -> IO [r']
+insertJSON sch t conn rs = withTransactionIfNot conn do
+  void $ execute_ conn $ insertJSONText @r @r' sch t
   [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
   void $ execute_ conn "drop function pg_temp.__ins"
   pure res
@@ -40,24 +39,20 @@ withTransactionIfNot conn act = do
   (if isInTrans then id else withTransaction conn) act
 
 insertJSON_
-  :: forall sch t r. (InsertNonReturning PG sch t r, ToJSON r)
+  :: forall r. forall  sch t -> (InsertNonReturning PG sch t r, ToJSON r)
   => Connection -> [r] -> IO ()
-insertJSON_ conn rs = withTransactionIfNot conn do
-  void $ execute_ conn $ insertJSONText_ @sch @t @r
+insertJSON_ sch t conn rs = withTransactionIfNot conn do
+  void $ execute_ conn $ insertJSONText_ @r sch t
   void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
   void $ execute_ conn "drop procedure pg_temp.__ins"
 
-insertJSONText_
-  :: forall sch t r s
-    . (IsString s, Monoid s, InsertNonReturning PG sch t r, ToJSON r)
-  => s
-insertJSONText_ = insertJSONText' @s (getDmlRecord @PG @sch @t @r) []
+insertJSONText_ :: forall r s. forall sch t  ->
+  (IsString s, Monoid s, InsertNonReturning PG sch t r, ToJSON r) => s
+insertJSONText_ sch t = insertJSONText' @s (getDmlRecord @PG @sch @t @r) []
 
-insertJSONText
-  :: forall sch t r r' s
-    . (IsString s, Monoid s, InsertReturning PG sch t r r', ToJSON r)
-  => s
-insertJSONText = insertJSONText' @s (getDmlRecord @PG @sch @t @r)
+insertJSONText :: forall r r' s. forall sch t ->
+  (IsString s, Monoid s, InsertReturning PG sch t r r', ToJSON r) => s
+insertJSONText sch t = insertJSONText' @s (getDmlRecord @PG @sch @t @r)
   (getQueryRecord @PG @sch @t @r').qFields
 
 insertJSONText'

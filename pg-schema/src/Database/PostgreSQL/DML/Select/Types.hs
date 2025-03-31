@@ -121,6 +121,9 @@ data Cond (sch::Type) (tab::NameNSK) where
     => Cond sch to -> Cond sch tab
   UnsafeCond :: CondMonad Text -> Cond sch tab
 
+-- Conjunction (&&&) is much more often operation for query conditions so
+-- we use it for Semigroup.
+-- But note that EmptyCond is neutral also for disjuction (|||).
 instance Semigroup (Cond sch tab) where
   c1 <> c2 = c1 &&& c2
 
@@ -136,32 +139,35 @@ defTabParam :: TabParam sch tab
 defTabParam = TabParam mempty mempty defLO
 
 --
-pcmp
-  :: forall name sch tab v .
-    ( CFldDef sch tab name, Show v, ToField v
-    , CanConvertPG sch (FdType (TFldDef sch tab name))
-      (FdNullable (TFldDef sch tab name)) v )
-  => Cmp -> v -> Cond sch tab
-pcmp = Cmp @name
+-- pcmp
+--   :: forall name sch tab v .
+--     ( CFldDef sch tab name, Show v, ToField v
+--     , CanConvertPG sch (FdType (TFldDef sch tab name))
+--       (FdNullable (TFldDef sch tab name)) v )
+--   => Cmp -> v -> Cond sch tab
+-- pcmp = Cmp @name
 
 pnull
-  :: forall name sch tab .
+  :: forall name
+  -> forall sch tab .
     (CFldDef sch tab name, FdNullable (TFldDef sch tab name) ~ 'True)
   => Cond sch tab
-pnull = Null @name
+pnull name = Null @name
 
 pchild
-  :: forall name sch tab rel .
+  :: forall name
+  -> forall sch tab rel .
     ( rel ~ TRelDef sch name, tab ~ RdTo rel
     , CTabDef sch (RdFrom rel), CRelDef sch name )
   => TabParam sch (RdFrom rel) -> Cond sch (RdFrom rel) -> Cond sch tab
-pchild = Child @name
+pchild name = Child @name
 
 pparent
-  :: forall name sch rel.
+  :: forall name
+  -> forall sch rel.
     ( rel ~ TRelDef sch name, CTabDef sch (RdTo rel), CRelDef sch name )
   => Cond sch (RdTo rel) -> Cond sch (RdFrom rel)
-pparent = Parent @name
+pparent name = Parent @name
 
 -- -- --
 -- instance
@@ -178,12 +184,13 @@ pUnsafeCond :: CondMonad Text -> Cond sch tab
 pUnsafeCond = UnsafeCond
 
 pin
-  :: forall name sch tab v .
+  :: forall name
+  -> forall sch tab v.
     ( CFldDef sch tab name, Show v, ToField v
     , CanConvertPG sch (FdType (TFldDef sch tab name))
       (FdNullable (TFldDef sch tab name)) v )
   => NonEmpty v -> Cond sch tab
-pin = In @name
+pin name = In @name
 
 (&&&), (|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
 (&&&) = BoolOp And
@@ -192,15 +199,20 @@ infixl 2 |||
 infixl 3 &&&
 --
 (<?),(>?),(<=?),(>=?),(=?),(~=?),(~~?)
-  :: forall sch tab v. (Cmp -> v -> Cond sch tab) -> v -> Cond sch tab
-x <? b  = x (:<)  b
-x >? b  = x (:>)  b
-x <=? b = x (:<=) b
-x >=? b = x (:>=) b
-x =? b = x (:=) b
-x ~=? b  = x Like b
-x ~~? b  = x ILike b
-infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
+  :: forall fld
+  -> forall sch tab v.
+    ( CFldDef sch tab fld, ToField v, Show v
+    , CanConvertPG sch (FdType (TFldDef sch tab fld))
+      (FdNullable (TFldDef sch tab fld)) v)
+  => v -> Cond sch tab
+x <? b  = Cmp @x (:<)  b
+x >? b  = Cmp @x (:>)  b
+x <=? b = Cmp @x (:<=) b
+x >=? b = Cmp @x (:>=) b
+x =? b = Cmp @x (:=) b
+x ~=? b  = Cmp @x Like b
+x ~~? b  = Cmp @x ILike b
+infix 4 <?, >?, <=?, >=?, =? --, ~=?, ~~?
 
 data OrdDirection = Asc | Desc deriving Show
 
@@ -216,14 +228,17 @@ data OrdFld sch tab where
     => Cond sch t -> [OrdFld sch t] -> OrdDirection -> OrdFld sch tab
   UnsafeOrd :: CondMonad Text -> OrdFld sch tab
 
-ordf :: forall fld sch tab. CFldDef sch tab fld => OrdDirection -> OrdFld sch tab
-ordf = OrdFld @fld
+ordf
+  :: forall fld
+  -> forall sch tab. CFldDef sch tab fld
+  => OrdDirection -> OrdFld sch tab
+ordf fld = OrdFld @fld
 
-ascf :: forall fld sch tab. CFldDef sch tab fld => OrdFld sch tab
-ascf = ordf @fld Asc
+ascf :: forall fld -> forall sch tab. CFldDef sch tab fld => OrdFld sch tab
+ascf fld = ordf fld Asc
 
-descf :: forall fld sch tab. CFldDef sch tab fld => OrdFld sch tab
-descf = ordf @fld Desc
+descf :: forall fld -> forall sch tab. CFldDef sch tab fld => OrdFld sch tab
+descf fld = ordf fld Desc
 
 data LO = LO
   { limit  :: Maybe Natural
