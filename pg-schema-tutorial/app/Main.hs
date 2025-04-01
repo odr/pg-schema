@@ -156,14 +156,14 @@ main :: IO ()
 main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selectText @Country Sch (NSC "countries") qpEmpty
-    , selectText @City Sch (NSC "cities") qpEmpty
-    , selectText @Address Sch (NSC "addresses") qpEmpty
-    , selectText @Address Sch (NSC "addresses") qp
-    , selectText @Address Sch (NSC "addresses") qp'
+    [ selectText @Sch @(NSC "countries") @Country qpEmpty
+    , selectText @Sch @(NSC "cities") @City qpEmpty
+    , selectText @Sch @(NSC "addresses") @Address qpEmpty
+    , selectText @Sch @(NSC "addresses") @Address qp
+    , selectText @Sch @(NSC "addresses") @Address qp'
     ]
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  cids <- insertSch @Sch @(NSC "countries") conn countries
+  cids <- insertSch Sch (NSC "countries") conn countries
   mapM_ (print @(PgTagged "id" Int32)) cids
   d <- utctDay <$> getCurrentTime
   -- T.putStrLn $ I2.insertJSONText @Sch @(NSC "addresses") @AddressI @(PgTagged "id" Int32)
@@ -188,19 +188,19 @@ main = do
   T.putStrLn "\n\n\n"
   T.putStrLn $ I2.insertJSONText_ @AddressI Sch (NSC "addresses")
   T.putStrLn "\n\n\n"
-  void $ updateByCond_ conn Sch (NSC "addresses")
+  void $ updateByCond_ @Sch @(NSC "addresses") conn
     (pgTag @"zipcode" (Just @Text "zip_new"))
     $ "street" =? Just @Text "street2"
   Prelude.putStrLn $ show as1
-  selectSch @Country Sch (NSC "countries") conn qpEmpty >>= print
+  selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @City Sch (NSC "cities") conn qpEmpty >>= print
+  selectSch @Sch @(NSC "cities") @City conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Address Sch (NSC "addresses") conn qpEmpty >>= print
+  selectSch @Sch @(NSC "addresses") @Address conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Address Sch (NSC "addresses") conn qp >>= print
+  selectSch @Sch @(NSC "addresses") @Address conn qp >>= print
   T.putStrLn ""
-  selectSch @Address Sch (NSC "addresses") conn qp' >>= print
+  selectSch @Sch @(NSC "addresses") @Address conn qp' >>= print
   where
     qp = qpEmpty
       { qpConds =

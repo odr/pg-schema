@@ -51,23 +51,18 @@ getSchema
   -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn GenNames {..} = do
-  types <- catch (selectSch PgCatalog (PGC "pg_type") conn qpTyp)
-    ( throwM . GetDataException
-      (selectText @PgType PgCatalog (PGC "pg_type") qpEmpty ) )
-  classes <- L.filter checkClass <$>
-    catch (selectSch PgCatalog (PGC "pg_class") conn qpClass)
-      ( throwM . GetDataException
-        (selectText @PgClass PgCatalog (PGC "pg_class") qpClass) )
-  relations <- L.filter checkRels <$>
-    catch (selectSch PgCatalog (PGC "pg_constraint") conn qpRel)
-      ( throwM . GetDataException
-        (selectText @PgRelation PgCatalog (PGC "pg_constraint") qpRel) )
+  types <- selectSch conn qpTyp
+    `catch` (throwM . GetDataException (selectText @_ @_ @PgType qpTyp))
+  classes <- L.filter checkClass <$> selectSch conn qpClass
+    `catch` (throwM . GetDataException (selectText @_ @_ @PgClass qpClass))
+  relations <- L.filter checkRels <$> selectSch conn qpRel
+    `catch` (throwM . GetDataException (selectText @_ @_ @PgRelation qpRel))
   pure (types, classes, relations)
   where
     -- all data are ordered to provide stable `hashSchema`
     qpTyp = qpEmpty
       { qpOrds =
-        [ rootOrd [ascf "typname"]
+        [ rootOrd @PgCatalog @(PGC "pg_type") [ascf "typname"]
         , owp ["enum__type"] [ascf "enumsortorder"] ] }
     qpClass = qpEmpty
       { qpConds =
@@ -88,7 +83,7 @@ getSchema conn GenNames {..} = do
           &&& foldMap (pin "relname" . fmap nnsName) (nonEmpty tables)
     qpRel = qpEmpty
       { qpConds = [rootCond condRels]
-      , qpOrds = [ rootOrd [ascf "conname"] ] }
+      , qpOrds = [ rootOrd @PgCatalog @(PGC "pg_constraint") [ascf "conname"] ] }
       where
         condRels
           = pparent (PGC "constraint__class") condClass

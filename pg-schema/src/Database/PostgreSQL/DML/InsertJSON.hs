@@ -48,12 +48,12 @@ insertJSON_ sch t conn rs = withTransactionIfNot conn do
 
 insertJSONText_ :: forall r s. forall sch t  ->
   (IsString s, Monoid s, InsertNonReturning PG sch t r, ToJSON r) => s
-insertJSONText_ sch t = insertJSONText' @s (getDmlRecord @PG @sch @t @r) []
+insertJSONText_ sch t = insertJSONText' @s (getDmlRecord PG sch t r) []
 
 insertJSONText :: forall r r' s. forall sch t ->
   (IsString s, Monoid s, InsertReturning PG sch t r r', ToJSON r) => s
-insertJSONText sch t = insertJSONText' @s (getDmlRecord @PG @sch @t @r)
-  (getQueryRecord @PG @sch @t @r').qFields
+insertJSONText sch t = insertJSONText' (getDmlRecord PG sch t r)
+  (getQueryRecord PG sch t r').qFields
 
 insertJSONText'
   :: forall s. (IsString s, Monoid s) => DmlRecord -> [QueryField] -> s

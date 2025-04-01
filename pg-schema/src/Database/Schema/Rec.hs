@@ -187,8 +187,8 @@ class
     (TQueryFields db sch tab (FiTypeInfo r))
 
 getQueryRecord
-  :: forall db sch tab r. CQueryRecord db sch tab r => QueryRecord
-getQueryRecord  = demote @(TQueryRecord db sch tab r)
+  :: forall db sch tab r -> CQueryRecord db sch tab r => QueryRecord
+getQueryRecord db sch tab r = demote @(TQueryRecord db sch tab r)
 
 class CTypDef sch tn => CanConvert db sch (tn::NameNSK) (nullable::Bool) t
 
@@ -270,8 +270,8 @@ class ( ToStar (TDmlRecord db sch tab r)
     (TDmlFields db sch tab (FiTypeInfo r))
 
 getDmlRecord
-  :: forall db sch tab r. CDmlRecord db sch tab r => DmlRecord
-getDmlRecord  = demote @(TDmlRecord db sch tab r)
+  :: forall db sch tab r -> CDmlRecord db sch tab r => DmlRecord
+getDmlRecord db sch tab r = demote @(TDmlRecord db sch tab r)
 
 class (CSchema sch, CTabDef sch t, ToStar (TDmlFields db sch t fis))
   => CDmlFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where

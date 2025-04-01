@@ -11,32 +11,27 @@ import Database.Schema.ShowType
 import PgSchema.Util
 
 
-insertSch
-  :: forall sch t r r'
-  . ( InsertReturning PG sch t r r'
-  , AllDmlPlain PG sch t r, ToRow r, FromRow r' )
-  => Connection -> [r] -> IO [r']
-insertSch conn = returning conn (insertText @sch @t @r @r')
+insertSch :: forall sch t -> forall r r'. (ToRow r, FromRow r') =>
+  (InsertReturning PG sch t r r', AllDmlPlain PG sch t r) =>
+  Connection -> [r] -> IO [r']
+insertSch sch t @r @r' conn = returning conn (insertText sch t r r')
 
-insertSch_
-  :: forall sch t r
-    . (InsertNonReturning PG sch t r, ToRow r, AllDmlPlain PG sch t r)
-  => Connection -> [r] -> IO Int64
-insertSch_ conn = executeMany conn (insertText_ @sch @t @r)
+insertSch_ :: forall sch t -> forall r. ToRow r =>
+  (InsertNonReturning PG sch t r, AllDmlPlain PG sch t r) =>
+  Connection -> [r] -> IO Int64
+insertSch_ sch t @r conn = executeMany conn (insertText_ sch t r)
 
-insertText
-  :: forall sch t r r'. (InsertReturning  PG sch t r r')
-  => Query
-insertText = insertText_ @sch @t @r <> " returning " <> fs'
+insertText :: forall sch t r r' -> InsertReturning  PG sch t r r' => Query
+insertText sch t r r' = insertText_ sch t r <> " returning " <> fs'
   where
-    qr' = getQueryRecord @PG @sch @t @r'
+    qr' = getQueryRecord PG sch t r'
     fs' = fromText
       $ T.intercalate "," [ qfp.fpDbName | (QFieldPlain qfp) <- qFields qr']
 
-insertText_ :: forall sch t r. CDmlRecord PG sch t r => Query
-insertText_ = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
+insertText_ :: forall sch t r -> CDmlRecord PG sch t r => Query
+insertText_ sch t r = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
   where
-    ir = getDmlRecord @PG @sch @t @r
+    ir = getDmlRecord PG sch t r
     (fs,qs) = bimap inter inter
       $ unzip [ (ifp.fpDbName,"?") | (DmlFieldPlain ifp) <- ir.iFields]
     tn = fromText $ qualName ir.iTableName

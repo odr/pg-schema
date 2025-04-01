@@ -23,41 +23,31 @@ import GHC.TypeLits
 import PgSchema.Util
 
 
-selectSch :: forall r. forall sch tab ->
-  (CQueryRecord PG sch tab r, FromRow r) =>
+selectSch :: forall sch tab r. (FromRow r, CQueryRecord PG sch tab r) =>
   Connection -> QueryParam sch tab -> IO [r]
-selectSch sch tab conn qp = let (q,c) = selectQuery @r sch tab qp in
-  query conn q c
+selectSch conn qp = let (q,c) = selectQuery @sch @tab @r qp in query conn q c
 
-selectQuery :: forall r. forall sch tab -> CQueryRecord PG sch tab r =>
+selectQuery :: forall sch tab r. CQueryRecord PG sch tab r =>
   QueryParam sch tab -> (Query,[SomeToField])
-selectQuery sch tab = first (fromString . unpack) . selectText @r sch tab
+selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
-selectText :: forall r. forall sch tab -> CQueryRecord PG sch tab r =>
-  QueryParam sch tab -> (Text,[SomeToField])
-selectText sch tab qp =
-  evalRWS (selectM (getQueryRecord @PG @sch @tab @r)) (qr0 qp) qs0
+selectText :: forall sch t r. CQueryRecord PG sch t r =>
+  QueryParam sch t -> (Text,[SomeToField])
+selectText qp = evalRWS (selectM (getQueryRecord PG sch t r)) (qr0 qp) qs0
 
 qr0 :: QueryParam sch t -> QueryRead sch t
 qr0 qrParam = QueryRead
-  { qrCurrTabNum = 0
-  , qrIsRoot = True
-  , qrPath = []
-  , qrParam }
+  { qrCurrTabNum = 0 , qrIsRoot = True , qrPath = [] , qrParam }
 
 qs0 :: QueryState
-qs0 = QueryState
-  { qsLastTabNum = 0
-  , qsJoins = []
-  , qsHasWhere = False
-  , qsOrd = ""
-  , qsLimOff = "" }
+qs0 = QueryState { qsLastTabNum = 0, qsJoins = [], qsHasWhere = False
+  , qsOrd = "", qsLimOff = "" }
 
 two :: (a,b,c) -> (a,b)
-two (a,b,_c) = (a,b)
+two (a,b,_) = (a,b)
 
 third :: (a,b,c) -> c
-third (_a,_b,c) = c
+third (_,_,c) = c
 
 jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
