@@ -302,7 +302,8 @@ convOrd ofs = T.intercalate "," <$> traverse showFld ofs
       OrdFld @fld (show' -> od) -> do
         fld <- qual @fld
         pure $ fld <> " " <> od <> " nulls last"
-      SelFld @rel @fld @t cond ofs' (show' -> od) -> do
+{-
+}      SelFld @rel cond ofs' (show' -> od) -> do
         modify (+1)
         n <- get
         prefPar <- tabPref
@@ -318,9 +319,10 @@ convOrd ofs = T.intercalate "," <$> traverse showFld ofs
             <> " limit 1) " <> od <> " nulls last"
         where
           RelDef{..} = demote @(TRelDef sch rel)
-          f | rdFrom == demote @t = swap
+          f | rdTo == demote @tab = swap
             | otherwise = id
           rels pp p = mkRel . f <$> rdCols
             where
               mkRel (cp,c) = pp <> "." <> cp <> "=" <> p <> "." <> c
+-}
       UnsafeOrd m -> m
