@@ -26,11 +26,13 @@ library
     -- Database.PostgreSQL.DML.Condition
     -- Database.PostgreSQL.DML.Order
     -- Database.PostgreSQL.DML.Limit
-    Database.PostgreSQL.DML.Select
-    Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Insert
     Database.PostgreSQL.DML.InsertJSON
+    Database.PostgreSQL.DML.Insert.Types
+    Database.PostgreSQL.DML.Select
+    Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Update
+    Database.PostgreSQL.DML.Update.Types
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
     Database.PostgreSQL.Schema.Info
@@ -42,6 +44,7 @@ library
     Database.Schema.Rec
     Database.Schema.ShowType
     Database.Schema.TH
+    Database.Types.EmptyField
     Database.Types.SchList
     TH.Rec.Update
     Util.TH.LiftType
@@ -53,7 +56,7 @@ library
     src
   build-depends:
     aeson
-    , base
+    , base >= 4.20
     , containers
     , directory
     , deepseq
@@ -72,45 +75,24 @@ library
     , uuid
   ghc-options:
     -Wall
-  if impl(ghc >= 9.10.1)
-    default-extensions: TypeAbstractions
-  default-language: Haskell2010
+  default-language: GHC2021
   default-extensions:
-      AllowAmbiguousTypes
-    , BlockArguments
-    , ConstraintKinds
-    , DataKinds
-    , DeriveGeneric
-    , EmptyCase
-    , ExistentialQuantification
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , GADTs
-    , GeneralizedNewtypeDeriving
-    , ImportQualifiedPost
-    , InstanceSigs
-    , LambdaCase
-    , MultiParamTypeClasses
-    , NoStarIsType
-    , OverloadedRecordDot
-    , OverloadedStrings
-    , PatternSynonyms
-    , PolyKinds
-    , QuasiQuotes
-    , RankNTypes
-    , RecordWildCards
-    , RequiredTypeArguments
-    , ScopedTypeVariables
-    , StandaloneDeriving
-    , StandaloneKindSignatures
-    , TemplateHaskell
-    , TypeOperators
-    , TupleSections
-    , TypeApplications
-    , TypeFamilies
-    , TypeOperators
-    , ViewPatterns
+    AllowAmbiguousTypes
+    BlockArguments
+    DataKinds
+    -- ^^^ added in GHC2024
+    FunctionalDependencies
+    LambdaCase
+    -- ^^^ added in GHC2024
+    OverloadedRecordDot
+    OverloadedStrings
+    PatternSynonyms
+    RecordWildCards
+    RequiredTypeArguments
+    TemplateHaskell
+    TypeAbstractions
+    TypeFamilies
+    ViewPatterns
 
 test-suite pg-schema-test
   type: exitcode-stdio-1.0

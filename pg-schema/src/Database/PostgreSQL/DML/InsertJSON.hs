@@ -11,6 +11,7 @@ import Data.List as L
 import Data.Maybe
 import Data.Traversable
 import Database.PostgreSQL.DB
+import Database.PostgreSQL.DML.Insert.Types
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Rec

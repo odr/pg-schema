@@ -1,6 +1,5 @@
 {-# LANGUAGE NoOverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
 module Database.Schema.Rec where
 
 import Data.Kind
@@ -14,7 +13,6 @@ import GHC.TypeError
 import PgSchema.Util
 import Prelude.Singletons as SP
 import Text.Show.Singletons
-import Database.Types.SchList
 
 
 singletons [d|
@@ -128,7 +126,6 @@ promote [d|
       isPlain (DmlFieldPlain _) = True
       isPlain _ = False
   |]
-
 
 type FieldInfoK = FieldInfo' Symbol
 type RefK = Ref' Symbol
@@ -247,15 +244,6 @@ type family UnMaybe (x :: Type) :: (Bool, Type) where
 type RestMand sch t r rFlds =
   RestMandatory sch t (Map FieldDbNameSym0 (TRecordInfo r) ++ rFlds)
 
-type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
-  AllMandatory sch t (SchList r) rFlds = AllMandatory sch t r rFlds
-  AllMandatory sch t r rFlds = Assert
-    (SP.Null (RestMand sch t r rFlds))
-    (TL.TypeError
-      ((TL.Text "Not all mandatory fields for table " :<>: TL.ShowType t
-        :<>: TL.Text " in type " :<>: TL.ShowType r)
-        :$$: TL.Text "Probably you have to add: " :<>: TL.ShowType (RestMand sch t r rFlds)))
-
 type family AllDmlPlain db sch tab r where
   AllDmlPlain db sch t r = Assert
     (AllDmlPlainB (TDmlRecord db sch t r))
@@ -322,26 +310,5 @@ type SubDml db sch t r r' = Assert
     :$$: TL.Text "Input: " :<>: TL.ShowType r
     :$$: TL.Text "Result: " :<>: TL.ShowType r'))
 
-type InsertReturning db sch t r r' =
-  (InsertNonReturning db sch t r, CQueryRecord db sch t r', SubDml db sch t r r')
-
-type InsertNonReturning db sch t r =
-  (CDmlRecord db sch t r, AllMandatory sch t r '[])
-
 type UpdateReturning db sch t r r' =
   (CDmlRecord db sch t r, CQueryRecord db sch t r', SubDml db sch t r r')
-
-instance CRecordInfo r => CRecordInfo (SchList r) where
-  type TRecordInfo (SchList r) = TRecordInfo r
-
-instance CFieldType r n => CFieldType (SchList r) n where
-  type TFieldType (SchList r) n = TFieldType r n
-
-instance
-  ( CSchema sch, CQueryFields db sch t (FiTypeInfo (SchList r))
-  , ToStar (TQueryRecord db sch t (SchList r)) )
-  => CQueryRecord db sch t (SchList r)
-
-instance
-  ( CDmlFields db sch (RdFrom rd) (FiTypeInfo (SchList r)) )
-  => CDmlRecordChild db sch rd (SchList r)
