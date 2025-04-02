@@ -56,7 +56,8 @@ instance CanConvert1 ('TypDef "N" x y) sch (PGC "float4") Double
 instance CanConvert1 ('TypDef "N" x y) sch (PGC "float8") Double
 instance CanConvert1 ('TypDef "N" x y) sch (PGC "oid") Int
 instance CanConvert1 ('TypDef "N" x y) sch (PGC "numeric") Integer
-instance CanConvert1 ('TypDef "N" x y) sch (PGC "numeric") Centi
+-- instance CanConvert1 ('TypDef "N" x y) sch (PGC "numeric") Centi
+instance CanConvert1 ('TypDef "N" x y) sch (PGC "numeric") (Fixed k)
 instance CanConvert1 ('TypDef "N" x y) sch (PGC "oid") PgOid
 
 instance CanConvert1 ('TypDef "D" x y) sch (PGC "date") Day

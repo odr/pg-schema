@@ -118,14 +118,15 @@ instance
 instance
   ( CSchema sch
   , CQueryFields db sch t
-    (FiWithType (TFieldTypeSym1 (PgTagged ns r)) (TRecordInfo (PgTagged ns r))) )
+    (FiWithType (TFieldTypeSym1 (PgTagged ns r)) (TRecordInfo (PgTagged ns r)))
+  , ToStar (TQueryRecord db sch t (PgTagged ns r)) )
   => CQueryRecord db sch t (PgTagged ns r) where
 
 instance
   ( CSchema sch
   , CDmlFields db sch t
     (FiWithType (TFieldTypeSym1 (PgTagged ns r)) (TRecordInfo (PgTagged ns r)))
-  , AllMandatory sch t (PgTagged ns r) '[] )
+  , ToStar (TDmlRecord db sch t (PgTagged ns r)) )
   => CDmlRecord db sch t (PgTagged ns r) where
 
 instance FromRow (Only b) => FromRow (PgTagged (n::Symbol) b) where

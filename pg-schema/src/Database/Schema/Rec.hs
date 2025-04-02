@@ -168,9 +168,14 @@ instance (CRecordInfo r1, CRecordInfo r2, ToStar (TRecordInfo (r1 PG.:. r2)))
   type TRecordInfo (r1 PG.:. r2) = TRecordInfo r1 ++ TRecordInfo r2
 
 instance
-  ( CQueryRecord db sch t r1, CQueryRecord db sch t r2
-  , CQueryFields db sch t (FiTypeInfo (r1 :. r2)) )
+  ( CSchema sch, CQueryFields db sch t (FiTypeInfo (r1 :. r2))
+  , ToStar (TQueryRecord db sch t (r1 :. r2)))
   => CQueryRecord db sch t (r1 :. r2)
+
+instance
+  ( CSchema sch, CDmlFields db sch t (FiTypeInfo (r1 :. r2))
+  , ToStar (TDmlRecord db sch t (r1 :. r2)))
+  => CDmlRecord db sch t (r1 :. r2)
 
 recordInfo :: forall r. CRecordInfo r => [FieldInfo]
 recordInfo = demote @(TRecordInfo r)
@@ -179,7 +184,7 @@ type FiTypeInfo r = FiWithType (TFieldTypeSym1 r) (TRecordInfo r)
 
 -- record over table
 class
-  ( CQueryFields db sch tab (FiTypeInfo r)
+  ( CSchema sch, CQueryFields db sch tab (FiTypeInfo r)
   , ToStar (TQueryRecord db sch tab r) )
   => CQueryRecord (db::Type) (sch::Type) (tab::NameNSK) (r::Type) where
   type TQueryRecord db sch tab r :: QueryRecordK
@@ -193,19 +198,15 @@ getQueryRecord db sch tab r = demote @(TQueryRecord db sch tab r)
 class CTypDef sch tn => CanConvert db sch (tn::NameNSK) (nullable::Bool) t
 
 -- classify fields of record over table: Plain, RefTo, RefFrom
-class (CSchema sch, CTabDef sch t, ToStar (TQueryFields db sch t fis))
-  => CQueryFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
+class CQueryFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
   type TQueryFields db sch t fis :: [QueryFieldK]
 
-getQueryFields :: forall db sch t fis. CQueryFields db sch t fis => [QueryField]
-getQueryFields = demote @(TQueryFields db sch t fis)
-
-instance (CSchema sch, CTabDef sch t) => CQueryFields db sch t '[] where
+instance CQueryFields db sch t '[] where
   type TQueryFields db sch t '[] = '[]
 
 instance
   ( CQueryField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
-  , CQueryFields db sch t xs, ToStar (TQueryFields db sch t (x ': xs)))
+  , CQueryFields db sch t xs )
   => CQueryFields db sch t (x ': xs) where
   type TQueryFields db sch t (x ': xs) =
     TQueryField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
@@ -216,7 +217,7 @@ class CQueryField (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
     type TQueryField ft db sch t fi :: QueryFieldK
 
 instance
-  ( CFldDef sch t dbname, fdef ~ TFldDef sch t dbname, ToStar n
+  ( CFldDef sch t dbname, fdef ~ TFldDef sch t dbname
   , CanConvert db sch (FdType fdef) (FdNullable fdef) ftype )
   => CQueryField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype)
   where
@@ -225,18 +226,18 @@ instance
 
 instance ( CQueryRecord db sch (RdFrom rd) recFrom )
   => CQueryField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) where
-    type TQueryField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) =
-      'QFieldTo (FieldRef n dbname (TQueryRecord db sch (RdFrom rd) recFrom)
-        (MkRefs rd (TFldDefSym2 sch (RdFrom rd)) (TFldDefSym2 sch t)))
+  type TQueryField ('FldTo rd) db sch t '( 'FieldInfo n dbname, recFrom) =
+    'QFieldTo (FieldRef n dbname (TQueryRecord db sch (RdFrom rd) recFrom)
+      (MkRefs rd (TFldDefSym2 sch (RdFrom rd)) (TFldDefSym2 sch t)))
 
 instance
   ( CQueryRecord db sch (RdTo rd) (Snd (UnMaybe recTo))
   , HasNullableRefTo rd (TFldDefSym2 sch t) ~ Fst (UnMaybe recTo) )
-  => CQueryField ('FldFrom rd) db sch t '( 'FieldInfo n dbname, recTo)
-  where
-    type TQueryField ('FldFrom rd) db sch t '( 'FieldInfo n dbname, recTo) =
-      'QFieldFrom (FieldRef n dbname (TQueryRecord db sch (RdTo rd) (Snd (UnMaybe recTo)))
-        (MkRefs rd (TFldDefSym2 sch t) (TFldDefSym2 sch (RdTo rd))))
+  => CQueryField ('FldFrom rd) db sch t '( 'FieldInfo n dbname, recTo) where
+  type TQueryField ('FldFrom rd) db sch t '( 'FieldInfo n dbname, recTo) =
+    'QFieldFrom (FieldRef n dbname
+      (TQueryRecord db sch (RdTo rd) (Snd (UnMaybe recTo)))
+      (MkRefs rd (TFldDefSym2 sch t) (TFldDefSym2 sch (RdTo rd))))
 --
 
 type family UnMaybe (x :: Type) :: (Bool, Type) where
@@ -273,16 +274,15 @@ getDmlRecord
   :: forall db sch tab r -> CDmlRecord db sch tab r => DmlRecord
 getDmlRecord db sch tab r = demote @(TDmlRecord db sch tab r)
 
-class (CSchema sch, CTabDef sch t, ToStar (TDmlFields db sch t fis))
-  => CDmlFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
+class CDmlFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
   type TDmlFields db sch t fis :: [DmlFieldK]
 
-instance (CSchema sch, CTabDef sch t) => CDmlFields db sch t '[] where
+instance CDmlFields db sch t '[] where
   type TDmlFields db sch t '[] = '[]
 
 instance
   ( CDmlField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
-  , CDmlFields db sch t xs, ToStar (TDmlFields db sch t (x ': xs)))
+  , CDmlFields db sch t xs )
   => CDmlFields db sch t (x ': xs) where
   type TDmlFields db sch t (x ': xs) =
     TDmlField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
@@ -293,18 +293,14 @@ class CDmlField (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
     type TDmlField ft db sch t fi :: DmlFieldK
 
 instance
-  ( CFldDef sch t dbname, fdef ~ TFldDef sch t dbname --, ToStar n
+  ( CFldDef sch t dbname, fdef ~ TFldDef sch t dbname
   , CanConvert db sch (FdType fdef) (FdNullable fdef) ftype )
   => CDmlField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype)
   where
     type TDmlField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype) =
       DmlFieldPlain ('FieldPlain n dbname (TFldDef sch t dbname))
 
-class
-  ( CDmlFields db sch (RdFrom rd) (FiTypeInfo r)
-  , ToStar (TDmlRecordChild db sch rd r)
-  , AllMandatory sch (RdFrom rd) r (Map FstSym0 ((RdCols rd)))
-  )
+class ( CDmlFields db sch (RdFrom rd) (FiTypeInfo r) )
   => CDmlRecordChild (db::Type) (sch::Type) (rd::RelDefK) (r::Type)
   where
     type TDmlRecordChild db sch rd r :: DmlRecordK
@@ -341,11 +337,11 @@ instance CRecordInfo r => CRecordInfo (SchList r) where
 instance CFieldType r n => CFieldType (SchList r) n where
   type TFieldType (SchList r) n = TFieldType r n
 
-instance ( CQueryFields db sch t (FiTypeInfo (SchList r)) )
-  => CQueryRecord db sch t (SchList r) where
+instance
+  ( CSchema sch, CQueryFields db sch t (FiTypeInfo (SchList r))
+  , ToStar (TQueryRecord db sch t (SchList r)) )
+  => CQueryRecord db sch t (SchList r)
 
 instance
-  ( CDmlFields db sch (RdFrom rd) (FiTypeInfo (SchList r))
-  , AllMandatory sch (RdFrom rd) (SchList r) (Map FstSym0 (RdCols rd))
-  )
-  => CDmlRecordChild db sch rd (SchList r) where
+  ( CDmlFields db sch (RdFrom rd) (FiTypeInfo (SchList r)) )
+  => CDmlRecordChild db sch rd (SchList r)
