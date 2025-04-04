@@ -57,20 +57,21 @@ library
   build-depends:
     aeson
     , base >= 4.20
+    , bytestring
     , containers
-    , directory
     , deepseq
+    , directory
     , exceptions
+    , hashable
     , mtl
     , postgresql-simple
-    , bytestring
+    , singletons
     , singletons-base
     , singletons-th
-    , singletons
     , tagged
     , template-haskell
-    , hashable
     , text
+    , th-abstraction
     , time
     , uuid
   ghc-options:
@@ -79,6 +80,7 @@ library
   default-extensions:
     AllowAmbiguousTypes
     BlockArguments
+    ExplicitNamespaces
     DataKinds
     -- ^^^ added in GHC2024
     FunctionalDependencies

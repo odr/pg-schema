@@ -177,12 +177,14 @@ updateSchemaFile' fileName connStr moduleName schName genNames = do
     conn <- connectPostgreSQL connStr
     P.putStrLn "Trying to get schema"
     (schema,h) <- ((,) <$> id <*> hash) <$> getSchema conn genNames
+    P.putStrLn $ "New hash: " <> show h
     P.putStrLn "Trying to get old hash"
     needGen <- if fe
       then do
         mbhs
           <- L.find ((== ["hashSchema","="]) . L.take 2) . L.map T.words . lines'
           <$> T.readFile fileName
+        P.putStrLn $ "Old hash: " <> show mbhs
         pure $ case mbhs of
           Just [_,_,x] | x == fromString (show h) -> False
           _                                       -> True

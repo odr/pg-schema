@@ -19,6 +19,7 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import Database.Schema.Def
+import Database.Types.EmptyField
 import GHC.Int
 import GHC.TypeLits as TL
 -- import GHC.TypeError as TL
@@ -27,6 +28,8 @@ import Type.Reflection
 
 -- | Many to many relation between (db-type, is nullable field) and Haskell type
 class CTypDef sch tn => CanConvertPG sch (tn::NameNSK) (nullable :: Bool) t
+
+instance CTypDef sch tn => CanConvertPG sch tn c EmptyField
 
 instance CanConvertPG sch tn 'False t => CanConvertPG sch tn 'True (Maybe t)
 

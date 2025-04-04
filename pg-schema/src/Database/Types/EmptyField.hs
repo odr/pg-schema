@@ -18,7 +18,7 @@ instance FromField EmptyField where
 instance CRecordInfo EmptyField where
   type TRecordInfo EmptyField = '[]
 
--- instance CFieldType r n => CFieldType (SchList r) n where
---   type TFieldType (SchList r) n = TFieldType r n
-
 instance (CSchema sch, ToStar t) => CQueryRecord db sch t EmptyField where
+
+instance CQueryField ('FldUnknown s) db sch t '( fi, EmptyField) where
+  type TQueryField ('FldUnknown s) db sch t '( fi, EmptyField) = 'QFieldEmpty s

@@ -37,6 +37,7 @@ singletons [d|
     = QFieldPlain (FieldPlain' s)
     | QFieldTo    (FieldRef' (QueryRecord' s) s) -- (children)
     | QFieldFrom  (FieldRef' (QueryRecord' s) s) -- (parent)
+    | QFieldEmpty s
     deriving Show
 
   data DmlRecord' s = DmlRecord
@@ -109,6 +110,7 @@ promote [d|
     where
       check = \case
         QFieldPlain{} -> True
+        QFieldEmpty{} -> True
         QFieldFrom{} -> False
         QFieldTo (FieldRef _ dbname1 qr1' _) ->
           case foldr sameFieldTo Nothing (iFields ir2) of
@@ -236,7 +238,6 @@ instance
       (TQueryRecord db sch (RdTo rd) (Snd (UnMaybe recTo)))
       (MkRefs rd (TFldDefSym2 sch t) (TFldDefSym2 sch (RdTo rd))))
 --
-
 type family UnMaybe (x :: Type) :: (Bool, Type) where
   UnMaybe (Maybe a) = '( 'True, a)
   UnMaybe a = '( 'False, a)

@@ -52,7 +52,8 @@ third (_,_,c) = c
 jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
   where
-    pairs = L.map (\(a,b) -> "'" <> b <> "'," <> a) fs
+    pairs = mapMaybe (\(a,b) -> if "$EmptyField" `T.isSuffixOf` b then Nothing
+      else Just $ "'" <> b <> "'," <> a) fs
 
 selectM :: MonadQuery sch t m => QueryRecord -> m Text
 selectM QueryRecord {..} = do
@@ -88,6 +89,7 @@ selectM QueryRecord {..} = do
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
 fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text, Text)
+fieldM (QFieldEmpty s) = pure ("null", s, "true")
 fieldM (QFieldPlain FieldPlain{fpDbName}) = do
   n <- asks qrCurrTabNum
   let val = "t" <> show' n <> "." <> fpDbName
@@ -104,9 +106,9 @@ fieldM (QFieldFrom fr) = do
   n2 <- gets qsLastTabNum
   flds <- local
     (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = fr.frDbName : qrPath })
-    $ traverse fieldM fr.frRec.qFields
+    (traverse fieldM fr.frRec.qFields)
   let val = fldt flds
-  pure (val, fr.frDbName, val <> " is null")
+  pure $ (val, fr.frDbName, val <> " is null")
   where
     nullable = L.any (fdNullable . fromDef) fr.frRefs
     joinText n1 n2 =

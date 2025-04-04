@@ -64,12 +64,9 @@ singletons [d|
   map3 f g = L.map (map2 f . g)
 
   data FldKind' s
-    = FldPlain
-    -- ^ simple field
-    | FldTo (RelDef' s)
-    -- ^ other records refer to this field (type is List)
-    | FldFrom (RelDef' s)
-    -- ^ field points to another record
+    = FldPlain -- ^ simple field
+    | FldTo (RelDef' s) -- ^ other records refer to this field (type is List)
+    | FldFrom (RelDef' s) -- ^ field points to another record
     | FldUnknown s
     deriving (Show, Eq)
 

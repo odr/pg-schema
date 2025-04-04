@@ -1,4 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.Schema.Info where
 
 import Control.Monad
@@ -80,7 +81,7 @@ L.concat
       [ deriveJSON defaultOptions n
       , [d|instance FromRow $(liftType n)|]
       , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-      , schemaRec id n
+      , schemaRec id n []
       , [d|instance CQueryRecord PG PgCatalog $(liftType s) $(liftType n)|]
       , [d|instance Hashable $(liftType n)|]
       ])
