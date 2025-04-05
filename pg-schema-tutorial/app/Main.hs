@@ -56,40 +56,11 @@ data Address a = MkAddress
   , zipcode      :: Maybe Text  } -- PgTagged "name" (Maybe Text) }
   deriving Generic
 
--- fmap L.concat $ for [ ''A1, ''A2 ] (\t -> L.concat <$> sequenceA [])
-    -- [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
-    -- -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
-    -- , [d|instance FromRow $(liftType n)|]
-    -- -- , [d|instance ToRow $(liftType n)|] -- for insert TODO: DELME
-    -- , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-    -- -- , [d|instance ToField $(liftType n) where toField = toJSONField |]
-    -- , schemaRec flm n
-    -- , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
-    -- ])
-
--- deriving instance Eq (Address A1)
--- deriving instance Eq (Address A2)
-deriving instance Show (Address A1)
-deriving instance Show (Address A2)
--- deriving instance Ord (Address A1)
--- deriving instance Ord (Address A2)
-deriving instance FromJSON (Address A1)
-deriving instance FromJSON (Address A2)
-deriving instance ToJSON (Address A1)
-deriving instance ToJSON (Address A2)
-
 data City a = MkCity
   { name         :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
   , address_city :: SchList (Address a) }
-  deriving (Generic)
-
-deriving instance Show (City A1)
-deriving instance Show (City A2)
-deriving instance FromJSON (City A1)
-deriving instance FromJSON (City A2)
-deriving instance ToJSON (City A1)
-deriving instance ToJSON (City A2)
+  deriving Generic
 
 data AddressRev a = MkAddressRev
   { street       :: Maybe Text
@@ -99,29 +70,22 @@ data AddressRev a = MkAddressRev
   , address_city :: Maybe (City a) }
   deriving Generic
 
-deriving instance Show (AddressRev A1)
-deriving instance Show (AddressRev A2)
-deriving instance FromJSON (AddressRev A1)
-deriving instance FromJSON (AddressRev A2)
-deriving instance ToJSON (AddressRev A1)
-deriving instance ToJSON (AddressRev A2)
-
 data Company = MkCompany
   { name       :: Text
   , address_id :: Maybe Int32 }
-  deriving (Eq, Show, Generic)
+  deriving Generic
 
 data Article = MkArticle
   { name :: Text
   , code :: Maybe Text }
-  deriving (Eq, Show, Generic)
+  deriving Generic
 
 data OrdPos = MkOrdPos
   { num          :: Int32
   , opos_article :: Article
   , cnt          :: Int32
   , price        :: Centi }
-  deriving (Eq, Show, Generic)
+  deriving Generic
 
 -- data Customer = Customer
 --   { }
@@ -131,7 +95,7 @@ data Order = MkOrder
   , ord_seller :: Company
   , opos_order :: SchList OrdPos
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
-  deriving (Eq, Show, Generic)
+  deriving Generic
 
 data OrdPosI = MkOrdPosI
   { num          :: Int32

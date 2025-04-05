@@ -1,9 +1,12 @@
 module Database.Schema.TH where
 
+import Control.Monad
+import Data.Aeson
 import Data.Aeson.TH
 import Data.Functor
 import Data.List as L
 import Data.Map as M
+import Data.Maybe as Mb
 import Data.String
 import Data.Text as T
 import Data.Traversable
@@ -75,16 +78,29 @@ deriveQueryRecord
   :: (String -> String) -> Name -> [((Name, [[Name]]), NameNS)] -> DecsQ
 deriveQueryRecord flm sch = fmap L.concat . traverse (\((n,nss),s) -> do
   fss <- applyTypes n nss
+  let
+    mStr = M.fromList
+      $ Mb.mapMaybe ((\ss -> let s' = flm ss in (ss,s') <$ guard (ss /= s')))
+      $ nub $ fmap fst $ foldMap snd fss
   L.concat <$> for fss \fs@(t,_) ->
     L.concat <$> sequenceA
-      [ if L.null nss
-        then deriveJSON defaultOptions { fieldLabelModifier = flm } n
-        else mempty
+      [ [d|instance FromJSON $(pure t) where
+            parseJSON = genericParseJSON defaultOptions
+              { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr }
+        |]
+      , [d|instance ToJSON $(pure t) where
+            toJSON = genericToJSON defaultOptions
+              { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr }
+            toEncoding = genericToEncoding defaultOptions
+              { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr }
+        |]
+      -- , [d|deriving instance Eq $(pure t)|]
+      , [d|deriving instance Show $(pure t)|]
       -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
       , [d|instance FromRow $(pure t)|]
-      -- , [d|instance ToRow $(liftType n)|] -- for insert TODO: DELME
+      -- , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME
       , [d|instance FromField $(pure t) where fromField = fromJSONField |]
-      -- , [d|instance ToField $(liftType n) where toField = toJSONField |]
+      -- , [d|instance ToField $(pure t) where toField = toJSONField |]
       , schemaRec' flm fs
       , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(pure t)|]
       ])
