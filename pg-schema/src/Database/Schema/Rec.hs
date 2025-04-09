@@ -183,7 +183,7 @@ type FiTypeInfo r = FiWithType (TFieldTypeSym1 r) (TRecordInfo r)
 
 -- record over table
 class
-  ( CSchema sch, CQueryFields db sch tab (FiTypeInfo r)
+  ( CQueryFields db sch tab (FiTypeInfo r)
   , ToStar (TQueryRecord db sch tab r) )
   => CQueryRecord (db::Type) (sch::Type) (tab::NameNSK) (r::Type) where
   type TQueryRecord db sch tab r :: QueryRecordK
@@ -204,8 +204,7 @@ instance CQueryFields db sch t '[] where
   type TQueryFields db sch t '[] = '[]
 
 instance
-  ( CQueryField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
-  , CQueryFields db sch t xs )
+  ( CQueryField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x )
   => CQueryFields db sch t (x ': xs) where
   type TQueryFields db sch t (x ': xs) =
     TQueryField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
@@ -216,8 +215,7 @@ class CQueryField (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
     type TQueryField ft db sch t fi :: QueryFieldK
 
 instance
-  ( CFldDef sch t dbname, fdef ~ TFldDef sch t dbname
-  , CanConvert db sch (FdType fdef) (FdNullable fdef) ftype )
+  ( CanConvert db sch (FdType (TFldDef sch t dbname)) (FdNullable (TFldDef sch t dbname)) ftype )
   => CQueryField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype)
   where
     type TQueryField 'FldPlain db sch t '( 'FieldInfo n dbname, ftype) =

@@ -23,15 +23,16 @@ import GHC.TypeLits
 import PgSchema.Util
 
 
-selectSch :: forall sch tab r. (FromRow r, CQueryRecord PG sch tab r) =>
+selectSch :: forall sch tab r.
+  (FromRow r, CQueryRecord PG sch tab r) =>
   Connection -> QueryParam sch tab -> IO [r]
 selectSch conn qp = let (q,c) = selectQuery @sch @tab @r qp in query conn q c
 
-selectQuery :: forall sch tab r. CQueryRecord PG sch tab r =>
+selectQuery :: forall sch tab r. (CQueryRecord PG sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
 selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
-selectText :: forall sch t r. CQueryRecord PG sch t r =>
+selectText :: forall sch t r. (CQueryRecord PG sch t r) =>
   QueryParam sch t -> (Text,[SomeToField])
 selectText qp = evalRWS (selectM (getQueryRecord PG sch t r)) (qr0 qp) qs0
 
@@ -267,16 +268,14 @@ cwp :: forall path -> forall sch t t1.
   (t1 ~ TabOnPath sch t path, ToStar path) => Cond sch t1 -> CondWithPath sch t
 cwp path = CondWithPath @path
 
-rootCond :: forall sch t. Cond sch t -> CondWithPath sch t
+rootCond :: Cond sch t -> CondWithPath sch t
 rootCond = cwp []
 
-condByPath :: forall sch t. CSchema sch => Int -> [Text]
-  -> [CondWithPath sch t] -> (Text, [SomeToField])
+condByPath :: Int -> [Text] -> [CondWithPath sch t] -> (Text, [SomeToField])
 condByPath num path =
   fromMaybe mempty . withCondsWithPath (pgCond num) path
 
-ordByPath :: forall sch t. CSchema sch => Int -> [Text]
-  -> [OrdWithPath sch t] -> (Text, [SomeToField])
+ordByPath :: Int -> [Text] -> [OrdWithPath sch t] -> (Text, [SomeToField])
 ordByPath num path =
   fromMaybe mempty . withOrdsWithPath (pgOrd num) path
 

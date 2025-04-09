@@ -49,8 +49,7 @@ data QueryState = QueryState
   , qsLimOff     :: !Text }
   deriving Show
 
-type MonadQuery sch t m =
-  (CSchema sch, MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
+type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like | ILike
   deriving (Show, Eq, Generic)

@@ -4,6 +4,7 @@ import Data.Aeson
 import Data.Hashable
 import Data.Void
 import Database.PostgreSQL.Simple.FromField as PG
+import Database.PostgreSQL.Simple.ToField as PG
 import Database.Schema.Def
 import Database.Schema.Rec
 import PgSchema.Util
@@ -14,6 +15,9 @@ newtype EmptyField = EmptyField (Maybe Void) -- Maybe to omitNothingField in JSO
 
 instance FromField EmptyField where
   fromField _ _ = pure $ EmptyField Nothing
+
+instance ToField EmptyField where
+  toField _ = toField Null
 
 instance CRecordInfo EmptyField where
   type TRecordInfo EmptyField = '[]
