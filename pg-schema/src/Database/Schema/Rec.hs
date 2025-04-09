@@ -127,8 +127,11 @@ promote [d|
       cols = rdCols rd
       (cols1, cols2) = unzip cols
 
-  hasNullableRefTo :: RelDef' s -> (s -> FldDef' s) -> Bool
-  hasNullableRefTo rd f = any (fdNullable . f) $ fst $ unzip $ rdCols rd
+  -- hasNullableRefTo :: RelDef' s -> (s -> FldDef' s) -> Bool
+  -- hasNullableRefTo rd f = any (fdNullable . f) $ fst $ unzip $ rdCols rd
+
+  hasNullable :: RecRef' s -> Bool
+  hasNullable = any (fdNullable . fromDef) . recRefs
 
   justIPlain :: DmlField' s -> Maybe (FieldPlain' s)
   justIPlain (DmlFieldPlain ifp) = Just ifp
@@ -249,48 +252,48 @@ instance CQueryFields db sch t '[] fun where
   type TQueryFields db sch t '[] fun = '[]
 
 instance
-  ( CQueryField (TFieldKind sch t (FieldDbName x)) db sch t '(x, Apply fun (FieldName x))
+  ( CQueryField db sch t '(x, Apply fun (FieldName x))
   , CQueryFields db sch t xs fun)
   => CQueryFields db sch t (x ': xs) fun where
   type TQueryFields db sch t (x ': xs) fun  =
-    TQueryField (TFieldKind sch t (FieldDbName x)) db sch t '(x, Apply fun (FieldName x))
+    TQueryField db sch t '(x, Apply fun (FieldName x))
     ': TQueryFields db sch t xs fun
 
 ----- Single CQueryField ----
 
-class CQueryField (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
+class CQueryField db sch (t::NameNSK) (fi::(FieldInfoK,Type))
   where
-    type TQueryField ft db sch t fi :: QueryFieldK
+    type TQueryField db sch t fi :: QueryFieldK
 
-instance CQueryField fk db sch t '( 'FieldInfo n dbname ('RFEmpty s), r) where
-  type TQueryField fk db sch t '( 'FieldInfo n dbname ('RFEmpty s), r) = 'QFieldEmpty n
+instance CQueryField db sch t '( 'FieldInfo n dbname ('RFEmpty s), r) where
+  type TQueryField db sch t '( 'FieldInfo n dbname ('RFEmpty s), r) = 'QFieldEmpty n
 
 instance
   ( CanConvert db sch (FdType fd) (FdNullable fd) ftype )
-  => CQueryField 'FldPlain db sch t '( 'FieldInfo n dbname ('RFPlain fd), ftype)
+  => CQueryField db sch t '( 'FieldInfo n dbname ('RFPlain fd), ftype)
   where
-    type TQueryField 'FldPlain db sch t '( 'FieldInfo n dbname ('RFPlain fd), ftype) =
+    type TQueryField db sch t '( 'FieldInfo n dbname ('RFPlain fd), ftype) =
       'QFieldPlain ('FieldPlain n dbname fd)
 
 instance ( CQueryRecord db sch (RecRefTab rr) recFrom )
-  => CQueryField ('FldTo rd) db sch t '( 'FieldInfo n dbname ('RFToHere rr), recFrom) where
-  type TQueryField ('FldTo rd) db sch t '( 'FieldInfo n dbname ('RFToHere rr), recFrom) =
+  => CQueryField db sch t '( 'FieldInfo n dbname ('RFToHere rr), recFrom) where
+  type TQueryField db sch t '( 'FieldInfo n dbname ('RFToHere rr), recFrom) =
     'QFieldTo
       (FieldRef n dbname (TQueryRecord db sch (RecRefTab rr) recFrom)
       (RecRefs rr))
 
 instance
   ( CQueryRecord db sch (RecRefTab rr) (UnMaybe recTo)
-  , Assert
-    (HasNullableRefTo rd (TFldDefSym2 sch t) == IsMaybe recTo)
+  , Assert (HasNullable rr == IsMaybe recTo)
     (TL.TypeError
-      ((TL.Text "Reference from table " :<>: TL.ShowType (RdFrom rd)
+      ((TL.Text "Reference from table " :<>: TL.ShowType t
         :<>: TL.Text " to table " :<>: TL.ShowType (RecRefTab rr) :<>: TL.Text " should "
         :<>: TL.Text (If (IsMaybe recTo) "not " "") :<>: TL.Text "be nullable")
+      -- :$$: TL.Text "Field info: " :<>: TL.ShowType ('FieldInfo n dbname ('RFFromHere rr))
       :$$: TL.Text "Probably you have drop or add 'Maybe' to field : "
         :<>: TL.ShowType n)) )
-  => CQueryField ('FldFrom rd) db sch t '( 'FieldInfo n dbname ('RFFromHere rr), recTo) where
-  type TQueryField ('FldFrom rd) db sch t '( 'FieldInfo n dbname ('RFFromHere rr), recTo) =
+  => CQueryField db sch t '( 'FieldInfo n dbname ('RFFromHere rr), recTo) where
+  type TQueryField db sch t '( 'FieldInfo n dbname ('RFFromHere rr), recTo) =
     'QFieldFrom
       (FieldRef n dbname (TQueryRecord db sch (RecRefTab rr) (UnMaybe recTo))
       (RecRefs rr))
