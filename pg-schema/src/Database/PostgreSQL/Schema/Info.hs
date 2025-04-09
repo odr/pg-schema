@@ -19,6 +19,7 @@ import Database.Types.SchList
 import GHC.Generics
 import GHC.Int
 import Util.TH.LiftType
+import Database.Schema.Def (tabInfoMap)
 
 
 -- | Tables and views info
@@ -76,12 +77,12 @@ data PgRelation = PgRelation
   deriving (Show,Eq,Generic)
 
 L.concat
-  <$> zipWithM (\n s ->
+  <$> zipWithM (\n s -> let tabMap = tabInfoMap @PgCatalog in
     L.concat <$> sequenceA
       [ deriveJSON defaultOptions n
       , [d|instance FromRow $(liftType n)|]
       , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-      , schemaRec id n []
+      , schemaRec id ''PgCatalog tabMap s n []
       , [d|instance CQueryRecord PG PgCatalog $(liftType s) $(liftType n)|]
       , [d|instance Hashable $(liftType n)|]
       ])

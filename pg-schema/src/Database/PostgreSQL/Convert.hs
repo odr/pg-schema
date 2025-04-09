@@ -29,9 +29,9 @@ import Type.Reflection
 -- | Many to many relation between (db-type, is nullable field) and Haskell type
 class CTypDef sch tn => CanConvertPG sch (tn::NameNSK) (nullable :: Bool) t
 
-instance CTypDef sch tn => CanConvertPG sch tn c EmptyField
-
 instance CanConvertPG sch tn 'False t => CanConvertPG sch tn 'True (Maybe t)
+
+instance CTypDef sch tn => CanConvertPG sch tn 'True EmptyField
 
 instance {-# OVERLAPPING #-} (CTypDef sch tn
   , TL.TypeError (TL.Text "You can't use Maybe for mandatory fields"
@@ -50,6 +50,8 @@ instance {-# OVERLAPPABLE #-}
 
 instance CanConvert1 (TTypDef sch n) sch n t
   => CanConvert1 ('TypDef "A" ('Just n) y) sch x (PgArr t)
+
+instance CanConvert1 td sch tn EmptyField
 
 instance CanConvert1 ('TypDef "B" x y) sch tn Bool
 instance CanConvert1 ('TypDef "N" x y) sch (PGC "int2") Int16

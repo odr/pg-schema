@@ -26,17 +26,20 @@ instance (ToJSON a) => ToField (SchList a) where
   toField :: ToJSON a => SchList a -> Action
   toField = toJSONField
 
-instance CRecordInfo r => CRecordInfo (SchList r) where
-  type TRecordInfo (SchList r) = TRecordInfo r
+instance CRecordInfo sch t r => CRecordInfo sch t (SchList r) where
+  type TRecordInfo sch t (SchList r) = TRecordInfo sch t r
 
-instance CFieldType r n => CFieldType (SchList r) n where
-  type TFieldType (SchList r) n = TFieldType r n
+instance CFieldType sch r n => CFieldType sch (SchList r) n where
+  type TFieldType sch (SchList r) n = TFieldType sch r n
 
 instance
-  ( CSchema sch, CQueryFields db sch t (TRecordInfo (SchList r)) (TFieldTypeSym1 (SchList r))
+  ( CSchema sch
+  , CQueryFields db sch t (TRecordInfo sch t (SchList r))
+    (TFieldTypeSym2 sch (SchList r))
   , ToStar (TQueryRecord db sch t (SchList r)) )
   => CQueryRecord db sch t (SchList r)
 
 instance
-  ( CDmlFields db sch (RdFrom rd) (TRecordInfo (SchList r)) (TFieldTypeSym1 (SchList r)) )
+  ( CDmlFields db sch (RdFrom rd) (TRecordInfo sch (RdFrom rd) (SchList r))
+    (TFieldTypeSym2 sch (SchList r)) )
   => CDmlRecordChild db sch rd (SchList r)

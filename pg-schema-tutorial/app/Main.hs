@@ -45,7 +45,7 @@ data Country = MkCountry
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
 
-deriveDmlRecord id ''Sch [ (''Country, "sch" ->> "countries") ]
+deriveDmlRecord id ''Sch (tabInfoMap @Sch)[ (''Country, "sch" ->> "countries") ]
 
 data A = A1 | A2
 
@@ -133,11 +133,12 @@ data AddressI = MkAddressI
   , comp_addr :: SchList CompanyI }
   deriving (Eq, Show, Generic, ToJSON)
 
-schemaRec id ''OrderI []
-schemaRec id ''OrdPosI []
-schemaRec id ''CustomerI []
-schemaRec id ''CompanyI []
-schemaRec id ''AddressI []
+schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "orders") ''OrderI []
+schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "order_positions") ''OrdPosI []
+schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "customers") ''CustomerI []
+schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "companies") ''CompanyI []
+schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "addresses") ''AddressI []
+
 instance CDmlRecord PG Sch ("sch" ->> "addresses") AddressI
 
 
@@ -149,12 +150,12 @@ instance CDmlRecord PG Sch ("sch" ->> "addresses") AddressI
 -- , schemaRec flm n
 -- , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
 
-deriveQueryRecord id ''Sch
+deriveQueryRecord id ''Sch (tabInfoMap @Sch)
   [ ((''Company,[]), "sch" ->> "companies")
+  , ((''Article,[]), "sch" ->> "articles")
   , ((''City, [['A1],['A2]]), "sch" ->> "cities")
   , ((''Address, [['A1],['A2]]), "sch" ->> "addresses")
-  , ((''AddressRev, [['A1],['A2]]), "sch" ->> "addresses")
-  , ((''Article,[]), "sch" ->> "articles") ]
+  , ((''AddressRev, [['A1],['A2]]), "sch" ->> "addresses") ]
 
   -- No instance for (ToField (Data.Fixed.Fixed E2))
   -- so these not compiled:
@@ -173,7 +174,7 @@ L.concat <$> for
     -- No instance for (ToField (Data.Fixed.Fixed E2))
     , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
     , [d|instance ToField $(liftType n) where toField = toJSONField |]
-    , schemaRec id n []
+    , schemaRec id ''Sch (tabInfoMap @Sch) s n []
     , [d|instance CQueryRecord PG Sch $(liftType s) $(liftType n)|]
     ]
 
@@ -213,8 +214,8 @@ main = do
       , MkAddressI Nothing (Just "zipcode") mempty $ SchList [MkCompanyI "Typeable"]
       , MkAddressI (Just "street2") (Just "zip2") (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
-  as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
-    <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
+  -- as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
+  --   <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
   T.putStrLn "\n\n\n"
   T.putStrLn $ I2.insertJSONText_ @AddressI Sch (NSC "addresses")
   T.putStrLn "\n\n\n"
@@ -222,7 +223,7 @@ main = do
     (pgTag @"zipcode" (Just @Text "zip_new"))
     $ "street" =? Just @Text "street2"
   T.putStrLn "\n====== 20 ========\n"
-  Prelude.putStrLn $ show as1
+  -- Prelude.putStrLn $ show as1
   selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 22 ========\n"

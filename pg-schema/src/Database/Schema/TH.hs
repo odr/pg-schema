@@ -1,5 +1,6 @@
 module Database.Schema.TH where
 
+import Control.Applicative
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.TH
@@ -44,49 +45,84 @@ applyTypes rn ((\case {[] -> [[]]; x -> x}) -> npss) = do
       PlainTV n _ -> (n, ConT)
     nt (n,_,t) = (nameBase n, t)
 
-schemaRec :: (String -> String) -> Name -> [[Name]] -> DecsQ
-schemaRec toDbName rn npss =
-  applyTypes rn npss >>= fmap L.concat . traverse (schemaRec' toDbName)
+schemaRec ::
+  (String -> String) -> Name -> Map NameNS TabInfo -> NameNS -> Name -> [[Name]] -> DecsQ
+schemaRec toDbName sch tabMap tab rn npss =
+  applyTypes rn npss >>= fmap L.concat . traverse (schemaRec' toDbName sch tabMap tab )
 
-schemaRec' :: (String -> String) -> (Type, [(String, Type)]) -> DecsQ
-schemaRec' toDbName = mkInstances
+schemaRec' ::
+  (String -> String) -> Name -> Map NameNS TabInfo -> NameNS -> (Type, [(String, Type)]) -> DecsQ
+schemaRec' toDbName sch tabMap tab (rt, fs) = do
+  tinfo <- maybe (fail $ "unknown table" <> show tab) pure $ tabMap M.!? tab
+  i1 <- L.concat <$> traverse fieldTypeInst fs
+  i2 <- traverse (getFieldInfo tinfo) fs >>= recordInfoInst . toPromotedList
+  pure $ i2 ++ i1
   where
-    mkInstances (rt,fs) = do
-      i1 <- L.concat <$> traverse (fieldTypeInst rt) fs
-      i2 <- traverse getFieldInfo fs >>= recordInfoInst rt . toPromotedList
-      pure $ i2 ++ i1
-
-    fieldTypeInst rt (pack -> tname, t) = [d|
-      instance CFieldType $(pure rt) $(liftType tname) where
-        type TFieldType $(pure rt) $(liftType tname) = $(pure t)
+    fieldTypeInst (pack -> tname, t) = [d|
+      instance CFieldType $(conT sch) $(pure rt) $(liftType tname) where
+        type TFieldType $(conT sch) $(pure rt) $(liftType tname) = $(pure t)
       |]
 
-    getFieldInfo (sname, ft) =
-      [t|'FieldInfo $(liftType $ T.pack sname)
-        (If ($(pure ft) == EmptyField)
-          $(liftType $ tDbNameE) $(liftType tDbName))|]
+    getFieldInfo tinfo (sname, ft) = do
+      fieldInfo <- mkFieldInfo
+      [t| If ($(pure ft) == EmptyField)
+        $(liftType $ fieldInfoEmpty) $(liftType fieldInfo) |]
       where
         tDbName = fromString @Text $ toDbName sname
-        tDbNameE = tDbName <> "$EmptyField"
+        mkFieldInfo = do
+          (kind :: RecField) <- maybe
+            (fail $ "can't determine kind of field '" <> sname
+              <> "' for table " <> show tab)
+            pure
+            $ fmap RFPlain ((tinfo.tiFlds :: Map Text FldDef) M.!? tDbName)
+              <|> fmap RFFromHere
+                (toFrom =<< tinfo.tiFrom M.!? (tab.nnsNamespace ->> tDbName))
+              <|> fmap RFToHere (toTo . snd <=<
+                L.find ((== tDbName) . (.nnsName) . fst) $ M.toList tinfo.tiTo)
+          pure FieldInfo
+            { fieldName   = T.pack sname
+            , fieldDbName = tDbName
+            , fieldKind   = kind }
+          where
+            toFrom rd = do
+              recRefs <- traverse conv rd.rdCols
+              pure RecRef { recRefTab = rd.rdTo, .. }
+              where
+                conv (fromName, toName) = do
+                  fromDef <- tinfo.tiFlds M.!? fromName
+                  toDef <- tabMap M.!? rd.rdTo >>= (M.!? toName) . (.tiFlds)
+                  pure Ref{..}
+            toTo rd = do
+              recRefs <- traverse conv rd.rdCols
+              pure RecRef { recRefTab = rd.rdFrom, .. }
+              where
+                conv (fromName, toName) = do
+                  toDef <- tinfo.tiFlds M.!? toName
+                  fromDef <- tabMap M.!? rd.rdFrom >>= (M.!? fromName) . (.tiFlds)
+                  pure Ref{..}
+        fieldInfoEmpty = FieldInfo
+          { fieldName   = T.pack sname
+          , fieldDbName = tDbName <> "$EmptyField"
+          , fieldKind   = RFEmpty (T.pack sname) }
 
-    recordInfoInst rt fis = [d|
-      instance CRecordInfo $(pure rt) where
-        type TRecordInfo $(pure rt) = $(pure fis)
+    recordInfoInst fis = [d|
+      instance CRecordInfo $(conT sch) $(liftType tab) $(pure rt) where
+        type TRecordInfo $(conT sch) $(liftType tab) $(pure rt) = $(pure fis)
       |]
 
-deriveQueryRecord
-  :: (String -> String) -> Name -> [((Name, [[Name]]), NameNS)] -> DecsQ
-deriveQueryRecord flm sch = fmap L.concat . traverse (\((n,nss),s) -> do
+deriveQueryRecord :: (String -> String) -> Name -> Map NameNS TabInfo ->
+  [((Name, [[Name]]), NameNS)] -> DecsQ
+deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> do
   fss <- applyTypes n nss
   let
     mStr = M.fromList
-      $ Mb.mapMaybe ((\ss -> let s' = flm ss in (ss,s') <$ guard (ss /= s')))
+      $ Mb.mapMaybe ((\s -> let s' = flm s in (s,s') <$ guard (s /= s')))
       $ nub $ fmap fst $ foldMap snd fss
   L.concat <$> for fss \fs@(t,_) ->
     L.concat <$> sequenceA
       [ [d|instance FromJSON $(pure t) where
             parseJSON = genericParseJSON defaultOptions
-              { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr }
+              { fieldLabelModifier = \s -> fromMaybe s $ M.lookup s mStr }
         |]
       , [d|instance ToJSON $(pure t) where
             toJSON = genericToJSON defaultOptions
@@ -101,13 +137,13 @@ deriveQueryRecord flm sch = fmap L.concat . traverse (\((n,nss),s) -> do
       , [d|instance ToField $(pure t) where toField = toJSONField |]
       , [d|instance FromRow $(pure t)|]
       , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME
-      , schemaRec' flm fs
-      , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(pure t)|]
+      , schemaRec' flm sch tabMap tab fs
+      , [d|instance CQueryRecord PG $(conT sch) $(liftType tab) $(pure t)|]
       ])
 
-deriveDmlRecord
-  :: (String -> String) -> Name -> [(Name, NameNS)] -> DecsQ
-deriveDmlRecord flm sch = fmap L.concat . traverse (\(n,s) ->
+deriveDmlRecord :: (String -> String) -> Name -> Map NameNS TabInfo ->
+  [(Name, NameNS)] -> DecsQ
+deriveDmlRecord flm sch tabMap = fmap L.concat . traverse (\(n,s) ->
   L.concat <$> sequenceA
     [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
     -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
@@ -115,7 +151,7 @@ deriveDmlRecord flm sch = fmap L.concat . traverse (\(n,s) ->
     , [d|instance ToRow $(liftType n)|]
     , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
     , [d|instance ToField $(liftType n) where toField = toJSONField |]
-    , schemaRec flm n []
+    , schemaRec flm sch tabMap s n []
     , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
     , [d|instance CDmlRecord PG $(conT sch) $(liftType s) $(conT n)|]
     ])

@@ -78,51 +78,57 @@ instance
 instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
   toField = toJSONField
 
-instance ToStar n => CRecordInfo (PgTagged (n::Symbol) r) where
-  type TRecordInfo (PgTagged n r) = '[ 'FieldInfo n n]
+
+instance ToStar (TRecordInfo sch t (PgTagged n r)) =>
+  CRecordInfo sch t (PgTagged (n::Symbol) r) where
+  type TRecordInfo sch t (PgTagged n r) = '[ 'FieldInfo n n
+    (GetRecField (TTabDef sch t) (TTabRelFrom sch t) (TTabRelTo sch t)
+      (TFldDefSym2 sch t) n)
+    ]
 
 instance
-  CRecordInfo (PgTagged n r) => CRecordInfo (PgTagged ('[n]::[Symbol]) r) where
-  type TRecordInfo (PgTagged '[n] r) = TRecordInfo (PgTagged n r)
+  CRecordInfo sch t (PgTagged n r) => CRecordInfo sch t (PgTagged ('[n]::[Symbol]) r) where
+  type TRecordInfo sch t (PgTagged '[n] r) = TRecordInfo sch t (PgTagged n r)
 
 instance
-  (ToStar n, CRecordInfo (PgTagged n r), CRecordInfo (PgTagged (n1 ':ns) r1))
-  => CRecordInfo (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
-  type TRecordInfo (PgTagged (n ': n1 ':ns) (r,r1)) =
-    TRecordInfo (PgTagged n r) ++ TRecordInfo (PgTagged (n1 ': ns) r1)
+  ( ToStar (TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1)))
+  , CRecordInfo sch t (PgTagged n r), CRecordInfo sch t (PgTagged (n1 ':ns) r1))
+  => CRecordInfo sch t (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
+  type TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1)) =
+    TRecordInfo sch t (PgTagged n r) ++ TRecordInfo sch t (PgTagged (n1 ': ns) r1)
 
-instance CFieldType (PgTagged (n::Symbol) r) n where
-  type TFieldType (PgTagged n r) n = r
+instance CFieldType sch (PgTagged (n::Symbol) r) n where
+  type TFieldType sch (PgTagged n r) n = r
 
-instance CFieldType (PgTagged ('[n]::[Symbol]) r) n where
-  type TFieldType (PgTagged '[n] r) n = r
+instance CFieldType sch (PgTagged ('[n]::[Symbol]) r) n where
+  type TFieldType sch (PgTagged '[n] r) n = r
+
+instance CFieldTypeB (n==x) sch (PgTagged (n ':n1 ':ns) (r,r1)) x
+  => CFieldType sch (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) x where
+  type TFieldType sch (PgTagged (n ':n1 ':ns) (r,r1)) x=
+    TFieldTypeB (n==x) sch (PgTagged (n ':n1 ':ns) (r,r1)) x
+
+class CFieldTypeB (b :: Bool) sch (r :: Type) (n :: Symbol) where
+  type TFieldTypeB b sch r n :: Type
+
+instance CFieldTypeB 'True sch (PgTagged (n ':ns) (r,r1)) n where
+  type TFieldTypeB 'True sch (PgTagged (n ':ns) (r,r1)) n = r
+
+instance CFieldType sch (PgTagged ns r1) n1
+  => CFieldTypeB 'False sch (PgTagged (n ':ns) (r,r1)) n1 where
+  type TFieldTypeB 'False sch (PgTagged (n ':ns) (r,r1)) n1 =
+    TFieldType sch (PgTagged ns r1) n1
 
 instance
-  CFieldTypeB (n==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
-  => CFieldType (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) x where
-  type TFieldType (PgTagged (n ':n1 ':ns) (r,r1)) x=
-    TFieldTypeB (n==x) (PgTagged (n ':n1 ':ns) (r,r1)) x
-
-class CFieldTypeB (b :: Bool) (r :: Type) (n :: Symbol) where
-  type TFieldTypeB b r n :: Type
-
-instance CFieldTypeB 'True (PgTagged (n ':ns) (r,r1)) n where
-  type TFieldTypeB 'True (PgTagged (n ':ns) (r,r1)) n = r
-
-instance
-  CFieldType (PgTagged ns r1) n1
-  => CFieldTypeB 'False (PgTagged (n ':ns) (r,r1)) n1 where
-  type TFieldTypeB 'False (PgTagged (n ':ns) (r,r1)) n1 =
-    TFieldType (PgTagged ns r1) n1
-
-instance
-  ( CQueryFields db sch t (TRecordInfo (PgTagged ns r)) (TFieldTypeSym1 (PgTagged ns r))
+  ( CQueryFields db sch t (TRecordInfo sch t (PgTagged ns r))
+    (TFieldTypeSym2 sch (PgTagged ns r))
   , ToStar (TQueryRecord db sch t (PgTagged ns r)) )
   => CQueryRecord db sch t (PgTagged ns r) where
 
 instance
   ( CSchema sch
-  , CDmlFields db sch t (TRecordInfo (PgTagged ns r)) (TFieldTypeSym1 (PgTagged ns r))
+  , CDmlFields db sch t (TRecordInfo sch t (PgTagged ns r))
+    (TFieldTypeSym2 sch (PgTagged ns r))
   , ToStar (TDmlRecord db sch t (PgTagged ns r)) )
   => CDmlRecord db sch t (PgTagged ns r) where
 
