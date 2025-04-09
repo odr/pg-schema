@@ -122,8 +122,7 @@ instance
 
 instance
   ( CSchema sch
-  , CDmlFields db sch t
-    (FiWithType (TFieldTypeSym1 (PgTagged ns r)) (TRecordInfo (PgTagged ns r)))
+  , CDmlFields db sch t (TRecordInfo (PgTagged ns r)) (TFieldTypeSym1 (PgTagged ns r))
   , ToStar (TDmlRecord db sch t (PgTagged ns r)) )
   => CDmlRecord db sch t (PgTagged ns r) where
 

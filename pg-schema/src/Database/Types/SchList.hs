@@ -38,5 +38,5 @@ instance
   => CQueryRecord db sch t (SchList r)
 
 instance
-  ( CDmlFields db sch (RdFrom rd) (FiTypeInfo (SchList r)) )
+  ( CDmlFields db sch (RdFrom rd) (TRecordInfo (SchList r)) (TFieldTypeSym1 (SchList r)) )
   => CDmlRecordChild db sch rd (SchList r)
