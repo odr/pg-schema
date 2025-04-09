@@ -3,7 +3,6 @@ module Database.Schema.TH where
 import Control.Applicative
 import Control.Monad
 import Data.Aeson
-import Data.Aeson.TH
 import Data.Functor
 import Data.List as L
 import Data.Map as M
@@ -65,8 +64,8 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
 
     getFieldInfo tinfo (sname, ft) = do
       fieldInfo <- mkFieldInfo
-      [t| If ($(pure ft) == EmptyField)
-        $(liftType $ fieldInfoEmpty) $(liftType fieldInfo) |]
+      [t| '( If ($(pure ft) == EmptyField)
+        $(liftType $ fieldInfoEmpty) $(liftType fieldInfo), $(pure ft)) |]
       where
         tDbName = fromString @Text $ toDbName sname
         mkFieldInfo = do
@@ -110,9 +109,11 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
         type TRecordInfo $(conT sch) $(liftType tab) $(pure rt) = $(pure fis)
       |]
 
-deriveQueryRecord :: (String -> String) -> Name -> Map NameNS TabInfo ->
-  [((Name, [[Name]]), NameNS)] -> DecsQ
-deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> do
+data GenRecordType = GenQuery | GenDml | GenBoth deriving (Eq, Show)
+
+deriveQueryRecord :: GenRecordType -> (String -> String) -> Name
+  -> Map NameNS TabInfo -> [((Name, [[Name]]), NameNS)] -> DecsQ
+deriveQueryRecord grt flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> do
   fss <- applyTypes n nss
   let
     mStr = M.fromList
@@ -138,20 +139,10 @@ deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> d
       , [d|instance FromRow $(pure t)|]
       , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME
       , schemaRec' flm sch tabMap tab fs
-      , [d|instance CQueryRecord PG $(conT sch) $(liftType tab) $(pure t)|]
+      , notGrt GenDml
+        [d|instance CQueryRecord PG $(conT sch) $(liftType tab) $(pure t)|]
+      , notGrt GenQuery
+        [d|instance CDmlRecord PG $(conT sch) $(liftType tab) $(pure t)|]
       ])
-
-deriveDmlRecord :: (String -> String) -> Name -> Map NameNS TabInfo ->
-  [(Name, NameNS)] -> DecsQ
-deriveDmlRecord flm sch tabMap = fmap L.concat . traverse (\(n,s) ->
-  L.concat <$> sequenceA
-    [ deriveJSON defaultOptions { fieldLabelModifier = flm } n
-    -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
-    , [d|instance FromRow $(liftType n)|]
-    , [d|instance ToRow $(liftType n)|]
-    , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-    , [d|instance ToField $(liftType n) where toField = toJSONField |]
-    , schemaRec flm sch tabMap s n []
-    , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
-    , [d|instance CDmlRecord PG $(conT sch) $(liftType s) $(conT n)|]
-    ])
+  where
+    notGrt g decsq = if grt /= g then decsq else pure []

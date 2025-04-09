@@ -79,11 +79,11 @@ instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
   toField = toJSONField
 
 
-instance ToStar (TRecordInfo sch t (PgTagged n r)) =>
+instance ToStar (Map FstSym0 (TRecordInfo sch t (PgTagged n r))) =>
   CRecordInfo sch t (PgTagged (n::Symbol) r) where
-  type TRecordInfo sch t (PgTagged n r) = '[ 'FieldInfo n n
+  type TRecordInfo sch t (PgTagged n r) = '[ '( 'FieldInfo n n
     (GetRecField (TTabDef sch t) (TTabRelFrom sch t) (TTabRelTo sch t)
-      (TFldDefSym2 sch t) n)
+      (TFldDefSym2 sch t) n), r)
     ]
 
 instance
@@ -91,7 +91,7 @@ instance
   type TRecordInfo sch t (PgTagged '[n] r) = TRecordInfo sch t (PgTagged n r)
 
 instance
-  ( ToStar (TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1)))
+  ( ToStar (Map FstSym0 (TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1))))
   , CRecordInfo sch t (PgTagged n r), CRecordInfo sch t (PgTagged (n1 ':ns) r1))
   => CRecordInfo sch t (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
   type TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1)) =
@@ -121,14 +121,12 @@ instance CFieldType sch (PgTagged ns r1) n1
 
 instance
   ( CQueryFields db sch t (TRecordInfo sch t (PgTagged ns r))
-    (TFieldTypeSym2 sch (PgTagged ns r))
   , ToStar (TQueryRecord db sch t (PgTagged ns r)) )
   => CQueryRecord db sch t (PgTagged ns r) where
 
 instance
   ( CSchema sch
   , CDmlFields db sch t (TRecordInfo sch t (PgTagged ns r))
-    (TFieldTypeSym2 sch (PgTagged ns r))
   , ToStar (TDmlRecord db sch t (PgTagged ns r)) )
   => CDmlRecord db sch t (PgTagged ns r) where
 

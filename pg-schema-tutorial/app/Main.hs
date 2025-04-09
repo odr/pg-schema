@@ -40,12 +40,13 @@ data Country = MkCountry
   , name :: Text }
   -- TODO: cycle references lead to halt! Should check to avoid it
   -- , city_country :: SchList City }
-  deriving (Eq, Show, Ord, Generic)
+  deriving (Eq, Ord, Generic)
 
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
 
-deriveDmlRecord id ''Sch (tabInfoMap @Sch)[ (''Country, "sch" ->> "countries") ]
+deriveQueryRecord GenBoth id ''Sch (tabInfoMap @Sch)
+  [ ((''Country, []), "sch" ->> "countries") ]
 
 data A = A1 | A2
 
@@ -150,7 +151,7 @@ instance CDmlRecord PG Sch ("sch" ->> "addresses") AddressI
 -- , schemaRec flm n
 -- , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
 
-deriveQueryRecord id ''Sch (tabInfoMap @Sch)
+deriveQueryRecord GenQuery id ''Sch (tabInfoMap @Sch)
   [ ((''Company,[]), "sch" ->> "companies")
   , ((''Article,[]), "sch" ->> "articles")
   , ((''City, [['A1],['A2]]), "sch" ->> "cities")

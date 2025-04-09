@@ -35,11 +35,11 @@ instance CFieldType sch r n => CFieldType sch (SchList r) n where
 instance
   ( CSchema sch
   , CQueryFields db sch t (TRecordInfo sch t (SchList r))
-    (TFieldTypeSym2 sch (SchList r))
   , ToStar (TQueryRecord db sch t (SchList r)) )
   => CQueryRecord db sch t (SchList r)
 
 instance
-  ( CDmlFields db sch (RdFrom rd) (TRecordInfo sch (RdFrom rd) (SchList r))
-    (TFieldTypeSym2 sch (SchList r)) )
-  => CDmlRecordChild db sch rd (SchList r)
+  ( CSchema sch
+  , CDmlFields db sch t (TRecordInfo sch t (SchList r))
+  , ToStar (TDmlRecord db sch t (SchList r)) )
+  => CDmlRecord db sch t (SchList r)
