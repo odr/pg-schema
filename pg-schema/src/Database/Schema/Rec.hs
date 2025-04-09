@@ -167,7 +167,7 @@ instance (CRecordInfo r1, CRecordInfo r2, ToStar (TRecordInfo (r1 PG.:. r2)))
   type TRecordInfo (r1 PG.:. r2) = TRecordInfo r1 ++ TRecordInfo r2
 
 instance
-  ( CSchema sch, CQueryFields db sch t (FiTypeInfo (r1 :. r2))
+  ( CSchema sch, CQueryFields db sch t (TRecordInfo (r1 :. r2)) (TFieldTypeSym1 (r1 :. r2))
   , ToStar (TQueryRecord db sch t (r1 :. r2)))
   => CQueryRecord db sch t (r1 :. r2)
 
@@ -183,12 +183,12 @@ type FiTypeInfo r = FiWithType (TFieldTypeSym1 r) (TRecordInfo r)
 
 -- record over table
 class
-  ( CQueryFields db sch tab (FiTypeInfo r)
+  ( CQueryFields db sch tab (TRecordInfo r) (TFieldTypeSym1 r)
   , ToStar (TQueryRecord db sch tab r) )
   => CQueryRecord (db::Type) (sch::Type) (tab::NameNSK) (r::Type) where
   type TQueryRecord db sch tab r :: QueryRecordK
   type TQueryRecord db sch tab r = 'QueryRecord tab
-    (TQueryFields db sch tab (FiTypeInfo r))
+    (TQueryFields db sch tab (TRecordInfo r) (TFieldTypeSym1 r))
 
 getQueryRecord
   :: forall db sch tab r -> CQueryRecord db sch tab r => QueryRecord
@@ -197,18 +197,19 @@ getQueryRecord db sch tab r = demote @(TQueryRecord db sch tab r)
 class CTypDef sch tn => CanConvert db sch (tn::NameNSK) (nullable::Bool) t
 
 -- classify fields of record over table: Plain, RefTo, RefFrom
-class CQueryFields db sch (t::NameNSK) (fis :: [(FieldInfoK,Type)]) where
-  type TQueryFields db sch t fis :: [QueryFieldK]
+class CQueryFields db sch (t::NameNSK) (fis :: [FieldInfoK]) (fun :: Symbol ~> Type) where
+  type TQueryFields db sch t fis fun :: [QueryFieldK]
 
-instance CQueryFields db sch t '[] where
-  type TQueryFields db sch t '[] = '[]
+instance CQueryFields db sch t '[] fun where
+  type TQueryFields db sch t '[] fun = '[]
 
 instance
-  ( CQueryField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x )
-  => CQueryFields db sch t (x ': xs) where
-  type TQueryFields db sch t (x ': xs) =
-    TQueryField (TFieldKind sch t (FieldDbName (Fst x))) db sch t x
-    ': TQueryFields db sch t xs
+  ( CQueryField (TFieldKind sch t (FieldDbName x)) db sch t '(x, Apply fun (FieldName x))
+  , CQueryFields db sch t xs fun)
+  => CQueryFields db sch t (x ': xs) fun where
+  type TQueryFields db sch t (x ': xs) fun  =
+    TQueryField (TFieldKind sch t (FieldDbName x)) db sch t '(x, Apply fun (FieldName x))
+    ': TQueryFields db sch t xs fun
 
 class CQueryField (ft::FldKindK) db sch (t::NameNSK) (fi::(FieldInfoK,Type))
   where

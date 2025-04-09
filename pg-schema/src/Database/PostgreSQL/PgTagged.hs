@@ -116,9 +116,7 @@ instance
     TFieldType (PgTagged ns r1) n1
 
 instance
-  ( CSchema sch
-  , CQueryFields db sch t
-    (FiWithType (TFieldTypeSym1 (PgTagged ns r)) (TRecordInfo (PgTagged ns r)))
+  ( CQueryFields db sch t (TRecordInfo (PgTagged ns r)) (TFieldTypeSym1 (PgTagged ns r))
   , ToStar (TQueryRecord db sch t (PgTagged ns r)) )
   => CQueryRecord db sch t (PgTagged ns r) where
 

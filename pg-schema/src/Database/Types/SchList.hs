@@ -33,7 +33,7 @@ instance CFieldType r n => CFieldType (SchList r) n where
   type TFieldType (SchList r) n = TFieldType r n
 
 instance
-  ( CSchema sch, CQueryFields db sch t (FiTypeInfo (SchList r))
+  ( CSchema sch, CQueryFields db sch t (TRecordInfo (SchList r)) (TFieldTypeSym1 (SchList r))
   , ToStar (TQueryRecord db sch t (SchList r)) )
   => CQueryRecord db sch t (SchList r)
 
