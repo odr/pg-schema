@@ -29,9 +29,6 @@ instance (ToJSON a) => ToField (SchList a) where
 instance CRecordInfo sch t r => CRecordInfo sch t (SchList r) where
   type TRecordInfo sch t (SchList r) = TRecordInfo sch t r
 
-instance CFieldType sch r n => CFieldType sch (SchList r) n where
-  type TFieldType sch (SchList r) n = TFieldType sch r n
-
 instance
   ( CSchema sch
   , CQueryFields db sch t (TRecordInfo sch t (SchList r))

@@ -4,7 +4,6 @@ module Database.PostgreSQL.PgTagged where
 import Data.Aeson
 import Data.Coerce
 import Data.Hashable
-import Data.Kind
 import Data.String
 import Data.Tagged
 import Data.Text as T
@@ -96,28 +95,6 @@ instance
   => CRecordInfo sch t (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
   type TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1)) =
     TRecordInfo sch t (PgTagged n r) ++ TRecordInfo sch t (PgTagged (n1 ': ns) r1)
-
-instance CFieldType sch (PgTagged (n::Symbol) r) n where
-  type TFieldType sch (PgTagged n r) n = r
-
-instance CFieldType sch (PgTagged ('[n]::[Symbol]) r) n where
-  type TFieldType sch (PgTagged '[n] r) n = r
-
-instance CFieldTypeB (n==x) sch (PgTagged (n ':n1 ':ns) (r,r1)) x
-  => CFieldType sch (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) x where
-  type TFieldType sch (PgTagged (n ':n1 ':ns) (r,r1)) x=
-    TFieldTypeB (n==x) sch (PgTagged (n ':n1 ':ns) (r,r1)) x
-
-class CFieldTypeB (b :: Bool) sch (r :: Type) (n :: Symbol) where
-  type TFieldTypeB b sch r n :: Type
-
-instance CFieldTypeB 'True sch (PgTagged (n ':ns) (r,r1)) n where
-  type TFieldTypeB 'True sch (PgTagged (n ':ns) (r,r1)) n = r
-
-instance CFieldType sch (PgTagged ns r1) n1
-  => CFieldTypeB 'False sch (PgTagged (n ':ns) (r,r1)) n1 where
-  type TFieldTypeB 'False sch (PgTagged (n ':ns) (r,r1)) n1 =
-    TFieldType sch (PgTagged ns r1) n1
 
 instance
   ( CQueryFields db sch t (TRecordInfo sch t (PgTagged ns r))

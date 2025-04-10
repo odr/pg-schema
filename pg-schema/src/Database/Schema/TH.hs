@@ -53,15 +53,8 @@ schemaRec' ::
   (String -> String) -> Name -> Map NameNS TabInfo -> NameNS -> (Type, [(String, Type)]) -> DecsQ
 schemaRec' toDbName sch tabMap tab (rt, fs) = do
   tinfo <- maybe (fail $ "unknown table" <> show tab) pure $ tabMap M.!? tab
-  i1 <- L.concat <$> traverse fieldTypeInst fs
-  i2 <- traverse (getFieldInfo tinfo) fs >>= recordInfoInst . toPromotedList
-  pure $ i2 ++ i1
+  traverse (getFieldInfo tinfo) fs >>= recordInfoInst . toPromotedList
   where
-    fieldTypeInst (pack -> tname, t) = [d|
-      instance CFieldType $(conT sch) $(pure rt) $(liftType tname) where
-        type TFieldType $(conT sch) $(pure rt) $(liftType tname) = $(pure t)
-      |]
-
     getFieldInfo tinfo (sname, ft) = do
       fieldInfo <- mkFieldInfo
       [t| '( If ($(pure ft) == EmptyField)
