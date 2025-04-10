@@ -10,7 +10,6 @@ import Data.Functor
 import Data.List as L
 import Data.Maybe
 import Data.Traversable
-import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Insert.Types
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
@@ -25,7 +24,7 @@ import Data.Typeable
 
 
 insertJSON :: forall r r'. forall sch t ->
-  (InsertReturning PG sch t r r', ToJSON r, FromJSON r', Typeable r') =>
+  (InsertReturning sch t r r', ToJSON r, FromJSON r', Typeable r') =>
   Connection -> [r] -> IO [r']
 insertJSON sch t conn rs = withTransactionIfNot conn do
   void $ execute_ conn $ insertJSONText @r @r' sch t
@@ -40,7 +39,7 @@ withTransactionIfNot conn act = do
   (if isInTrans then id else withTransaction conn) act
 
 insertJSON_
-  :: forall r. forall  sch t -> (InsertNonReturning PG sch t r, ToJSON r)
+  :: forall r. forall  sch t -> (InsertNonReturning sch t r, ToJSON r)
   => Connection -> [r] -> IO ()
 insertJSON_ sch t conn rs = withTransactionIfNot conn do
   void $ execute_ conn $ insertJSONText_ @r sch t
@@ -48,13 +47,13 @@ insertJSON_ sch t conn rs = withTransactionIfNot conn do
   void $ execute_ conn "drop procedure pg_temp.__ins"
 
 insertJSONText_ :: forall r s. forall sch t  ->
-  (IsString s, Monoid s, InsertNonReturning PG sch t r, ToJSON r) => s
-insertJSONText_ sch t = insertJSONText' @s (getDmlRecord PG sch t r) []
+  (IsString s, Monoid s, InsertNonReturning sch t r, ToJSON r) => s
+insertJSONText_ sch t = insertJSONText' @s (getDmlRecord sch t r) []
 
 insertJSONText :: forall r r' s. forall sch t ->
-  (IsString s, Monoid s, InsertReturning PG sch t r r', ToJSON r) => s
-insertJSONText sch t = insertJSONText' (getDmlRecord PG sch t r)
-  (getQueryRecord PG sch t r').qFields
+  (IsString s, Monoid s, InsertReturning sch t r r', ToJSON r) => s
+insertJSONText sch t = insertJSONText' (getDmlRecord sch t r)
+  (getQueryRecord sch t r').qFields
 
 insertJSONText'
   :: forall s. (IsString s, Monoid s) => DmlRecord -> [QueryField] -> s

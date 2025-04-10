@@ -95,12 +95,12 @@ data Cond (sch::Type) (tab::NameNSK) where
   EmptyCond :: Cond sch tab
   Cmp :: forall fld v sch tab.
     ( CFldDef sch tab fld, ToField v, Show v
-    , CanConvertPG sch (FdType (TFldDef sch tab fld))
+    , CanConvert sch (FdType (TFldDef sch tab fld))
       (FdNullable (TFldDef sch tab fld)) v)
     => Cmp -> v -> Cond sch tab
   In :: forall fld v sch tab.
     ( CFldDef sch tab fld, ToField v, Show v
-    , CanConvertPG sch (FdType (TFldDef sch tab fld))
+    , CanConvert sch (FdType (TFldDef sch tab fld))
       (FdNullable (TFldDef sch tab fld)) v )
     => NonEmpty v -> Cond sch tab
   Null :: forall fld sch tab.
@@ -160,7 +160,7 @@ pUnsafeCond = UnsafeCond
 
 pin :: forall name -> forall sch tab v.
   ( CFldDef sch tab name, Show v, ToField v
-  , CanConvertPG sch (FdType (TFldDef sch tab name))
+  , CanConvert sch (FdType (TFldDef sch tab name))
     (FdNullable (TFldDef sch tab name)) v ) =>
   NonEmpty v -> Cond sch tab
 pin name = In @name
@@ -173,7 +173,7 @@ infixl 3 &&&
 --
 (<?),(>?),(<=?),(>=?),(=?),(~=?),(~~?) :: forall fld -> forall sch tab v.
   ( CFldDef sch tab fld, ToField v, Show v
-  , CanConvertPG sch (FdType (TFldDef sch tab fld))
+  , CanConvert sch (FdType (TFldDef sch tab fld))
     (FdNullable (TFldDef sch tab fld)) v) =>
   v -> Cond sch tab
 x <? b  = Cmp @x (:<)  b

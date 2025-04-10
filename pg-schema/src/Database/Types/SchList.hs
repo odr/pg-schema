@@ -31,12 +31,12 @@ instance CRecordInfo sch t r => CRecordInfo sch t (SchList r) where
 
 instance
   ( CSchema sch
-  , CQueryFields db sch t (TRecordInfo sch t (SchList r))
-  , ToStar (TQueryRecord db sch t (SchList r)) )
-  => CQueryRecord db sch t (SchList r)
+  , CQueryFields sch t (TRecordInfo sch t (SchList r))
+  , ToStar (TQueryRecord sch t (SchList r)) )
+  => CQueryRecord sch t (SchList r)
 
 instance
   ( CSchema sch
-  , CDmlFields db sch t (TRecordInfo sch t (SchList r))
-  , ToStar (TDmlRecord db sch t (SchList r)) )
-  => CDmlRecord db sch t (SchList r)
+  , CDmlFields sch t (TRecordInfo sch t (SchList r))
+  , ToStar (TDmlRecord sch t (SchList r)) )
+  => CDmlRecord sch t (SchList r)

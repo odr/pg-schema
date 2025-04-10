@@ -140,7 +140,7 @@ schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "customers") ''CustomerI []
 schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "companies") ''CompanyI []
 schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "addresses") ''AddressI []
 
-instance CDmlRecord PG Sch ("sch" ->> "addresses") AddressI
+instance CDmlRecord Sch ("sch" ->> "addresses") AddressI
 
 
 -- -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
@@ -149,7 +149,7 @@ instance CDmlRecord PG Sch ("sch" ->> "addresses") AddressI
 -- , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
 -- -- , [d|instance ToField $(liftType n) where toField = toJSONField |]
 -- , schemaRec flm n
--- , [d|instance CQueryRecord PG $(conT sch) $(liftType s) $(conT n)|]
+-- , [d|instance CQueryRecord $(conT sch) $(liftType s) $(conT n)|]
 
 deriveQueryRecord GenQuery id ''Sch (tabInfoMap @Sch)
   [ ((''Company,[]), "sch" ->> "companies")
@@ -176,7 +176,7 @@ L.concat <$> for
     , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
     , [d|instance ToField $(liftType n) where toField = toJSONField |]
     , schemaRec id ''Sch (tabInfoMap @Sch) s n []
-    , [d|instance CQueryRecord PG Sch $(liftType s) $(liftType n)|]
+    , [d|instance CQueryRecord Sch $(liftType s) $(liftType n)|]
     ]
 
 type NSC name = "sch" ->> name

@@ -13,7 +13,6 @@ import Data.Singletons
 import Data.String
 import Data.Text as T
 import Data.Tuple
-import Database.PostgreSQL.DB
 import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.Simple hiding(In(..))
 import Database.Schema.Def
@@ -24,17 +23,17 @@ import PgSchema.Util
 
 
 selectSch :: forall sch tab r.
-  (FromRow r, CQueryRecord PG sch tab r) =>
+  (FromRow r, CQueryRecord sch tab r) =>
   Connection -> QueryParam sch tab -> IO [r]
 selectSch conn qp = let (q,c) = selectQuery @sch @tab @r qp in query conn q c
 
-selectQuery :: forall sch tab r. (CQueryRecord PG sch tab r) =>
+selectQuery :: forall sch tab r. (CQueryRecord sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
 selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
-selectText :: forall sch t r. (CQueryRecord PG sch t r) =>
+selectText :: forall sch t r. (CQueryRecord sch t r) =>
   QueryParam sch t -> (Text,[SomeToField])
-selectText qp = evalRWS (selectM (getQueryRecord PG sch t r)) (qr0 qp) qs0
+selectText qp = evalRWS (selectM (getQueryRecord sch t r)) (qr0 qp) qs0
 
 qr0 :: QueryParam sch t -> QueryRead sch t
 qr0 qrParam = QueryRead

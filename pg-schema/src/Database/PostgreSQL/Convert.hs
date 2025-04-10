@@ -27,18 +27,18 @@ import Type.Reflection
 
 
 -- | Many to many relation between (db-type, is nullable field) and Haskell type
-class CTypDef sch tn => CanConvertPG sch (tn::NameNSK) (nullable :: Bool) t
+class CTypDef sch tn => CanConvert sch (tn::NameNSK) (nullable :: Bool) t
 
-instance CanConvertPG sch tn 'False t => CanConvertPG sch tn 'True (Maybe t)
+instance CanConvert sch tn 'False t => CanConvert sch tn 'True (Maybe t)
 
-instance CTypDef sch tn => CanConvertPG sch tn 'True EmptyField
+instance CTypDef sch tn => CanConvert sch tn 'True EmptyField
 
 instance {-# OVERLAPPING #-} (CTypDef sch tn
   , TL.TypeError (TL.Text "You can't use Maybe for mandatory fields"
     :$$: TL.Text "Table: " :<>: TL.ShowType tn
     :$$: TL.Text "Field type: " :<>: TL.ShowType (Maybe t))
   )
-  => CanConvertPG sch tn 'False (Maybe t)
+  => CanConvert sch tn 'False (Maybe t)
 
 -- | Many to many relation between db-type and Haskell type (not nullable)
 -- Param `sch` is needed to describe complex types (e.g. arrays)
@@ -46,7 +46,7 @@ class CanConvert1 (td::TypDefK) sch (tn::NameNSK) t
 
 instance {-# OVERLAPPABLE #-}
   (CTypDef sch tn, CanConvert1 (TTypDef sch tn) sch tn t)
-  => CanConvertPG sch tn 'False t
+  => CanConvert sch tn 'False t
 
 instance CanConvert1 (TTypDef sch n) sch n t
   => CanConvert1 ('TypDef "A" ('Just n) y) sch x (PgArr t)

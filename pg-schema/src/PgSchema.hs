@@ -1,7 +1,6 @@
 module PgSchema (module PGS) where
 
 import Database.PostgreSQL.Convert as PGS
-import Database.PostgreSQL.DB as PGS
 import Database.PostgreSQL.DML.Insert as PGS
 import Database.PostgreSQL.DML.Select as PGS
 import Database.PostgreSQL.DML.Select.Types as PGS

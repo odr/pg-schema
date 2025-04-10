@@ -8,7 +8,6 @@ import Data.Hashable
 import Data.List as L
 import Data.Text as T
 import Database.PostgreSQL.Convert
-import Database.PostgreSQL.DB
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Simple.FromField
@@ -83,7 +82,7 @@ L.concat
       , [d|instance FromRow $(liftType n)|]
       , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
       , schemaRec id ''PgCatalog tabMap s n []
-      , [d|instance CQueryRecord PG PgCatalog $(liftType s) $(liftType n)|]
+      , [d|instance CQueryRecord PgCatalog $(liftType s) $(liftType n)|]
       , [d|instance Hashable $(liftType n)|]
       ])
   [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass

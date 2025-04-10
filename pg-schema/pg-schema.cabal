@@ -22,10 +22,6 @@ library
   exposed-modules:
     PgSchema
     Database.PostgreSQL.Convert
-    Database.PostgreSQL.DB
-    -- Database.PostgreSQL.DML.Condition
-    -- Database.PostgreSQL.DML.Order
-    -- Database.PostgreSQL.DML.Limit
     Database.PostgreSQL.DML.Insert
     Database.PostgreSQL.DML.InsertJSON
     Database.PostgreSQL.DML.Insert.Types

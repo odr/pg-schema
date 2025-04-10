@@ -19,8 +19,8 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
         :<>: TL.Text " in type " :<>: TL.ShowType r)
         :$$: TL.Text "Probably you have to add: " :<>: TL.ShowType (RestMand sch t r rFlds)))
 
-type InsertReturning db sch t r r' =
-  (InsertNonReturning db sch t r, CQueryRecord db sch t r', SubDml db sch t r r')
+type InsertReturning sch t r r' =
+  (InsertNonReturning sch t r, CQueryRecord sch t r', SubDml sch t r r')
 
-type InsertNonReturning db sch t r =
-  (CDmlRecord db sch t r, AllMandatory sch t r '[])
+type InsertNonReturning sch t r =
+  (CDmlRecord sch t r, AllMandatory sch t r '[])

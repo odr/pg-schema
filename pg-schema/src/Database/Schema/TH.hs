@@ -12,7 +12,6 @@ import Data.Text as T
 import Data.Traversable
 import Data.Type.Bool
 import Data.Type.Equality
-import Database.PostgreSQL.DB
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
@@ -133,9 +132,9 @@ deriveQueryRecord grt flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) 
       , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME
       , schemaRec' flm sch tabMap tab fs
       , notGrt GenDml
-        [d|instance CQueryRecord PG $(conT sch) $(liftType tab) $(pure t)|]
+        [d|instance CQueryRecord $(conT sch) $(liftType tab) $(pure t)|]
       , notGrt GenQuery
-        [d|instance CDmlRecord PG $(conT sch) $(liftType tab) $(pure t)|]
+        [d|instance CDmlRecord $(conT sch) $(liftType tab) $(pure t)|]
       ])
   where
     notGrt g decsq = if grt /= g then decsq else pure []
