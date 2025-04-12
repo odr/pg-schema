@@ -78,25 +78,28 @@ instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
   toField = toJSONField
 
 
-instance (AllPlainConv sch (TRecordInfo sch t (PgTagged n r))
-  , ToStar (Map FstSym0 (TRecordInfo sch t (PgTagged n r)))) =>
+instance (MkRecField sch (FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
+  , ToStar n) =>
   CRecordInfo sch t (PgTagged (n::Symbol) r) where
   type TRecordInfo sch t (PgTagged n r) = '[ '( 'FieldInfo n n
     (GetRecField (TTabDef sch t) (TTabRelFrom sch t) (TTabRelTo sch t)
       (TFldDefSym2 sch t) n), r)
     ]
+  getRecordInfo = RecordInfo [FieldInfo (demote @n) (demote @n)
+    $ mkRecField @sch @(FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) @r]
 
 instance
   CRecordInfo sch t (PgTagged n r) => CRecordInfo sch t (PgTagged ('[n]::[Symbol]) r) where
   type TRecordInfo sch t (PgTagged '[n] r) = TRecordInfo sch t (PgTagged n r)
+  getRecordInfo = getRecordInfo @sch @t @(PgTagged n r)
 
 instance
-  ( ToStar (Map FstSym0 (TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1))))
-  , AllPlainConv sch (TRecordInfo sch t (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)))
-  , CRecordInfo sch t (PgTagged n r), CRecordInfo sch t (PgTagged (n1 ':ns) r1))
+  ( CRecordInfo sch t (PgTagged n r), CRecordInfo sch t (PgTagged (n1 ':ns) r1))
   => CRecordInfo sch t (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
   type TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1)) =
     TRecordInfo sch t (PgTagged n r) ++ TRecordInfo sch t (PgTagged (n1 ': ns) r1)
+  getRecordInfo = getRecordInfo @sch @t @(PgTagged n r)
+    <> getRecordInfo @sch @t @(PgTagged (n1 ': ns) r1)
 
 instance
   ( CQueryFields sch t (TRecordInfo sch t (PgTagged ns r))

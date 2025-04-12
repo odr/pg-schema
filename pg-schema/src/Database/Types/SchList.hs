@@ -28,6 +28,7 @@ instance (ToJSON a) => ToField (SchList a) where
 
 instance CRecordInfo sch t r => CRecordInfo sch t (SchList r) where
   type TRecordInfo sch t (SchList r) = TRecordInfo sch t r
+  getRecordInfo = getRecordInfo @sch @t @r
 
 instance
   ( CSchema sch

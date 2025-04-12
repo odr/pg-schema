@@ -52,40 +52,39 @@ schemaRec' ::
   (String -> String) -> Name -> Map NameNS TabInfo -> NameNS -> (Type, [(String, Type)]) -> DecsQ
 schemaRec' toDbName sch tabMap tab (rt, fs) = do
   tinfo <- maybe (fail $ "unknown table" <> show tab) pure $ tabMap M.!? tab
-  traverse (getFieldInfo tinfo) fs >>= recordInfoInst . toPromotedList
+  traverse (getFieldInfo tinfo) fs >>= recordInfoInst
   where
     getFieldInfo tinfo (sname, ft) = do
       fieldInfo <- mkFieldInfo
-      [t| '( If ($(pure ft) == EmptyField)
-        $(liftType $ fieldInfoEmpty) $(liftType fieldInfo), $(pure ft)) |]
+      (,)
+        <$> [| FieldInfo (T.pack $(stringE sname)) (T.pack $(stringE $ toDbName sname))
+          $ mkRecField @($(conT sch)) @($(liftType $ fieldInfo.fieldKind)) @($(pure ft))|]
+        <*> [t| '( If ($(pure ft) == EmptyField)
+          $(liftType @(FieldInfo NameNS) fieldInfoEmpty)
+          $(liftType fieldInfo), $(pure ft)) |]
       where
         tDbName = fromString @Text $ toDbName sname
         mkFieldInfo = do
-          (kind :: RecField) <- maybe
+          (kind :: RecField NameNS) <- maybe
             (fail $ "can't determine kind of field '" <> sname
               <> "' for table " <> show tab)
             pure
             $ fmap RFPlain ((tinfo.tiFlds :: Map Text FldDef) M.!? tDbName)
-              <|> fmap RFFromHere
-                (toFrom =<< tinfo.tiFrom M.!? (tab.nnsNamespace ->> tDbName))
-              <|> fmap RFToHere (toTo . snd <=<
+              <|> (toFrom =<< tinfo.tiFrom M.!? (tab.nnsNamespace ->> tDbName))
+              <|> (toTo . snd <=<
                 L.find ((== tDbName) . (.nnsName) . fst) $ M.toList tinfo.tiTo)
           pure FieldInfo
             { fieldName   = T.pack sname
             , fieldDbName = tDbName
             , fieldKind   = kind }
           where
-            toFrom rd = do
-              recRefs <- traverse conv rd.rdCols
-              pure RecRef { recRefTab = rd.rdTo, .. }
+            toFrom rd = RFFromHere rd.rdTo <$> traverse conv rd.rdCols
               where
                 conv (fromName, toName) = do
                   fromDef <- tinfo.tiFlds M.!? fromName
                   toDef <- tabMap M.!? rd.rdTo >>= (M.!? toName) . (.tiFlds)
                   pure Ref{..}
-            toTo rd = do
-              recRefs <- traverse conv rd.rdCols
-              pure RecRef { recRefTab = rd.rdFrom, .. }
+            toTo rd = RFToHere rd.rdFrom <$> traverse conv rd.rdCols
               where
                 conv (fromName, toName) = do
                   toDef <- tinfo.tiFlds M.!? toName
@@ -98,7 +97,9 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
 
     recordInfoInst fis = [d|
       instance CRecordInfo $(conT sch) $(liftType tab) $(pure rt) where
-        type TRecordInfo $(conT sch) $(liftType tab) $(pure rt) = $(pure fis)
+        type TRecordInfo $(conT sch) $(liftType tab) $(pure rt) =
+          $(pure $ toPromotedList $ snd <$> fis)
+        getRecordInfo = RecordInfo $ $(pure $ ListE $ fst <$> fis)
       |]
 
 data GenRecordType = GenQuery | GenDml | GenBoth deriving (Eq, Show)

@@ -134,8 +134,8 @@ data AddressI = MkAddressI
   , comp_addr :: SchList CompanyI }
   deriving (Eq, Show, Generic, ToJSON)
 
-schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "orders") ''OrderI []
 schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "order_positions") ''OrdPosI []
+schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "orders") ''OrderI []
 schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "customers") ''CustomerI []
 schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "companies") ''CompanyI []
 schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "addresses") ''AddressI []
@@ -154,8 +154,8 @@ instance CDmlRecord Sch ("sch" ->> "addresses") AddressI
 deriveQueryRecord GenQuery id ''Sch (tabInfoMap @Sch)
   [ ((''Company,[]), "sch" ->> "companies")
   , ((''Article,[]), "sch" ->> "articles")
-  , ((''City, [['A1],['A2]]), "sch" ->> "cities")
   , ((''Address, [['A1],['A2]]), "sch" ->> "addresses")
+  , ((''City, [['A1],['A2]]), "sch" ->> "cities")
   , ((''AddressRev, [['A1],['A2]]), "sch" ->> "addresses") ]
 
   -- No instance for (ToField (Data.Fixed.Fixed E2))
