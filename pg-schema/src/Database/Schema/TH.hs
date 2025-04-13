@@ -10,15 +10,12 @@ import Data.Maybe as Mb
 import Data.String
 import Data.Text as T
 import Data.Traversable
-import Data.Type.Bool
-import Data.Type.Equality
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.ToRow
 import Database.Schema.Def
 import Database.Schema.Rec
-import Database.Types.EmptyField
 import Language.Haskell.TH
 import Language.Haskell.TH.Datatype
 import Util.TH.LiftType
@@ -59,9 +56,7 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
       (,)
         <$> [| FieldInfo (T.pack $(stringE sname)) (T.pack $(stringE $ toDbName sname))
           $ mkRecField @($(conT sch)) @($(liftType $ fieldInfo.fieldKind)) @($(pure ft))|]
-        <*> [t| '( If ($(pure ft) == EmptyField)
-          $(liftType @(FieldInfo NameNS) fieldInfoEmpty)
-          $(liftType fieldInfo), $(pure ft)) |]
+        <*> [t| '( $(liftType fieldInfo), $(pure ft)) |]
       where
         tDbName = fromString @Text $ toDbName sname
         mkFieldInfo = do
@@ -90,10 +85,6 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
                   toDef <- tinfo.tiFlds M.!? toName
                   fromDef <- tabMap M.!? rd.rdFrom >>= (M.!? fromName) . (.tiFlds)
                   pure Ref{..}
-        fieldInfoEmpty = FieldInfo
-          { fieldName   = T.pack sname
-          , fieldDbName = tDbName <> "$EmptyField"
-          , fieldKind   = RFEmpty (T.pack sname) }
 
     recordInfoInst fis = [d|
       instance CRecordInfo $(conT sch) $(liftType tab) $(pure rt) where
@@ -101,8 +92,6 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
           $(pure $ toPromotedList $ snd <$> fis)
         getRecordInfo = RecordInfo tab $(pure $ ListE $ fst <$> fis)
       |]
-
--- data GenRecordType = GenQuery | GenDml | GenBoth deriving (Eq, Show)
 
 deriveQueryRecord :: (String -> String) -> Name
   -> Map NameNS TabInfo -> [((Name, [[Name]]), NameNS)] -> DecsQ
@@ -124,7 +113,6 @@ deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> d
             toEncoding = genericToEncoding defaultOptions
               { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr }
         |]
-      -- , [d|deriving instance Eq $(pure t)|]
       , [d|deriving instance Show $(pure t)|]
       -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
       , [d|instance FromField $(pure t) where fromField = fromJSONField |]
@@ -132,10 +120,4 @@ deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> d
       , [d|instance FromRow $(pure t)|]
       , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME
       , schemaRec' flm sch tabMap tab fs
-      -- , notGrt GenDml
-      --   [d|instance CQueryRecord $(conT sch) $(liftType tab) $(pure t)|]
-      -- , notGrt GenQuery
-      --   [d|instance CDmlRecord $(conT sch) $(liftType tab) $(pure t)|]
       ])
-  -- where
-  --   notGrt g decsq = if grt /= g then decsq else pure []

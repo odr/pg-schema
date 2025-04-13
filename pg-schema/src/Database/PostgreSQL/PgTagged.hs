@@ -102,18 +102,6 @@ instance
     { fields = r1.fields
       <> (getRecordInfo @sch @t @(PgTagged (n1 ': ns) r1)).fields }
 
-
--- instance
---   ( CQueryFields sch t (TRecordInfo sch t (PgTagged ns r))
---   , ToStar (TQueryRecord sch t (PgTagged ns r)) )
---   => CQueryRecord sch t (PgTagged ns r) where
-
--- instance
---   ( CSchema sch
---   , CDmlFields sch t (TRecordInfo sch t (PgTagged ns r))
---   , ToStar (TDmlRecord sch t (PgTagged ns r)) )
---   => CDmlRecord sch t (PgTagged ns r) where
-
 instance FromRow (Only b) => FromRow (PgTagged (n::Symbol) b) where
   fromRow = coerce @(Only b) <$> fromRow
 

@@ -82,7 +82,6 @@ L.concat
       , [d|instance FromRow $(liftType n)|]
       , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
       , schemaRec id ''PgCatalog tabMap s n []
-      -- , [d|instance CQueryRecord PgCatalog $(liftType s) $(liftType n)|]
       , [d|instance Hashable $(liftType n)|]
       ])
   [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass
