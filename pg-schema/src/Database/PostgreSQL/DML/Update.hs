@@ -18,14 +18,14 @@ import PgSchema.Util
 
 updateByCond :: forall sch t r r'.
   ( UpdateReturning sch t r r'
-    , AllDmlPlain sch t r, ToRow r, FromRow r' ) =>
+    , AllPlain sch t r, ToRow r, FromRow r' ) =>
   Connection -> r -> Cond sch t -> IO [r']
 updateByCond conn r cond = returning conn q [r :. ps]
   where
     (q, ps) = updateText @sch @t @r @r' cond
 
 updateByCond_ :: forall sch t r.
-  (CDmlRecord sch t r, ToRow r, AllDmlPlain sch t r) =>
+  (CRecordInfo sch t r, ToRow r, AllPlain sch t r) =>
   Connection -> r -> Cond sch t -> IO Int64
 updateByCond_ conn r cond = do
   putStrLn q
@@ -39,19 +39,18 @@ updateText :: forall sch t r r' s.
 updateText cond = (q <> " returning " <> fs', p)
   where
     (q,p) = updateText_ @sch @t @r cond
-    qr' = getQueryRecord sch t r'
-    fs' = fromText
-      $ T.intercalate "," [ qfp.fpDbName | (QFieldPlain qfp) <- qFields qr']
+    ri' = getRecordInfo @sch @t @r'
+    fs' = fromText $ T.intercalate "," [fi.fieldDbName | fi <- ri'.fields]
+      -- [ qfp.fpDbName | (QFieldPlain qfp) <- qFields qr']
 
-updateText_ :: forall sch t r s. (IsString s, Monoid s, CDmlRecord sch t r) =>
+updateText_ :: forall sch t r s. (IsString s, Monoid s, CRecordInfo sch t r) =>
   Cond sch t -> (s, [SomeToField])
 updateText_ cond =
   ("update " <> tn <> " t0 set " <> fs <> fromText whereTxt, condParams )
   where
-    ur = getDmlRecord sch t r
-    fs = intercalate' ", "
-      $ [ fromText ifp.fpDbName <> " = ?" | (DmlFieldPlain ifp) <- ur.iFields]
-    tn = fromText $ qualName ur.iTableName
+    ri = getRecordInfo @sch @t @r
+    fs = intercalate' ", " [fromText fi.fieldDbName <> " = ?" | fi <- ri.fields]
+    tn = fromText $ qualName ri.tabName
     (condTxt, condParams) = pgCond 0 cond
     whereTxt
       | T.null condTxt = mempty

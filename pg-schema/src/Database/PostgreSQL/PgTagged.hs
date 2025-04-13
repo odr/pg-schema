@@ -79,13 +79,13 @@ instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
 
 
 instance (MkRecField sch (FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
-  , ToStar n) =>
+  , ToStar n, ToStar t) =>
   CRecordInfo sch t (PgTagged (n::Symbol) r) where
   type TRecordInfo sch t (PgTagged n r) = '[ '( 'FieldInfo n n
-    (GetRecField (TTabDef sch t) (TTabRelFrom sch t) (TTabRelTo sch t)
-      (TFldDefSym2 sch t) n), r)
+    (GetRecField t (TTabDef sch t) (TTabRelFrom sch t) (TTabRelTo sch t)
+      (TFldDefSym1 sch) n), r)
     ]
-  getRecordInfo = RecordInfo [FieldInfo (demote @n) (demote @n)
+  getRecordInfo = RecordInfo (demote @t) [FieldInfo (demote @n) (demote @n)
     $ mkRecField @sch @(FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) @r]
 
 instance
@@ -98,19 +98,21 @@ instance
   => CRecordInfo sch t (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
   type TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1)) =
     TRecordInfo sch t (PgTagged n r) ++ TRecordInfo sch t (PgTagged (n1 ': ns) r1)
-  getRecordInfo = getRecordInfo @sch @t @(PgTagged n r)
-    <> getRecordInfo @sch @t @(PgTagged (n1 ': ns) r1)
+  getRecordInfo = let r1 = getRecordInfo @sch @t @(PgTagged n r) in r1
+    { fields = r1.fields
+      <> (getRecordInfo @sch @t @(PgTagged (n1 ': ns) r1)).fields }
 
-instance
-  ( CQueryFields sch t (TRecordInfo sch t (PgTagged ns r))
-  , ToStar (TQueryRecord sch t (PgTagged ns r)) )
-  => CQueryRecord sch t (PgTagged ns r) where
 
-instance
-  ( CSchema sch
-  , CDmlFields sch t (TRecordInfo sch t (PgTagged ns r))
-  , ToStar (TDmlRecord sch t (PgTagged ns r)) )
-  => CDmlRecord sch t (PgTagged ns r) where
+-- instance
+--   ( CQueryFields sch t (TRecordInfo sch t (PgTagged ns r))
+--   , ToStar (TQueryRecord sch t (PgTagged ns r)) )
+--   => CQueryRecord sch t (PgTagged ns r) where
+
+-- instance
+--   ( CSchema sch
+--   , CDmlFields sch t (TRecordInfo sch t (PgTagged ns r))
+--   , ToStar (TDmlRecord sch t (PgTagged ns r)) )
+--   => CDmlRecord sch t (PgTagged ns r) where
 
 instance FromRow (Only b) => FromRow (PgTagged (n::Symbol) b) where
   fromRow = coerce @(Only b) <$> fromRow

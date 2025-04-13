@@ -11,6 +11,7 @@ import Data.Map as M
 import Data.Ord.Singletons
 import Data.Singletons.TH
 import Data.Text as T
+import Language.Haskell.TH.Syntax
 import PgSchema.Util
 import Prelude.Singletons as SP
 import Text.Show.Singletons
@@ -221,6 +222,9 @@ type family TabPath sch (t :: NameNSK) (path :: [Symbol]) :: Constraint where
 instance LiftType NameNS where
   liftType NameNS{..} =
     [t| $(liftType nnsNamespace) ->> $(liftType nnsName) |]
+
+instance Lift NameNS where
+  liftTyped (NameNS ns n) = [|| NameNS $$(liftTyped ns) $$(liftTyped n) ||]
 
 instance LiftType TypDef where
   liftType TypDef{..} = [t| 'TypDef

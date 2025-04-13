@@ -20,12 +20,10 @@ import Data.String
 import GHC.Int
 import PgSchema.Util
 import Prelude as P
-import Data.Typeable
 
 
 insertJSON :: forall r r'. forall sch t ->
-  (InsertReturning sch t r r', ToJSON r, FromJSON r', Typeable r') =>
-  Connection -> [r] -> IO [r']
+  InsertReturning sch t r r' => Connection -> [r] -> IO [r']
 insertJSON sch t conn rs = withTransactionIfNot conn do
   void $ execute_ conn $ insertJSONText @r @r' sch t
   [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
@@ -48,15 +46,15 @@ insertJSON_ sch t conn rs = withTransactionIfNot conn do
 
 insertJSONText_ :: forall r s. forall sch t  ->
   (IsString s, Monoid s, InsertNonReturning sch t r, ToJSON r) => s
-insertJSONText_ sch t = insertJSONText' @s (getDmlRecord sch t r) []
+insertJSONText_ sch t = insertJSONText' @s (getRecordInfo @sch @t @r) []
 
 insertJSONText :: forall r r' s. forall sch t ->
   (IsString s, Monoid s, InsertReturning sch t r r', ToJSON r) => s
-insertJSONText sch t = insertJSONText' (getDmlRecord sch t r)
-  (getQueryRecord sch t r').qFields
+insertJSONText sch t = insertJSONText' (getRecordInfo @sch @t @r)
+  (getRecordInfo @sch @t @r').fields
 
 insertJSONText'
-  :: forall s. (IsString s, Monoid s) => DmlRecord -> [QueryField] -> s
+  :: forall s. (IsString s, Monoid s) => RecordInfo -> [FieldInfo RecordInfo] -> s
 insertJSONText' ir qfs = unlines'
   [ maybe
     "create or replace procedure pg_temp.__ins(data_0 jsonb) as $$"
@@ -75,8 +73,8 @@ insertJSONText' ir qfs = unlines'
 type MonadInsert s = RWS (s, Int) ([s],[s]) Int
 insertJSONTextM
   :: forall s. (IsString s, Monoid s)
-  => DmlRecord -> [QueryField] -> [s] -> [s] -> MonadInsert s (Maybe s)
-insertJSONTextM ir qfs fromFields toVars = do
+  => RecordInfo -> [FieldInfo RecordInfo] -> [s] -> [s] -> MonadInsert s (Maybe s)
+insertJSONTextM ri qfs fromFields toVars = do
   (spaces, n) <- ask
   let
     sn = show' n
@@ -84,8 +82,8 @@ insertJSONTextM ir qfs fromFields toVars = do
     rowN  = "row_" <> sn
     mbArrN = ("arr_" <> sn) <$ guard (not $ P.null qfs)
     qcFlds = fmap ((,) <$> (.toName) <*> qualName . (.toDef.fdType))
-      $ nubBy ((==) `on` (.toName)) $ ichildren >>= (.frRefs)
-    qpFlds = ((,) <$> (.fpDbName) <*> qualName . (.fpFldDef.fdType)) <$> qplains
+      $ nubBy ((==) `on` (.toName)) $ ichildren >>= snd . fst
+    qpFlds = ((,) <$> fst <*> qualName . (.fdType) . snd) <$> qplains
     qretPairs = fmap (bimap fromText fromText)
       $ nubBy ((==) `on` fst) $ qcFlds <> qpFlds
     qretDecls = qretPairs <&> \(fld, typ) -> fld <> sn <> " " <> typ <> "; "
@@ -96,9 +94,8 @@ insertJSONTextM ir qfs fromFields toVars = do
     startLoop =
       ["for " <> rowN <> " in select * from jsonb_array_elements("
       <> dataN <> ")", "loop"]
-    ins = ["  insert into " <> fromText (qualName ir.iTableName) <> "("
-      <> intercalate' ", "
-        (fromFields <> (fromText . (.fpDbName) <$> iplains))
+    ins = ["  insert into " <> fromText (qualName ri.tabName) <> "("
+      <> intercalate' ", " (fromFields <> (fromText . fst <$> iplains))
       <> ")", "    values (" <> intercalate' ", "
         (toVars <> (jsonFld <$> iplains)) <> ")" <> if noRets then ";" else ""]
         <> rets
@@ -106,8 +103,8 @@ insertJSONTextM ir qfs fromFields toVars = do
         noRets = P.null qplains && P.null ichildren
         qretFlds = fst <$> qretPairs
         qretVars = (<> sn) <$> qretFlds
-        jsonFld fp = "(" <> rowN <> ".value->>'" <> fromText fp.fpDbName <> "')::"
-          <> fromText (qualName fp.fpFldDef.fdType)
+        jsonFld (dbn,def) = "(" <> rowN <> ".value->>'" <> fromText dbn <> "')::"
+          <> fromText (qualName def.fdType)
         rets
           | P.null qplains && P.null ichildren = []
           | otherwise = ["    returning " <> intercalate' ", " qretFlds
@@ -118,29 +115,28 @@ insertJSONTextM ir qfs fromFields toVars = do
     modify (+1)
     n' <- get
     tell (mempty, pure $ spaces <> "  data_" <> show' n' <> " := "
-      <> rowN <> ".value->>'" <> fromText ic.frDbName <> "';")
+      <> rowN <> ".value->>'" <> fromText (fst $ fst ic) <> "';")
     let
-      qfs' = foldMap (.frRec.qFields)
-        $ L.find (\qc -> qc.frDbName == ic.frDbName) qchildren
-    mbArr <- local (second $ const n') $ insertJSONTextM ic.frRec qfs'
-      (fromText . (.fromName) <$> ic.frRefs)
-      ((<> sn) . fromText . (.toName) <$> ic.frRefs)
-    pure (fromText ic.frDbName, mbArr)
+      qfs' = foldMap ((.fields) . snd)
+        $ L.find (\qc -> ((==) `on` (fst . fst)) qc ic) qchildren
+    mbArr <- local (second $ const n') $ insertJSONTextM (snd ic) qfs'
+      (fromText . (.fromName) <$> snd (fst ic))
+      ((<> sn) . fromText . (.toName) <$> snd (fst ic))
+    pure (fromText (fst $ fst ic), mbArr)
   let
     appendArray = foldMap (\arrN -> pure $ "  " <> arrN <> ":= array_append("
       <> arrN <> ", jsonb_build_object(" <> jsonFlds <> "));") mbArrN
       where
         jsonFlds = intercalate' ", "
-          $ (qplains <&> \qp -> let fld = fromText qp.fpDbName in
+          $ (qplains <&> \qp -> let fld = fromText (fst qp) in
             "'" <> fld <> "', " <> fld <> sn)
           <> (arrs <&> \(dbn, arr) -> "'" <> dbn <> "', to_jsonb(" <> arr <> ")")
   tell (mempty, fmap (spaces <>) $ appendArray <> [endLoop] )
   pure mbArrN
   where
-    (iplains, ichildren) = P.foldr (\case
-      DmlFieldPlain ifp -> first (ifp :)
-      DmlFieldTo ift -> second (ift:)) mempty ir.iFields
-    (qplains, qchildren) = P.foldr (\case
-      QFieldPlain qfp -> first (qfp:)
-      QFieldTo qft -> second (qft:)
-      _ -> id) mempty qfs
+    splitFields = P.foldr (\fi -> case fi.fieldKind of
+      (RFPlain fd)  -> first ((fi.fieldDbName, fd):)
+      (RFToHere ri' refs) -> second (((fi.fieldDbName, refs), ri'):)
+      _ -> P.id) mempty
+    (iplains, ichildren) = splitFields ri.fields
+    (qplains, qchildren) = splitFields qfs

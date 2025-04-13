@@ -99,14 +99,14 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
       instance CRecordInfo $(conT sch) $(liftType tab) $(pure rt) where
         type TRecordInfo $(conT sch) $(liftType tab) $(pure rt) =
           $(pure $ toPromotedList $ snd <$> fis)
-        getRecordInfo = RecordInfo $ $(pure $ ListE $ fst <$> fis)
+        getRecordInfo = RecordInfo tab $(pure $ ListE $ fst <$> fis)
       |]
 
-data GenRecordType = GenQuery | GenDml | GenBoth deriving (Eq, Show)
+-- data GenRecordType = GenQuery | GenDml | GenBoth deriving (Eq, Show)
 
-deriveQueryRecord :: GenRecordType -> (String -> String) -> Name
+deriveQueryRecord :: (String -> String) -> Name
   -> Map NameNS TabInfo -> [((Name, [[Name]]), NameNS)] -> DecsQ
-deriveQueryRecord grt flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> do
+deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> do
   fss <- applyTypes n nss
   let
     mStr = M.fromList
@@ -132,10 +132,10 @@ deriveQueryRecord grt flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) 
       , [d|instance FromRow $(pure t)|]
       , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME
       , schemaRec' flm sch tabMap tab fs
-      , notGrt GenDml
-        [d|instance CQueryRecord $(conT sch) $(liftType tab) $(pure t)|]
-      , notGrt GenQuery
-        [d|instance CDmlRecord $(conT sch) $(liftType tab) $(pure t)|]
+      -- , notGrt GenDml
+      --   [d|instance CQueryRecord $(conT sch) $(liftType tab) $(pure t)|]
+      -- , notGrt GenQuery
+      --   [d|instance CDmlRecord $(conT sch) $(liftType tab) $(pure t)|]
       ])
-  where
-    notGrt g decsq = if grt /= g then decsq else pure []
+  -- where
+  --   notGrt g decsq = if grt /= g then decsq else pure []

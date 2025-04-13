@@ -12,7 +12,7 @@ import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
-import Database.Schema.Rec
+-- import Database.Schema.Rec
 import Database.Schema.TH
 import Database.Types.SchList
 import GHC.Generics
@@ -82,7 +82,7 @@ L.concat
       , [d|instance FromRow $(liftType n)|]
       , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
       , schemaRec id ''PgCatalog tabMap s n []
-      , [d|instance CQueryRecord PgCatalog $(liftType s) $(liftType n)|]
+      -- , [d|instance CQueryRecord PgCatalog $(liftType s) $(liftType n)|]
       , [d|instance Hashable $(liftType n)|]
       ])
   [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass

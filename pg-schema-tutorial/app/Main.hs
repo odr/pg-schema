@@ -12,6 +12,7 @@ module Main where
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.TH
+import Data.Bitraversable
 import Data.Fixed
 import Data.List as L
 import Data.Singletons
@@ -31,9 +32,10 @@ import PgSchema
 import Database.PostgreSQL.DML.InsertJSON qualified as I2
 import Database.PostgreSQL.DML.Update
 import Sch
-import Test.QuickCheck
+import Test.QuickCheck hiding (Fixed)
 import Test.QuickCheck.Instances ()
 import Database.Types.EmptyField (EmptyField)
+import Prelude as P
 
 data Country = MkCountry
   { code :: Maybe Text
@@ -45,7 +47,7 @@ data Country = MkCountry
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
 
-deriveQueryRecord GenBoth id ''Sch (tabInfoMap @Sch)
+deriveQueryRecord id ''Sch (tabInfoMap @Sch)
   [ ((''Country, []), "sch" ->> "countries") ]
 
 data A = A1 | A2
@@ -103,8 +105,7 @@ data OrdPosI = MkOrdPosI
   , article_id   :: Int32
   , cnt          :: Int32
   , price        :: Centi }
-  deriving (Eq, Show, Generic)
-  deriving anyclass ToJSON
+  deriving Generic
 
 data OrderI = MkOrderI
   { day        :: Day
@@ -112,7 +113,7 @@ data OrderI = MkOrderI
   , seller_id  :: Int32
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state"))
   , opos_order :: SchList OrdPosI }
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving Generic
 
 data CustomerI = MkCustomerI
   { name :: Text
@@ -121,63 +122,49 @@ data CustomerI = MkCustomerI
   --   (Text, (SchList OrdPosI, (Day, Int32))))
   , ord_cust :: SchList OrderI
   }
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving Generic
 
 data CompanyI = MkCompanyI
   { name :: Text }
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving Generic
 
 data AddressI = MkAddressI
   { street :: Maybe Text
   , zipcode :: Maybe Text
   , cust_addr :: SchList CustomerI
   , comp_addr :: SchList CompanyI }
-  deriving (Eq, Show, Generic, ToJSON)
+  deriving Generic
 
-schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "order_positions") ''OrdPosI []
-schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "orders") ''OrderI []
-schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "customers") ''CustomerI []
-schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "companies") ''CompanyI []
-schemaRec id ''Sch (tabInfoMap @Sch) ("sch" ->> "addresses") ''AddressI []
+instance HasResolution a => FromField (Fixed a) where
+  fromField f mb = (realToFrac :: Rational -> Fixed a) <$> fromField f mb
 
-instance CDmlRecord Sch ("sch" ->> "addresses") AddressI
+instance HasResolution a => ToField (Fixed a) where
+  toField = toField . (realToFrac :: Fixed a -> Double)
 
+newtype CustId = CustId { id :: Int32 }
+  deriving Generic
 
--- -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
--- , [d|instance FromRow $(liftType n)|]
--- -- , [d|instance ToRow $(liftType n)|] -- for insert TODO: DELME
--- , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
--- -- , [d|instance ToField $(liftType n) where toField = toJSONField |]
--- , schemaRec flm n
--- , [d|instance CQueryRecord $(conT sch) $(liftType s) $(conT n)|]
+data AddressRet = AddressRet
+  { id :: Int32
+  , cust_addr :: SchList (PgTagged "id" Int32)}
+  deriving Generic
 
-deriveQueryRecord GenQuery id ''Sch (tabInfoMap @Sch)
+deriveQueryRecord P.id ''Sch (tabInfoMap @Sch)
   [ ((''Company,[]), "sch" ->> "companies")
   , ((''Article,[]), "sch" ->> "articles")
   , ((''Address, [['A1],['A2]]), "sch" ->> "addresses")
   , ((''City, [['A1],['A2]]), "sch" ->> "cities")
-  , ((''AddressRev, [['A1],['A2]]), "sch" ->> "addresses") ]
-
-  -- No instance for (ToField (Data.Fixed.Fixed E2))
-  -- so these not compiled:
-  --
-  -- , (''OrdPos, [t|OrdPos|], "sch" ->> "order_positions")
-  -- , (''Order, [t|Order|], "sch" ->> "orders") ]
-
-L.concat <$> for
-  [ (''OrdPos, "sch" ->> "order_positions")
-  , (''Order, "sch" ->> "orders") ]
-  \(n,s) -> L.concat <$> sequenceA
-    [ deriveJSON defaultOptions n
-    -- , [d|instance FromRow $(conT n)|]
-    -- No instance for (ToField (Data.Fixed.Fixed E2))
-    -- , [d|instance ToRow $(conT n)|]
-    -- No instance for (ToField (Data.Fixed.Fixed E2))
-    , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-    , [d|instance ToField $(liftType n) where toField = toJSONField |]
-    , schemaRec id ''Sch (tabInfoMap @Sch) s n []
-    , [d|instance CQueryRecord Sch $(liftType s) $(liftType n)|]
-    ]
+  , ((''AddressRev, [['A1],['A2]]), "sch" ->> "addresses")
+  , ((''OrdPosI, []), ("sch" ->> "order_positions"))
+  , ((''OrderI, []), ("sch" ->> "orders"))
+  , ((''CustomerI, []), ("sch" ->> "customers"))
+  , ((''CompanyI, []), ("sch" ->> "companies"))
+  , ((''AddressI, []), ("sch" ->> "addresses"))
+  , ((''OrdPos, []), "sch" ->> "order_positions")
+  , ((''Order, []), "sch" ->> "orders")
+  , ((''CustId, []), "sch" ->> "customers")
+  , ((''AddressRet,[]), "sch" ->> "addresses")
+  ]
 
 type NSC name = "sch" ->> name
 main :: IO ()
@@ -198,7 +185,7 @@ main = do
   mapM_ (print @(PgTagged "id" Int32)) cids
   d <- utctDay <$> getCurrentTime
   T.putStrLn "\n====== 10 ========\n"
-  -- T.putStrLn $ I2.insertJSONText @Sch @(NSC "addresses") @AddressI @(PgTagged "id" Int32)
+  T.putStrLn $ I2.insertJSONText @AddressI @(PgTagged "id" Int32) Sch (NSC "addresses")
   let
     insData =
       [ MkAddressI (Just "street") Nothing (SchList
@@ -215,8 +202,8 @@ main = do
       , MkAddressI Nothing (Just "zipcode") mempty $ SchList [MkCompanyI "Typeable"]
       , MkAddressI (Just "street2") (Just "zip2") (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
-  -- as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
-  --   <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
+  as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
+    <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
   T.putStrLn "\n\n\n"
   T.putStrLn $ I2.insertJSONText_ @AddressI Sch (NSC "addresses")
   T.putStrLn "\n\n\n"
@@ -228,8 +215,10 @@ main = do
   selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 22 ========\n"
+  bitraverse T.putStrLn print $ selectText @Sch @(NSC "cities") @(City A1) qpEmpty
   selectSch @Sch @(NSC "cities") @(City A1) conn qpEmpty >>= print
   T.putStrLn ""
+  bitraverse T.putStrLn print  $ selectText @Sch @(NSC "cities") @(City A2) qpEmpty
   selectSch @Sch @(NSC "cities") @(City A2) conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 23 ========\n"

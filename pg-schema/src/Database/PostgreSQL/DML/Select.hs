@@ -23,17 +23,17 @@ import PgSchema.Util
 
 
 selectSch :: forall sch tab r.
-  (FromRow r, CQueryRecord sch tab r) =>
+  (FromRow r, CRecordInfo sch tab r) =>
   Connection -> QueryParam sch tab -> IO [r]
 selectSch conn qp = let (q,c) = selectQuery @sch @tab @r qp in query conn q c
 
-selectQuery :: forall sch tab r. (CQueryRecord sch tab r) =>
+selectQuery :: forall sch tab r. (CRecordInfo sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
 selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
-selectText :: forall sch t r. (CQueryRecord sch t r) =>
+selectText :: forall sch t r. (CRecordInfo sch t r) =>
   QueryParam sch t -> (Text,[SomeToField])
-selectText qp = evalRWS (selectM (getQueryRecord sch t r)) (qr0 qp) qs0
+selectText qp = evalRWS (selectM (getRecordInfo @sch @t @r)) (qr0 qp) qs0
 
 qr0 :: QueryParam sch t -> QueryRead sch t
 qr0 qrParam = QueryRead
@@ -55,10 +55,10 @@ jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
     pairs = mapMaybe (\(a,b) -> if "$EmptyField" `T.isSuffixOf` b then Nothing
       else Just $ "'" <> b <> "'," <> a) fs
 
-selectM :: MonadQuery sch t m => QueryRecord -> m Text
-selectM QueryRecord {..} = do
+selectM :: MonadQuery sch t m => RecordInfo -> m Text
+selectM ri = do
   QueryRead {..} <- ask
-  (fmap two -> flds) <- traverse fieldM qFields
+  (fmap two -> flds) <- traverse fieldM ri.fields
   joins <- gets $ L.reverse . qsJoins
   let
     (condText, condPars) =
@@ -80,7 +80,7 @@ selectM QueryRecord {..} = do
   unless qrIsRoot $ modify (\qs -> qs { qsOrd = orderText, qsLimOff })
   tell $ condPars <> ordPars
   pure $ "select " <> sel
-    <> " from " <> qualName qTableName <> " t" <> show' qrCurrTabNum
+    <> " from " <> qualName ri.tabName <> " t" <> show' qrCurrTabNum
     <> " " <> T.unwords joins
     <> whereText
     <> (if qrIsRoot then orderText else "")
@@ -88,59 +88,58 @@ selectM QueryRecord {..} = do
 
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
-fieldM :: MonadQuery sch tab m => QueryField -> m (Text, Text, Text)
-fieldM (QFieldEmpty s) = pure ("null", s, "true")
-fieldM (QFieldPlain FieldPlain{fpDbName}) = do
-  n <- asks qrCurrTabNum
-  let val = "t" <> show' n <> "." <> fpDbName
-  pure (val, fpDbName, val <> " is null")
-
-fieldM (QFieldFrom fr) = do
-  QueryRead {..} <- ask
-  modify \QueryState{qsLastTabNum, qsJoins} -> QueryState
-    { qsLastTabNum = qsLastTabNum+1
-    , qsJoins = joinText qrCurrTabNum (qsLastTabNum+1) : qsJoins
-    , qsHasWhere = False
-    , qsOrd = ""
-    , qsLimOff = "" }
-  n2 <- gets qsLastTabNum
-  flds <- local
-    (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = fr.frDbName : qrPath })
-    (traverse fieldM fr.frRec.qFields)
-  let val = fldt flds
-  pure $ (val, fr.frDbName, val <> " is null")
-  where
-    nullable = L.any (fdNullable . fromDef) fr.frRefs
-    joinText n1 n2 =
-      outer <> "join " <> qualName fr.frRec.qTableName <> " t" <> show' n2
-          <> " on " <> refCond n1 n2 fr.frRefs
-      where
-        outer
-          | nullable = "left outer "
-          | otherwise = ""
-    fldt flds
-      | nullable = "case when " <> isNull <>
-          " then null else " <> jsonPairing (two <$> flds) <> " end"
-      | otherwise = jsonPairing $ two <$> flds
-      where
-        isNull = T.intercalate " and " $ third <$> flds
-
-fieldM (QFieldTo fr) = do
-  QueryRead{..} <- ask
-  QueryState {qsLastTabNum, qsJoins} <- get
-  modify (const $ QueryState (qsLastTabNum+1) [] False "" "")
-  selText <- local
-    (\qr -> qr
-      { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False
-      , qrPath = fr.frDbName : qrPath })
-    (selectM fr.frRec)
-  modify (\qs -> qs { qsJoins = qsJoins })
-  QueryState{qsHasWhere, qsOrd, qsLimOff} <- get
-  let
-    val = "array(" <> selText <> " " <> (if qsHasWhere then "and" else "where")
-      <> " " <> refCond (qsLastTabNum+1) qrCurrTabNum fr.frRefs
-      <> qsOrd <> qsLimOff <> ")"
-  pure ("array_to_json(" <> val <> ")", fr.frDbName, val <> " = '{}'")
+fieldM :: MonadQuery sch tab m => FieldInfo RecordInfo -> m (Text, Text, Text)
+fieldM fi = case fi.fieldKind of
+  RFEmpty s -> pure ("null", s, "true")
+  RFPlain {} -> do
+    n <- asks qrCurrTabNum
+    let val = "t" <> show' n <> "." <> fi.fieldDbName
+    pure (val, fi.fieldDbName, val <> " is null")
+  RFFromHere ri refs -> do
+    QueryRead {..} <- ask
+    modify \QueryState{qsLastTabNum, qsJoins} -> QueryState
+      { qsLastTabNum = qsLastTabNum+1
+      , qsJoins = joinText qrCurrTabNum (qsLastTabNum+1) : qsJoins
+      , qsHasWhere = False
+      , qsOrd = ""
+      , qsLimOff = "" }
+    n2 <- gets qsLastTabNum
+    flds <- local
+      (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = fi.fieldDbName : qrPath })
+      (traverse fieldM ri.fields)
+    let val = fldt flds
+    pure $ (val, fi.fieldDbName, val <> " is null")
+    where
+      nullable = L.any (fdNullable . fromDef) refs
+      joinText n1 n2 =
+        outer <> "join " <> qualName ri.tabName <> " t" <> show' n2
+            <> " on " <> refCond n1 n2 refs
+        where
+          outer
+            | nullable = "left outer "
+            | otherwise = ""
+      fldt flds
+        | nullable = "case when " <> isNull <>
+            " then null else " <> jsonPairing (two <$> flds) <> " end"
+        | otherwise = jsonPairing $ two <$> flds
+        where
+          isNull = T.intercalate " and " $ third <$> flds
+  RFToHere ri refs -> do
+    QueryRead{..} <- ask
+    QueryState {qsLastTabNum, qsJoins} <- get
+    modify (const $ QueryState (qsLastTabNum+1) [] False "" "")
+    selText <- local
+      (\qr -> qr
+        { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False
+        , qrPath = fi.fieldDbName : qrPath })
+      (selectM ri)
+    modify (\qs -> qs { qsJoins = qsJoins })
+    QueryState{qsHasWhere, qsOrd, qsLimOff} <- get
+    let
+      val = "array(" <> selText <> " " <> (if qsHasWhere then "and" else "where")
+        <> " " <> refCond (qsLastTabNum+1) qrCurrTabNum refs
+        <> qsOrd <> qsLimOff <> ")"
+    pure ("array_to_json(" <> val <> ")", fi.fieldDbName, val <> " = '{}'")
 
 refCond :: Int -> Int -> [Ref] -> Text
 refCond nFrom nTo = T.intercalate " and " . fmap compFlds

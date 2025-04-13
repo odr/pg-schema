@@ -1,10 +1,12 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.DML.Insert.Types where
 
+import Data.Aeson
+import Data.Kind
+import Data.Typeable
 import Database.Schema.Def
 import Database.Schema.Rec
 import Database.Types.SchList
-import Data.Kind
 import GHC.TypeError
 import GHC.TypeLits qualified as TL
 import Prelude.Singletons as SP
@@ -20,7 +22,10 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
         :$$: TL.Text "Probably you have to add: " :<>: TL.ShowType (RestMand sch t r rFlds)))
 
 type InsertReturning sch t r r' =
-  (InsertNonReturning sch t r, CQueryRecord sch t r', SubDml sch t r r')
+  (InsertNonReturning sch t r, CRecordInfo sch t r', FromJSON r', Typeable r')
+  -- We have to check that return data only from tables in which we insert
+  -- Now it is not possible because we don't store
+  -- recursive RecordInfo RecordInfo on the type level...
 
 type InsertNonReturning sch t r =
-  (CDmlRecord sch t r, AllMandatory sch t r '[])
+  (CRecordInfo sch t r, AllMandatory sch t r '[], ToJSON r)
