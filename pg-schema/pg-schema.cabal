@@ -54,6 +54,7 @@ library
     aeson
     , base >= 4.20
     , bytestring
+    , case-insensitive
     , containers
     , deepseq
     , directory

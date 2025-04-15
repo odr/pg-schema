@@ -7,6 +7,7 @@ import Control.Monad.Zip
 import Data.Aeson
 import Data.ByteString as B.S
 import Data.ByteString.Lazy as B.L
+import Data.CaseInsensitive
 import Data.Coerce
 import Data.Fixed
 import Data.Hashable
@@ -74,8 +75,8 @@ instance CanConvert1 ('TypDef "S" x y) sch (PGC "char") PgChar
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "name") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "text") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "varchar") Text
-instance CanConvert1 ('TypDef "S" Nothing '[]) sch (PGC "citext") TextCI
-instance CanConvert1 ('TypDef "S" Nothing '[]) sch ("public" ->> "citext") TextCI
+instance CanConvert1 ('TypDef "S" Nothing '[]) sch (PGC "citext") (CI Text)
+instance CanConvert1 ('TypDef "S" Nothing '[]) sch ("public" ->> "citext") (CI Text)
 -- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
 -- used only in the root table
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.S.ByteString)
@@ -84,11 +85,6 @@ instance CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") Value
 instance (FromJSON a, ToJSON a) => CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") a
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
 
-newtype TextCI = TextCI { unTextCI :: Text }
-  deriving newtype (Show, FromJSON, ToJSON, FromField, ToField)
-
-instance Eq TextCI where
-  TextCI a == TextCI b = T.toLower a == T.toLower b
 {-
 class CanConvertPG sch tn nullable (DefType sch tn nullable)
   => DefConvertPG sch tn nullable where
