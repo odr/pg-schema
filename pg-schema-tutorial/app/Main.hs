@@ -181,7 +181,8 @@ main = do
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  cids <- insertSch Sch (NSC "countries") conn countries
+  (cids,t) <- insertSch Sch (NSC "countries") conn countries
+  T.putStrLn t
   mapM_ (print @(PgTagged "id" Int32)) cids
   d <- utctDay <$> getCurrentTime
   T.putStrLn "\n====== 10 ========\n"
@@ -203,7 +204,7 @@ main = do
       , MkAddressI (Just "street2") (Just "zip2") (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
   as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
-    <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
+    <- fmap fst $ I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
   T.putStrLn "\n\n\n"
   T.putStrLn $ I2.insertJSONText_ @AddressI Sch (NSC "addresses")
   T.putStrLn "\n\n\n"

@@ -53,11 +53,11 @@ getSchema
 getSchema conn GenNames {..} = do
   types <- selectSch conn qpTyp
     `catch` (throwM . GetDataException (selectText @_ @_ @PgType qpTyp))
-  classes <- L.filter checkClass <$> selectSch conn qpClass
+  classes <- L.filter checkClass . fst <$> selectSch conn qpClass
     `catch` (throwM . GetDataException (selectText @_ @_ @PgClass qpClass))
-  relations <- L.filter checkRels <$> selectSch conn qpRel
+  relations <- L.filter checkRels . fst <$> selectSch conn qpRel
     `catch` (throwM . GetDataException (selectText @_ @_ @PgRelation qpRel))
-  pure (types, classes, relations)
+  pure (fst types, classes, relations)
   where
     -- all data are ordered to provide stable `hashSchema`
     qpTyp = qpEmpty

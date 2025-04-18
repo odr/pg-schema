@@ -2,6 +2,8 @@ module PgSchema (module PGS) where
 
 import Database.PostgreSQL.Convert as PGS
 import Database.PostgreSQL.DML.Insert as PGS
+import Database.PostgreSQL.DML.InsertJSON as PGS
+import Database.PostgreSQL.DML.Update as PGS
 import Database.PostgreSQL.DML.Select as PGS
 import Database.PostgreSQL.DML.Select.Types as PGS
 import Database.PostgreSQL.Enum as PGS

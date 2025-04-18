@@ -9,6 +9,7 @@ import Data.Function
 import Data.Functor
 import Data.List as L
 import Data.Maybe
+import Data.Text as T hiding (any)
 import Data.Traversable
 import Database.PostgreSQL.DML.Insert.Types
 import Database.PostgreSQL.Simple
@@ -23,12 +24,14 @@ import Prelude as P
 
 
 insertJSON :: forall r r'. forall sch t ->
-  InsertReturning sch t r r' => Connection -> [r] -> IO [r']
+  InsertReturning sch t r r' => Connection -> [r] -> IO ([r'], Text)
 insertJSON sch t conn rs = withTransactionIfNot conn do
-  void $ execute_ conn $ insertJSONText @r @r' sch t
+  void $ execute_ conn $ fromString $ T.unpack sql
   [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
   void $ execute_ conn "drop function pg_temp.__ins"
-  pure res
+  pure (res, sql)
+  where
+    sql = insertJSONText @r @r' sch t
 
 withTransactionIfNot :: Connection -> IO a -> IO a
 withTransactionIfNot conn act = do
@@ -38,11 +41,13 @@ withTransactionIfNot conn act = do
 
 insertJSON_
   :: forall r. forall  sch t -> (InsertNonReturning sch t r, ToJSON r)
-  => Connection -> [r] -> IO ()
+  => Connection -> [r] -> IO Text
 insertJSON_ sch t conn rs = withTransactionIfNot conn do
-  void $ execute_ conn $ insertJSONText_ @r sch t
+  void $ execute_ conn $ fromString $ T.unpack sql
   void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
-  void $ execute_ conn "drop procedure pg_temp.__ins"
+  sql <$ execute_ conn "drop procedure pg_temp.__ins"
+  where
+    sql = insertJSONText_ @r sch t
 
 insertJSONText_ :: forall r s. forall sch t  ->
   (IsString s, Monoid s, InsertNonReturning sch t r, ToJSON r) => s

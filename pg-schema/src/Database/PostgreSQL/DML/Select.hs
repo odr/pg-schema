@@ -24,8 +24,10 @@ import PgSchema.Util
 
 selectSch :: forall sch tab r.
   (FromRow r, CRecordInfo sch tab r) =>
-  Connection -> QueryParam sch tab -> IO [r]
-selectSch conn qp = let (q,c) = selectQuery @sch @tab @r qp in query conn q c
+  Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
+selectSch conn qp =
+  let p@(sql,fs) = selectText @sch @tab @r qp
+  in fmap (,p) $ query conn (fromString $ unpack sql) fs
 
 selectQuery :: forall sch tab r. (CRecordInfo sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
