@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances    #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE CPP #-}
 module Database.PostgreSQL.Convert where
 
 import Control.Monad.Zip
@@ -23,8 +24,13 @@ import Database.Schema.Def
 import Database.Types.EmptyField
 import GHC.Int
 import GHC.TypeLits as TL
--- import GHC.TypeError as TL
 import Type.Reflection
+#ifdef MK_ARBITRARY
+import Test.QuickCheck hiding (Fixed)
+#endif
+#ifdef MK_FLAT
+import Flat
+#endif
 
 
 -- | Many to many relation between (db-type, is nullable field) and Haskell type
@@ -85,71 +91,6 @@ instance CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") Value
 instance (FromJSON a, ToJSON a) => CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") a
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
 
-{-
-class CanConvertPG sch tn nullable (DefType sch tn nullable)
-  => DefConvertPG sch tn nullable where
-  type DefType sch tn nullable :: Type
-
-instance DefConvertPG sch tn 'False => DefConvertPG sch tn 'True where
-  type DefType sch tn 'True = Maybe (DefType sch tn 'False)
-
-class CanConvert1 td sch tn (DefType1 td sch tn) => DefConvert1 td sch tn where
-  type DefType1 td sch tn :: Type
-
-instance
-  (CTypDef sch tn, DefConvert1 (TTypDef sch tn) sch tn)
-  => DefConvertPG sch tn 'False where
-  type DefType sch tn 'False = DefType1 (TTypDef sch tn) sch tn
-
-instance DefConvert1 (TTypDef sch n) sch n
-  => DefConvert1 ('TypDef "A" ('Just n) y) sch x where
-  type DefType1 ('TypDef "A" ('Just n) y) sch x =
-    PgArr (DefType1 (TTypDef sch n) sch n)
-
-instance DefConvert1 ('TypDef "B" x y) sch tn where
-  type DefType1 ('TypDef "B" x y) sch tn = Bool
-instance DefConvert1 ('TypDef "N" x y) sch (PGC "int2") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "int2") = Int16
-instance DefConvert1 ('TypDef "N" x y) sch (PGC "int4") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "int4") = Int32
-instance DefConvert1 ('TypDef "N" x y) sch (PGC "int8") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "int8") = Int64
-instance DefConvert1 ('TypDef "N" x y) sch (PGC "float4") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "float4") = Double
-instance DefConvert1 ('TypDef "N" x y) sch (PGC "float8") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "float8") = Double
-instance DefConvert1 ('TypDef "N" x y) sch (PGC "numeric") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "numeric") = Integer
-instance DefConvert1 ('TypDef "N" x y) sch (PGC "oid") where
-  type DefType1 ('TypDef "N" x y) sch (PGC "oid") = PgOid
-
-instance DefConvert1 ('TypDef "D" x y) sch (PGC "date") where
-  type DefType1 ('TypDef "D" x y) sch (PGC "date") = Day
-instance DefConvert1 ('TypDef "D" x y) sch (PGC "time") where
-  type DefType1 ('TypDef "D" x y) sch (PGC "time") = TimeOfDay
-instance DefConvert1 ('TypDef "D" x y) sch (PGC "timestamp") where
-  type DefType1 ('TypDef "D" x y) sch (PGC "timestamp") = UTCTime
-instance DefConvert1 ('TypDef "D" x y) sch (PGC "timestamptz") where
-  type DefType1 ('TypDef "D" x y) sch (PGC "timestamptz") = ZonedTime
-instance DefConvert1 ('TypDef "S" x y) sch (PGC "char") where
-  type DefType1 ('TypDef "S" x y) sch (PGC "char") = PgChar
-instance DefConvert1 ('TypDef "S" x y) sch (PGC "name") where
-  type DefType1 ('TypDef "S" x y) sch (PGC "name") = Text
-instance DefConvert1 ('TypDef "S" x y) sch (PGC "text") where
-  type DefType1 ('TypDef "S" x y) sch (PGC "text") = Text
-instance DefConvert1 ('TypDef "S" x y) sch (PGC "varchar") where
-  type DefType1 ('TypDef "S" x y) sch (PGC "varchar") = Text
-
-instance DefConvert1 ('TypDef "U" x y) sch (PGC "bytea") where
-  type DefType1 ('TypDef "U" x y) sch (PGC "bytea") = (Binary B.L.ByteString)
-instance DefConvert1 ('TypDef "U" x y) sch (PGC "jsonb") where
-  type DefType1 ('TypDef "U" x y) sch (PGC "jsonb") = Value
--- instance DefConvert1 ('TypDef "U" x y) sch (PGC "jsonb") where
---   type DefType1 ('TypDef "U" x y) sch (PGC "jsonb") = Aeson a
-instance DefConvert1 ('TypDef "U" x y) sch (PGC "uuid") where
-  type DefType1 ('TypDef "U" x y) sch (PGC "uuid") = UUID
--}
-
 -- Char has no ToField instance so make own char
 newtype PgChar = PgChar { unPgChar :: Char }
   deriving (Show, Eq, Read, Ord, FromField, Enum, Bounded, FromJSON, ToJSON
@@ -162,8 +103,15 @@ instance ToField PgChar where
 newtype PgArr a = PgArr { unPgArr :: [a] }
   -- ^ PGArray has no JSON instances. [] has JSON, but no PG.
   -- This one has both.
-  deriving (Show, Eq, Ord, Read, FromJSON, ToJSON, Functor, Applicative, Monad
-    , MonadZip, Foldable, Hashable, Semigroup, Monoid)
+  deriving stock Traversable
+  deriving newtype (Show, Eq, Ord, Read, FromJSON, ToJSON, Functor
+    , Applicative, Monad, MonadZip, Foldable, Hashable, Semigroup, Monoid)
+#ifdef MK_ARBITRARY
+  deriving newtype Arbitrary
+#endif
+#ifdef MK_FLAT
+  deriving newtype Flat
+#endif
 
 instance (FromField a, Typeable a) => FromField (PgArr a) where
   fromField = (fmap (coerce @(PGArray a)) .) . fromField
