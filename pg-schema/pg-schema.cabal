@@ -18,6 +18,16 @@ source-repository head
   type: git
   location: https://github.com/odr/pg-schema
 
+flag flat
+  description: Make Flat instances for all types (Enums, PgTagged, SchList)
+  manual:      False
+  default:     False
+
+flag arbitrary
+  description: Make Arbitrary instances for all types (Enums, PgTagged, SchList)
+  manual:      False
+  default:     False
+
 library
   exposed-modules:
     PgSchema
@@ -71,6 +81,13 @@ library
     , th-abstraction
     , time
     , uuid
+  if flag(flat)
+    build-depends: flat
+    cpp-options: -DMK_FLAT
+  if flag(arbitrary)
+    build-depends:
+        QuickCheck
+    cpp-options: -DMK_ARBITRARY
   ghc-options:
     -Wall
   default-language: GHC2021
@@ -80,6 +97,7 @@ library
     ExplicitNamespaces
     DataKinds
     -- ^^^ added in GHC2024
+    DerivingStrategies
     FunctionalDependencies
     LambdaCase
     -- ^^^ added in GHC2024

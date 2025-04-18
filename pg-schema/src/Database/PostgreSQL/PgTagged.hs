@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE CPP #-}
 module Database.PostgreSQL.PgTagged where
 
 import Data.Aeson
@@ -18,12 +19,31 @@ import GHC.TypeLits
 import PgSchema.Util
 import Prelude.Singletons
 import Type.Reflection
+#ifdef MK_ARBITRARY
+import Test.QuickCheck
+#endif
+#ifdef MK_FLAT
+import Flat as F
+#endif
 
 
 newtype PgTagged a b = PgTagged (Tagged a b)
   deriving
   ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
   , Semigroup )
+
+#ifdef MK_ARBITRARY
+instance Arbitrary b => Arbitrary (PgTagged a b) where
+  arbitrary = pgTag <$> arbitrary
+#endif
+
+#ifdef MK_FLAT
+instance Flat b => Flat (PgTagged a b) where
+  encode = F.encode . unPgTag
+  decode = pgTag <$> F.decode
+  size = F.size . unPgTag
+
+#endif
 
 instance Hashable b => Hashable (PgTagged a b) where
   hashWithSalt s = hashWithSalt @b s . coerce

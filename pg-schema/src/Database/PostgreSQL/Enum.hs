@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE CPP #-}
 module Database.PostgreSQL.Enum(PGEnum) where
 
 import Control.Monad
@@ -15,6 +16,12 @@ import Type.Reflection
 
 import Database.Schema.Def
 import PgSchema.Util hiding (fromText)
+#ifdef MK_ARBITRARY
+import Test.QuickCheck
+#endif
+#ifdef MK_FLAT
+import Flat as F
+#endif
 
 
 data family PGEnum sch (name :: NameNSK) :: Type
@@ -51,3 +58,16 @@ fromText t = fmap fst . listToMaybe
 
 toText :: forall sch t. (Show (PGEnum sch t), ToStar t) => PGEnum sch t -> Text
 toText = T.drop (T.length (nnsName $ demote @t) + 1) . pack . show
+
+#ifdef MK_ARBITRARY
+instance (Bounded (PGEnum sch t), Enum (PGEnum sch t)) =>
+  Arbitrary (PGEnum sch t) where
+    arbitrary = arbitraryBoundedEnum
+#endif
+
+#ifdef MK_FLAT
+instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
+  encode = F.encode . show
+  decode = read <$> F.decode
+  size = F.size . show
+#endif

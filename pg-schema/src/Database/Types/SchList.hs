@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveTraversable    #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE CPP #-}
 module Database.Types.SchList where
 
 import Control.Applicative
@@ -10,12 +11,26 @@ import Database.PostgreSQL.Simple.FromField as PG
 import Database.PostgreSQL.Simple.ToField as PG
 import Database.Schema.Rec
 import Type.Reflection
+#ifdef MK_ARBITRARY
+import Test.QuickCheck
+#endif
+#ifdef MK_FLAT
+import Flat
+#endif
 
 
-newtype SchList a = SchList { getSchList :: [a] } deriving
-  ( Show, Eq, Ord, FromJSON, ToJSON, Hashable, Semigroup, Monoid
-  , Functor, Applicative, Alternative, Foldable, Traversable, IsList
-  , Monad )
+newtype SchList a = SchList { getSchList :: [a] }
+  deriving stock Traversable
+  deriving newtype
+    ( Show, Eq, Ord, FromJSON, ToJSON, Hashable, Semigroup, Monoid
+    , Functor, Applicative, Alternative, Foldable, IsList
+    , Monad )
+#ifdef MK_ARBITRARY
+  deriving newtype Arbitrary
+#endif
+#ifdef MK_FLAT
+  deriving newtype Flat
+#endif
 
 instance (FromJSON a, Typeable a) => FromField (SchList a) where
   fromField = fromJSONField
