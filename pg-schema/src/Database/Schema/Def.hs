@@ -2,6 +2,7 @@
 {-# LANGUAGE NoOverloadedStrings #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE ParallelListComp #-}
 module Database.Schema.Def where
 
 import Data.Kind
@@ -130,6 +131,7 @@ class
     (SP.Map FstSym0 (RdCols (TRelDef sch name))))
   , ToStar (SP.Map (TFldDefSym2 sch (RdTo (TRelDef sch name)))
     (SP.Map SndSym0 (RdCols (TRelDef sch name))))
+  -- , ToStar (TTypeDefs sch)
   )
   => CRelDef sch (name::NameNSK) where
 
@@ -158,6 +160,7 @@ promote [d|
   map3 f g = L.map (map2 f . g)
   |]
 
+
 type TTabRelFrom sch tab = Map2 (TRelDefSym1 sch) (TFrom sch tab)
 type TTabRelTo sch tab = Map2 (TRelDefSym1 sch) (TTo sch tab)
 
@@ -183,6 +186,8 @@ type TTabFldDefs sch = Zip2With (TFldDefSym1 sch) (TTabs sch) (TTabFlds sch)
 type TTabRelFroms sch = Map3 (TRelDefSym1 sch) (TFromSym1 sch) (TTabs sch)
 type TTabRelTos sch = Map3 (TRelDefSym1 sch) (TToSym1 sch) (TTabs sch)
 
+type TTypeDefs sch = Map2 (TTypDefSym1 sch) (TTypes sch)
+
 --
 data TabInfo = TabInfo
   { tiDef  :: TabDef
@@ -193,19 +198,23 @@ data TabInfo = TabInfo
 
 tabInfoMap :: forall sch. CSchema sch => M.Map NameNS TabInfo
 tabInfoMap = M.fromList
-  $ L.zip tabs
-    $ L.zipWith4 TabInfo
-      tabDefs
-      (L.zipWith (\fs -> M.fromList . L.zip fs) tabFlds tabFldDefs)
-      (M.fromList <$> tabRelFroms)
-      (M.fromList <$> tabRelTos)
-  where
-    tabs = demote @(TTabs sch)
-    tabDefs = demote @(TTabDefs sch)
-    tabFlds = demote @(TTabFlds sch)
-    tabFldDefs = demote @(TTabFldDefs sch)
-    tabRelFroms = demote @(TTabRelFroms sch)
-    tabRelTos = demote @(TTabRelTos sch)
+  [ (tabName, tabInfo)
+  | tabName <- demote @(TTabs sch)
+  | tabInfo <-
+    [ TabInfo{..}
+    | tiDef <- demote @(TTabDefs sch)
+    | tiFlds <-
+      [ M.fromList $ L.zip fs ds
+      | fs <- demote @(TTabFlds sch)
+      | ds <- demote @(TTabFldDefs sch) ]
+    | tiFrom <- M.fromList <$> demote @(TTabRelFroms sch)
+    | tiTo <- M.fromList <$> demote @(TTabRelTos sch)
+    ]
+  ]
+
+typDefMap :: forall sch. CSchema sch => M.Map NameNS TypDef
+typDefMap = M.fromList $ L.zip
+  (demote @(TTypes sch)) (demote @(SP.Map (TTypDefSym1 sch) (TTypes sch)))
 
 type TRelTab sch t name = GetRelTab
   (Map2 (TRelDefSym1 sch) (TFrom sch t)) (Map2 (TRelDefSym1 sch) (TTo sch t))

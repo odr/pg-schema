@@ -39,6 +39,9 @@ with
       left outer join qcty on qcty.country_id = qctry.id
       left outer join qaddr on qaddr.city_id = qcty.id;
 
+insert into sch.addresses(city_id, street, phones, numbers)
+  values (1,'Пушкина','{"a-11-1","22","3"}', '{234,432}');
+
 insert into sch.articles(name, code) values
   ('article1','a1'),('article2','a2'),('article3','a3'),('article4','a4')
   ,('article5','a5'),('article6','a6'),('article7','a7'),('article8','a8');

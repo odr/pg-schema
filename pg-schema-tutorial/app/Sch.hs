@@ -17,6 +17,14 @@ hashSchema = -8283378915224177169
 
 data Sch
 
+instance CTypDef Sch ( "pg_catalog" ->> "_int4" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "_int4" ) = 
+    'TypDef "A" ('Just ( "pg_catalog" ->> "int4" )) '[  ]
+
+instance CTypDef Sch ( "pg_catalog" ->> "_text" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "_text" ) = 
+    'TypDef "A" ('Just ( "pg_catalog" ->> "text" )) '[  ]
+
 instance CTypDef Sch ( "pg_catalog" ->> "date" ) where
   type TTypDef Sch ( "pg_catalog" ->> "date" ) = 
     'TypDef "D" 'Nothing '[  ]
@@ -64,6 +72,14 @@ instance CFldDef Sch ( "sch" ->> "addresses" ) "home" where
 instance CFldDef Sch ( "sch" ->> "addresses" ) "id" where
   type TFldDef Sch ( "sch" ->> "addresses" ) "id" = 
     'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
+
+instance CFldDef Sch ( "sch" ->> "addresses" ) "numbers" where
+  type TFldDef Sch ( "sch" ->> "addresses" ) "numbers" = 
+    'FldDef ( "pg_catalog" ->> "_int4" ) 'True 'False
+
+instance CFldDef Sch ( "sch" ->> "addresses" ) "phones" where
+  type TFldDef Sch ( "sch" ->> "addresses" ) "phones" = 
+    'FldDef ( "pg_catalog" ->> "_text" ) 'True 'False
 
 instance CFldDef Sch ( "sch" ->> "addresses" ) "street" where
   type TFldDef Sch ( "sch" ->> "addresses" ) "street" = 
@@ -219,7 +235,8 @@ instance CFldDef Sch ( "sch" ->> "orders" ) "updated_at" where
 
 instance CTabDef Sch ( "sch" ->> "addresses" ) where
   type TTabDef Sch ( "sch" ->> "addresses" ) = 
-    'TabDef '[ "id","city_id","street","home","app","zipcode" ] '[ "id" ] '[  ]
+    'TabDef '[ "id","city_id"
+      ,"street","home","app","zipcode","phones","numbers" ] '[ "id" ] '[  ]
 
 instance CTabDef Sch ( "sch" ->> "articles" ) where
   type TTabDef Sch ( "sch" ->> "articles" ) = 
@@ -362,7 +379,8 @@ instance CSchema Sch where
     ,( "sch" ->> "countries" ),( "sch" ->> "customers" )
     ,( "sch" ->> "order_positions" ),( "sch" ->> "orders" ) ]
 
-  type TTypes Sch = '[ ( "pg_catalog" ->> "date" ),( "pg_catalog" ->> "int4" )
+  type TTypes Sch = '[ ( "pg_catalog" ->> "_int4" ),( "pg_catalog" ->> "_text" )
+    ,( "pg_catalog" ->> "date" ),( "pg_catalog" ->> "int4" )
     ,( "pg_catalog" ->> "numeric" ),( "pg_catalog" ->> "text" )
     ,( "pg_catalog" ->> "timestamptz" ),( "sch" ->> "order_state" ) ]
 

@@ -53,10 +53,12 @@ deriveQueryRecord id ''Sch (tabInfoMap @Sch)
 data A = A1 | A2
 
 data Address a = MkAddress
-  { street       :: Maybe Text
-  , home         :: If (a == A1) (Maybe Text) EmptyField
-  , app          :: Maybe Text
-  , zipcode      :: Maybe Text  } -- PgTagged "name" (Maybe Text) }
+  { street  :: Maybe Text
+  , home    :: If (a == A1) (Maybe Text) EmptyField
+  , app     :: Maybe Text
+  , zipcode :: Maybe Text
+  , phones  :: Maybe (PgArr Text)
+  , numbers :: Maybe (PgArr Int32) }
   deriving Generic
 
 data City a = MkCity
@@ -131,6 +133,8 @@ data CompanyI = MkCompanyI
 data AddressI = MkAddressI
   { street :: Maybe Text
   , zipcode :: Maybe Text
+  , phones :: Maybe (PgArr Text)
+  , numbers :: Maybe (PgArr Int32)
   , cust_addr :: SchList CustomerI
   , comp_addr :: SchList CompanyI }
   deriving Generic
@@ -181,15 +185,19 @@ main = do
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
+  ar <- selectSch @Sch @(NSC "addresses") @(AddressRev A2) conn qp
+  print ar
+  T.putStrLn "\n====== 8 ========\n"
   (cids,t) <- insertSch Sch (NSC "countries") conn countries
   T.putStrLn t
   mapM_ (print @(PgTagged "id" Int32)) cids
   d <- utctDay <$> getCurrentTime
   T.putStrLn "\n====== 10 ========\n"
   T.putStrLn $ I2.insertJSONText @AddressI @(PgTagged "id" Int32) Sch (NSC "addresses")
+  T.putStrLn "\n====== 11 ========\n"
   let
     insData =
-      [ MkAddressI (Just "street") Nothing (SchList
+      [ MkAddressI (Just "street") Nothing (Just $ PgArr ["s","S12"]) (Just $ PgArr [1,2]) (SchList
         [ MkCustomerI "Ivan" $ SchList
           [ MkOrderI d "1" 1 (Just Order_state_paid) $ SchList
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
@@ -200,8 +208,8 @@ main = do
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
           , MkOrderI d "xx" 5 (Just Order_state_delivered) $ SchList
             [ MkOrdPosI 5 6 3 4, MkOrdPosI 1 3 3 5.1 ] ] ]) mempty
-      , MkAddressI Nothing (Just "zipcode") mempty $ SchList [MkCompanyI "Typeable"]
-      , MkAddressI (Just "street2") (Just "zip2") (SchList [MkCustomerI "Dima" mempty])
+      , MkAddressI Nothing (Just "zipcode") Nothing (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
+      , MkAddressI (Just "street2") (Just "zip2") (Just mempty) Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
   as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
     <- fmap fst $ I2.insertJSON @AddressI Sch (NSC "addresses") conn insData

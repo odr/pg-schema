@@ -28,4 +28,4 @@ type InsertReturning sch t r r' =
   -- recursive RecordInfo RecordInfo on the type level...
 
 type InsertNonReturning sch t r =
-  (CRecordInfo sch t r, AllMandatory sch t r '[], ToJSON r)
+  (CRecordInfo sch t r, AllMandatory sch t r '[], ToJSON r, CSchema sch)

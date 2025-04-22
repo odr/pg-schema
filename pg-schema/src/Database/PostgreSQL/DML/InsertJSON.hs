@@ -8,6 +8,7 @@ import Data.Foldable as F
 import Data.Function
 import Data.Functor
 import Data.List as L
+import Data.Map as M hiding (mapMaybe)
 import Data.Maybe
 import Data.Text as T hiding (any)
 import Data.Traversable
@@ -49,18 +50,20 @@ insertJSON_ sch t conn rs = withTransactionIfNot conn do
   where
     sql = insertJSONText_ @r sch t
 
-insertJSONText_ :: forall r s. forall sch t  ->
+insertJSONText_ :: forall r s. forall sch t ->
   (IsString s, Monoid s, InsertNonReturning sch t r, ToJSON r) => s
-insertJSONText_ sch t = insertJSONText' @s (getRecordInfo @sch @t @r) []
+insertJSONText_ sch t =
+  insertJSONText' @s (typDefMap @sch) (getRecordInfo @sch @t @r) []
 
 insertJSONText :: forall r r' s. forall sch t ->
   (IsString s, Monoid s, InsertReturning sch t r r', ToJSON r) => s
-insertJSONText sch t = insertJSONText' (getRecordInfo @sch @t @r)
-  (getRecordInfo @sch @t @r').fields
+insertJSONText sch t = insertJSONText' (typDefMap @sch)
+  (getRecordInfo @sch @t @r) (getRecordInfo @sch @t @r').fields
 
 insertJSONText'
-  :: forall s. (IsString s, Monoid s) => RecordInfo -> [FieldInfo RecordInfo] -> s
-insertJSONText' ir qfs = unlines'
+  :: forall s. (IsString s, Monoid s)
+  => M.Map NameNS TypDef -> RecordInfo -> [FieldInfo RecordInfo] -> s
+insertJSONText' mapTypes ir qfs = unlines'
   [ maybe
     "create or replace procedure pg_temp.__ins(data_0 jsonb) as $$"
     (\_ -> "create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$")
@@ -73,13 +76,15 @@ insertJSONText' ir qfs = unlines'
   , "end; "
   , "$$ language plpgsql;" ]
   where
-    (mbRes, (decl, body)) = evalRWS (insertJSONTextM ir qfs [] []) ("  ",0) 0
+    (mbRes, (decl, body)) =
+      evalRWS (insertJSONTextM mapTypes ir qfs [] []) ("  ",0) 0
 
 type MonadInsert s = RWS (s, Int) ([s],[s]) Int
 insertJSONTextM
   :: forall s. (IsString s, Monoid s)
-  => RecordInfo -> [FieldInfo RecordInfo] -> [s] -> [s] -> MonadInsert s (Maybe s)
-insertJSONTextM ri qfs fromFields toVars = do
+  => M.Map NameNS TypDef -> RecordInfo -> [FieldInfo RecordInfo] -> [s] -> [s]
+  -> MonadInsert s (Maybe s)
+insertJSONTextM mapTypes ri qfs fromFields toVars = do
   (spaces, n) <- ask
   let
     sn = show' n
@@ -108,8 +113,15 @@ insertJSONTextM ri qfs fromFields toVars = do
         noRets = P.null qplains && P.null ichildren
         qretFlds = fst <$> qretPairs
         qretVars = (<> sn) <$> qretFlds
-        jsonFld (dbn,def) = "(" <> rowN <> ".value->>'" <> fromText dbn <> "')::"
-          <> fromText (qualName def.fdType)
+        jsonFld (dbn,def) = case mapTypes M.!? def.fdType of
+          Just (TypDef "A" (Just t) _) ->
+            "translate(" <> rowN <> ".value->>'" <> fromText dbn
+              <> "'::text, '[]', '{}')::" <> fromText (qualName t) <> "[]"
+          _ ->
+            "(" <> rowN <> ".value->>'" <> fromText dbn <> "')::"
+              <> fromText (qualName def.fdType)
+          where
+
         rets
           | P.null qplains && P.null ichildren = []
           | otherwise = ["    returning " <> intercalate' ", " qretFlds
@@ -124,7 +136,7 @@ insertJSONTextM ri qfs fromFields toVars = do
     let
       qfs' = foldMap ((.fields) . snd)
         $ L.find (\qc -> ((==) `on` (fst . fst)) qc ic) qchildren
-    mbArr <- local (second $ const n') $ insertJSONTextM (snd ic) qfs'
+    mbArr <- local (second $ const n') $ insertJSONTextM mapTypes (snd ic) qfs'
       (fromText . (.fromName) <$> snd (fst ic))
       ((<> sn) . fromText . (.toName) <$> snd (fst ic))
     pure (fromText (fst $ fst ic), mbArr)
