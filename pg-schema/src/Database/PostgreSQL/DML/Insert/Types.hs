@@ -7,6 +7,8 @@ import Data.Typeable
 import Database.Schema.Def
 import Database.Schema.Rec
 import Database.Types.SchList
+import Database.PostgreSQL.Simple.FromRow
+import Database.PostgreSQL.Simple.ToRow
 import GHC.TypeError
 import GHC.TypeLits qualified as TL
 import Prelude.Singletons as SP
@@ -19,18 +21,20 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
     (TL.TypeError
       ((TL.Text "Not all mandatory fields for table " :<>: TL.ShowType t
         :<>: TL.Text " in type " :<>: TL.ShowType r)
-        :$$: TL.Text "Probably you have to add: " :<>: TL.ShowType (RestMand sch t r rFlds)))
+        :$$: TL.Text "Probably you have to add: "
+        :<>: TL.ShowType (RestMand sch t r rFlds)))
 
-type InsertReturning' sch t r r' =
-  (InsertNonReturning sch t r, CRecordInfo sch t r', Typeable r')
+type InsertReturning' sch t r r' = (InsertNonReturning sch t r
+  , CRecordInfo sch t r', Typeable r', FromRow r', AllPlain sch t r')
 
-type InsertNonReturning' sch t r =
-  (CRecordInfo sch t r, AllMandatory sch t r '[], CSchema sch)
+type InsertNonReturning' sch t r = (CRecordInfo sch t r
+  , AllMandatory sch t r '[], CSchema sch, ToRow r, AllPlain sch t r)
 
 type InsertReturning sch t r r' =
-  (InsertReturning' sch t r r', FromJSON r', ToJSON r)
+  (InsertNonReturning sch t r, CRecordInfo sch t r', FromJSON r', Typeable r')
   -- We have to check that return data only from tables in which we insert
   -- Now it is not possible because we don't store
   -- recursive RecordInfo RecordInfo on the type level...
 
-type InsertNonReturning sch t r = (InsertNonReturning' sch t r, ToJSON r)
+type InsertNonReturning sch t r =
+  (CRecordInfo sch t r, AllMandatory sch t r '[], ToJSON r, CSchema sch)
