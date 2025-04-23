@@ -21,11 +21,16 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
         :<>: TL.Text " in type " :<>: TL.ShowType r)
         :$$: TL.Text "Probably you have to add: " :<>: TL.ShowType (RestMand sch t r rFlds)))
 
+type InsertReturning' sch t r r' =
+  (InsertNonReturning sch t r, CRecordInfo sch t r', Typeable r')
+
+type InsertNonReturning' sch t r =
+  (CRecordInfo sch t r, AllMandatory sch t r '[], CSchema sch)
+
 type InsertReturning sch t r r' =
-  (InsertNonReturning sch t r, CRecordInfo sch t r', FromJSON r', Typeable r')
+  (InsertReturning' sch t r r', FromJSON r', ToJSON r)
   -- We have to check that return data only from tables in which we insert
   -- Now it is not possible because we don't store
   -- recursive RecordInfo RecordInfo on the type level...
 
-type InsertNonReturning sch t r =
-  (CRecordInfo sch t r, AllMandatory sch t r '[], ToJSON r, CSchema sch)
+type InsertNonReturning sch t r = (InsertNonReturning' sch t r, ToJSON r)

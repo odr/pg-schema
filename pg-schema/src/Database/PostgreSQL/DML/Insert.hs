@@ -13,18 +13,18 @@ import PgSchema.Util
 
 
 insertSch :: forall sch t -> forall r r'. (ToRow r, FromRow r') =>
-  (InsertReturning sch t r r', AllPlain sch t r) =>
+  (InsertReturning' sch t r r', AllPlain sch t r) =>
   Connection -> [r] -> IO ([r'], Text)
 insertSch sch t @r @r' conn = let sql = insertText sch t r r' in
   fmap (, sql) . returning conn (fromString $ T.unpack sql)
 
 insertSch_ :: forall sch t -> forall r. ToRow r =>
-  (InsertNonReturning sch t r, AllPlain sch t r) =>
+  (InsertNonReturning' sch t r, AllPlain sch t r) =>
   Connection -> [r] -> IO (Int64, Text)
 insertSch_ sch t @r conn = let sql = insertText_ sch t r in
   fmap (, sql) . executeMany conn (fromString $ T.unpack sql)
 
-insertText :: forall sch t r r' -> InsertReturning sch t r r' => Text
+insertText :: forall sch t r r' -> InsertReturning' sch t r r' => Text
 insertText sch t r r' = insertText_ sch t r <> " returning " <> fs'
   where
     ri = getRecordInfo @sch @t @r'
