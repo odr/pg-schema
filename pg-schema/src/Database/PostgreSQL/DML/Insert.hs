@@ -12,14 +12,12 @@ import Database.Schema.ShowType
 import PgSchema.Util
 
 
-insertSch :: forall sch t -> forall r r'. (ToRow r, FromRow r') =>
-  (InsertReturning' sch t r r', AllPlain sch t r) =>
+insertSch :: forall sch t -> forall r r'. (InsertReturning' sch t r r') =>
   Connection -> [r] -> IO ([r'], Text)
 insertSch sch t @r @r' conn = let sql = insertText sch t r r' in
   fmap (, sql) . returning conn (fromString $ T.unpack sql)
 
-insertSch_ :: forall sch t -> forall r. ToRow r =>
-  (InsertNonReturning' sch t r, AllPlain sch t r) =>
+insertSch_ :: forall sch t -> forall r. (InsertNonReturning' sch t r) =>
   Connection -> [r] -> IO (Int64, Text)
 insertSch_ sch t @r conn = let sql = insertText_ sch t r in
   fmap (, sql) . executeMany conn (fromString $ T.unpack sql)
