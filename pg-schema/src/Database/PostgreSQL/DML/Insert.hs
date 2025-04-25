@@ -12,24 +12,24 @@ import Database.Schema.ShowType
 import PgSchema.Util
 
 
-insertSch :: forall sch t -> forall r r'. (InsertReturning' sch t r r') =>
+insertSch :: forall r r'. forall sch t -> (InsertReturning' sch t r r') =>
   Connection -> [r] -> IO ([r'], Text)
-insertSch sch t @r @r' conn = let sql = insertText sch t r r' in
+insertSch sch t conn = let sql = insertText @r @r' sch t in
   fmap (, sql) . returning conn (fromString $ T.unpack sql)
 
 insertSch_ :: forall sch t -> forall r. (InsertNonReturning' sch t r) =>
   Connection -> [r] -> IO (Int64, Text)
-insertSch_ sch t @r conn = let sql = insertText_ sch t r in
+insertSch_ sch t @r conn = let sql = insertText_ @r sch t in
   fmap (, sql) . executeMany conn (fromString $ T.unpack sql)
 
-insertText :: forall sch t r r' -> InsertReturning' sch t r r' => Text
-insertText sch t r r' = insertText_ sch t r <> " returning " <> fs'
+insertText :: forall r r'. forall sch t -> InsertReturning' sch t r r' => Text
+insertText sch t = insertText_ @r sch t <> " returning " <> fs'
   where
     ri = getRecordInfo @sch @t @r'
     fs' = fromText $ T.intercalate "," [ fi.fieldDbName | fi <- ri.fields]
 
-insertText_ :: forall sch t r -> CRecordInfo sch t r => Text
-insertText_ sch t r = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
+insertText_ :: forall r. forall sch t -> CRecordInfo sch t r => Text
+insertText_ sch t = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
   where
     ri = getRecordInfo @sch @t @r
     (fs,qs) = bimap inter inter $ unzip [ (fi.fieldDbName,"?") | fi <- ri.fields]
