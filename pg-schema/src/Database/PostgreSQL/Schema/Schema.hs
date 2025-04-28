@@ -170,27 +170,30 @@ updateSchemaFile'
   -> Text     -- ^ haskell module name to generate
   -> Text     -- ^ name of generated haskell type for schema
   -> GenNames -- ^ names of schemas in database or tables to generate
-  -> IO ()
-updateSchemaFile' fileName connStr moduleName schName genNames = do
-  unless (BS.null connStr) $ do
-    fe <- doesFileExist fileName
-    conn <- connectPostgreSQL connStr
-    P.putStrLn "Trying to get schema"
-    (schema,h) <- ((,) <$> id <*> hash) <$> getSchema conn genNames
-    P.putStrLn $ "New hash: " <> show h
-    P.putStrLn "Trying to get old hash"
-    needGen <- if fe
-      then do
-        mbhs
-          <- L.find ((== ["hashSchema","="]) . L.take 2) . L.map T.words . lines'
-          <$> T.readFile fileName
-        P.putStrLn $ "Old hash: " <> show mbhs
-        pure $ case mbhs of
-          Just [_,_,x] | x == fromString (show h) -> False
-          _                                       -> True
-      else pure True
-    P.putStrLn $ "Need to generate file: " <> show needGen
-    when needGen $ T.writeFile fileName $ moduleText h schema
+  -> IO Bool
+updateSchemaFile' fileName connStr moduleName schName genNames =
+  if BS.null connStr
+    then pure False
+    else do
+      fe <- doesFileExist fileName
+      conn <- connectPostgreSQL connStr
+      P.putStrLn "Trying to get schema"
+      (schema,h) <- ((,) <$> id <*> hash) <$> getSchema conn genNames
+      P.putStrLn $ "New hash: " <> show h
+      P.putStrLn "Trying to get old hash"
+      needGen <- if fe
+        then do
+          mbhs
+            <- L.find ((== ["hashSchema","="]) . L.take 2) . L.map T.words . lines'
+            <$> T.readFile fileName
+          P.putStrLn $ "Old hash: " <> show mbhs
+          pure $ case mbhs of
+            Just [_,_,x] | x == fromString (show h) -> False
+            _                                       -> True
+        else pure True
+      P.putStrLn $ "Need to generate file: " <> show needGen
+      when needGen $ T.writeFile fileName $ moduleText h schema
+      pure needGen
   where
     moduleText h = genModuleText moduleName schName h . getDefs
     -- for eager file read
@@ -208,7 +211,7 @@ updateSchemaFile
   -> Text     -- ^ haskell module name to generate
   -> Text     -- ^ name of generated haskell type for schema
   -> GenNames -- ^ names of schemas in database or tables to generate
-  -> IO ()
+  -> IO Bool
 updateSchemaFile fileName ecs moduleName schName genNames = do
   connStr <- either getConnStr pure ecs
   updateSchemaFile' fileName connStr moduleName schName genNames
