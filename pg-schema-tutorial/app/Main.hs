@@ -51,8 +51,9 @@ deriveQueryRecord id ''Sch (tabInfoMap @Sch)
   [ ((''Country, []), "sch" ->> "countries") ]
 
 data A = A1 | A2
+data B = B1 | B2
 
-data Address a = MkAddress
+data Address (a::A) (b::B) = MkAddress
   { street  :: Maybe Text
   , home    :: If (a == A1) (Maybe Text) EmptyField
   , app     :: Maybe Text
@@ -61,18 +62,18 @@ data Address a = MkAddress
   , numbers :: Maybe (PgArr Int32) }
   deriving Generic
 
-data City a = MkCity
+data City a b = MkCity
   { name         :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
-  , address_city :: SchList (Address a) }
+  , address_city :: SchList (Address a b) }
   deriving Generic
 
-data AddressRev a = MkAddressRev
+data AddressRev a b = MkAddressRev
   { street       :: Maybe Text
   , home         :: Maybe Text
   , app          :: If (a == A1) (Maybe Text) EmptyField
   , zipcode      :: Maybe Text
-  , address_city :: Maybe (City a) }
+  , address_city :: Maybe (City a b) }
   deriving Generic
 
 data Company = MkCompany
@@ -156,9 +157,9 @@ data AddressRet = AddressRet
 deriveQueryRecord P.id ''Sch (tabInfoMap @Sch)
   [ ((''Company,[]), "sch" ->> "companies")
   , ((''Article,[]), "sch" ->> "articles")
-  , ((''Address, [['A1],['A2]]), "sch" ->> "addresses")
-  , ((''City, [['A1],['A2]]), "sch" ->> "cities")
-  , ((''AddressRev, [['A1],['A2]]), "sch" ->> "addresses")
+  , ((''Address, [['A1,'B1],['A2,'B1]]), "sch" ->> "addresses")
+  , ((''City, [['A1,'B1],['A2,'B1]]), "sch" ->> "cities")
+  , ((''AddressRev, [['A1,'B1],['A2,'B1]]), "sch" ->> "addresses")
   , ((''OrdPosI, []), ("sch" ->> "order_positions"))
   , ((''OrderI, []), ("sch" ->> "orders"))
   , ((''CustomerI, []), ("sch" ->> "customers"))
@@ -176,16 +177,16 @@ main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
     [ selectText @Sch @(NSC "countries") @Country qpEmpty
-    , selectText @Sch @(NSC "cities") @(City A1) qpEmpty
-    , selectText @Sch @(NSC "cities") @(City A2) qpEmpty
-    , selectText @Sch @(NSC "addresses") @(Address A1) qpEmpty
-    , selectText @Sch @(NSC "addresses") @(Address A2) qp
-    , selectText @Sch @(NSC "addresses") @(AddressRev A1) qp
-    , selectText @Sch @(NSC "addresses") @(AddressRev A2) qp
+    , selectText @Sch @(NSC "cities") @(City A1 B1) qpEmpty
+    , selectText @Sch @(NSC "cities") @(City A2 B1) qpEmpty
+    , selectText @Sch @(NSC "addresses") @(Address A1 B1) qpEmpty
+    , selectText @Sch @(NSC "addresses") @(Address A2 B1) qp
+    , selectText @Sch @(NSC "addresses") @(AddressRev A1 B1) qp
+    , selectText @Sch @(NSC "addresses") @(AddressRev A2 B1) qp
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  ar <- selectSch @Sch @(NSC "addresses") @(AddressRev A2) conn qp
+  ar <- selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp
   print ar
   T.putStrLn "\n====== 8 ========\n"
   (cids,t) <- insertSch Sch (NSC "countries") conn countries
@@ -224,20 +225,20 @@ main = do
   selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 22 ========\n"
-  bitraverse T.putStrLn print $ selectText @Sch @(NSC "cities") @(City A1) qpEmpty
-  selectSch @Sch @(NSC "cities") @(City A1) conn qpEmpty >>= print
+  bitraverse T.putStrLn print $ selectText @Sch @(NSC "cities") @(City A1 B1) qpEmpty
+  selectSch @Sch @(NSC "cities") @(City A1 B1) conn qpEmpty >>= print
   T.putStrLn ""
-  bitraverse T.putStrLn print  $ selectText @Sch @(NSC "cities") @(City A2) qpEmpty
-  selectSch @Sch @(NSC "cities") @(City A2) conn qpEmpty >>= print
+  bitraverse T.putStrLn print  $ selectText @Sch @(NSC "cities") @(City A2 B1) qpEmpty
+  selectSch @Sch @(NSC "cities") @(City A2 B1) conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 23 ========\n"
-  selectSch @Sch @(NSC "addresses") @(Address A1) conn qpEmpty >>= print
+  selectSch @Sch @(NSC "addresses") @(Address A1 B1) conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @(NSC "addresses") @(Address A2) conn qp >>= print
+  selectSch @Sch @(NSC "addresses") @(Address A2 B1) conn qp >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 24 ========\n"
-  selectSch @Sch @(NSC "addresses") @(AddressRev A1) conn qp' >>= print
-  selectSch @Sch @(NSC "addresses") @(AddressRev A2) conn qp >>= print
+  selectSch @Sch @(NSC "addresses") @(AddressRev A1 B1) conn qp' >>= print
+  selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp >>= print
   where
     qp = qpEmpty
       { qpConds =

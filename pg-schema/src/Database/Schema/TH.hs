@@ -31,7 +31,7 @@ applyTypes rn ((\case {[] -> [[]]; x -> x}) -> npss) = do
       pure ([],[])
   let dicts = L.zipWith (\(vn,c) tn -> (vn, c tn)) bndrs <$> npss
   pure $ dicts <&> \ds ->
-    ( L.foldr (\t ts -> AppT ts t ) (ConT rn) $ snd <$> ds
+    ( L.foldl' (\ts t -> AppT ts t ) (ConT rn) $ snd <$> ds
     , fmap (applySubstitution $ M.fromList ds) <$> fs)
   where
     bndrType = \case -- TODO: investigate and make it better

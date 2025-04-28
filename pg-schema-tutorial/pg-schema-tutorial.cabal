@@ -27,7 +27,7 @@ executable pg-schema-tutorial-generator
     base >= 4.8 && <5,
     pg-schema
 
-executable pg-schema-tutorial
+executable pgs-tutorial
   main-is: Main.hs
   other-modules:
       -- Paths_pg_schema_tutorial
