@@ -121,12 +121,15 @@ instance ToField a => ToField (PgArr a) where
 
 --
 newtype PgOid = PgOid { fromPgOid :: Oid }
-  deriving (Show, Eq, Read, Ord, FromField, ToField)
+  deriving (Show, Read, FromField, ToField)
+
+instance Eq PgOid where _ == _ = True
+  -- we don't want to distinguish oids but names instead
+  -- e.g. if we recreate some table or constraint
 
 instance Hashable PgOid where
+  hash _ = 0
   hashWithSalt _ _ = 0
-  -- we don't want to distinguish oids only real structure
-  -- e.g. if we recreate some table or constraint
 
 instance FromJSON PgOid where
   parseJSON = fmap (PgOid . read . ("Oid " ++)) . parseJSON

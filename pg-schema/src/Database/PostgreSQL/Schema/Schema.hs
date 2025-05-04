@@ -118,9 +118,9 @@ getDefs (types,classes,relations) =
     typKey = NameNS <$> (coerce . type__namespace) <*> typname
     ntypes = ntype <$> L.filter ((`S.member` attrsTypes) . typKey) types
       where
-        ntype t = (t, typKey <$> M.lookup (typelem t) mtypes)
+        ntype t = (t, typKey <$> M.lookup (fromPgOid $ typelem t) mtypes)
         attrsTypes = S.fromList $ typKey . attribute__type . snd <$> attrs
-        mtypes = M.fromList $ (\x -> (oid x , x)) <$> types
+        mtypes = M.fromList $ (\x -> (fromPgOid $ oid x , x)) <$> types
     ptypDef (x@PgType{..}, typElem) = (typKey x, TypDef {..})
       where
         typCategory = T.singleton $ coerce typcategory
