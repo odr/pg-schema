@@ -165,13 +165,14 @@ getDefs (types,classes,relations) =
         getName2 n1 n2 = (,) <$> getName rdFrom n1 <*> getName rdTo n2
 
 updateSchemaFile'
-  :: String     -- ^ file name
+  :: Bool       -- ^ verbose mode
+  -> String     -- ^ file name
   -> ByteString -- ^ connect string
-  -> Text     -- ^ haskell module name to generate
-  -> Text     -- ^ name of generated haskell type for schema
-  -> GenNames -- ^ names of schemas in database or tables to generate
+  -> Text       -- ^ haskell module name to generate
+  -> Text       -- ^ name of generated haskell type for schema
+  -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO Bool
-updateSchemaFile' fileName connStr moduleName schName genNames =
+updateSchemaFile'  verbose fileName connStr moduleName schName genNames =
   if BS.null connStr
     then pure False
     else do
@@ -192,7 +193,9 @@ updateSchemaFile' fileName connStr moduleName schName genNames =
             _                                       -> True
         else pure True
       P.putStrLn $ "Need to generate file: " <> show needGen
-      when needGen $ T.writeFile fileName $ moduleText h schema
+      when needGen do
+        T.writeFile fileName $ moduleText h schema
+        when verbose $ print schema
       pure needGen
   where
     moduleText h = genModuleText moduleName schName h . getDefs
@@ -214,7 +217,7 @@ updateSchemaFile
   -> IO Bool
 updateSchemaFile fileName ecs moduleName schName genNames = do
   connStr <- either getConnStr pure ecs
-  updateSchemaFile' fileName connStr moduleName schName genNames
+  updateSchemaFile' False fileName connStr moduleName schName genNames
   where
     getConnStr env =
       handle (const @_ @SomeException $ pure "") (fromString <$> getEnv env)

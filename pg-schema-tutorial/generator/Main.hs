@@ -4,7 +4,7 @@ module Main where
 import PgSchema
 
 
-main = updateSchemaFile'
+main = updateSchemaFile' False
   "app/Sch.hs"
   "dbname=schema_test user=avia host=localhost"
   "Sch" -- ^ haskell module name to generate
