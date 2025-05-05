@@ -62,7 +62,8 @@ getSchema conn GenNames {..} = do
     -- all data are ordered to provide stable `hashSchema`
     qpTyp = qpEmpty
       { qpOrds =
-        [ rootOrd @PgCatalog @(PGC "pg_type") [ascf "typname"]
+        [ rootOrd @PgCatalog @(PGC "pg_type")
+          [ ascf "typname", ordNS "typnamespace" ]
         , owp ["enum__type"] [ascf "enumsortorder"] ] }
     qpClass = qpEmpty
       { qpConds =
@@ -70,9 +71,13 @@ getSchema conn GenNames {..} = do
           &&& pin "relkind" (PgChar <$> 'v' :| "r") -- views & tables
         , cwp ["attribute__class"] ("attnum" >? (0::Int16)) ]
       , qpOrds =
-        [ rootOrd [ascf "relname"]
+        [ rootOrd [ ascf "relname", ordNS "relnamespace" ]
         , owp ["attribute__class"] [ascf "attnum"]
         , owp ["constraint__class"] [ascf "conname"] ] }
+    ordNS fld = UnsafeOrd do
+      o <- tabPref
+      pure $ "(select nspname from pg_catalog.pg_namespace p where p.oid = "
+        <> o <> "." <> fld <> ")"
     condClass = condSchemas ||| condTabs
       where
         condSchemas = pparent (PGC "class__namespace")
@@ -83,7 +88,8 @@ getSchema conn GenNames {..} = do
           &&& foldMap (pin "relname" . fmap nnsName) (nonEmpty tables)
     qpRel = qpEmpty
       { qpConds = [rootCond condRels]
-      , qpOrds = [ rootOrd @PgCatalog @(PGC "pg_constraint") [ascf "conname"] ] }
+      , qpOrds = [ rootOrd @PgCatalog @(PGC "pg_constraint")
+        [ascf "conname", ordNS "connamespace"] ] }
       where
         condRels
           = pparent (PGC "constraint__class") condClass
