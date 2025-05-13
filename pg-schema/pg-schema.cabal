@@ -32,6 +32,7 @@ library
   exposed-modules:
     PgSchema
     Database.PostgreSQL.Convert
+    Database.PostgreSQL.DML.Delete
     Database.PostgreSQL.DML.Insert
     Database.PostgreSQL.DML.InsertJSON
     Database.PostgreSQL.DML.Insert.Types
