@@ -28,9 +28,10 @@ import Flat as F
 
 
 newtype PgTagged a b = PgTagged (Tagged a b)
-  deriving
+  deriving newtype
   ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
-  , Semigroup )
+  , Semigroup, Num, Real, Integral, Enum, Bounded, RealFloat, RealFrac, Floating
+  , Fractional, IsString )
 
 #ifdef MK_ARBITRARY
 instance Arbitrary b => Arbitrary (PgTagged a b) where
