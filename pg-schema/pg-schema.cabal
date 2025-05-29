@@ -40,6 +40,7 @@ library
     Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Update
     Database.PostgreSQL.DML.Update.Types
+    Database.PostgreSQL.PgProduct
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
     Database.PostgreSQL.Schema.Info

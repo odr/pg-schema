@@ -10,7 +10,6 @@ import Data.Maybe.Singletons
 import Data.Singletons.TH
 import Data.Text as T (Text, pack)
 import Database.PostgreSQL.Convert
-import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Types.EmptyField
 import GHC.TypeLits qualified as TL
@@ -214,16 +213,3 @@ type family AllPlain sch tab r where
         :<>: TL.Text " in type " :<>: TL.ShowType r)))
 
 type UpdateReturning sch t r r' = (CRecordInfo sch t r, CRecordInfo sch t r')
-
-------------------------- PG.:. ----------
-
-instance (CRecordInfo sch t r1, CRecordInfo sch t r2) =>
-  CRecordInfo sch t (r1 :. r2) where
-  type TRecordInfo sch t (r1 :. r2) =
-    TRecordInfo sch t r1 ++ TRecordInfo sch t r2
-  getRecordInfo = RecordInfo
-    { tabName = r1.tabName
-    , fields = r1.fields <> r2.fields }
-    where
-      r1 = getRecordInfo @sch @t @r1
-      r2 = getRecordInfo @sch @t @r2
