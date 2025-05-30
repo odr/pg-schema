@@ -11,11 +11,12 @@ import Database.Schema.ShowType
 import PgSchema.Util
 import Data.Singletons
 
--- TODO:
+-- TODO (?):
 -- deleteByKey Connection -> [r] -> IO [r']
 
-deleteByCond :: forall sch t. SingI t => Connection -> Cond sch t -> IO Int64
-deleteByCond conn cond = execute conn q ps
+deleteByCond :: forall sch t. SingI t =>
+  Connection -> Cond sch t -> IO (Int64, (Text,[SomeToField]))
+deleteByCond conn cond = (,(q,ps)) <$> execute conn (fromString $ T.unpack q) ps
   where
     (q, ps) = deleteText @sch @t cond
 
