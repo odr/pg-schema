@@ -53,6 +53,21 @@ instance Hashable b => Hashable (PgTagged a b) where
 pattern PgTag :: forall a b. b -> PgTagged a b
 pattern PgTag b = PgTagged (Tagged b)
 
+(=:) :: forall b. forall a -> b -> PgTagged a b
+(=:) _ = coerce
+infixr 5 =:
+
+class PgTaggedAppend a b as bs as' bs' | a as -> as', b bs -> bs' where
+  (<>:) :: PgTagged a b -> PgTagged as bs -> PgTagged as' bs'
+
+infixr 1 <>:
+
+instance PgTaggedAppend (a :: k) b (as :: [k]) bs (a : as) (b, bs) where
+  PgTag x <>: PgTag xs = PgTag (x, xs)
+
+instance PgTaggedAppend (a :: k) b (as :: k) bs [a, as] (b, bs) where
+  PgTag x <>: PgTag xs = PgTag (x, xs)
+
 pgTag :: forall a b. b -> PgTagged a b
 pgTag = coerce
 
@@ -146,3 +161,15 @@ instance (ToRow (Only a), ToRow (PgTagged (n2 ': ns) as))
     toRow
       = toRow @(Only a PG.:. PgTagged (n2 ': ns) as)
       . ((PG.:.) <$> fst <*> snd) . coerce
+
+-- data SomeFieldVal sch t where
+--   SomeFieldVal
+--     :: forall fld v sch tab. CRecordInfo sch tab (PgTagged fld v)
+--     => PgTagged fld v -> SomeFieldVal sch tab
+
+-- (=:) :: forall sch t v. forall fld ->
+--   CRecordInfo sch t (PgTagged fld v) => v -> SomeFieldVal sch t
+-- fld =: val = SomeFieldVal (pgTag @fld val)
+
+-- instance CRecordInfo sch t (SomeFieldVal sch t) where
+--   type TRecordInfo sch t (SomeFieldVal sch t)
