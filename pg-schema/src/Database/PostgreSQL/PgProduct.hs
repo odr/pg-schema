@@ -15,6 +15,8 @@ import Data.Data (Typeable)
 data a :.. b = a :.. b deriving (Generic, Show)
 -- ^ ':.' but with all needed instances
 
+infixr 1 :..
+
 instance (CRecordInfo sch t r1, CRecordInfo sch t r2) =>
   CRecordInfo sch t (r1 :.. r2) where
   type TRecordInfo sch t (r1 :.. r2) =

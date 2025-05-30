@@ -57,16 +57,16 @@ pattern PgTag b = PgTagged (Tagged b)
 (=:) _ = coerce
 infixr 5 =:
 
-class PgTaggedAppend a b as bs as' bs' | a as -> as', b bs -> bs' where
-  (<>:) :: PgTagged a b -> PgTagged as bs -> PgTagged as' bs'
+-- class PgTaggedAppend a b as bs as' bs' | a as -> as', b bs -> bs' where
+--   (<>:) :: PgTagged a b -> PgTagged as bs -> PgTagged as' bs'
 
-infixr 1 <>:
+-- infixr 1 <>:
 
-instance PgTaggedAppend (a :: k) b (as :: [k]) bs (a : as) (b, bs) where
-  PgTag x <>: PgTag xs = PgTag (x, xs)
+-- instance PgTaggedAppend (a :: k) b (as :: [k]) bs (a : as) (b, bs) where
+--   PgTag x <>: PgTag xs = PgTag (x, xs)
 
-instance PgTaggedAppend (a :: k) b (as :: k) bs [a, as] (b, bs) where
-  PgTag x <>: PgTag xs = PgTag (x, xs)
+-- instance PgTaggedAppend (a :: k) b (as :: k) bs [a, as] (b, bs) where
+--   PgTag x <>: PgTag xs = PgTag (x, xs)
 
 pgTag :: forall a b. b -> PgTagged a b
 pgTag = coerce
