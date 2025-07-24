@@ -4,13 +4,14 @@ import Data.List as L
 import Data.Singletons
 import Data.String
 import Data.Text as T
+import Prelude as P
 
 
 fromText :: IsString t => Text -> t
 fromText = fromString . T.unpack
 
 show' :: (IsString b, Show a) => a -> b
-show' = fromString . show
+show' = fromString . P.show
 
 intercalate' :: Monoid a => a -> [a] -> a
 intercalate' a = mconcat . L.intersperse a
