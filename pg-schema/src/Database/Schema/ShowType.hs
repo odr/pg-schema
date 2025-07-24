@@ -4,13 +4,14 @@ import Data.List as L
 import Data.String
 import Data.Text as T
 import Database.Schema.Def
+import Prelude as P
 
 
 class ShowType a where
   showType :: a -> Text
 
 instance ShowType Text where
-  showType = fromString . show
+  showType = fromString . P.show
 
 instance ShowType a => ShowType (Maybe a) where
   showType Nothing  = "'Nothing"

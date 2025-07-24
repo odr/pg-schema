@@ -24,6 +24,7 @@ import Database.Schema.Def
 import Database.Types.EmptyField
 import GHC.Int
 import GHC.TypeLits as TL
+import Prelude as P
 import Type.Reflection
 #ifdef MK_ARBITRARY
 import Test.QuickCheck hiding (Fixed)
@@ -133,4 +134,4 @@ instance FromJSON PgOid where
   parseJSON = fmap (PgOid . read . ("Oid " ++)) . parseJSON
 
 instance ToJSON PgOid where
-  toJSON = toJSON . L.drop 4 . show . fromPgOid
+  toJSON = toJSON . L.drop 4 . P.show . fromPgOid

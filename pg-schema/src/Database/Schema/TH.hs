@@ -8,7 +8,8 @@ import Data.List as L
 import Data.Map as M
 import Data.Maybe as Mb
 import Data.String
-import Data.Text as T
+import Data.Text(Text)
+import qualified Data.Text as T
 import Data.Traversable
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow

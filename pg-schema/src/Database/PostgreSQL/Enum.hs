@@ -12,6 +12,7 @@ import Data.Text.Encoding as T
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
+import Prelude as P
 import Type.Reflection
 
 import Database.Schema.Def
@@ -57,7 +58,7 @@ fromText t = fmap fst . listToMaybe
   $ reads $ unpack $ ((toTitle (nnsName $ demote @t) <> "_") <>) t
 
 toText :: forall sch t. (Show (PGEnum sch t), ToStar t) => PGEnum sch t -> Text
-toText = T.drop (T.length (nnsName $ demote @t) + 1) . pack . show
+toText = T.drop (T.length (nnsName $ demote @t) + 1) . pack . P.show
 
 #ifdef MK_ARBITRARY
 instance (Bounded (PGEnum sch t), Enum (PGEnum sch t)) =>
@@ -67,7 +68,7 @@ instance (Bounded (PGEnum sch t), Enum (PGEnum sch t)) =>
 
 #ifdef MK_FLAT
 instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
-  encode = F.encode . show
+  encode = F.encode . P.show
   decode = read <$> F.decode
-  size = F.size . show
+  size = F.size . P.show
 #endif

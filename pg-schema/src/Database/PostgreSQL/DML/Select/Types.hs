@@ -6,7 +6,7 @@ import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Kind
 import Data.List.NonEmpty as NE
 import Data.String
-import Data.Text as T
+import Data.Text(Text)
 import Data.Type.Bool
 import Data.Type.Equality
 import Database.PostgreSQL.Convert

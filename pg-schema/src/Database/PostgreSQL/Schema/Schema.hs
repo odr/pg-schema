@@ -186,19 +186,19 @@ updateSchemaFile'  verbose fileName connStr moduleName schName genNames =
       conn <- connectPostgreSQL connStr
       P.putStrLn "Trying to get schema"
       (schema,h) <- ((,) <$> id <*> hash) <$> getSchema conn genNames
-      P.putStrLn $ "New hash: " <> show h
+      P.putStrLn $ "New hash: " <> P.show h
       P.putStrLn "Trying to get old hash"
       needGen <- if fe
         then do
           mbhs
             <- L.find ((== ["hashSchema","="]) . L.take 2) . L.map T.words . lines'
             <$> T.readFile fileName
-          P.putStrLn $ "Old hash: " <> show mbhs
+          P.putStrLn $ "Old hash: " <> P.show mbhs
           pure $ case mbhs of
-            Just [_,_,x] | x == fromString (show h) -> False
+            Just [_,_,x] | x == fromString (P.show h) -> False
             _                                       -> True
         else pure True
-      P.putStrLn $ "Need to generate file: " <> show needGen
+      P.putStrLn $ "Need to generate file: " <> P.show needGen
       when needGen do
         T.writeFile fileName $ moduleText h schema
         when verbose $ print schema

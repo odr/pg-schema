@@ -3,7 +3,8 @@ module Database.Schema.Gen where
 import Data.List as L
 import Data.Map as M
 import Data.String
-import Data.Text as T
+import Data.Text(Text)
+import qualified Data.Text as T
 import Database.Schema.Def
 import Database.Schema.ShowType
 
@@ -27,7 +28,7 @@ textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
         = "data instance PGEnum " <> st <> "\n  = "
         <> showSplit' "|" 2 70
           ( T.intercalate " | "
-            $ ((toTitle (nnsName typ) <> "_") <>) <$> typEnum )
+            $ ((T.toTitle (nnsName typ) <> "_") <>) <$> typEnum )
         <> "  deriving (Show, Read, Ord, Eq, Generic, Bounded, Enum)\n\n"
         <> "instance Hashable (PGEnum " <> st <> ")\n\n"
         <> "instance NFData (PGEnum " <> st <> ")\n\n"
