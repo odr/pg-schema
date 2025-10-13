@@ -201,7 +201,7 @@ updateSchemaFile'  verbose fileName connStr moduleName schName genNames =
       P.putStrLn $ "Need to generate file: " <> P.show needGen
       when needGen do
         T.writeFile fileName $ moduleText h schema
-        when verbose $ print schema
+      when verbose $ print schema
       pure needGen
   where
     moduleText h = genModuleText moduleName schName h . getDefs
