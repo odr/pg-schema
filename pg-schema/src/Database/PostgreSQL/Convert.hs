@@ -129,8 +129,7 @@ instance Eq PgOid where _ == _ = True
   -- e.g. if we recreate some table or constraint
 
 instance Hashable PgOid where
-  hash _ = 0
-  hashWithSalt _ _ = 0
+  hashWithSalt s _ = hashWithSalt s ()
 
 instance FromJSON PgOid where
   parseJSON = fmap (PgOid . read . ("Oid " ++)) . parseJSON
