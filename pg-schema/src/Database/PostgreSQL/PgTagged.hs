@@ -28,8 +28,9 @@ import Flat as F
 
 
 newtype PgTagged a b = PgTagged (Tagged a b)
+  deriving stock (Read, Show)
   deriving newtype
-  ( Eq, Read, Show, Ord, Functor, Applicative, Monad, Foldable, Monoid
+  ( Eq, Ord, Functor, Applicative, Monad, Foldable, Monoid
   , Semigroup, Num, Real, Integral, Enum, Bounded, RealFloat, RealFrac, Floating
   , Fractional, IsString )
 
