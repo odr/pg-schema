@@ -92,7 +92,8 @@ instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
 
 -- Char has no ToField instance so make own char
 newtype PgChar = PgChar { unPgChar :: Char }
-  deriving (Show, Eq, Read, Ord, FromField, Enum, Bounded, FromJSON, ToJSON
+  deriving stock (Show, Read)
+  deriving newtype (Eq, Ord, FromField, Enum, Bounded, FromJSON, ToJSON
     , Hashable)
 
 instance ToField PgChar where
@@ -102,8 +103,8 @@ instance ToField PgChar where
 newtype PgArr a = PgArr { unPgArr :: [a] }
   -- ^ PGArray has no JSON instances. [] has JSON, but no PG.
   -- This one has both.
-  deriving stock Traversable
-  deriving newtype (Show, Eq, Ord, Read, FromJSON, ToJSON, Functor
+  deriving stock (Traversable, Show, Read)
+  deriving newtype (Eq, Ord, FromJSON, ToJSON, Functor
     , Applicative, Monad, MonadZip, Foldable, Hashable, Semigroup, Monoid)
 #ifdef MK_ARBITRARY
   deriving newtype Arbitrary
@@ -120,7 +121,8 @@ instance ToField a => ToField (PgArr a) where
 
 --
 newtype PgOid = PgOid { fromPgOid :: Oid }
-  deriving (Show, Read, FromField, ToField)
+  deriving stock (Show, Read)
+  deriving newtype (FromField, ToField)
 
 instance Eq PgOid where _ == _ = True
   -- we don't want to distinguish oids but names instead

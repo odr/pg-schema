@@ -20,9 +20,9 @@ import Flat
 
 
 newtype SchList a = SchList { getSchList :: [a] }
-  deriving stock Traversable
+  deriving stock (Traversable, Show)
   deriving newtype
-    ( Show, Eq, Ord, FromJSON, ToJSON, Hashable, Semigroup, Monoid
+    ( Eq, Ord, FromJSON, ToJSON, Hashable, Semigroup, Monoid
     , Functor, Applicative, Alternative, Foldable, IsList
     , Monad )
 #ifdef MK_ARBITRARY
