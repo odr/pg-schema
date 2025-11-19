@@ -10,7 +10,7 @@ Look at [Tutorial](https://github.com/odr/pg-schema/tree/master/pg-schema-tutori
 In compile time system information is getting from DB: tables, keys (private, unique, foreign), types (including arrays and enumerations). All information is moved to Type Level. I.e. you can write any statically-checked functions. E.g. there is a static guarantees that all db-field could be convert to haskell-field.
 
 There are two ways of generation this info:
-- file generation (recommended). It can be done in project's Setup.hs. In this case on each compilation db will checked and info will be regenerated if there are some changes (checking is very fast). If db is not available you will use file which was generated before
+- file generation (recommended). It can be done in project's Setup.hs. In this case on each compilation db will checked and info will be regenerated if there are some changes (checking is very fast). If db is not available you will use file which was generated before. As far as Setup.hs looks deprecated making separate app to generate db is preferred. It is convenient to check correspondence between real database and generated schema on CI by running this app.
 - TH (obsolete + convenient for demonstration)
 
 For data selection you can create regular haskell records with field names corresponding db-names (like in aeson). Besides that you can use fields with name of FK-constraints (from or to root table). Some small instances are generated for data-record by TH and then you can populate it with data _without writing sql_ at all. It allows to get json-like data tree in one request (really, it is one SELECT to DB). On each level of tree you can set safe conditions (where, order by, limit/offset) using small EDSL.
