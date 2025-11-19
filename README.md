@@ -17,4 +17,5 @@ For data selection you can create regular haskell records with field names corre
 
 All of this with static guarantees.
 
-DML (Insert/Update/Delete) should be done later.
+Select and Insert operations are implemented. Update and Delete are implemented only for single table. Multi-table Upsert is planned.
+
