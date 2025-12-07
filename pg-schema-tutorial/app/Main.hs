@@ -127,7 +127,7 @@ data CustomerI = MkCustomerI
   }
   deriving Generic
 
-data CompanyI = MkCompanyI
+newtype CompanyI = MkCompanyI
   { name :: Text }
   deriving Generic
 
@@ -160,11 +160,11 @@ deriveQueryRecord P.id ''Sch (tabInfoMap @Sch)
   , ((''Address, [['A1,'B1],['A2,'B1]]), "sch" ->> "addresses")
   , ((''City, [['A1,'B1],['A2,'B1]]), "sch" ->> "cities")
   , ((''AddressRev, [['A1,'B1],['A2,'B1]]), "sch" ->> "addresses")
-  , ((''OrdPosI, []), ("sch" ->> "order_positions"))
-  , ((''OrderI, []), ("sch" ->> "orders"))
-  , ((''CustomerI, []), ("sch" ->> "customers"))
-  , ((''CompanyI, []), ("sch" ->> "companies"))
-  , ((''AddressI, []), ("sch" ->> "addresses"))
+  , ((''OrdPosI, []), "sch" ->> "order_positions")
+  , ((''OrderI, []), "sch" ->> "orders")
+  , ((''CustomerI, []), "sch" ->> "customers")
+  , ((''CompanyI, []), "sch" ->> "companies")
+  , ((''AddressI, []), "sch" ->> "addresses")
   , ((''OrdPos, []), "sch" ->> "order_positions")
   , ((''Order, []), "sch" ->> "orders")
   , ((''CustId, []), "sch" ->> "customers")
@@ -213,7 +213,7 @@ main = do
       , MkAddressI (Just "street2") (Just "zip2") (Just mempty) Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
   as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
-    <- fmap fst $ I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
+    <- fst <$> I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
   T.putStrLn "\n\n\n"
   T.putStrLn $ I2.insertJSONText_ @AddressI Sch (NSC "addresses")
   T.putStrLn "\n\n\n"

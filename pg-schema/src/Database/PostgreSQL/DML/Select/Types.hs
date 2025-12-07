@@ -3,7 +3,6 @@ module Database.PostgreSQL.DML.Select.Types where
 
 import Control.Monad.RWS
 import Data.Aeson (FromJSON(..), ToJSON(..))
-import Data.Foldable as F
 import Data.Kind
 import Data.List.NonEmpty as NE
 import Data.String
@@ -150,28 +149,11 @@ pchild :: forall sch. forall name ->
   Cond sch (RdFrom (TRelDef sch name)) -> Cond sch (RdTo (TRelDef sch name))
 pchild name = Child @name
 
-{-# INLINE pchildCond #-}
--- | check condition on child table only if condition is not Empty
-pchildCond :: forall sch. forall name ->
-  (CTabDef sch (RdFrom (TRelDef sch name)), CRelDef sch name) =>
-  TabParam sch (RdFrom (TRelDef sch name)) ->
-  Cond sch (RdFrom (TRelDef sch name)) -> Cond sch (RdTo (TRelDef sch name))
-pchildCond _ _ EmptyCond = EmptyCond
-pchildCond name tab cond = pchild name tab cond
-
 {-# INLINE pparent #-}
 pparent :: forall sch. forall ref ->
   ( CTabDef sch (RdTo (TRelDef sch ref)) , CRelDef sch ref ) =>
   Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
 pparent name = Parent @name @sch
-
-{-# INLINE pparentCond #-}
--- | check condition on parent table only if condition is not Empty
-pparentCond :: forall sch. forall ref ->
-  ( CTabDef sch (RdTo (TRelDef sch ref)) , CRelDef sch ref ) =>
-  Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
-pparentCond _ EmptyCond = EmptyCond
-pparentCond name cond = Parent @name @sch cond
 
 {-# INLINE pnot #-}
 pnot :: Cond sch tab -> Cond sch tab
@@ -188,15 +170,6 @@ pin :: forall name -> forall sch tab v.
     (FdNullable (TFldDef sch tab name)) v ) =>
   NonEmpty v -> Cond sch tab
 pin name = In @name
-
--- | IN condition if list of values is not empty. Otherwise: empty condition
-pinNonEmpty :: forall name -> forall sch tab v.
-  ( CFldDef sch tab name, Show v, ToField v
-  , CanConvert sch (FdType (TFldDef sch tab name))
-    (FdNullable (TFldDef sch tab name)) v
-  , Foldable f) =>
-  f v -> Cond sch tab
-pinNonEmpty name = maybe EmptyCond (pin name) . nonEmpty . F.toList
 
 {-# INLINE (&&&) #-}
 {-# INLINE (|||) #-}

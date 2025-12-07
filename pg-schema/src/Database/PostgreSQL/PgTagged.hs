@@ -106,7 +106,6 @@ instance (ToJSON (PgTagged n r), ToJSON (PgTagged (n1 ': ns) r1))
       (Object x1, Object x2) -> Object $ x1 <> x2
       _ -> error "PgTagged instances should be always objects"
 
-
 instance
   (FromJSON a, Typeable a, KnownSymbol n)
   => FromField (PgTagged (n::Symbol) a) where

@@ -54,8 +54,8 @@ instance (Show (PGEnum sch t), ToStar t) => ToJSON (PGEnum sch t) where
 fromText
   :: forall sch t. (Read (PGEnum sch t), ToStar t)
   => Text -> Maybe (PGEnum sch t)
-fromText t = fmap fst . listToMaybe
-  $ reads $ unpack $ ((toTitle (nnsName $ demote @t) <> "_") <>) t
+fromText t = fmap fst $ listToMaybe
+  $ reads $ unpack $ toTitle (nnsName $ demote @t) <> "_" <> t
 
 toText :: forall sch t. (Show (PGEnum sch t), ToStar t) => PGEnum sch t -> Text
 toText = T.drop (T.length (nnsName $ demote @t) + 1) . pack . P.show

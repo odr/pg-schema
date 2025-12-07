@@ -209,9 +209,9 @@ type family AllPlain sch tab r where
   AllPlain sch t r = Assert
     (AllPlainB (TRecordInfo sch t r))
     (TL.TypeError
-      ((TL.Text "Not all fields in record are 'plain' fields "
+      (TL.Text "Not all fields in record are 'plain' fields "
         :$$: TL.Text "Table: " :<>: TL.ShowType t
         :$$: TL.Text "Type: " :<>: TL.ShowType r
-        :$$: TL.Text "Record Info: " :<>: TL.ShowType (TRecordInfo sch t r))))
+        :$$: TL.Text "Record Info: " :<>: TL.ShowType (TRecordInfo sch t r)))
 
 type UpdateReturning sch t r r' = (CRecordInfo sch t r, CRecordInfo sch t r')

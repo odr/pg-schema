@@ -23,7 +23,7 @@ import Util.TH.LiftType
 
 
 applyTypes :: Name -> [[Name]] -> Q [(Type, [(String, Type)])]
-applyTypes rn ((\case {[] -> [[]]; x -> x}) -> npss) = do
+applyTypes rn (\case {[] -> [[]]; x -> x} -> npss) = do
   (fmap nt -> fs, fmap bndrType -> bndrs) <- reify rn >>= \case
     TyConI (DataD _ _ bndrs _ [RecC _ fs] _) -> pure (fs, bndrs)
     TyConI (NewtypeD _ _ bndrs _ (RecC _ fs) _) -> pure (fs, bndrs)
@@ -32,7 +32,7 @@ applyTypes rn ((\case {[] -> [[]]; x -> x}) -> npss) = do
       pure ([],[])
   let dicts = L.zipWith (\(vn,c) tn -> (vn, c tn)) bndrs <$> npss
   pure $ dicts <&> \ds ->
-    ( L.foldl' (\ts t -> AppT ts t ) (ConT rn) $ snd <$> ds
+    ( L.foldl' AppT (ConT rn) $ snd <$> ds
     , fmap (applySubstitution $ M.fromList ds) <$> fs)
   where
     bndrType = \case -- TODO: investigate and make it better
@@ -56,7 +56,7 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
       fieldInfo <- mkFieldInfo
       (,)
         <$> [| FieldInfo (T.pack $(stringE sname)) (T.pack $(stringE $ toDbName sname))
-          $ mkRecField @($(conT sch)) @($(liftType $ fieldInfo.fieldKind)) @($(pure ft))|]
+          $ mkRecField @($(conT sch)) @($(liftType fieldInfo.fieldKind)) @($(pure ft))|]
         <*> [t| '( $(liftType fieldInfo), $(pure ft)) |]
       where
         tDbName = fromString @Text $ toDbName sname
@@ -100,8 +100,8 @@ deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> d
   fss <- applyTypes n nss
   let
     mStr = M.fromList
-      $ Mb.mapMaybe ((\s -> let s' = flm s in (s,s') <$ guard (s /= s')))
-      $ nub $ fmap fst $ foldMap snd fss
+      $ Mb.mapMaybe (\s -> let s' = flm s in (s,s') <$ guard (s /= s'))
+      $ nub $ fst <$> foldMap snd fss
   L.concat <$> for fss \fs@(t,_) ->
     L.concat <$> sequenceA
       [ [d|instance FromJSON $(pure t) where

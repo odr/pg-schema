@@ -66,7 +66,7 @@ insertJSONText'
 insertJSONText' mapTypes ir qfs = unlines'
   [ maybe
     "create or replace procedure pg_temp.__ins(data_0 jsonb) as $$"
-    (\_ -> "create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$")
+    (const "create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$")
     mbRes
   , "declare"
   , unlines' $ ("  " <>) <$> decl
@@ -120,8 +120,6 @@ insertJSONTextM mapTypes ri qfs fromFields toVars = do
           _ ->
             "(" <> rowN <> ".value->>'" <> fromText dbn <> "')::"
               <> fromText (qualName def.fdType)
-          where
-
         rets
           | P.null qplains && P.null ichildren = []
           | otherwise = ["    returning " <> intercalate' ", " qretFlds

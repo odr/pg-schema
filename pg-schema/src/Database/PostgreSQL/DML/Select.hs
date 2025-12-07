@@ -27,7 +27,7 @@ selectSch :: forall sch tab r.
   Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
 selectSch conn qp =
   let p@(sql,fs) = selectText @sch @tab @r qp
-  in fmap (,p) $ query conn (fromString $ unpack sql) fs
+  in (,p) <$> query conn (fromString $ unpack sql) fs
 
 selectQuery :: forall sch tab r. (CRecordInfo sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
@@ -110,7 +110,7 @@ fieldM fi = case fi.fieldKind of
       (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = fi.fieldDbName : qrPath })
       (traverse fieldM ri.fields)
     let val = fldt flds
-    pure $ (val, fi.fieldDbName, val <> " is null")
+    pure (val, fi.fieldDbName, val <> " is null")
     where
       nullable = L.any (fdNullable . fromDef) refs
       joinText n1 n2 =
