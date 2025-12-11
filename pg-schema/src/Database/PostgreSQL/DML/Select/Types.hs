@@ -20,9 +20,9 @@ import PgSchema.Util
 
 
 data QueryParam sch t = QueryParam
-  { qpConds :: ![CondWithPath sch t]
-  , qpOrds  :: ![OrdWithPath sch t]
-  , qpLOs   :: ![LimOffWithPath sch t] }
+  { qpConds     :: ![CondWithPath sch t]
+  , qpOrds      :: ![OrdWithPath sch t]
+  , qpLOs       :: ![LimOffWithPath sch t] }
 
 qpEmpty :: forall sch t. QueryParam sch t
 qpEmpty = QueryParam [] [] []
@@ -174,8 +174,12 @@ pin name = In @name
 {-# INLINE (&&&) #-}
 {-# INLINE (|||) #-}
 (&&&), (|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
-(&&&) = BoolOp And
-(|||) = BoolOp Or
+EmptyCond &&& cond = cond
+cond &&& EmptyCond = cond
+c1 &&& c2 = BoolOp And c1 c2
+EmptyCond ||| cond = cond
+cond ||| EmptyCond = cond
+c1 ||| c2 = BoolOp Or c1 c2
 infixl 2 |||
 infixl 3 &&&
 --
