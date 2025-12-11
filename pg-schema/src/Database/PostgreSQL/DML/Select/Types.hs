@@ -171,8 +171,6 @@ pin :: forall name -> forall sch tab v.
   NonEmpty v -> Cond sch tab
 pin name = In @name
 
-{-# INLINE (&&&) #-}
-{-# INLINE (|||) #-}
 (&&&), (|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
 EmptyCond &&& cond = cond
 cond &&& EmptyCond = cond
