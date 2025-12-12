@@ -19,12 +19,12 @@ source-repository head
   location: https://github.com/odr/pg-schema
 
 flag flat
-  description: Make Flat instances for all types (Enums, PgTagged, SchList)
+  description: Make Flat instances for all types (Enums, PgTagged, SchList, PgDistinct)
   manual:      False
   default:     False
 
 flag arbitrary
-  description: Make Arbitrary instances for all types (Enums, PgTagged, SchList)
+  description: Make Arbitrary instances for all types (Enums, PgTagged, SchList, PgDistinct)
   manual:      False
   default:     False
 
@@ -40,6 +40,7 @@ library
     Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Update
     Database.PostgreSQL.DML.Update.Types
+    Database.PostgreSQL.PgDistinct
     Database.PostgreSQL.PgProduct
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog

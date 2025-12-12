@@ -5,8 +5,6 @@
 module Database.Schema.Rec where
 
 import Data.Kind
-import Data.Maybe
-import Data.Maybe.Singletons
 import Data.Singletons.TH
 import Data.Text as T (Text, pack)
 import Database.PostgreSQL.Convert
@@ -29,7 +27,7 @@ singletons [d|
 
   data RecField' s p
     = RFEmpty s
-    | RFPlain (FldDef' s)
+    | RFPlain Bool (FldDef' s)
     | RFToHere p [Ref' s]
     | RFFromHere p [Ref' s]
     deriving Show
@@ -49,7 +47,7 @@ promote [d|
   getRecField tabName (TabDef flds _ _) froms tos f s = find1 flds
     where
       find1 []     = find2 froms
-      find1 (x:xs) = if x == s then RFPlain (f tabName s) else find1 xs
+      find1 (x:xs) = if x == s then RFPlain False (f tabName s) else find1 xs
       find2 []         = find3 tos
       find2 ((a,b):xs) = if nnsName a == s then toFrom b else find2 xs
       find3 []         = RFEmpty s
@@ -93,15 +91,15 @@ promote [d|
   allPlainB :: [(FieldInfo' s p, t)] -> Bool
   allPlainB flds = all (isPlain . fieldKind . fst) flds
     where
-      isPlain (RFPlain _) = True
+      isPlain (RFPlain _ _) = True
       isPlain _ = False
 
-  plainInfos :: [(FieldInfo' s p, t)] -> [(NameNS' s, Bool, t)]
-  plainInfos = mapMaybe conv
-    where
-      conv (fi,t) = case fieldKind fi of
-        RFPlain fd -> Just (fdType fd, fdNullable fd, t)
-        _ -> Nothing
+  -- plainInfos :: [(FieldInfo' s p, t)] -> [(NameNS' s, Bool, t)]
+  -- plainInfos = mapMaybe conv
+  --   where
+  --     conv (fi,t) = case fieldKind fi of
+  --       RFPlain _ fd -> Just (fdType fd, fdNullable fd, t)
+  --       _ -> Nothing
   |]
 
 -- subRec :: [FieldInfo' (NameNS' s) s] -> [FieldInfo' (NameNS' s) s] -> Bool
@@ -127,6 +125,7 @@ type Ref = Ref' Text
 
 data RecordInfo = RecordInfo
   { tabName :: NameNS
+  , isDistinct :: Bool
   , fields :: [FieldInfo RecordInfo] }
   deriving Show
 
@@ -138,7 +137,7 @@ instance LiftType Ref where
 instance LiftType p => LiftType (RecField p) where
   liftType = \case
     RFEmpty s -> [t| 'RFEmpty $(liftType s) |]
-    RFPlain fd -> [t| 'RFPlain $(liftType fd) |]
+    RFPlain b fd -> [t| 'RFPlain $(liftType b) $(liftType fd) |]
     RFToHere t rr -> [t| 'RFToHere $(liftType t) $(liftType rr) |]
     RFFromHere t rr -> [t| 'RFFromHere $(liftType t) $(liftType rr) |]
 
@@ -153,16 +152,16 @@ class MkRecField sch (rf :: RecFieldK NameNSK) t where
 
 instance ToStar x => MkRecField sch (RFEmpty x) EmptyField where
   mkRecField = RFEmpty (demote @x)
-instance MkRecField sch (RFPlain x) EmptyField where
+instance MkRecField sch (RFPlain b x) EmptyField where
   mkRecField = RFEmpty $ T.pack "empty"
 instance MkRecField sch (RFToHere tab x) EmptyField where
   mkRecField = RFEmpty $ T.pack "empty"
 instance MkRecField sch (RFFromHere tab x) EmptyField where
   mkRecField = RFEmpty $ T.pack "empty"
 instance {-# OVERLAPPABLE #-}
-  (ToStar x, CanConvert sch (FdType x) (FdNullable x) t) =>
-    MkRecField sch (RFPlain x) t where
-      mkRecField = RFPlain (demote @x)
+  (ToStar x, ToStar b, CanConvert sch (FdType x) (FdNullable x) t) =>
+    MkRecField sch (RFPlain b x) t where
+      mkRecField = RFPlain (demote @b) (demote @x)
 instance {-# OVERLAPPABLE #-} (ToStar x, CRecordInfo sch tab t) =>
   MkRecField sch (RFToHere tab x) t where
     mkRecField = RFToHere (getRecordInfo @sch @tab @t) (demote @x)
@@ -185,7 +184,7 @@ class
 
 instance ToStar t => CRecordInfo sch t EmptyField where
   type TRecordInfo sch t EmptyField = '[]
-  getRecordInfo = RecordInfo (demote @t) []
+  getRecordInfo = RecordInfo (demote @t) False []
 
 type family IsMaybe (x :: Type) :: Bool where
   IsMaybe (Maybe a) = 'True

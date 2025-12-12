@@ -114,7 +114,6 @@ instance
 instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
   toField = toJSONField
 
-
 instance (MkRecField sch (FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
   , ToStar n, ToStar t) =>
   CRecordInfo sch t (PgTagged (n::Symbol) r) where
@@ -122,7 +121,7 @@ instance (MkRecField sch (FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r)
     (GetRecField t (TTabDef sch t) (TTabRelFrom sch t) (TTabRelTo sch t)
       (TFldDefSym1 sch) n), r)
     ]
-  getRecordInfo = RecordInfo (demote @t) [FieldInfo (demote @n) (demote @n)
+  getRecordInfo = RecordInfo (demote @t) False [FieldInfo (demote @n) (demote @n)
     $ mkRecField @sch @(FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) @r]
 
 instance

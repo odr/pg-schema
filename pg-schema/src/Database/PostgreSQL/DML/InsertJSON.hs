@@ -150,7 +150,7 @@ insertJSONTextM mapTypes ri qfs fromFields toVars = do
   pure mbArrN
   where
     splitFields = P.foldr (\fi -> case fi.fieldKind of
-      (RFPlain fd)  -> first ((fi.fieldDbName, fd):)
+      (RFPlain _ fd)  -> first ((fi.fieldDbName, fd):)
       (RFToHere ri' refs) -> second (((fi.fieldDbName, refs), ri'):)
       _ -> P.id) mempty
     (iplains, ichildren) = splitFields ri.fields

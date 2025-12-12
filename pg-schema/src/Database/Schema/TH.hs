@@ -11,6 +11,7 @@ import Data.String
 import Data.Text(Text)
 import qualified Data.Text as T
 import Data.Traversable
+import Database.PostgreSQL.PgDistinct
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
@@ -61,11 +62,12 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
       where
         tDbName = fromString @Text $ toDbName sname
         mkFieldInfo = do
+
           (kind :: RecField NameNS) <- maybe
             (fail $ "can't determine kind of field '" <> sname
               <> "' for table " <> show tab)
             pure
-            $ fmap RFPlain ((tinfo.tiFlds :: Map Text FldDef) M.!? tDbName)
+            $ fmap (RFPlain (isDistinct ft)) ((tinfo.tiFlds :: Map Text FldDef) M.!? tDbName)
               <|> (toFrom =<< tinfo.tiFrom M.!? (tab.nnsNamespace ->> tDbName))
               <|> (toTo . snd <=<
                 L.find ((== tDbName) . (.nnsName) . fst) $ M.toList tinfo.tiTo)
@@ -74,6 +76,10 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
             , fieldDbName = tDbName
             , fieldKind   = kind }
           where
+            isDistinct = \case
+              AppT t _ -> isDistinct t
+              ConT n -> n == ''PgDistinct
+              _ -> False
             toFrom rd = RFFromHere rd.rdTo <$> traverse conv rd.rdCols
               where
                 conv (fromName, toName) = do
@@ -91,7 +97,7 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
       instance CRecordInfo $(conT sch) $(liftType tab) $(pure rt) where
         type TRecordInfo $(conT sch) $(liftType tab) $(pure rt) =
           $(pure $ toPromotedList $ snd <$> fis)
-        getRecordInfo = RecordInfo tab $(pure $ ListE $ fst <$> fis)
+        getRecordInfo = RecordInfo tab False $(pure $ ListE $ fst <$> fis)
       |]
 
 deriveQueryRecord :: (String -> String) -> Name
