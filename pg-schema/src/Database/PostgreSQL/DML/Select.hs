@@ -51,16 +51,16 @@ two (a,b,_) = (a,b)
 third :: (a,b,c) -> c
 third (_,_,c) = c
 
-jsonPairing :: [FieldTexts] -> Text
+jsonPairing :: [(Text, Text)] -> Text
 jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
   where
-    pairs = mapMaybe (\x -> if "$EmptyField" `T.isSuffixOf` x.alias then Nothing
-      else Just $ "'" <> x.alias <> "'," <> x.nameQual) fs
+    pairs = mapMaybe (\(a,b) -> if "$EmptyField" `T.isSuffixOf` b then Nothing
+      else Just $ "'" <> b <> "'," <> a) fs
 
 selectM :: MonadQuery sch t m => RecordInfo -> m Text
 selectM ri = do
   QueryRead {..} <- ask
-  flds <- traverse fieldM ri.fields
+  (fmap two -> flds) <- traverse fieldM ri.fields
   joins <- gets $ L.reverse . qsJoins
   let
     (condText, condPars) =
@@ -69,56 +69,34 @@ selectM ri = do
       ordByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpOrds
     sel
       | qrIsRoot =
-        T.intercalate "," $ L.map (\x -> x.nameQual <> " \"" <> x.alias <> "\"") flds
+        T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") flds
       | otherwise = jsonPairing flds
     whereText
       | condText == mempty = ""
       | otherwise = " where " <> condText
-    distinctFields = T.intercalate ", " $ (.nameQual) <$> L.filter (.distinct) flds
-    distinctText
-      | ri.isDistinct = " distinct "
-      | T.null distinctFields = ""
-      | otherwise = " distinct on (" <> distinctFields <> ") "
-    ordText'
-      | ri.isDistinct = ordText
-      | T.null distinctFields = ordText
-      | T.null ordText = distinctFields
-      | otherwise = distinctFields <> ", " <> ordText
     orderText
-      | ordText' == mempty = ""
-      | otherwise = " order by " <> ordText'
+      | ordText == mempty = ""
+      | otherwise = " order by " <> ordText
     qsLimOff = loByPath (L.reverse qrPath) $ qpLOs qrParam
   modify (\qs -> qs { qsHasWhere = whereText /= mempty })
   unless qrIsRoot $ modify (\qs -> qs { qsOrd = orderText, qsLimOff })
   tell $ condPars <> ordPars
-  pure $ "select "
-    <> distinctText
-    <> sel
+  pure $ "select " <> sel
     <> " from " <> qualName ri.tabName <> " t" <> show' qrCurrTabNum
     <> " " <> T.unwords joins
     <> whereText
     <> (if qrIsRoot then orderText else "")
     <> (if qrIsRoot then qsLimOff else "")
 
-data FieldTexts = FieldTexts
-  { nameQual :: Text
-  , alias :: Text
-  , checkNull :: Text
-  , distinct :: Bool }
-  deriving Show
-
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
-fieldM :: MonadQuery sch tab m => FieldInfo RecordInfo -> m FieldTexts
+fieldM :: MonadQuery sch tab m => FieldInfo RecordInfo -> m (Text, Text, Text)
 fieldM fi = case fi.fieldKind of
-  RFEmpty s -> pure FieldTexts
-    { nameQual = "null", alias = s, checkNull = "true", distinct = False }
-  RFPlain b _ -> do
+  RFEmpty s -> pure ("null", s, "true")
+  RFPlain {} -> do
     n <- asks qrCurrTabNum
     let val = "t" <> show' n <> "." <> fi.fieldDbName
-    pure FieldTexts
-      { nameQual = val, alias = fi.fieldDbName
-      , checkNull = val <> " is null", distinct = b }
+    pure (val, fi.fieldDbName, val <> " is null")
   RFFromHere ri refs -> do
     QueryRead {..} <- ask
     modify \QueryState{qsLastTabNum, qsJoins} -> QueryState
@@ -132,9 +110,7 @@ fieldM fi = case fi.fieldKind of
       (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = fi.fieldDbName : qrPath })
       (traverse fieldM ri.fields)
     let val = fldt flds
-    pure $ FieldTexts
-      { nameQual = val, alias = fi.fieldDbName
-      , checkNull = val <> " is null", distinct = False }
+    pure (val, fi.fieldDbName, val <> " is null")
     where
       nullable = L.any (fdNullable . fromDef) refs
       joinText n1 n2 =
@@ -146,14 +122,14 @@ fieldM fi = case fi.fieldKind of
             | otherwise = ""
       fldt flds
         | nullable = "case when " <> isNull <>
-            " then null else " <> jsonPairing flds <> " end"
-        | otherwise = jsonPairing flds
+            " then null else " <> jsonPairing (two <$> flds) <> " end"
+        | otherwise = jsonPairing $ two <$> flds
         where
-          isNull = T.intercalate " and " $ (.checkNull) <$> flds
+          isNull = T.intercalate " and " $ third <$> flds
   RFToHere ri refs -> do
     QueryRead{..} <- ask
     QueryState {qsLastTabNum, qsJoins} <- get
-    put $ QueryState (qsLastTabNum+1) [] False "" ""
+    modify (const $ QueryState (qsLastTabNum+1) [] False "" "")
     selText <- local
       (\qr -> qr
         { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False
@@ -165,9 +141,7 @@ fieldM fi = case fi.fieldKind of
       val = "array(" <> selText <> " " <> (if qsHasWhere then "and" else "where")
         <> " " <> refCond (qsLastTabNum+1) qrCurrTabNum refs
         <> qsOrd <> qsLimOff <> ")"
-    pure FieldTexts
-      { nameQual = "array_to_json(" <> val <> ")"
-      , alias = fi.fieldDbName, checkNull = val <> " = '{}'", distinct = False }
+    pure ("array_to_json(" <> val <> ")", fi.fieldDbName, val <> " = '{}'")
 
 refCond :: Int -> Int -> [Ref] -> Text
 refCond nFrom nTo = T.intercalate " and " . fmap compFlds
@@ -278,7 +252,7 @@ pgCond :: forall sch t . Int -> Cond sch t -> (Text, [SomeToField])
 pgCond n cond = evalRWS (convCond cond) ("q", pure n) 0
 
 pgOrd :: forall sch t. Int -> [OrdFld sch t] -> (Text, [SomeToField])
-pgOrd n ofs = evalRWS (convOrd ofs) ("o", pure n) 0
+pgOrd n cond = evalRWS (convOrd cond) ("o", pure n) 0
 
 withCondWithPath :: forall sch t r. (forall t'. Cond sch t' -> r) ->
   [Text] -> CondWithPath sch t -> Maybe r

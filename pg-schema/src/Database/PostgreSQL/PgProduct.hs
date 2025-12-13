@@ -23,7 +23,6 @@ instance (CRecordInfo sch t r1, CRecordInfo sch t r2) =>
     TRecordInfo sch t r1 ++ TRecordInfo sch t r2
   getRecordInfo = RecordInfo
     { tabName = r1.tabName
-    , isDistinct = False
     , fields = r1.fields <> r2.fields }
     where
       r1 = getRecordInfo @sch @t @r1

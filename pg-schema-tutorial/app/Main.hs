@@ -55,15 +55,15 @@ data B = B1 | B2
 
 data Address (a::A) (b::B) = MkAddress
   { street  :: Maybe Text
-  , home    :: PgDistinct (If (a == A1) (Maybe Text) EmptyField)
-  , app     :: PgDistinct (Maybe Text)
+  , home    :: If (a == A1) (Maybe Text) EmptyField
+  , app     :: Maybe Text
   , zipcode :: Maybe Text
   , phones  :: Maybe (PgArr Text)
   , numbers :: Maybe (PgArr Int32) }
   deriving Generic
 
 data City a b = MkCity
-  { name         :: PgDistinct (Maybe Text)
+  { name         :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
   , address_city :: SchList (Address a b) }
   deriving Generic
@@ -77,12 +77,12 @@ data AddressRev a b = MkAddressRev
   deriving Generic
 
 data Company = MkCompany
-  { name       :: PgDistinct Text
+  { name       :: Text
   , address_id :: Maybe Int32 }
   deriving Generic
 
 data Article = MkArticle
-  { name :: PgDistinct Text
+  { name :: Text
   , code :: Maybe Text }
   deriving Generic
 
@@ -128,7 +128,7 @@ data CustomerI = MkCustomerI
   deriving Generic
 
 newtype CompanyI = MkCompanyI
-  { name :: PgDistinct Text }
+  { name :: Text }
   deriving Generic
 
 data AddressI = MkAddressI
@@ -176,11 +176,11 @@ main :: IO ()
 main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selectText @Sch @(NSC "countries") @(PgDistinct Country) qpEmpty
+    [ selectText @Sch @(NSC "countries") @Country qpEmpty
     , selectText @Sch @(NSC "cities") @(City A1 B1) qpEmpty
     , selectText @Sch @(NSC "cities") @(City A2 B1) qpEmpty
     , selectText @Sch @(NSC "addresses") @(Address A1 B1) qpEmpty
-    , selectText @Sch @(NSC "addresses") @(PgDistinct (Address A2 B1)) qp
+    , selectText @Sch @(NSC "addresses") @(Address A2 B1) qp
     , selectText @Sch @(NSC "addresses") @(AddressRev A1 B1) qp
     , selectText @Sch @(NSC "addresses") @(AddressRev A2 B1) qp
     ]
