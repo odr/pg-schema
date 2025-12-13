@@ -5,6 +5,7 @@ module Database.PostgreSQL.DML.Select where
 import Control.Monad.RWS
 import Control.Monad
 import Data.Bifunctor
+import Data.Foldable as F
 import Data.Functor
 import Data.List as L
 import Data.List.NonEmpty as NE
@@ -67,6 +68,8 @@ selectM ri = do
       condByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpConds
     (ordText, ordPars) =
       ordByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpOrds
+    (distTexts, distPars) =
+      distByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpDistinct
     sel
       | qrIsRoot =
         T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") flds
@@ -75,13 +78,20 @@ selectM ri = do
       | condText == mempty = ""
       | otherwise = " where " <> condText
     orderText
-      | ordText == mempty = ""
-      | otherwise = " order by " <> ordText
+      | T.null ordText && T.null distTexts.orderBy = ""
+      | otherwise = " order by " <> T.intercalate ","
+        (L.filter (not . T.null) [distTexts.orderBy, ordText])
+    distinctText
+      | distTexts.distinct = " distinct "
+      | T.null distTexts.distinctOn = ""
+      | otherwise = " distinct on (" <> distTexts.distinctOn <> ") "
     qsLimOff = loByPath (L.reverse qrPath) $ qpLOs qrParam
   modify (\qs -> qs { qsHasWhere = whereText /= mempty })
   unless qrIsRoot $ modify (\qs -> qs { qsOrd = orderText, qsLimOff })
-  tell $ condPars <> ordPars
-  pure $ "select " <> sel
+  tell $ distPars <> condPars <> distPars <> ordPars
+  pure $ "select "
+    <> distinctText
+    <> sel
     <> " from " <> qualName ri.tabName <> " t" <> show' qrCurrTabNum
     <> " " <> T.unwords joins
     <> whereText
@@ -193,7 +203,7 @@ convCond = \case
   Cmp @n cmp v -> do
     tell [SomeToField v]
     qual @n <&> (<> " " <> showCmp cmp <> " ?")
-  In @n (toList -> vs) -> do
+  In @n (NE.toList -> vs) -> do
     tell (SomeToField <$> vs)
     qual @n <&> (<> " in (" <> T.intercalate "," ("?" <$ vs) <> ")")
   Null @n -> qual @n <&> (<> " is null")
@@ -252,7 +262,10 @@ pgCond :: forall sch t . Int -> Cond sch t -> (Text, [SomeToField])
 pgCond n cond = evalRWS (convCond cond) ("q", pure n) 0
 
 pgOrd :: forall sch t. Int -> [OrdFld sch t] -> (Text, [SomeToField])
-pgOrd n cond = evalRWS (convOrd cond) ("o", pure n) 0
+pgOrd n ord = evalRWS (convOrd ord) ("o", pure n) 0
+
+pgDist :: forall sch t. Int -> Dist sch t -> (DistTexts, [SomeToField])
+pgDist n dist = evalRWS (convDist dist) ("o", pure n) 0
 
 withCondWithPath :: forall sch t r. (forall t'. Cond sch t' -> r) ->
   [Text] -> CondWithPath sch t -> Maybe r
@@ -261,8 +274,7 @@ withCondWithPath f path (CondWithPath @path' cond) =
 
 withCondsWithPath :: forall sch t r. (forall t'. Cond sch t' -> r) ->
   [Text] -> [CondWithPath sch t] -> Maybe r
-withCondsWithPath f path =
-  join . L.find isJust . L.map (withCondWithPath f path)
+withCondsWithPath f path = join . L.find isJust . L.map (withCondWithPath f path)
 
 cwp :: forall path -> forall sch t t1.
   (t1 ~ TabOnPath sch t path, ToStar path) => Cond sch t1 -> CondWithPath sch t
@@ -272,21 +284,32 @@ rootCond :: Cond sch t -> CondWithPath sch t
 rootCond = cwp []
 
 condByPath :: Int -> [Text] -> [CondWithPath sch t] -> (Text, [SomeToField])
-condByPath num path =
-  fromMaybe mempty . withCondsWithPath (pgCond num) path
+condByPath num path = F.fold . withCondsWithPath (pgCond num) path
 
 ordByPath :: Int -> [Text] -> [OrdWithPath sch t] -> (Text, [SomeToField])
-ordByPath num path =
-  fromMaybe mempty . withOrdsWithPath (pgOrd num) path
+ordByPath num path = F.fold . withOrdsWithPath (pgOrd num) path
+
+distByPath :: Int -> [Text] -> [DistWithPath sch t] -> (DistTexts, [SomeToField])
+distByPath num path =
+  fromMaybe (emptyDistTexts, []) . withDistsWithPath (pgDist num) path
 
 withOrdWithPath :: forall sch t r. (forall t'. [OrdFld sch t'] -> r) ->
   [Text] -> OrdWithPath sch t -> Maybe r
-withOrdWithPath f path (OrdWithPath @p ord) =
-  f ord <$ guard (path == demote @p)
+withOrdWithPath f path (OrdWithPath @p ord) = f ord <$ guard (path == demote @p)
+
+withDistWithPath :: forall sch t r. (forall t'. Dist sch t' -> r) ->
+  [Text] -> DistWithPath sch t -> Maybe r
+withDistWithPath f path (DistWithPath @p dist) =
+  f dist <$ guard (path == demote @p)
+
 --
 withOrdsWithPath :: forall sch t r . (forall t'. [OrdFld sch t'] -> r) ->
   [Text] -> [OrdWithPath sch t] -> Maybe r
 withOrdsWithPath f path = join . L.find isJust . L.map (withOrdWithPath f path)
+
+withDistsWithPath :: forall sch t r . (forall t'. Dist sch t' -> r) ->
+  [Text] -> [DistWithPath sch t] -> Maybe r
+withDistsWithPath f path = join . L.find isJust . L.map (withDistWithPath f path)
 
 owp :: forall path -> forall sch t t'.
   (ToStar path, TabOnPath sch t path ~ t') =>
@@ -296,34 +319,42 @@ owp path = OrdWithPath @path
 rootOrd :: forall sch t. [OrdFld sch t] -> OrdWithPath sch t
 rootOrd = owp []
 
-convOrd :: forall sch tab. [OrdFld sch tab] -> CondMonad Text
-convOrd ofs = T.intercalate "," <$> traverse showFld ofs
+dwp :: forall path -> forall sch t t'.
+  (ToStar path, TabOnPath sch t path ~ t') =>
+  Dist sch t' -> DistWithPath sch t
+dwp path = DistWithPath @path
+
+rootDist :: forall sch t. Dist sch t -> DistWithPath sch t
+rootDist = dwp []
+
+convPreOrd :: forall sch tab. [OrdFld sch tab] -> CondMonad [(Text, OrdDirection)]
+convPreOrd = traverse processFld
   where
-    showFld = \case
-      OrdFld @fld (show' -> od) -> do
-        fld <- qual @fld
-        pure $ fld <> " " <> od <> " nulls last"
-{-
-}      SelFld @rel cond ofs' (show' -> od) -> do
-        modify (+1)
-        n <- get
-        prefPar <- tabPref
-        local (second (n <|)) do
-          condText <- convCond cond
-          ordText <- convOrd ofs'
-          fld <- qual @fld
-          pref <- tabPref
-          pure $ "(select " <> fld
-            <> " from " <> qualName (demote @t) <> " " <> pref
-            <> " where " <> T.intercalate " and " (condText : rels prefPar pref)
-            <> (if T.null ordText then "" else " order by " <> ordText)
-            <> " limit 1) " <> od <> " nulls last"
-        where
-          RelDef{..} = demote @(TRelDef sch rel)
-          f | rdTo == demote @tab = swap
-            | otherwise = id
-          rels pp p = mkRel . f <$> rdCols
-            where
-              mkRel (cp,c) = pp <> "." <> cp <> "=" <> p <> "." <> c
--}
+    processFld = \case
+      OrdFld @fld od -> (, od) <$> qual @fld
       UnsafeOrd m -> m
+
+renderOrd :: [(Text, OrdDirection)] -> Text
+renderOrd = T.intercalate "," . fmap render
+  where
+    render (t, show' -> od) = t <> " " <> od <> " nulls last"
+
+convOrd :: forall sch tab. [OrdFld sch tab] -> CondMonad Text
+convOrd = fmap renderOrd . convPreOrd
+
+data DistTexts = DistTexts
+  { distinct :: Bool
+  , distinctOn :: Text
+  , orderBy :: Text }
+
+emptyDistTexts :: DistTexts
+emptyDistTexts = DistTexts { distinct = False, distinctOn = "", orderBy = "" }
+
+convDist :: forall sch tab. Dist sch tab -> CondMonad DistTexts
+convDist = \case
+  Distinct -> pure $ DistTexts
+    { distinct = True, distinctOn = mempty, orderBy = mempty }
+  DistinctOn ofs -> convPreOrd ofs <&> \xs -> DistTexts
+    { distinct = False
+    , distinctOn = T.intercalate "," $ fst <$> xs
+    , orderBy = renderOrd xs }

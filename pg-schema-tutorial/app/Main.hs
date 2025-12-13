@@ -245,5 +245,5 @@ main = do
         [rootCond
           (pparent (NSC "address_city")
             $ pparent (NSC "city_country") ("code" =? Just @Text "RU"))]
-      , qpOrds = [ rootOrd [ascf "street"] ] }
+      , qpDistinct = [ rootDist $ DistinctOn [ascf "street"] ] }
     qp' = qp { qpLOs = [rootLO $ LO (Just 1) (Just 1)] }

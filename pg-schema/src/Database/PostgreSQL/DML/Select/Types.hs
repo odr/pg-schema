@@ -22,10 +22,16 @@ import PgSchema.Util
 data QueryParam sch t = QueryParam
   { qpConds     :: ![CondWithPath sch t]
   , qpOrds      :: ![OrdWithPath sch t]
-  , qpLOs       :: ![LimOffWithPath sch t] }
+  , qpLOs       :: ![LimOffWithPath sch t]
+  , qpDistinct  :: ![DistWithPath sch t] }
 
 qpEmpty :: forall sch t. QueryParam sch t
-qpEmpty = QueryParam [] [] []
+qpEmpty = QueryParam [] [] [] []
+
+-- ala qpEmpty `qpWhere` conds
+-- TODO: Make setting QueryParam better...
+qpWhere :: QueryParam sch t -> [CondWithPath sch t] -> QueryParam sch t
+qpWhere qp cs = qp { qpConds = cs }
 
 data CondWithPath sch t where
   CondWithPath ::  forall (path :: [Symbol]) sch t. ToStar path
@@ -34,6 +40,10 @@ data CondWithPath sch t where
 data OrdWithPath sch t where
   OrdWithPath :: forall (path :: [Symbol]) sch t. ToStar path
     => [OrdFld sch (TabOnPath sch t path)] -> OrdWithPath sch t
+
+data DistWithPath sch t where
+  DistWithPath :: forall (path :: [Symbol]) sch t. ToStar path
+    => Dist sch (TabOnPath sch t path) -> DistWithPath sch t
 
 data QueryRead sch t = QueryRead
   { qrCurrTabNum :: !Int
@@ -73,11 +83,13 @@ showCmp = \case
   Like  -> "like"
   ILike -> "ilike"
 
-{- | Monad to generate condition.
-Read: Stack of numbers of parent tables. The last one is "current table"
-Write: List of placeholder-values.
-  Note: We have to generate sql from top to bottom to correct order of fields
-State: Maximal number of tables "in use"
+{- | RWS-Monad to generate condition.
+* Read: Stack of numbers of parent tables. The top is "current table"
+* Write: List of placeholder-values.
+
+    Note: We have to generate sql from top to bottom to correct order of fields
+
+* State: Last number of table "in use"
 -}
 type CondMonad = RWS (Text, NonEmpty Int) [SomeToField] Int
 
@@ -217,7 +229,20 @@ data OrdFld sch tab where
   -- SelFld :: forall (rel :: NameNSK) (fld :: Symbol) sch tab. CRelDef sch rel =>
   --   Cond sch (RelTab2 sch rel tab) -> [OrdFld sch (RelTab2 sch rel tab)] ->
   --   OrdDirection -> OrdFld sch tab
-  UnsafeOrd :: CondMonad Text -> OrdFld sch tab
+  UnsafeOrd :: CondMonad (Text, OrdDirection) -> OrdFld sch tab
+
+data Dist sch tab where
+  Distinct :: Dist sch tab
+  -- | Having 'DistinctOn` we automatically add fields from DistinctOn
+  -- into the begining of ORDER BY.
+  -- (It is "good enough" and more simple than check it on type level).
+  --
+  -- That's why we use 'OrdFld' who include 'OrdDirection'.
+  -- Naturally 'OrdDirection' is not used in DISTINCT ON part itself.
+  --
+  -- Beside that DISTINCT ON part can include expressions like ORDER BY.
+  -- We can also use 'UnsafeOrd' here
+  DistinctOn :: [OrdFld sch tab] -> Dist sch tab
 
 {-# INLINE ordf #-}
 ordf

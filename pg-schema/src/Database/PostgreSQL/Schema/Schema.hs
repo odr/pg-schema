@@ -76,8 +76,8 @@ getSchema conn GenNames {..} = do
         , owp ["constraint__class"] [ascf "conname"] ] }
     ordNS fld = UnsafeOrd do
       o <- tabPref
-      pure $ "(select nspname from pg_catalog.pg_namespace p where p.oid = "
-        <> o <> "." <> fld <> ")"
+      pure ("(select nspname from pg_catalog.pg_namespace p where p.oid = "
+        <> o <> "." <> fld <> ")", Asc)
     condClass = condSchemas ||| condTabs
       where
         condSchemas = pparent (PGC "class__namespace")
