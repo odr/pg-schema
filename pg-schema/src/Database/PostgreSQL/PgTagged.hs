@@ -19,6 +19,7 @@ import GHC.TypeLits
 import PgSchema.Util
 import Prelude.Singletons
 import Type.Reflection
+import Database.Types.SchList (SchList)
 #ifdef MK_ARBITRARY
 import Test.QuickCheck
 #endif
@@ -107,13 +108,20 @@ instance (ToJSON (PgTagged n r), ToJSON (PgTagged (n1 ': ns) r1))
       _ -> error "PgTagged instances should be always objects"
 
 instance
-  (FromJSON a, Typeable a, KnownSymbol n)
+  (FromField a, Typeable a, KnownSymbol n)
   => FromField (PgTagged (n::Symbol) a) where
+  fromField = fromField
+
+instance (ToField a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
+  toField = toField
+
+instance
+  (FromJSON a, Typeable a, KnownSymbol n)
+  => FromField (PgTagged (n::Symbol) (SchList a)) where
   fromField = fromJSONField
 
-instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
+instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) (SchList a)) where
   toField = toJSONField
-
 
 instance (MkRecField sch (FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
   , ToStar n, ToStar t) =>
