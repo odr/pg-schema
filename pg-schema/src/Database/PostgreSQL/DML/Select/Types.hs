@@ -28,11 +28,6 @@ data QueryParam sch t = QueryParam
 qpEmpty :: forall sch t. QueryParam sch t
 qpEmpty = QueryParam [] [] [] []
 
--- ala qpEmpty `qpWhere` conds
--- TODO: Make setting QueryParam better...
-qpWhere :: QueryParam sch t -> [CondWithPath sch t] -> QueryParam sch t
-qpWhere qp cs = qp { qpConds = cs }
-
 data CondWithPath sch t where
   CondWithPath ::  forall (path :: [Symbol]) sch t. ToStar path
     => Cond sch (TabOnPath sch t path) -> CondWithPath sch t

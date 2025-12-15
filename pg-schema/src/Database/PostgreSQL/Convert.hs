@@ -82,10 +82,10 @@ instance CanConvert1 ('TypDef "S" x y) sch (PGC "text") Text
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "varchar") Text
 instance CanConvert1 ('TypDef "S" Nothing '[]) sch (PGC "citext") (CI Text)
 instance CanConvert1 ('TypDef "S" Nothing '[]) sch ("public" ->> "citext") (CI Text)
--- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
--- used only in the root table
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.S.ByteString)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.L.ByteString)
+-- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
+-- used only in the root table
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") Value
 instance (FromJSON a, ToJSON a) => CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") a
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID

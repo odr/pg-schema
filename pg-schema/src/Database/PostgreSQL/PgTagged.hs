@@ -107,13 +107,24 @@ instance (ToJSON (PgTagged n r), ToJSON (PgTagged (n1 ': ns) r1))
       (Object x1, Object x2) -> Object $ x1 <> x2
       _ -> error "PgTagged instances should be always objects"
 
+-- 'Binary a' can't be converted to/from JSON so we support it only
+-- on the top level
 instance
-  (FromField a, Typeable a, KnownSymbol n)
-  => FromField (PgTagged (n::Symbol) a) where
-  fromField = fromField
+  (FromField (Binary a), Typeable a, KnownSymbol n)
+  => FromField (PgTagged (n::Symbol) (Binary a)) where
+  fromField f = fmap (PgTag @n) . fromField f
 
-instance (ToField a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
-  toField = toField
+instance (ToField (Binary a), ToStar n) => ToField (PgTagged (n::Symbol) (Binary a)) where
+  toField = toField . unPgTag
+
+instance
+  (FromJSON a, Typeable a, KnownSymbol n)
+  => FromField (PgTagged (n::Symbol) a) where
+  fromField = fromJSONField
+
+-- For non-Binary we convert it through JSON
+instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) a) where
+  toField = toJSONField
 
 instance
   (FromJSON a, Typeable a, KnownSymbol n)

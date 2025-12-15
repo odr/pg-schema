@@ -163,16 +163,16 @@ refCond nFrom nTo = T.intercalate " and " . fmap compFlds
 
 withLOWithPath
   :: forall sch t r. (LO -> r) -> [Text] -> LimOffWithPath sch t -> Maybe r
-withLOWithPath f path (LimOffWithPath @p lo) =
-  guard (path == demote @p) >> pure (f lo)
+withLOWithPath f p (LimOffWithPath @p lo) =
+  guard (p == demote @p) >> pure (f lo)
 
 withLOsWithPath
   :: forall sch t r. (LO -> r) -> [Text] -> [LimOffWithPath sch t] -> Maybe r
-withLOsWithPath f path = join . L.find isJust . L.map (withLOWithPath f path)
+withLOsWithPath f p = join . L.find isJust . L.map (withLOWithPath f p)
 
 lowp :: forall sch t. forall (path::[Symbol]) ->
   (ToStar path, TabPath sch t path) => LO -> LimOffWithPath sch t
-lowp path = LimOffWithPath @path
+lowp p = LimOffWithPath @p
 
 rootLO :: forall sch t. LO -> LimOffWithPath sch t
 rootLO = lowp []
@@ -183,7 +183,7 @@ convLO (LO ml mo) =
    <> maybe "" ((" offset " <>) . show') mo
 
 loByPath :: forall sch t. [Text] -> [LimOffWithPath sch t] -> Text
-loByPath path = fromMaybe mempty . withLOsWithPath convLO path
+loByPath p = fromMaybe mempty . withLOsWithPath convLO p
 
 runCond :: Int -> CondMonad a -> (a,[SomeToField])
 runCond n x = evalRWS x ("q", pure n) 0
@@ -269,52 +269,50 @@ pgDist n dist = evalRWS (convDist dist) ("o", pure n) 0
 
 withCondWithPath :: forall sch t r. (forall t'. Cond sch t' -> r) ->
   [Text] -> CondWithPath sch t -> Maybe r
-withCondWithPath f path (CondWithPath @path' cond) =
-  f cond <$ guard (path == demote @path')
+withCondWithPath f p (CondWithPath @p' cond) = f cond <$ guard (p == demote @p')
 
 withCondsWithPath :: forall sch t r. (forall t'. Cond sch t' -> r) ->
   [Text] -> [CondWithPath sch t] -> Maybe r
-withCondsWithPath f path = join . L.find isJust . L.map (withCondWithPath f path)
+withCondsWithPath f p = join . L.find isJust . L.map (withCondWithPath f p)
 
 cwp :: forall path -> forall sch t t1.
   (t1 ~ TabOnPath sch t path, ToStar path) => Cond sch t1 -> CondWithPath sch t
-cwp path = CondWithPath @path
+cwp p = CondWithPath @p
 
 rootCond :: Cond sch t -> CondWithPath sch t
 rootCond = cwp []
 
 condByPath :: Int -> [Text] -> [CondWithPath sch t] -> (Text, [SomeToField])
-condByPath num path = F.fold . withCondsWithPath (pgCond num) path
+condByPath num p = F.fold . withCondsWithPath (pgCond num) p
 
 ordByPath :: Int -> [Text] -> [OrdWithPath sch t] -> (Text, [SomeToField])
-ordByPath num path = F.fold . withOrdsWithPath (pgOrd num) path
+ordByPath num p = F.fold . withOrdsWithPath (pgOrd num) p
 
 distByPath :: Int -> [Text] -> [DistWithPath sch t] -> (DistTexts, [SomeToField])
-distByPath num path =
-  fromMaybe (emptyDistTexts, []) . withDistsWithPath (pgDist num) path
+distByPath num p =
+  fromMaybe (emptyDistTexts, []) . withDistsWithPath (pgDist num) p
 
 withOrdWithPath :: forall sch t r. (forall t'. [OrdFld sch t'] -> r) ->
   [Text] -> OrdWithPath sch t -> Maybe r
-withOrdWithPath f path (OrdWithPath @p ord) = f ord <$ guard (path == demote @p)
+withOrdWithPath f p (OrdWithPath @p ord) = f ord <$ guard (p == demote @p)
 
 withDistWithPath :: forall sch t r. (forall t'. Dist sch t' -> r) ->
   [Text] -> DistWithPath sch t -> Maybe r
-withDistWithPath f path (DistWithPath @p dist) =
-  f dist <$ guard (path == demote @p)
+withDistWithPath f p (DistWithPath @p dist) = f dist <$ guard (p == demote @p)
 
 --
 withOrdsWithPath :: forall sch t r . (forall t'. [OrdFld sch t'] -> r) ->
   [Text] -> [OrdWithPath sch t] -> Maybe r
-withOrdsWithPath f path = join . L.find isJust . L.map (withOrdWithPath f path)
+withOrdsWithPath f p = join . L.find isJust . L.map (withOrdWithPath f p)
 
 withDistsWithPath :: forall sch t r . (forall t'. Dist sch t' -> r) ->
   [Text] -> [DistWithPath sch t] -> Maybe r
-withDistsWithPath f path = join . L.find isJust . L.map (withDistWithPath f path)
+withDistsWithPath f p = join . L.find isJust . L.map (withDistWithPath f p)
 
 owp :: forall path -> forall sch t t'.
   (ToStar path, TabOnPath sch t path ~ t') =>
   [OrdFld sch t'] -> OrdWithPath sch t
-owp path = OrdWithPath @path
+owp p = OrdWithPath @p
 
 rootOrd :: forall sch t. [OrdFld sch t] -> OrdWithPath sch t
 rootOrd = owp []
@@ -322,7 +320,7 @@ rootOrd = owp []
 dwp :: forall path -> forall sch t t'.
   (ToStar path, TabOnPath sch t path ~ t') =>
   Dist sch t' -> DistWithPath sch t
-dwp path = DistWithPath @path
+dwp p = DistWithPath @p
 
 rootDist :: forall sch t. Dist sch t -> DistWithPath sch t
 rootDist = dwp []
