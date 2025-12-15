@@ -20,7 +20,7 @@ updateByCond :: forall sch t r r'.
   ( UpdateReturning sch t r r'
     , AllPlain sch t r, ToRow r, FromRow r' ) =>
   Connection -> r -> Cond sch t -> IO [r']
-updateByCond conn r cond = returning conn q [r :. ps]
+updateByCond conn r cond = query conn q $ r :. ps
   where
     (q, ps) = updateText @sch @t @r @r' cond
 

@@ -220,6 +220,11 @@ main = do
   void $ updateByCond_ @Sch @(NSC "addresses") conn
     (pgTag @"zipcode" (Just @Text "zip_new"))
     $ "street" =? Just @Text "street2"
+  (xs :: [PgTagged ["zipcode", "phones"] (Maybe Text, Maybe (PgArr Text))]) <-
+    updateByCond @Sch @(NSC "addresses") conn
+      (pgTag @"phones" (Just $ PgArr ["111" :: Text,"222"]))
+      $ "street" =? Just @Text "street2"
+  mapM_ print xs
   T.putStrLn "\n====== 20 ========\n"
   -- Prelude.putStrLn $ show as1
   selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
