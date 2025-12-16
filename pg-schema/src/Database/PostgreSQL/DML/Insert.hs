@@ -15,20 +15,24 @@ import PgSchema.Util
 insertSch :: forall r r'. forall sch t -> (InsertReturning' sch t r r') =>
   Connection -> [r] -> IO ([r'], Text)
 insertSch sch t conn = let sql = insertText @r @r' sch t in
-  fmap (, sql) . returning conn (fromString $ T.unpack sql)
+  trace' (T.unpack sql)
+    $ fmap (, sql) . returning conn (fromString $ T.unpack sql)
 
 insertSch_ :: forall sch t -> forall r. (InsertNonReturning' sch t r) =>
   Connection -> [r] -> IO (Int64, Text)
 insertSch_ sch t @r conn = let sql = insertText_ @r sch t in
-  fmap (, sql) . executeMany conn (fromString $ T.unpack sql)
+  trace' (T.unpack sql)
+    $ fmap (, sql) . executeMany conn (fromString $ T.unpack sql)
 
-insertText :: forall r r'. forall sch t -> InsertReturning' sch t r r' => Text
+insertText :: forall r r' s. (IsString s, Monoid s) =>
+  forall sch t -> InsertReturning' sch t r r' => s
 insertText sch t = insertText_ @r sch t <> " returning " <> fs'
   where
     ri = getRecordInfo @sch @t @r'
     fs' = fromText $ T.intercalate "," [ fi.fieldDbName | fi <- ri.fields]
 
-insertText_ :: forall r. forall sch t -> CRecordInfo sch t r => Text
+insertText_ :: forall r s. (IsString s, Monoid s) =>
+  forall sch t -> CRecordInfo sch t r => s
 insertText_ sch t = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
   where
     ri = getRecordInfo @sch @t @r

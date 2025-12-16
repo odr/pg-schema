@@ -20,18 +20,16 @@ updateByCond :: forall sch t r r'.
   ( UpdateReturning sch t r r'
     , AllPlain sch t r, ToRow r, FromRow r' ) =>
   Connection -> r -> Cond sch t -> IO [r']
-updateByCond conn r cond = query conn q $ r :. ps
+updateByCond conn r cond = traceShow' qps $ query conn q $ r :. ps
   where
-    (q, ps) = updateText @sch @t @r @r' cond
+    qps@(q, ps) = updateText @sch @t @r @r' cond
 
 updateByCond_ :: forall sch t r.
   (CRecordInfo sch t r, ToRow r, AllPlain sch t r) =>
   Connection -> r -> Cond sch t -> IO Int64
-updateByCond_ conn r cond = do
-  putStrLn q
-  execute conn (fromString q) (r :. ps)
+updateByCond_ conn r cond = traceShow' qps $ execute conn q (r :. ps)
   where
-    (q, ps) = updateText_ @sch @t @r cond
+    qps@(q, ps) = updateText_ @sch @t @r cond
 
 updateText :: forall sch t r r' s.
   (UpdateReturning sch t r r', IsString s, Monoid s) =>
