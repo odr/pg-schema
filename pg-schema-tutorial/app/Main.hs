@@ -243,12 +243,22 @@ main = do
   T.putStrLn ""
   T.putStrLn "\n====== 24 ========\n"
   selectSch @Sch @(NSC "addresses") @(AddressRev A1 B1) conn qp' >>= print
-  selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp >>= print
+  -- selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp >>= print
   where
-    qp = qpEmpty
-      { qpConds =
-        [rootCond
-          (pparent (NSC "address_city")
-            $ pparent (NSC "city_country") ("code" =? Just @Text "RU"))]
-      , qpDistinct = [ rootDist $ DistinctOn [ascf "street"] ] }
-    qp' = qp { qpLOs = [rootLO $ LO (Just 1) (Just 1)] }
+    qp = qRoot qpr
+    qpr = do
+      qDistinctOn [ascf "street"]
+      qWhere
+        $ pparent (NSC "address_city")
+        $ pparent (NSC "city_country")
+        $ "code" =? Just @Text "RU"
+    qp' = qRoot do
+      qpr
+      qLimit 5
+      qOffset 0
+      qPath "address_city" do
+        qDistinctOn [ascf "name"]               -- not work (reason: _parent_ ref - join?)
+        qWhere $ "name" =? Just @Text "street"  -- not work (reason: _parent_ ref - join?)
+        qPath "address_city" do
+          qLimit 2
+          qDistinctOn [descf "street"]

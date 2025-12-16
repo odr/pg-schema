@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Database.PostgreSQL.Schema.Schema where
 
 import Control.Monad
@@ -60,20 +61,23 @@ getSchema conn GenNames {..} = do
   pure (fst types, classes, relations)
   where
     -- all data are ordered to provide stable `hashSchema`
-    qpTyp = qpEmpty
-      { qpOrds =
-        [ rootOrd @PgCatalog @(PGC "pg_type")
-          [ ascf "typname", ordNS "typnamespace" ]
-        , owp ["enum__type"] [ascf "enumsortorder"] ] }
-    qpClass = qpEmpty
-      { qpConds =
-        [ rootCond $ condClass
-          &&& pin "relkind" (PgChar <$> 'v' :| "r") -- views & tables
-        , cwp ["attribute__class"] ("attnum" >? (0::Int16)) ]
-      , qpOrds =
-        [ rootOrd [ ascf "relname", ordNS "relnamespace" ]
-        , owp ["attribute__class"] [ascf "attnum"]
-        , owp ["constraint__class"] [ascf "conname"] ] }
+    qpTyp = qRoot @PgCatalog @(PGC "pg_type") do
+      qOrderBy [ascf "typname", ordNS "typnamespace"]
+      qPath "enum__type" do
+        qOrderBy [ascf "enumsortorder"]
+    qpClass = qRoot @PgCatalog @(PGC "pg_class") do
+      qWhere $ condClass &&& pin "relkind" (PgChar <$> 'v' :| "r") -- views & tables
+      qOrderBy [ascf "relname", ordNS "relnamespace"]
+      qPath "attribute__class" do
+        qWhere $ "attnum" >? (0::Int16)
+        qOrderBy [ascf "attnum"]
+      qPath "constraint__class" do
+        qOrderBy [ascf "conname"]
+    qpRel = qRoot @PgCatalog @(PGC "pg_constraint") do
+      qWhere
+        $   pparent (PGC "constraint__class") condClass
+        ||| pparent (PGC "constraint__fclass") condClass
+      qOrderBy [ascf "conname", ordNS "connamespace"]
     ordNS fld = UnsafeOrd do
       o <- tabPref
       pure ("(select nspname from pg_catalog.pg_namespace p where p.oid = "
@@ -86,14 +90,6 @@ getSchema conn GenNames {..} = do
           = pparent (PGC "class__namespace")
             (foldMap (pin "nspname" . fmap nnsNamespace) (nonEmpty tables))
           &&& foldMap (pin "relname" . fmap nnsName) (nonEmpty tables)
-    qpRel = qpEmpty
-      { qpConds = [rootCond condRels]
-      , qpOrds = [ rootOrd @PgCatalog @(PGC "pg_constraint")
-        [ascf "conname", ordNS "connamespace"] ] }
-      where
-        condRels
-          = pparent (PGC "constraint__class") condClass
-          ||| pparent (PGC "constraint__fclass") condClass
     checkClass PgClass {..}
       = (coerce class__namespace `L.elem` schemas)
       || (coerce class__namespace ->> relname `L.elem` tables)

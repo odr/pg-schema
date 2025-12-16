@@ -9,3 +9,6 @@ with-compiler: ghc-9.12.2
 packages:
   pg-schema
   pg-schema-tutorial
+
+constraints:
+  pg-schema +arbitrary +debug +flat

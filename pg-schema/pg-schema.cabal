@@ -28,6 +28,11 @@ flag arbitrary
   manual:      False
   default:     False
 
+flag debug
+  description: Trace queries
+  manual:      False
+  default:     False
+
 library
   exposed-modules:
     PgSchema
@@ -90,6 +95,8 @@ library
     build-depends:
         QuickCheck
     cpp-options: -DMK_ARBITRARY
+  if flag(debug)
+    cpp-options: -DDEBUG
   ghc-options:
     -Wall
   default-language: GHC2021

@@ -13,7 +13,7 @@ import PgSchema
 
 
 hashSchema :: Int
-hashSchema = -8283378915224177169
+hashSchema = 346903126412565186
 
 data Sch
 

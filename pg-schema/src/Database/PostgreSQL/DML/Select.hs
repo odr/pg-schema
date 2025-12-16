@@ -21,14 +21,14 @@ import Database.Schema.Rec
 import Database.Schema.ShowType
 import GHC.TypeLits
 import PgSchema.Util
+import Prelude as P
 
 
 selectSch :: forall sch tab r.
   (FromRow r, CRecordInfo sch tab r) =>
   Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
-selectSch conn qp =
-  let p@(sql,fs) = selectText @sch @tab @r qp
-  in (,p) <$> query conn (fromString $ unpack sql) fs
+selectSch conn (selectText @sch @tab @r -> (sql,fs)) =
+  trace' (T.unpack sql <> "\n\n" <> P.show fs <> "\n\n") $ (,(sql,fs)) <$> query conn (fromString $ unpack sql) fs
 
 selectQuery :: forall sch tab r. (CRecordInfo sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])

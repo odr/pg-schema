@@ -27,8 +27,9 @@ import Prelude as P
 insertJSON :: forall r r'. forall sch t ->
   InsertReturning sch t r r' => Connection -> [r] -> IO ([r'], Text)
 insertJSON sch t conn rs = withTransactionIfNot conn do
-  void $ execute_ conn $ fromString $ T.unpack sql
-  [Only (SchList res)] <- query conn "select pg_temp.__ins(?)" $ Only $ SchList rs
+  let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
+  [Only (SchList res)] <- let q = "select pg_temp.__ins(?)" in
+    traceShow' q $ query conn q $ Only $ SchList rs
   void $ execute_ conn "drop function pg_temp.__ins"
   pure (res, sql)
   where
@@ -44,7 +45,7 @@ insertJSON_
   :: forall r. forall  sch t -> (InsertNonReturning sch t r, ToJSON r)
   => Connection -> [r] -> IO Text
 insertJSON_ sch t conn rs = withTransactionIfNot conn do
-  void $ execute_ conn $ fromString $ T.unpack sql
+  void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
   void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
   sql <$ execute_ conn "drop procedure pg_temp.__ins"
   where

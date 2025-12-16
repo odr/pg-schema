@@ -10,6 +10,7 @@ import GHC.Int
 import Database.Schema.Rec
 import Database.Schema.ShowType
 import PgSchema.Util
+import Prelude as P
 
 -- TODO:
 -- updateByKey Connection -> [r] -> IO [r']
@@ -17,41 +18,33 @@ import PgSchema.Util
 -- updateExp (e.q. update t set a = a + c + 1 where b > 10)
 
 updateByCond :: forall sch t r r'.
-  ( UpdateReturning sch t r r'
-    , AllPlain sch t r, ToRow r, FromRow r' ) =>
+  (UpdateReturning sch t r r', AllPlain sch t r, ToRow r, FromRow r') =>
   Connection -> r -> Cond sch t -> IO [r']
-updateByCond conn r cond = query conn q $ r :. ps
-  where
-    (q, ps) = updateText @sch @t @r @r' cond
+updateByCond conn r (updateText @sch @t @r @r' -> (q,ps)) =
+  trace' (q <> "\n\n" <> P.show ps <> "\n\n") $ query conn (fromString q) $ r :. ps
 
 updateByCond_ :: forall sch t r.
   (CRecordInfo sch t r, ToRow r, AllPlain sch t r) =>
   Connection -> r -> Cond sch t -> IO Int64
-updateByCond_ conn r cond = do
-  putStrLn q
-  execute conn (fromString q) (r :. ps)
-  where
-    (q, ps) = updateText_ @sch @t @r cond
+updateByCond_ conn r (updateText_ @sch @t @r -> (q, ps)) =
+  trace' (q <> "\n\n" <> P.show ps <> "\n\n") $ execute conn (fromString q) (r :. ps)
 
 updateText :: forall sch t r r' s.
   (UpdateReturning sch t r r', IsString s, Monoid s) =>
   Cond sch t -> (s, [SomeToField])
-updateText cond = (q <> " returning " <> fs', p)
+updateText (updateText_ @sch @t @r -> (q, p)) = (q <> " returning " <> fs', p)
   where
-    (q,p) = updateText_ @sch @t @r cond
     ri' = getRecordInfo @sch @t @r'
     fs' = fromText $ T.intercalate "," [fi.fieldDbName | fi <- ri'.fields]
-      -- [ qfp.fpDbName | (QFieldPlain qfp) <- qFields qr']
 
 updateText_ :: forall sch t r s. (IsString s, Monoid s, CRecordInfo sch t r) =>
   Cond sch t -> (s, [SomeToField])
-updateText_ cond =
+updateText_ (pgCond 0 -> (condTxt, condParams)) =
   ("update " <> tn <> " t0 set " <> fs <> fromText whereTxt, condParams )
   where
     ri = getRecordInfo @sch @t @r
     fs = intercalate' ", " [fromText fi.fieldDbName <> " = ?" | fi <- ri.fields]
     tn = fromText $ qualName ri.tabName
-    (condTxt, condParams) = pgCond 0 cond
     whereTxt
       | T.null condTxt = mempty
       | otherwise = " where " <> condTxt
