@@ -5,7 +5,7 @@ import PgSchema
 
 
 main = updateSchemaFile' False
-  "app/Sch.hs"
+  "pg-schema-tutorial/app/Sch.hs"
   "dbname=schema_test user=avia host=localhost"
   "Sch" -- ^ haskell module name to generate
   "Sch" -- ^ name of generated haskell type for schema
