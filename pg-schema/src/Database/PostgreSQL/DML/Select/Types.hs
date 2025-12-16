@@ -1,9 +1,13 @@
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE LiberalTypeSynonyms #-}
+{-# LANGUAGE ImpredicativeTypes #-}
 module Database.PostgreSQL.DML.Select.Types where
 
 import Control.Monad.RWS
+-- import Control.Monad.State
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Kind
+import Data.List as L
 import Data.List.NonEmpty as NE
 import Data.String
 import Data.Text(Text)
@@ -18,6 +22,9 @@ import GHC.TypeLits
 import GHC.TypeError qualified as TE
 import PgSchema.Util
 
+import Prelude.Singletons(type (++), demote)
+import Data.Proxy
+
 
 data QueryParam sch t = QueryParam
   { qpConds     :: ![CondWithPath sch t]
@@ -27,6 +34,66 @@ data QueryParam sch t = QueryParam
 
 qpEmpty :: forall sch t. QueryParam sch t
 qpEmpty = QueryParam [] [] [] []
+
+{-
+selectSch conn $ qRoot do
+  qWhere c1
+  qOrderBy ofs1
+  qPath "p1" do
+    qWhere c2
+    qPath "p2" do
+      qDistinct Distinct
+    qOffset 2
+  qLimit 50
+-}
+
+-- qLimit :: (TabPath sch t path, ToStar path) => Endo (Tagged path (QueryParam sch t))
+-- qOffset :: (TabPath sch t path, ToStar path) => Endo (Tagged path (QueryParam sch t))
+
+type MonadQP sch t path = (TabPath sch t path, ToStar path) => RWS (Proxy path) () (QueryParam sch t) ()
+
+qRoot :: RWS (Proxy '[]) () (QueryParam sch t) () -> QueryParam sch t
+qRoot m = fst $ execRWS m Proxy qpEmpty
+
+qPath :: forall sch t path path'.
+  forall (p :: Symbol) ->
+  (TabPath sch t path', ToStar path', path' ~ path ++ '[p]) =>
+  MonadQP sch t path' -> MonadQP sch t path
+qPath _p m = do
+  s <- get
+  put $ fst $ execRWS m Proxy s
+
+qWhere :: forall sch t path. Cond sch (TabOnPath sch t path) -> MonadQP sch t path
+qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
+
+qOrderBy :: forall sch t path. [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
+qOrderBy ofs = modify \qp -> qp { qpOrds = OrdWithPath @path ofs : qp.qpOrds }
+
+qDistinct :: forall sch t path. MonadQP sch t path
+qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpDistinct }
+
+qDistinctOn :: forall sch t path. [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
+qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn ofs) : qp.qpDistinct }
+
+qLimit :: forall sch t path. Natural -> MonadQP sch t path
+qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
+  where
+    mk xs = case L.break eq xs of
+      (xs1, []) -> new : xs1
+      (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
+    eq (LimOffWithPath @p _) = demote @p == demote @path
+    upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{ limit = Just n }
+    new = LimOffWithPath @path LO { limit = Just n, offset = Nothing }
+
+qOffset :: forall sch t path. Natural -> MonadQP sch t path
+qOffset n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
+  where
+    mk xs = case L.break eq xs of
+      (xs1, []) -> new : xs1
+      (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
+    eq (LimOffWithPath @p _) = demote @p == demote @path
+    upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{offset = Just n}
+    new = LimOffWithPath @path LO { offset = Just n, limit = Nothing }
 
 data CondWithPath sch t where
   CondWithPath ::  forall (path :: [Symbol]) sch t. ToStar path
@@ -39,6 +106,12 @@ data OrdWithPath sch t where
 data DistWithPath sch t where
   DistWithPath :: forall (path :: [Symbol]) sch t. ToStar path
     => Dist sch (TabOnPath sch t path) -> DistWithPath sch t
+
+data LimOffWithPath sch t where
+  LimOffWithPath :: forall (path :: [Symbol]) sch t. (TabPath sch t path, ToStar path)
+    => LO -> LimOffWithPath sch t
+
+
 
 data QueryRead sch t = QueryRead
   { qrCurrTabNum :: !Int
@@ -264,7 +337,3 @@ defLO = LO Nothing Nothing
 
 lo1 :: LO
 lo1 = LO (Just 1) Nothing
-
-data LimOffWithPath sch t where
-  LimOffWithPath :: forall (path :: [Symbol]) sch t. (TabPath sch t path, ToStar path)
-    => LO -> LimOffWithPath sch t

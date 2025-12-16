@@ -34,6 +34,7 @@ import Prelude as P
 import System.Directory
 import System.Environment
 
+import Debug.Trace
 
 data ExceptionSch
   = ConnectException ByteString SomeException
@@ -54,7 +55,7 @@ getSchema
 getSchema conn GenNames {..} = do
   types <- selectSch conn qpTyp
     `catch` (throwM . GetDataException (selectText @_ @_ @PgType qpTyp))
-  classes <- L.filter checkClass . fst <$> selectSch conn qpClass
+  classes <- L.filter checkClass . (\(a,b) -> traceShow b a) <$> selectSch conn qpClass
     `catch` (throwM . GetDataException (selectText @_ @_ @PgClass qpClass))
   relations <- L.filter checkRels . fst <$> selectSch conn qpRel
     `catch` (throwM . GetDataException (selectText @_ @_ @PgRelation qpRel))
