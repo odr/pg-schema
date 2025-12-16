@@ -35,21 +35,6 @@ data QueryParam sch t = QueryParam
 qpEmpty :: forall sch t. QueryParam sch t
 qpEmpty = QueryParam [] [] [] []
 
-{-
-selectSch conn $ qRoot do
-  qWhere c1
-  qOrderBy ofs1
-  qPath "p1" do
-    qWhere c2
-    qPath "p2" do
-      qDistinct Distinct
-    qOffset 2
-  qLimit 50
--}
-
--- qLimit :: (TabPath sch t path, ToStar path) => Endo (Tagged path (QueryParam sch t))
--- qOffset :: (TabPath sch t path, ToStar path) => Endo (Tagged path (QueryParam sch t))
-
 type MonadQP sch t path = (TabPath sch t path, ToStar path) => RWS (Proxy path) () (QueryParam sch t) ()
 
 qRoot :: RWS (Proxy '[]) () (QueryParam sch t) () -> QueryParam sch t
