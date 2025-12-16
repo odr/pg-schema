@@ -14,15 +14,19 @@ import Debug.Trace
 
 fromText :: IsString t => Text -> t
 fromText = fromString . T.unpack
+{-# INLINE fromText #-}
 
 show' :: (IsString b, Show a) => a -> b
 show' = fromString . P.show
+{-# INLINE show' #-}
 
 intercalate' :: Monoid a => a -> [a] -> a
 intercalate' a = mconcat . L.intersperse a
+{-# INLINE intercalate' #-}
 
 unlines' :: (Monoid a, IsString a) => [a] -> a
 unlines' = intercalate' "\n"
+{-# INLINE unlines' #-}
 
 type ToStar a = (SingKind (KindOf a), SingI a)
 
@@ -35,3 +39,5 @@ traceShow' = traceShow
 trace' _ = id
 traceShow' _ = id
 #endif
+{-# INLINE trace' #-}
+{-# INLINE traceShow' #-}

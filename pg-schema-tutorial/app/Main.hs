@@ -252,20 +252,13 @@ main = do
         $ pparent (NSC "address_city")
         $ pparent (NSC "city_country")
         $ "code" =? Just @Text "RU"
-    -- qp' = qRoot do
-    --   qpr
-    --   qLimit 5
-    --   qOffset 0
-    --   qPath "address_city" do
-    --     qDistinctOn [ascf "name"]
-    --     qWhere $ "name" =? Just @Text "street"
-    --     qPath "address_city" do
-    --       qLimit 2
-    --       qDistinctOn [descf "street"]
-    qp' = qpEmpty
-      { qpConds =
-        [ cwp [] $ pparent (NSC "address_city") $ pparent (NSC "city_country") $ "code" =? Just @Text "RU"
-        , cwp ["address_city"] $ "name" =? Just @Text "street" ]
-      , qpDistinct =
-        [ dwp [] $ DistinctOn [ascf "street"] ]
-      }
+    qp' = qRoot do
+      qpr
+      qLimit 5
+      qOffset 0
+      qPath "address_city" do
+        qDistinctOn [ascf "name"]               -- not work (reason: _parent_ ref - join?)
+        qWhere $ "name" =? Just @Text "street"  -- not work (reason: _parent_ ref - join?)
+        qPath "address_city" do
+          qLimit 2
+          qDistinctOn [descf "street"]
