@@ -318,7 +318,7 @@ rootOrd :: forall sch t. [OrdFld sch t] -> OrdWithPath sch t
 rootOrd = owp []
 
 dwp :: forall path -> forall sch t t'.
-  (ToStar path, TabOnPath sch t path ~ t') =>
+  (ToStar path, TabOnPath2 sch t path ~ '(t', 'RelMany)) =>
   Dist sch t' -> DistWithPath sch t
 dwp p = DistWithPath @p
 

@@ -54,10 +54,12 @@ qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 qOrderBy :: forall sch t path. [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
 qOrderBy ofs = modify \qp -> qp { qpOrds = OrdWithPath @path ofs : qp.qpOrds }
 
-qDistinct :: forall sch t path. MonadQP sch t path
+qDistinct :: forall sch t path t'. TabOnPath2 sch t path ~ '(t', 'RelMany) =>
+  MonadQP sch t path
 qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpDistinct }
 
-qDistinctOn :: forall sch t path. [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
+qDistinctOn :: forall sch t path t'. TabOnPath2 sch t path ~ '(t', 'RelMany) =>
+  [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
 qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn ofs) : qp.qpDistinct }
 
 qLimit :: forall sch t path. Natural -> MonadQP sch t path
@@ -89,8 +91,9 @@ data OrdWithPath sch t where
     => [OrdFld sch (TabOnPath sch t path)] -> OrdWithPath sch t
 
 data DistWithPath sch t where
-  DistWithPath :: forall (path :: [Symbol]) sch t. ToStar path
-    => Dist sch (TabOnPath sch t path) -> DistWithPath sch t
+  DistWithPath :: forall (path :: [Symbol]) t' sch t
+    . (ToStar path, TabOnPath2 sch t path ~ '(t', 'RelMany))
+    => Dist sch t' -> DistWithPath sch t
 
 data LimOffWithPath sch t where
   LimOffWithPath :: forall (path :: [Symbol]) sch t. (TabPath sch t path, ToStar path)

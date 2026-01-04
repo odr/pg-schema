@@ -257,8 +257,8 @@ main = do
       qLimit 5
       qOffset 0
       qPath "address_city" do
-        qDistinctOn [ascf "name"]               -- not work (reason: _parent_ ref - join?)
-        qWhere $ "name" =? Just @Text "street"  -- not work (reason: _parent_ ref - join?)
+        -- qDistinctOn [ascf "name"]               -- not work (reason: RelOne)
+        qWhere $ "name" =? Just @Text "street"
         qPath "address_city" do
           qLimit 2
           qDistinctOn [descf "street"]

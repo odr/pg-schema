@@ -49,18 +49,23 @@ singletons [d|
     , rdTo      :: NameNS' s
     , rdCols    :: [(s,s)] }
     deriving (Show, Eq)
+
+  data RelType = RelOne | RelMany
+
   |]
+
 
 promote [d|
   getRelTab
     :: Eq s
-    => [(NameNS' s, RelDef' s)] -> [(NameNS' s, RelDef' s)] -> s -> NameNS' s
+    => [(NameNS' s, RelDef' s)] -> [(NameNS' s, RelDef' s)] -> s
+    -> (NameNS' s, RelType)
   getRelTab froms tos s = find1 froms
     where
       find1 []         = find2 tos
-      find1 ((a,b):xs) = if nnsName a == s then rdTo b else find1 xs
+      find1 ((a,b):xs) = if nnsName a == s then (rdTo b, RelOne) else find1 xs
       find2 []         = error "No relation by name"
-      find2 ((a,b):xs) = if nnsName a == s then rdFrom b else find2 xs
+      find2 ((a,b):xs) = if nnsName a == s then (rdFrom b, RelMany) else find2 xs
 
   restMandatory' :: Eq s => (s -> FldDef' s) -> TabDef' s -> [s] -> [s]
   restMandatory' f td recFlds =
@@ -158,6 +163,7 @@ promote [d|
 
   map3 :: (b -> c) -> (a -> [b]) -> [a] -> [[(b,c)]]
   map3 f g = L.map (map2 f . g)
+
   |]
 
 
@@ -220,13 +226,17 @@ type TRelTab sch t name = GetRelTab
   (Map2 (TRelDefSym1 sch) (TFrom sch t)) (Map2 (TRelDefSym1 sch) (TTo sch t))
   name
 
-type family TabOnPath sch (t :: NameNSK) (path :: [Symbol]) :: NameNSK where
-  TabOnPath sch t '[] = t
-  TabOnPath sch t (x ': xs) = TabOnPath sch (TRelTab sch t x) xs
+type family TabOnPath2 sch (t :: NameNSK) (path :: [Symbol]) :: (NameNSK, RelType) where
+  TabOnPath2 sch t '[] = '(t, 'RelMany)
+  TabOnPath2 sch t '[x] = TRelTab sch t x
+  TabOnPath2 sch t (x ': xs) = TabOnPath2 sch (Fst (TRelTab sch t x)) xs
+
+type TabOnPath sch (t :: NameNSK) (path :: [Symbol]) = Fst (TabOnPath2 sch t path)
+
 --
 type family TabPath sch (t :: NameNSK) (path :: [Symbol]) :: Constraint where
   TabPath sch t '[] = ()
-  TabPath sch t (x ': xs) = TabPath sch (TRelTab sch t x) xs
+  TabPath sch t (x ': xs) = TabPath sch (Fst (TRelTab sch t x)) xs
 --
 instance LiftType NameNS where
   liftType NameNS{..} =
