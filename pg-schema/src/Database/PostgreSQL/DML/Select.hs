@@ -86,6 +86,18 @@ selectM ri = do
       | T.null distTexts.distinctOn = ""
       | otherwise = " distinct on (" <> distTexts.distinctOn <> ") "
     qsLimOff = loByPath (L.reverse qrPath) $ qpLOs qrParam
+    groupByText
+      | P.null aggrs || P.null others = ""
+      | otherwise = " group by " <> T.intercalate ","
+        (L.nub $ others >>= \fi -> case fi.fieldKind of
+          RFPlain{} -> [fi.fieldDbName]
+          RFToHere _ refs -> refs <&> \ref -> ref.toName
+          RFFromHere _ refs -> refs <&> \ref -> ref.fromName
+          _ -> []  )
+      where
+        (aggrs, others) = L.partition
+          (\fld -> case fld.fieldKind of { RFAggr{} -> True; _ -> False })
+          ri.fields
   modify (\qs -> qs { qsHasWhere = whereText /= mempty })
   unless qrIsRoot $ modify (\qs -> qs { qsOrd = orderText, qsLimOff })
   tell $ distPars <> condPars <> distPars <> ordPars
@@ -95,6 +107,7 @@ selectM ri = do
     <> " from " <> qualName ri.tabName <> " t" <> show' qrCurrTabNum
     <> " " <> T.unwords joins
     <> whereText
+    <> groupByText
     <> (if qrIsRoot then orderText else "")
     <> (if qrIsRoot then qsLimOff else "")
 
@@ -107,6 +120,12 @@ fieldM fi = case fi.fieldKind of
     n <- asks qrCurrTabNum
     let val = "t" <> show' n <> "." <> fi.fieldDbName
     pure (val, fi.fieldDbName, val <> " is null")
+  RFAggr _ fname -> do
+    n <- asks qrCurrTabNum
+    let val = fname <> "(" <> "t" <> show' n <> "." <> fi.fieldDbName <> ")"
+    pure case fname of
+      "count" -> ("count(*)", fi.fieldName, " false")
+      _ -> (val, fi.fieldName, val <> " is null")
   RFFromHere ri refs -> do
     QueryRead {..} <- ask
     modify \QueryState{qsLastTabNum, qsJoins} -> QueryState

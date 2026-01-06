@@ -266,22 +266,22 @@ instance CSchema PgCatalog where
     ,PGC "char"]
 
 instance CTypDef PgCatalog (PGC "oid") where
-  type TTypDef PgCatalog (PGC "oid") = 'TypDef "N" Nothing '[]
+  type TTypDef PgCatalog (PGC "oid") = SimpleType "N"
 
 instance CTypDef PgCatalog (PGC "int2") where
-  type TTypDef PgCatalog (PGC "int2") = 'TypDef "N" Nothing '[]
+  type TTypDef PgCatalog (PGC "int2") = SimpleType "N"
 
 instance CTypDef PgCatalog (PGC "int2[]") where
   type TTypDef PgCatalog (PGC "int2[]") = 'TypDef "A" (Just (PGC "int2")) '[]
 
 instance CTypDef PgCatalog (PGC "float4") where
-  type TTypDef PgCatalog (PGC "float4") = 'TypDef "N" Nothing '[]
+  type TTypDef PgCatalog (PGC "float4") = SimpleType "N"
 
 instance CTypDef PgCatalog (PGC "bool") where
-  type TTypDef PgCatalog (PGC "bool") = 'TypDef "B" Nothing '[]
+  type TTypDef PgCatalog (PGC "bool") = SimpleType "B"
 
 instance CTypDef PgCatalog (PGC "name") where
-  type TTypDef PgCatalog (PGC "name") = 'TypDef "S" Nothing '[]
+  type TTypDef PgCatalog (PGC "name") = SimpleType "S"
 
 instance CTypDef PgCatalog (PGC "char") where
-  type TTypDef PgCatalog (PGC "char") = 'TypDef "S" Nothing '[]
+  type TTypDef PgCatalog (PGC "char") = SimpleType "S"

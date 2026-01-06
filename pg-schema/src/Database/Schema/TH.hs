@@ -17,11 +17,14 @@ import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.ToRow
 import Database.Schema.Def
 import Database.Schema.Rec
+import Database.Types.Aggr
 import Language.Haskell.TH
 import Language.Haskell.TH.Datatype
 import Util.TH.LiftType
 
 
+-- | Having type name and several list of type parameters type name
+-- get in Q list of type and list of fields name and type
 applyTypes :: Name -> [[Name]] -> Q [(Type, [(String, Type)])]
 applyTypes rn (\case {[] -> [[]]; x -> x} -> npss) = do
   (fmap nt -> fs, fmap bndrType -> bndrs) <- reify rn >>= \case
@@ -41,31 +44,37 @@ applyTypes rn (\case {[] -> [[]]; x -> x} -> npss) = do
       PlainTV n _ -> (n, ConT)
     nt (n,_,t) = (nameBase n, t)
 
-schemaRec ::
-  (String -> String) -> Name -> Map NameNS TabInfo -> NameNS -> Name -> [[Name]] -> DecsQ
+schemaRec
+  :: (String -> String) -> Name -> Map NameNS TabInfo
+  -> NameNS -> Name -> [[Name]] -> DecsQ
 schemaRec toDbName sch tabMap tab rn npss =
   applyTypes rn npss >>= fmap L.concat . traverse (schemaRec' toDbName sch tabMap tab )
 
-schemaRec' ::
-  (String -> String) -> Name -> Map NameNS TabInfo -> NameNS -> (Type, [(String, Type)]) -> DecsQ
+schemaRec'
+  :: (String -> String) -> Name -> Map NameNS TabInfo
+  -> NameNS -> (Type, [(String, Type)]) -> DecsQ
 schemaRec' toDbName sch tabMap tab (rt, fs) = do
   tinfo <- maybe (fail $ "unknown table" <> show tab) pure $ tabMap M.!? tab
   traverse (getFieldInfo tinfo) fs >>= recordInfoInst
   where
-    getFieldInfo tinfo (sname, ft) = do
-      fieldInfo <- mkFieldInfo
+    getFieldInfo tinfo (sname, ft') = do
+      ft <- resolveTypeSynonyms ft'
+      fieldInfo <- mkFieldInfo ft
       (,)
         <$> [| FieldInfo (T.pack $(stringE sname)) (T.pack $(stringE $ toDbName sname))
           $ mkRecField @($(conT sch)) @($(liftType fieldInfo.fieldKind)) @($(pure ft))|]
         <*> [t| '( $(liftType fieldInfo), $(pure ft)) |]
       where
         tDbName = fromString @Text $ toDbName sname
-        mkFieldInfo = do
+        mkFieldInfo ft = do
+          aggrC <- [t| Aggr |]
+          let mbPlainFldDef = tinfo.tiFlds M.!? tDbName
           (kind :: RecField NameNS) <- maybe
             (fail $ "can't determine kind of field '" <> sname
               <> "' for table " <> show tab)
             pure
-            $ fmap RFPlain ((tinfo.tiFlds :: Map Text FldDef) M.!? tDbName)
+            $ checkAggr aggrC mbPlainFldDef
+              <|> fmap RFPlain mbPlainFldDef
               <|> (toFrom =<< tinfo.tiFrom M.!? (tab.nnsNamespace ->> tDbName))
               <|> (toTo . snd <=<
                 L.find ((== tDbName) . (.nnsName) . fst) $ M.toList tinfo.tiTo)
@@ -74,6 +83,11 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
             , fieldDbName = tDbName
             , fieldKind   = kind }
           where
+            -- agg = case
+            checkAggr aggrC mbPlainFldDef = case ft of
+              AppT (AppT ac (LitT (StrTyLit (T.pack -> fname)))) _aggrT
+                | ac == aggrC -> aggrFldDef fname mbPlainFldDef <&> \fd -> RFAggr fd fname
+              _ -> Nothing
             toFrom rd = RFFromHere rd.rdTo <$> traverse conv rd.rdCols
               where
                 conv (fromName, toName) = do
@@ -94,8 +108,9 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
         getRecordInfo = RecordInfo tab $(pure $ ListE $ fst <$> fis)
       |]
 
-deriveQueryRecord :: (String -> String) -> Name
-  -> Map NameNS TabInfo -> [((Name, [[Name]]), NameNS)] -> DecsQ
+deriveQueryRecord
+  :: (String -> String) -> Name -> Map NameNS TabInfo
+  -> [((Name, [[Name]]), NameNS)] -> DecsQ
 deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> do
   fss <- applyTypes n nss
   let
@@ -119,6 +134,6 @@ deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> d
       , [d|instance FromField $(pure t) where fromField = fromJSONField |]
       , [d|instance ToField $(pure t) where toField = toJSONField |]
       , [d|instance FromRow $(pure t)|]
-      , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME
+      , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME?
       , schemaRec' flm sch tabMap tab fs
       ])

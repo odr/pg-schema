@@ -93,6 +93,15 @@ data OrdPos = MkOrdPos
   , price        :: Centi }
   deriving Generic
 
+data PosCnt = MkPosCnt
+  { order_id  :: Int32
+  , cnt       :: Aggr "count" Int64
+  , minPrice  :: Aggr "min" (Maybe Centi)
+  , maxPrice  :: Aggr "max" (Maybe Centi)
+  , sumPrice  :: Aggr "sum" (Maybe Double)
+  , avgPrice  :: Aggr "avg" (Maybe Double) }
+  deriving Generic
+
 -- data Customer = Customer
 --   { }
 data Order = MkOrder
@@ -171,6 +180,9 @@ deriveQueryRecord P.id ''Sch (tabInfoMap @Sch)
   , ((''AddressRet,[]), "sch" ->> "addresses")
   ]
 
+deriveQueryRecord (\s -> if P.drop 3 s == "Price" then "price" else s) ''Sch (tabInfoMap @Sch)
+  [((''PosCnt,[]), "sch" ->> "order_positions")]
+
 type NSC name = "sch" ->> name
 main :: IO ()
 main = do
@@ -183,6 +195,7 @@ main = do
     , selectText @Sch @(NSC "addresses") @(Address A2 B1) qp
     , selectText @Sch @(NSC "addresses") @(AddressRev A1 B1) qp
     , selectText @Sch @(NSC "addresses") @(AddressRev A2 B1) qp
+    , selectText @Sch @(NSC "order_positions") @PosCnt qpEmpty
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"

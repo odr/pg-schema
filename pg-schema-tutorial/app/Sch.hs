@@ -29,8 +29,16 @@ instance CTypDef Sch ( "pg_catalog" ->> "date" ) where
   type TTypDef Sch ( "pg_catalog" ->> "date" ) = 
     'TypDef "D" 'Nothing '[  ]
 
+instance CTypDef Sch ( "pg_catalog" ->> "float8" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "float8" ) = 
+    'TypDef "N" 'Nothing '[  ]
+
 instance CTypDef Sch ( "pg_catalog" ->> "int4" ) where
   type TTypDef Sch ( "pg_catalog" ->> "int4" ) = 
+    'TypDef "N" 'Nothing '[  ]
+
+instance CTypDef Sch ( "pg_catalog" ->> "int8" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "int8" ) = 
     'TypDef "N" 'Nothing '[  ]
 
 instance CTypDef Sch ( "pg_catalog" ->> "numeric" ) where
@@ -380,7 +388,8 @@ instance CSchema Sch where
     ,( "sch" ->> "order_positions" ),( "sch" ->> "orders" ) ]
 
   type TTypes Sch = '[ ( "pg_catalog" ->> "_int4" ),( "pg_catalog" ->> "_text" )
-    ,( "pg_catalog" ->> "date" ),( "pg_catalog" ->> "int4" )
+    ,( "pg_catalog" ->> "date" ),( "pg_catalog" ->> "float8" )
+    ,( "pg_catalog" ->> "int4" ),( "pg_catalog" ->> "int8" )
     ,( "pg_catalog" ->> "numeric" ),( "pg_catalog" ->> "text" )
     ,( "pg_catalog" ->> "timestamptz" ),( "sch" ->> "order_state" ) ]
 

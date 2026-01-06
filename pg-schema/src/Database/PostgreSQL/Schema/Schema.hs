@@ -107,7 +107,9 @@ getDefs
     , Map NameNS (TabDef, [NameNS], [NameNS])
     , Map NameNS RelDef)
 getDefs (types,classes,relations) =
-  ( M.fromList $ ptypDef <$> ntypes
+  ( M.fromList $ (ptypDef <$> ntypes)
+    <> [(pgc "int8",  simpleType "N"), (pgc "float8", simpleType "N")]
+    -- added ^^ for Aggr
   , M.fromList $ pfldDef <$> attrs
   , M.fromList $ ptabDef <$> classes
   , M.fromList relDefs )

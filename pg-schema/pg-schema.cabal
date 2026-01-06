@@ -57,6 +57,7 @@ library
     Database.Schema.Rec
     Database.Schema.ShowType
     Database.Schema.TH
+    Database.Types.Aggr
     Database.Types.EmptyField
     Database.Types.SchList
     TH.Rec.Update
