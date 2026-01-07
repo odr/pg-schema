@@ -7,6 +7,7 @@ import Data.Functor
 import Data.List as L
 import Data.Map as M
 import Data.Maybe as Mb
+import Data.Monoid
 import Data.String
 import Data.Text(Text)
 import qualified Data.Text as T
@@ -24,7 +25,8 @@ import Util.TH.LiftType
 
 
 -- | Having type name and several list of type parameters type name
--- get in Q list of type and list of fields name and type
+-- get in Q list of type and list of fields name and type.
+-- Additionally we resolve all type synonyms here.
 applyTypes :: Name -> [[Name]] -> Q [(Type, [(String, Type)])]
 applyTypes rn (\case {[] -> [[]]; x -> x} -> npss) = do
   (fmap nt -> fs, fmap bndrType -> bndrs) <- reify rn >>= \case
@@ -33,10 +35,12 @@ applyTypes rn (\case {[] -> [[]]; x -> x} -> npss) = do
     x -> do
       reportError $ "schemaRec: Invalid pattern in reify: " ++ show x
       pure ([],[])
-  let dicts = L.zipWith (\(vn,c) tn -> (vn, c tn)) bndrs <$> npss
-  pure $ dicts <&> \ds ->
-    ( L.foldl' AppT (ConT rn) $ snd <$> ds
-    , fmap (applySubstitution $ M.fromList ds) <$> fs)
+  let
+    dicts = L.zipWith (\(vn,c) tn -> (vn, c tn)) bndrs <$> npss
+    res = dicts <&> \ds ->
+      ( L.foldl' AppT (ConT rn) $ snd <$> ds
+      , fmap (applySubstitution (M.fromList ds)) <$> fs)
+  traverse (traverse $ traverse $ traverse resolveTypeSynonyms) res
   where
     bndrType = \case -- TODO: investigate and make it better
       KindedTV n _ StarT -> (n, ConT)
@@ -45,35 +49,40 @@ applyTypes rn (\case {[] -> [[]]; x -> x} -> npss) = do
     nt (n,_,t) = (nameBase n, t)
 
 schemaRec
-  :: (String -> String) -> Name -> Map NameNS TabInfo
+  :: (String -> String) -> Name -> Map NameNS TabInfo -> Map NameNS TypDef
   -> NameNS -> Name -> [[Name]] -> DecsQ
-schemaRec toDbName sch tabMap tab rn npss =
-  applyTypes rn npss >>= fmap L.concat . traverse (schemaRec' toDbName sch tabMap tab )
+schemaRec toDbName sch tabMap typMap tab rn npss =
+  applyTypes rn npss >>= fmap L.concat . traverse (schemaRec' toDbName sch tabMap typMap tab )
 
 schemaRec'
-  :: (String -> String) -> Name -> Map NameNS TabInfo
+  :: (String -> String) -> Name -> Map NameNS TabInfo -> Map NameNS TypDef
   -> NameNS -> (Type, [(String, Type)]) -> DecsQ
-schemaRec' toDbName sch tabMap tab (rt, fs) = do
+schemaRec' toDbName sch tabMap typMap tab (rt, fs) = do
   tinfo <- maybe (fail $ "unknown table" <> show tab) pure $ tabMap M.!? tab
-  traverse (getFieldInfo tinfo) fs >>= recordInfoInst
+  aggrC <- [t| Aggr |]
+  aggrC' <- [t| Aggr' |]
+  when ((Any True, Any False) == foldMap ((\t -> if
+    | t == aggrC' -> (Any True, mempty)
+    | t /= aggrC -> (mempty, Any True)
+    | otherwise -> mempty) . snd) fs)
+    $ fail "There is a record with AggrC' fields without any non-Aggr fields. It is unsafe."
+  traverse (getFieldInfo aggrC aggrC' tinfo) fs >>= recordInfoInst
   where
-    getFieldInfo tinfo (sname, ft') = do
-      ft <- resolveTypeSynonyms ft'
-      fieldInfo <- mkFieldInfo ft
+    getFieldInfo aggrC aggrC' tinfo (sname, ft) = do
+      fieldInfo <- mkFieldInfo
       (,)
         <$> [| FieldInfo (T.pack $(stringE sname)) (T.pack $(stringE $ toDbName sname))
           $ mkRecField @($(conT sch)) @($(liftType fieldInfo.fieldKind)) @($(pure ft))|]
         <*> [t| '( $(liftType fieldInfo), $(pure ft)) |]
       where
         tDbName = fromString @Text $ toDbName sname
-        mkFieldInfo ft = do
-          aggrC <- [t| Aggr |]
+        mkFieldInfo = do
           let mbPlainFldDef = tinfo.tiFlds M.!? tDbName
           (kind :: RecField NameNS) <- maybe
             (fail $ "can't determine kind of field '" <> sname
               <> "' for table " <> show tab)
             pure
-            $ checkAggr aggrC mbPlainFldDef
+            $ checkAggr mbPlainFldDef
               <|> fmap RFPlain mbPlainFldDef
               <|> (toFrom =<< tinfo.tiFrom M.!? (tab.nnsNamespace ->> tDbName))
               <|> (toTo . snd <=<
@@ -83,10 +92,12 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
             , fieldDbName = tDbName
             , fieldKind   = kind }
           where
-            -- agg = case
-            checkAggr aggrC mbPlainFldDef = case ft of
+            checkAggr mbPlainFldDef = case ft of
               AppT (AppT ac (LitT (StrTyLit (T.pack -> fname)))) _aggrT
-                | ac == aggrC -> aggrFldDef fname mbPlainFldDef <&> \fd -> RFAggr fd fname
+                | ac == aggrC -> aggrFldDef typMap fname mbPlainFldDef
+                  <&> \fd -> RFAggr fd fname True
+                | ac == aggrC' -> aggrFldDef' typMap fname mbPlainFldDef
+                  <&> \fd -> RFAggr fd fname False
               _ -> Nothing
             toFrom rd = RFFromHere rd.rdTo <$> traverse conv rd.rdCols
               where
@@ -109,9 +120,9 @@ schemaRec' toDbName sch tabMap tab (rt, fs) = do
       |]
 
 deriveQueryRecord
-  :: (String -> String) -> Name -> Map NameNS TabInfo
+  :: (String -> String) -> Name -> Map NameNS TabInfo -> Map NameNS TypDef
   -> [((Name, [[Name]]), NameNS)] -> DecsQ
-deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> do
+deriveQueryRecord flm sch tabMap typMap = fmap L.concat . traverse (\((n,nss),tab) -> do
   fss <- applyTypes n nss
   let
     mStr = M.fromList
@@ -135,5 +146,5 @@ deriveQueryRecord flm sch tabMap = fmap L.concat . traverse (\((n,nss),tab) -> d
       , [d|instance ToField $(pure t) where toField = toJSONField |]
       , [d|instance FromRow $(pure t)|]
       , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME?
-      , schemaRec' flm sch tabMap tab fs
+      , schemaRec' flm sch tabMap typMap tab fs
       ])

@@ -31,7 +31,9 @@ singletons [d|
   data RecField' s p
     = RFEmpty s
     | RFPlain (FldDef' s)
-    | RFAggr (FldDef' s) s
+    | RFAggr (FldDef' s) s Bool
+    -- True in RFAggr means: "Can be used in any selects",
+    -- False means: "Can be used only in selects with GROUP BY"
     | RFToHere p [Ref' s]
     | RFFromHere p [Ref' s]
     deriving Show
@@ -141,7 +143,7 @@ instance LiftType p => LiftType (RecField p) where
   liftType = \case
     RFEmpty s -> [t| 'RFEmpty $(liftType s) |]
     RFPlain fd -> [t| 'RFPlain $(liftType fd) |]
-    RFAggr fd fname -> [t| 'RFAggr $(liftType fd) $(liftType fname)|]
+    RFAggr fd fname b -> [t| 'RFAggr $(liftType fd) $(liftType fname) $(liftType b)|]
     RFToHere t rr -> [t| 'RFToHere $(liftType t) $(liftType rr) |]
     RFFromHere t rr -> [t| 'RFFromHere $(liftType t) $(liftType rr) |]
 
@@ -168,8 +170,12 @@ instance {-# OVERLAPPABLE #-}
       mkRecField = RFPlain (demote @x)
 instance {-# OVERLAPPABLE #-}
   (ToStar x, ToStar fn, CanConvert sch (FdType x) (FdNullable x) t) =>
-    MkRecField sch (RFAggr x fn) (Aggr fn t) where
-      mkRecField = RFAggr (demote @x) (demote @fn)
+    MkRecField sch (RFAggr x fn False) (Aggr' fn t) where
+      mkRecField = RFAggr (demote @x) (demote @fn) False
+instance {-# OVERLAPPABLE #-}
+  (ToStar x, ToStar fn, CanConvert sch (FdType x) (FdNullable x) t) =>
+    MkRecField sch (RFAggr x fn True) (Aggr fn t) where
+      mkRecField = RFAggr (demote @x) (demote @fn) True
 instance {-# OVERLAPPABLE #-} (ToStar x, CRecordInfo sch tab t) =>
   MkRecField sch (RFToHere tab x) t where
     mkRecField = RFToHere (getRecordInfo @sch @tab @t) (demote @x)

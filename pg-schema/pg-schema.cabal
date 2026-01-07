@@ -1,6 +1,6 @@
 cabal-version:  2.4
 name:           pg-schema
-version:        0.2.0.0
+version:        0.3.0.0
 description:    Please see the README on GitHub at <https://github.com/odr/pg-schema#readme>
 homepage:       https://github.com/odr/pg-schema#readme
 bug-reports:    https://github.com/odr/pg-schema/issues

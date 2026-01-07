@@ -47,7 +47,7 @@ data Country = MkCountry
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
 
-deriveQueryRecord id ''Sch (tabInfoMap @Sch)
+deriveQueryRecord id ''Sch (tabInfoMap @Sch) mempty
   [ ((''Country, []), "sch" ->> "countries") ]
 
 data A = A1 | A2
@@ -163,7 +163,7 @@ data AddressRet = AddressRet
   , cust_addr :: SchList (PgTagged "id" Int32)}
   deriving Generic
 
-deriveQueryRecord P.id ''Sch (tabInfoMap @Sch)
+deriveQueryRecord P.id ''Sch (tabInfoMap @Sch) (typDefMap @Sch)
   [ ((''Company,[]), "sch" ->> "companies")
   , ((''Article,[]), "sch" ->> "articles")
   , ((''Address, [['A1,'B1],['A2,'B1]]), "sch" ->> "addresses")
@@ -180,7 +180,8 @@ deriveQueryRecord P.id ''Sch (tabInfoMap @Sch)
   , ((''AddressRet,[]), "sch" ->> "addresses")
   ]
 
-deriveQueryRecord (\s -> if P.drop 3 s == "Price" then "price" else s) ''Sch (tabInfoMap @Sch)
+deriveQueryRecord (\s -> if P.drop 3 s == "Price" then "price" else s) ''Sch
+  (tabInfoMap @Sch) (typDefMap @Sch)
   [((''PosCnt,[]), "sch" ->> "order_positions")]
 
 type NSC name = "sch" ->> name
