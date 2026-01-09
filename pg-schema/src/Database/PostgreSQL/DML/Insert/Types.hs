@@ -62,3 +62,11 @@ type family AllMandatoryOrHasPK (sch::Type) (tab::NameNSK) (r::Type) rFlds where
       :$$: (TL.Text "To update data you have to add fields: "
         :<>: TL.ShowType (RestPKFlds sch t r rFlds))
       ))
+
+type InsertReturning sch t r r' = (InsertNonReturning sch t r, TgtJSON sch t r')
+
+type InsertNonReturning sch t r = (SrcJSON sch t r, AllMandatory sch t r '[])
+
+type UpsertReturning sch t r r' = (UpsertNonReturning sch t r, TgtJSON sch t r')
+
+type UpsertNonReturning sch t r = (SrcJSON sch t r, AllMandatoryOrHasPK sch t r '[])

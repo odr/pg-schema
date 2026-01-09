@@ -27,24 +27,22 @@ import Prelude as P
 
 
 insertJSON
-  :: forall r r'. forall sch t
-    -> (SrcJSON sch t r, TgtJSON sch t r', AllMandatory sch t r '[])
+  :: forall r r'. forall sch t -> InsertReturning sch t r r'
   => Connection -> [r] -> IO ([r'], Text)
 insertJSON sch t = insertJSONImpl sch t
 
 insertJSON_
-  :: forall r. forall sch t -> (SrcJSON sch t r, AllMandatory sch t r '[])
+  :: forall r. forall sch t -> InsertNonReturning sch t r
   => Connection -> [r] -> IO Text
 insertJSON_ sch t = insertJSONImpl_ sch t
 
 upsertJSON
-  :: forall r r'. forall sch t
-    -> (SrcJSON sch t r, TgtJSON sch t r', AllMandatoryOrHasPK sch t r '[])
+  :: forall r r'. forall sch t -> UpsertReturning sch t r r'
   => Connection -> [r] -> IO ([r'], Text)
 upsertJSON sch t = insertJSONImpl sch t
 
 upsertJSON_
-  :: forall r. forall sch t -> (SrcJSON sch t r, AllMandatoryOrHasPK sch t r '[])
+  :: forall r. forall sch t -> UpsertNonReturning sch t r
   => Connection -> [r] -> IO Text
 upsertJSON_ sch t = insertJSONImpl_ sch t
 
