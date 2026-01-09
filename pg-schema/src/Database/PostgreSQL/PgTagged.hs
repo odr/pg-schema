@@ -4,6 +4,7 @@ module Database.PostgreSQL.PgTagged where
 
 import Data.Aeson
 import Data.Coerce
+import Data.Maybe.Singletons
 import Data.Hashable
 import Data.String
 import Data.Tagged
@@ -15,7 +16,8 @@ import Database.PostgreSQL.Simple.ToField as PG
 import Database.PostgreSQL.Simple.ToRow as PG
 import Database.Schema.Def
 import Database.Schema.Rec
-import GHC.TypeLits
+import Database.Types.Aggr
+import GHC.TypeLits as TL
 import PgSchema.Util
 import Prelude.Singletons
 import Type.Reflection
@@ -58,17 +60,6 @@ pattern PgTag b = PgTagged (Tagged b)
 (=:) :: forall b. forall a -> b -> PgTagged a b
 (=:) _ = coerce
 infixr 5 =:
-
--- class PgTaggedAppend a b as bs as' bs' | a as -> as', b bs -> bs' where
---   (<>:) :: PgTagged a b -> PgTagged as bs -> PgTagged as' bs'
-
--- infixr 1 <>:
-
--- instance PgTaggedAppend (a :: k) b (as :: [k]) bs (a : as) (b, bs) where
---   PgTag x <>: PgTag xs = PgTag (x, xs)
-
--- instance PgTaggedAppend (a :: k) b (as :: k) bs [a, as] (b, bs) where
---   PgTag x <>: PgTag xs = PgTag (x, xs)
 
 pgTag :: forall a b. b -> PgTagged a b
 pgTag = coerce
@@ -124,13 +115,25 @@ instance
 instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) (SchList a)) where
   toField = toJSONField
 
+type family PgTaggedFldDef sch t n r :: RecFieldK NameNSK where
+  PgTaggedFldDef sch t n (Aggr' "count" r) =
+    'RFAggr ('FldDef ('NameNS "pg_catalog" "int8") 'False 'False) "count" 'True
+  PgTaggedFldDef sch t n (Aggr "count" r) = PgTaggedFldDef sch t n (Aggr' "count" r)
+  PgTaggedFldDef sch t n (Aggr' fname r) = 'RFAggr
+    (FromMaybe
+      (TypeError (TL.Text "Can't process aggregate with name " :<>: TL.ShowType fname))
+      (AggrFldDefJ' (TTypDefSym1 sch) fname ('Just (TFldDef sch t n)))) fname 'False
+  PgTaggedFldDef sch t n (Aggr fname r) = 'RFAggr
+    (FromMaybe
+      (TypeError (TL.Text "Can't process aggregate with name " :<>: TL.ShowType fname))
+      (AggrFldDefJ (TTypDefSym1 sch) fname ('Just (TFldDef sch t n)))) fname 'True
+  PgTaggedFldDef sch t n r = GetRecField t (TTabDef sch t) (TTabRelFrom sch t)
+    (TTabRelTo sch t) (TFldDefSym1 sch) n
+
 instance (MkRecField sch (FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
   , ToStar n, ToStar t) =>
   CRecordInfo sch t (PgTagged (n::Symbol) r) where
-  type TRecordInfo sch t (PgTagged n r) = '[ '( 'FieldInfo n n
-    (GetRecField t (TTabDef sch t) (TTabRelFrom sch t) (TTabRelTo sch t)
-      (TFldDefSym1 sch) n), r)
-    ]
+  type TRecordInfo sch t (PgTagged n r) = '[ '( 'FieldInfo n n (PgTaggedFldDef sch t n r), r) ]
   getRecordInfo = RecordInfo (demote @t) [FieldInfo (demote @n) (demote @n)
     $ mkRecField @sch @(FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) @r]
 

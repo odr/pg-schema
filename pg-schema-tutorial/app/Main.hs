@@ -198,6 +198,12 @@ main = do
     , selectText @Sch @(NSC "addresses") @(AddressRev A1 B1) qp
     , selectText @Sch @(NSC "addresses") @(AddressRev A2 B1) qp
     , selectText @Sch @(NSC "order_positions") @PosCnt qpEmpty
+    , selectText @Sch @(NSC "order_positions") @(PgTagged "_cnt" (Aggr "count" Int64)) qpEmpty
+    , selectText @Sch @(NSC "order_positions") @(PgTagged "_cnt" (Aggr' "count" Int64)) qpEmpty
+    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr "count" Int64)) qpEmpty
+    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr' "count" Int64)) qpEmpty
+    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr' "max" Int32)) qpEmpty
+    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr "max" (Maybe Int32))) qpEmpty
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"

@@ -94,9 +94,9 @@ schemaRec' toDbName sch tabMap typMap tab (rt, fs) = do
           where
             checkAggr mbPlainFldDef = case ft of
               AppT (AppT ac (LitT (StrTyLit (T.pack -> fname)))) _aggrT
-                | ac == aggrC -> aggrFldDef typMap fname mbPlainFldDef
+                | ac == aggrC -> aggrFldDef (typMap M.!?) fname mbPlainFldDef
                   <&> \fd -> RFAggr fd fname True
-                | ac == aggrC' -> aggrFldDef' typMap fname mbPlainFldDef
+                | ac == aggrC' -> aggrFldDef' (typMap M.!?) fname mbPlainFldDef
                   <&> \fd -> RFAggr fd fname False
               _ -> Nothing
             toFrom rd = RFFromHere rd.rdTo <$> traverse conv rd.rdCols

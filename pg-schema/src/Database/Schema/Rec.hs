@@ -168,6 +168,10 @@ instance {-# OVERLAPPABLE #-}
   (ToStar x, CanConvert sch (FdType x) (FdNullable x) t) =>
     MkRecField sch (RFPlain x) t where
       mkRecField = RFPlain (demote @x)
+instance {-# OVERLAPPING #-}
+  (ToStar x, CanConvert sch (FdType x) (FdNullable x) t) =>
+    MkRecField sch (RFAggr x "count" True) (Aggr' "count" t) where
+      mkRecField = RFAggr (demote @x) (demote @"count") False
 instance {-# OVERLAPPABLE #-}
   (ToStar x, ToStar fn, CanConvert sch (FdType x) (FdNullable x) t) =>
     MkRecField sch (RFAggr x fn False) (Aggr' fn t) where
