@@ -44,7 +44,6 @@ library
     Database.PostgreSQL.DML.Select
     Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Update
-    Database.PostgreSQL.DML.Update.Types
     Database.PostgreSQL.PgProduct
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
@@ -69,8 +68,8 @@ library
   hs-source-dirs:
     src
   build-depends:
-    aeson
-    , base >= 4.20
+      base >= 4.20
+    , aeson
     , bytestring
     , case-insensitive
     , containers
@@ -88,18 +87,19 @@ library
     , text
     , th-abstraction
     , time
-    , uuid
+    , uuid-types
   if flag(flat)
     build-depends: flat
     cpp-options: -DMK_FLAT
   if flag(arbitrary)
     build-depends:
-        QuickCheck
+      QuickCheck
     cpp-options: -DMK_ARBITRARY
   if flag(debug)
     cpp-options: -DDEBUG
   ghc-options:
     -Wall
+    -Wunused-packages
   default-language: GHC2021
   default-extensions:
     AllowAmbiguousTypes

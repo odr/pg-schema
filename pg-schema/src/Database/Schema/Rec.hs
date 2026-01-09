@@ -218,6 +218,9 @@ promote [d|
 type RestMand sch t r rFlds =
   RestMandatory sch t (DbNames (TRecordInfo sch t r) ++ rFlds)
 
+type RestPKFlds sch t r rFlds =
+  RestPK sch t (DbNames (TRecordInfo sch t r) ++ rFlds)
+
 type family AllPlain sch tab r where
   AllPlain sch t r = Assert
     (AllPlainB (TRecordInfo sch t r))

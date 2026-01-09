@@ -1,8 +1,10 @@
-module Database.PostgreSQL.DML.InsertJSON where
+{- HLINT ignore "Eta reduce" -}
+module Database.PostgreSQL.DML.InsertJSON
+  ( insertJSON, insertJSON_, upsertJSON, upsertJSON_
+  , insertJSONText, insertJSONText_ ) where
 
 import Control.Monad
 import Control.Monad.RWS
-import Data.Aeson as A
 import Data.Bifunctor
 import Data.Foldable as F
 import Data.Function
@@ -24,9 +26,31 @@ import PgSchema.Util
 import Prelude as P
 
 
-insertJSON :: forall r r'. forall sch t ->
-  InsertReturning sch t r r' => Connection -> [r] -> IO ([r'], Text)
-insertJSON sch t conn rs = withTransactionIfNot conn do
+insertJSON
+  :: forall r r'. forall sch t
+    -> (SrcJSON sch t r, TgtJSON sch t r', AllMandatory sch t r '[])
+  => Connection -> [r] -> IO ([r'], Text)
+insertJSON sch t = insertJSONImpl sch t
+
+insertJSON_
+  :: forall r. forall sch t -> (SrcJSON sch t r, AllMandatory sch t r '[])
+  => Connection -> [r] -> IO Text
+insertJSON_ sch t = insertJSONImpl_ sch t
+
+upsertJSON
+  :: forall r r'. forall sch t
+    -> (SrcJSON sch t r, TgtJSON sch t r', AllMandatoryOrHasPK sch t r '[])
+  => Connection -> [r] -> IO ([r'], Text)
+upsertJSON sch t = insertJSONImpl sch t
+
+upsertJSON_
+  :: forall r. forall sch t -> (SrcJSON sch t r, AllMandatoryOrHasPK sch t r '[])
+  => Connection -> [r] -> IO Text
+upsertJSON_ sch t = insertJSONImpl_ sch t
+
+insertJSONImpl :: forall r r'. forall sch t ->
+  (SrcJSON sch t r, TgtJSON sch t r') => Connection -> [r] -> IO ([r'], Text)
+insertJSONImpl sch t conn rs = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
   [Only (SchList res)] <- let q = "select pg_temp.__ins(?)" in
     traceShow' q $ query conn q $ Only $ SchList rs
@@ -41,10 +65,10 @@ withTransactionIfNot conn act = do
     <$> query_ conn "SELECT txid_current_if_assigned()"
   (if isInTrans then id else withTransaction conn) act
 
-insertJSON_
-  :: forall r. forall  sch t -> (InsertNonReturning sch t r, ToJSON r)
+insertJSONImpl_
+  :: forall r. forall  sch t -> SrcJSON sch t r
   => Connection -> [r] -> IO Text
-insertJSON_ sch t conn rs = withTransactionIfNot conn do
+insertJSONImpl_ sch t conn rs = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
   void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
   sql <$ execute_ conn "drop procedure pg_temp.__ins"
@@ -52,19 +76,19 @@ insertJSON_ sch t conn rs = withTransactionIfNot conn do
     sql = insertJSONText_ @r sch t
 
 insertJSONText_ :: forall r s. forall sch t ->
-  (IsString s, Monoid s, InsertNonReturning sch t r, ToJSON r) => s
-insertJSONText_ sch t =
-  insertJSONText' @s (typDefMap @sch) (getRecordInfo @sch @t @r) []
+  (IsString s, Monoid s, SrcJSON sch t r, Eq s) => s
+insertJSONText_ sch t = insertJSONText' @s (typDefMap @sch) (tabInfoMap @sch)
+  (getRecordInfo @sch @t @r) []
 
 insertJSONText :: forall r r' s. forall sch t ->
-  (IsString s, Monoid s, InsertReturning sch t r r', ToJSON r) => s
-insertJSONText sch t = insertJSONText' (typDefMap @sch)
+  (SrcJSON sch t r, TgtJSON sch t r', IsString s, Monoid s, Eq s) => s
+insertJSONText sch t = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
   (getRecordInfo @sch @t @r) (getRecordInfo @sch @t @r').fields
 
 insertJSONText'
-  :: forall s. (IsString s, Monoid s)
-  => M.Map NameNS TypDef -> RecordInfo -> [FieldInfo RecordInfo] -> s
-insertJSONText' mapTypes ir qfs = unlines'
+  :: forall s. (IsString s, Monoid s, Eq s)
+  => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo -> [FieldInfo RecordInfo] -> s
+insertJSONText' mapTypes mapTabs ir qfs = unlines'
   [ maybe
     "create or replace procedure pg_temp.__ins(data_0 jsonb) as $$"
     (const "create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$")
@@ -78,14 +102,18 @@ insertJSONText' mapTypes ir qfs = unlines'
   , "$$ language plpgsql;" ]
   where
     (mbRes, (decl, body)) =
-      evalRWS (insertJSONTextM mapTypes ir qfs [] []) ("  ",0) 0
+      evalRWS (insertJSONTextM mapTypes mapTabs ir qfs [] []) ("  ",0) 0
 
 type MonadInsert s = RWS (s, Int) ([s],[s]) Int
+-- R: (leading spaces to format code, number of table in tree)
+-- W: (lines of declarations, lines of function body)
+-- S: maximum number of table in tree "in use"
+
 insertJSONTextM
-  :: forall s. (IsString s, Monoid s)
-  => M.Map NameNS TypDef -> RecordInfo -> [FieldInfo RecordInfo] -> [s] -> [s]
-  -> MonadInsert s (Maybe s)
-insertJSONTextM mapTypes ri qfs fromFields toVars = do
+  :: forall s. (IsString s, Monoid s, Eq s)
+  => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo
+  -> [FieldInfo RecordInfo] -> [s] -> [s] -> MonadInsert s (Maybe s)
+insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
   (spaces, n) <- ask
   let
     sn = show' n
@@ -105,15 +133,42 @@ insertJSONTextM mapTypes ri qfs fromFields toVars = do
     startLoop =
       ["for " <> rowN <> " in select * from jsonb_array_elements("
       <> dataN <> ")", "loop"]
-    ins = ["  insert into " <> fromText (qualName ri.tabName) <> "("
-      <> intercalate' ", " (fromFields <> (fromText . fst <$> iplains))
-      <> ")", "    values (" <> intercalate' ", "
-        (toVars <> (jsonFld <$> iplains)) <> ")" <> if noRets then ";" else ""]
-        <> rets
+    mbKeyMand = mapTabs M.!? ri.tabName <&> ((,)
+      <$> fmap fromText . (.tiDef.tdKey)
+      <*> fmap fromText . M.keys
+        . M.filter (\fd -> not $ fd.fdNullable || fd.fdHasDefault) . (.tiFlds))
+    qualTabName = fromText (qualName ri.tabName)
+    ins = addSemiColon (case mbKeyMand of
+      Just (pk, mflds)
+        | not $ P.null $ mflds L.\\ (fromFields <> (fst <$> plains)) -> upd0
+        | P.null $ pk L.\\ (fromFields <> (fst <$> plainsPK))        -> ups0 pk
+      _ -> ins0
+      ) <> rets
       where
+        addSemiColon = \case
+          [] -> []
+          [x] -> [x <> if noRets then ";" else ""]
+          (x:xs) -> x : addSemiColon xs
+        ins0 =
+          ["  insert into " <> qualTabName <> "("
+            <> intercalate' ", " (fromFields <> (fst <$> plains)) <> ")"
+          , "    values (" <> intercalate' ", "
+            (toVars <> (jsonFld <$> iplains)) <> ")"]
+        upd0 =
+          [ "  update " <> qualTabName
+          , "    set " <> intercalate' ", " (uncurry nameVal <$> plains)
+          , "    where " <> intercalate' " and "
+            ( L.zipWith nameVal fromFields toVars
+            <> (uncurry nameVal <$> plainsPK)) ]
+        ups0 pk = ins0 <>
+          [ "    on conflict (" <> intercalate' ", " pk <> ")"
+          , "      do update set " <> intercalate' ", " (plainsOthers <&> \(name, _) -> name <> " = " <> "EXCLUDED." <> name) ]
+        nameVal name val = name <> " = " <> val
         noRets = P.null qplains && P.null ichildren
         qretFlds = fst <$> qretPairs
         qretVars = (<> sn) <$> qretFlds
+        plains = iplains <&> \ip -> (fromText (fst ip), jsonFld ip)
+        (plainsPK, plainsOthers) = L.partition ((`L.elem` foldMap fst mbKeyMand) . fst) plains
         jsonFld (dbn,def) = case mapTypes M.!? def.fdType of
           Just (TypDef "A" (Just t) _) ->
             "translate(" <> rowN <> ".value->>'" <> fromText dbn
@@ -135,8 +190,8 @@ insertJSONTextM mapTypes ri qfs fromFields toVars = do
     let
       qfs' = foldMap ((.fields) . snd)
         $ L.find (\qc -> ((==) `on` (fst . fst)) qc ic) qchildren
-    mbArr <- local (second $ const n') $ insertJSONTextM mapTypes (snd ic) qfs'
-      (fromText . (.fromName) <$> snd (fst ic))
+    mbArr <- local (second $ const n') $ insertJSONTextM mapTypes mapTabs
+      (snd ic) qfs' (fromText . (.fromName) <$> snd (fst ic))
       ((<> sn) . fromText . (.toName) <$> snd (fst ic))
     pure (fromText (fst $ fst ic), mbArr)
   let

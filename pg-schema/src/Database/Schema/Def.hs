@@ -71,7 +71,11 @@ promote [d|
     L.filter (isMandatory . f) (tdFlds td) L.\\ recFlds
     where
       isMandatory fd = not (fdNullable fd || fdHasDefault fd)
+
+  restPK' :: Eq s => TabDef' s -> [s] -> [s]
+  restPK' td recFlds = tdKey td L.\\ recFlds
   |]
+
 
 type NameNSK = NameNS' Symbol
 type TypDefK = TypDef' Symbol
@@ -162,6 +166,8 @@ genDefunSymbols [''TFrom, ''TTo]
 
 type RestMandatory sch t rs =
   RestMandatory' (TFldDefSym2 sch t) (TTabDef sch t) rs
+
+type RestPK sch t rs = RestPK' (TTabDef sch t) rs
 
 promote [d|
   zip2With :: (a -> b -> c) -> [a] -> [[b]] -> [[c]]

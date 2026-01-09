@@ -15,7 +15,7 @@ import Data.Hashable
 import Data.List as L
 import Data.Text as T
 import Data.Time
-import Data.UUID
+import Data.UUID.Types
 import Database.PostgreSQL.Schema.Catalog (PGC)
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
