@@ -76,17 +76,17 @@ insertJSONImpl_ sch t conn rs = withTransactionIfNot conn do
     sql = insertJSONText_ @r sch t
 
 insertJSONText_ :: forall r s. forall sch t ->
-  (IsString s, Monoid s, SrcJSON sch t r, Eq s) => s
+  (IsString s, Monoid s, SrcJSON sch t r, Ord s) => s
 insertJSONText_ sch t = insertJSONText' @s (typDefMap @sch) (tabInfoMap @sch)
   (getRecordInfo @sch @t @r) []
 
 insertJSONText :: forall r r' s. forall sch t ->
-  (SrcJSON sch t r, TgtJSON sch t r', IsString s, Monoid s, Eq s) => s
+  (SrcJSON sch t r, TgtJSON sch t r', IsString s, Monoid s, Ord s) => s
 insertJSONText sch t = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
   (getRecordInfo @sch @t @r) (getRecordInfo @sch @t @r').fields
 
 insertJSONText'
-  :: forall s. (IsString s, Monoid s, Eq s)
+  :: forall s. (IsString s, Monoid s, Ord s)
   => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo -> [FieldInfo RecordInfo] -> s
 insertJSONText' mapTypes mapTabs ir qfs = unlines'
   [ maybe
@@ -110,7 +110,7 @@ type MonadInsert s = RWS (s, Int) ([s],[s]) Int
 -- S: maximum number of table in tree "in use"
 
 insertJSONTextM
-  :: forall s. (IsString s, Monoid s, Eq s)
+  :: forall s. (IsString s, Monoid s, Ord s)
   => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo
   -> [FieldInfo RecordInfo] -> [s] -> [s] -> MonadInsert s (Maybe s)
 insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
@@ -120,52 +120,54 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
     dataN = "data_" <> sn
     rowN  = "row_" <> sn
     mbArrN = ("arr_" <> sn) <$ guard (not $ P.null qfs)
-    qcFlds = fmap ((,) <$> (.toName) <*> qualName . (.toDef.fdType))
-      $ nubBy ((==) `on` (.toName)) $ ichildren >>= snd . fst
-    qpFlds = ((,) <$> fst <*> qualName . (.fdType) . snd) <$> qplains
-    qretPairs = fmap (bimap fromText fromText)
-      $ nubBy ((==) `on` fst) $ qcFlds <> qpFlds
-    qretDecls = qretPairs <&> \(fld, typ) -> fld <> sn <> " " <> typ <> "; "
     decs = (if n == 0 then P.id else (dataN <> " jsonb;" :))
       [rowN <> " record;"]
       <> foldMap (pure . (<> " jsonb[];")) mbArrN <> qretDecls
+    qretDecls = qretPairs <&> \(fld, typ) -> fld <> sn <> " " <> typ <> "; "
     initArray = foldMap (pure . (<> ":= '{}';")) mbArrN
     startLoop =
       ["for " <> rowN <> " in select * from jsonb_array_elements("
       <> dataN <> ")", "loop"]
-    mbKeyMand = mapTabs M.!? ri.tabName <&> ((,)
-      <$> fmap fromText . (.tiDef.tdKey)
-      <*> fmap fromText . M.keys
-        . M.filter (\fd -> not $ fd.fdNullable || fd.fdHasDefault) . (.tiFlds))
-    qualTabName = fromText (qualName ri.tabName)
-    ins = addSemiColon (case mbKeyMand of
+    ins = case mbKeyMand of
       Just (pk, mflds)
-        | not $ P.null $ mflds L.\\ (fromFields <> (fst <$> plains)) -> upd0
+        | not $ P.null $ mflds L.\\ (fromFields <> (fst <$> plains)) ->
+          addSemiColon (upd0 <> rets)
         | P.null $ pk L.\\ (fromFields <> (fst <$> plainsPK))        -> ups0 pk
-      _ -> ins0
-      ) <> rets
+      _ -> addSemiColon (ins0 <> rets)
       where
-        addSemiColon = \case
-          [] -> []
-          [x] -> [x <> if noRets then ";" else ""]
-          (x:xs) -> x : addSemiColon xs
+        srcFlds = fromFields <> (fst <$> plains)
+        srcVars = toVars <> (jsonFld <$> iplains)
+        srcMap = M.fromList $ P.zip srcFlds srcVars
+        mbSetVars
+          | P.null (qretFlds L.\\ srcFlds) = Just
+            $ catMaybes $ P.zipWith (\fld var ->
+              (\srcVar -> var <> " := " <> srcVar <> ";")
+              <$> srcMap M.!? fld) qretFlds qretVars
+          | otherwise = Nothing
         ins0 =
-          ["  insert into " <> qualTabName <> "("
-            <> intercalate' ", " (fromFields <> (fst <$> plains)) <> ")"
-          , "    values (" <> intercalate' ", "
-            (toVars <> (jsonFld <$> iplains)) <> ")"]
+          [ "  insert into " <> qualTabName <> "(" <> intercalate' ", " srcFlds <> ")"
+          , "    values (" <> intercalate' ", " srcVars <> ")"]
+        sWhere = "where " <> intercalate' " and "
+            ( L.zipWith nameVal fromFields toVars <> (uncurry nameVal <$> plainsPK))
         upd0 =
           [ "  update " <> qualTabName
           , "    set " <> intercalate' ", " (uncurry nameVal <$> plains)
-          , "    where " <> intercalate' " and "
-            ( L.zipWith nameVal fromFields toVars
-            <> (uncurry nameVal <$> plainsPK)) ]
-        ups0 pk = ins0 <>
-          [ "    on conflict (" <> intercalate' ", " pk <> ")"
-          , "      do update set " <> intercalate' ", " (plainsOthers <&> \(name, _) -> name <> " = " <> "EXCLUDED." <> name) ]
-        nameVal name val = name <> " = " <> val
-        noRets = P.null qplains && P.null ichildren
-        qretFlds = fst <$> qretPairs
+          , "    " <> sWhere]
+        ups0 pk
+          | L.null plainsOthers = case mbSetVars of
+            Just [] -> addSemiColon ins0
+            Just xs -> ins0 <> [ "    on conflict do nothing;"]
+              <> ["  " <> intercalate' " " xs]
+            Nothing -> ins0 <> addSemiColon ([ "    on conflict do nothing"] <> rets)
+              <> ["  if not found then"
+                , "    select " <> intercalate' ", " qretFlds <> " into " <> intercalate' ", " qretVars
+                , "      from " <> qualTabName
+                , "      " <> sWhere <> ";"
+                , "  end if;"]
+          | otherwise = ins0 <> addSemiColon
+            [ "    on conflict (" <> intercalate' ", " pk <> ")"
+            , "      do update set " <> intercalate' ", " (plainsOthers <&>
+                \(name, _) -> name <> " = " <> "EXCLUDED." <> name) ]
         qretVars = (<> sn) <$> qretFlds
         plains = iplains <&> \ip -> (fromText (fst ip), jsonFld ip)
         (plainsPK, plainsOthers) = L.partition ((`L.elem` foldMap fst mbKeyMand) . fst) plains
@@ -177,9 +179,9 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
             "(" <> rowN <> ".value->>'" <> fromText dbn <> "')::"
               <> fromText (qualName def.fdType)
         rets
-          | P.null qplains && P.null ichildren = []
+          | noRets = []
           | otherwise = ["    returning " <> intercalate' ", " qretFlds
-            <> " into " <> intercalate' ", " qretVars <> ";"]
+            <> " into " <> intercalate' ", " qretVars]
     endLoop = "end loop;"
   tell (decs, fmap (spaces <>) $ initArray <> startLoop <> ins)
   (mapMaybe sequenceA -> arrs) <- local (first ("  " <>)) $ for ichildren \ic -> do
@@ -211,3 +213,20 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
       _ -> P.id) mempty
     (iplains, ichildren) = splitFields ri.fields
     (qplains, qchildren) = splitFields qfs
+    mbKeyMand = mapTabs M.!? ri.tabName <&> ((,)
+      <$> fmap fromText . (.tiDef.tdKey)
+      <*> fmap fromText . M.keys
+        . M.filter (\fd -> not $ fd.fdNullable || fd.fdHasDefault) . (.tiFlds))
+    qualTabName = fromText (qualName ri.tabName)
+    qcFlds = fmap ((,) <$> (.toName) <*> qualName . (.toDef.fdType))
+      $ nubBy ((==) `on` (.toName)) $ ichildren >>= snd . fst
+    qpFlds = ((,) <$> fst <*> qualName . (.fdType) . snd) <$> qplains
+    qretPairs = fmap (bimap fromText fromText)
+      $ nubBy ((==) `on` fst) $ qcFlds <> qpFlds
+    nameVal name val = name <> " = " <> val
+    noRets = P.null qplains && P.null ichildren
+    qretFlds = fst <$> qretPairs
+    addSemiColon = \case
+      [] -> []
+      [x] -> [x <> ";"]
+      (x:xs) -> x : addSemiColon xs

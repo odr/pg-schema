@@ -12,6 +12,7 @@ module Main where
 import Control.Monad
 import Data.Aeson
 import Data.Aeson.TH
+import Data.Bifunctor
 import Data.Bitraversable
 import Data.Fixed
 import Data.List as L
@@ -226,11 +227,22 @@ main = do
       , MkAddressI Nothing (Just "zipcode") Nothing (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
       , MkAddressI (Just "street2") (Just "zip2") (Just mempty) Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
-  as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged "id" Int32))]
-    <- fst <$> I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
-  T.putStrLn "\n\n\n"
-  T.putStrLn $ I2.insertJSONText_ @AddressI Sch (NSC "addresses")
-  T.putStrLn "\n\n\n"
+  (as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged ["id", "name"] (Int32, Text)))], _insTxt)
+    <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
+  curTime <- T.show <$> getCurrentTime
+  I2.upsertJSON_ Sch (NSC "addresses") conn
+    $ fmap (fmap $ second $ fmap $ fmap $ second (<> ": " <> curTime <> " updated")) as1
+  let
+    upsVals = fmap (second $ fmap \(PgTag (custId, _)) ->
+      PgTag @["id", "note"] (custId, Just curTime)) <$> as1
+  mapM_ print upsVals
+  I2.upsertJSON_ Sch (NSC "addresses") conn upsVals
+  T.putStrLn "\n====== 13 ========\n"
+  (as2 :: [PgTagged '["id", "cust_addr"]
+    (Int32, SchList (PgTagged ["id", "updated_at"] (Int32, Maybe ZonedTime)))], _upsTxt)
+    <- I2.upsertJSON Sch (NSC "addresses") conn upsVals
+  mapM_ print as2
+  T.putStrLn "\n====== 15 ========\n"
   void $ updateByCond_ @Sch @(NSC "addresses") conn
     (pgTag @"zipcode" (Just @Text "zip_new"))
     $ "street" =? Just @Text "street2"
