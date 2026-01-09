@@ -122,29 +122,36 @@ schemaRec' toDbName sch tabMap typMap tab (rt, fs) = do
 deriveQueryRecord
   :: (String -> String) -> Name -> Map NameNS TabInfo -> Map NameNS TypDef
   -> [((Name, [[Name]]), NameNS)] -> DecsQ
-deriveQueryRecord flm sch tabMap typMap = fmap L.concat . traverse (\((n,nss),tab) -> do
+deriveQueryRecord flm sch tabMap typMap = fmap L.concat . traverse \((n,nss),tab) -> do
   fss <- applyTypes n nss
+  binC <- [t| Binary |]
   let
     mStr = M.fromList
       $ Mb.mapMaybe (\s -> let s' = flm s in (s,s') <$ guard (s /= s'))
       $ nub $ fst <$> foldMap snd fss
-  L.concat <$> for fss \fs@(t,_) ->
-    L.concat <$> sequenceA
-      [ [d|instance FromJSON $(pure t) where
-            parseJSON = genericParseJSON defaultOptions
-              { fieldLabelModifier = \s -> fromMaybe s $ M.lookup s mStr }
-        |]
-      , [d|instance ToJSON $(pure t) where
-            toJSON = genericToJSON defaultOptions
-              { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr }
-            toEncoding = genericToEncoding defaultOptions
-              { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr }
-        |]
-      , [d|deriving instance Show $(pure t)|]
+  L.concat <$> for fss \fs@(t,fields) ->
+    fmap L.concat $ sequenceA $
+      [ [d|deriving instance Show $(pure t)|]
       -- In JSON we need the same `fieldLabelModifier` as in 'SchemaRec'. Or not??
-      , [d|instance FromField $(pure t) where fromField = fromJSONField |]
-      , [d|instance ToField $(pure t) where toField = toJSONField |]
       , [d|instance FromRow $(pure t)|]
       , [d|instance ToRow $(pure t)|] -- for insert TODO: DELME?
       , schemaRec' flm sch tabMap typMap tab fs
-      ])
+      ]
+      <> if jsonEnabled binC (snd <$> fields)
+        then [
+          [d|instance FromJSON $(pure t) where
+              parseJSON = genericParseJSON defaultOptions
+                { fieldLabelModifier = \s -> fromMaybe s $ M.lookup s mStr } |],
+          [d|instance ToJSON $(pure t) where
+              toJSON = genericToJSON defaultOptions
+                { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr }
+              toEncoding = genericToEncoding defaultOptions
+                { fieldLabelModifier = \ss -> fromMaybe ss $ M.lookup ss mStr } |],
+          [d|instance FromField $(pure t) where fromField = fromJSONField |],
+          [d|instance ToField $(pure t) where toField = toJSONField |]
+          ]
+        else []
+  where
+    jsonEnabled binC = isNothing . L.find \case
+      AppT t _ | t == binC -> True
+      _ -> False
