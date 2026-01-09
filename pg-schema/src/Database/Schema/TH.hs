@@ -12,10 +12,9 @@ import Data.String
 import Data.Text(Text)
 import qualified Data.Text as T
 import Data.Traversable
+import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
-import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
-import Database.PostgreSQL.Simple.ToRow
 import Database.Schema.Def
 import Database.Schema.Rec
 import Database.Types.Aggr
