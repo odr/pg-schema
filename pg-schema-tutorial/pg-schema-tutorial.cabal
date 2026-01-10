@@ -18,7 +18,7 @@ source-repository head
   type: git
   location: https://github.com/odr/pg-schema
 
-executable pg-schema-tutorial-generator
+executable pgs-tutorial-generator
   main-is: Main.hs
   hs-source-dirs:
     generator

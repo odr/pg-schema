@@ -18,6 +18,7 @@ import Data.String
 import Data.Tagged
 import Data.Text as T
 import Data.Text.IO as T
+import Data.Traversable
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.DML.Select.Types
@@ -42,9 +43,16 @@ data ExceptionSch
 
 instance Exception ExceptionSch
 
+data AddRelation = AddRelation
+  { name  :: Text -- ^ name of addition relation. They will have namespase "_add"
+  , from  :: NameNS
+  , to    :: NameNS
+  , cols  :: [(Text, Text)] }
+
 data GenNames = GenNames
   { schemas :: [Text]   -- ^ generate data for all tables in these schemas
   , tables  :: [NameNS] -- ^ generate data for these tables
+  , addRelations :: [AddRelation] -- ^ additional relations. Be carefull!!
   }
 
 getSchema
@@ -56,11 +64,32 @@ getSchema conn GenNames {..} = do
     `catch` (throwM . GetDataException (selectText @_ @_ @PgType qpTyp))
   classes <- L.filter checkClass . fst <$> selectSch conn qpClass
     `catch` (throwM . GetDataException (selectText @_ @_ @PgClass qpClass))
-  relations <- L.filter checkRels . fst <$> selectSch conn qpRel
-    `catch` (throwM . GetDataException (selectText @_ @_ @PgRelation qpRel))
+  relations <- L.filter checkRels . (Mb.mapMaybe (mkRel classes) addRelations <>)
+    . fst <$> selectSch conn qpRel
+      `catch` (throwM . GetDataException (selectText @_ @_ @PgRelation qpRel))
   pure (fst types, classes, relations)
   where
-    -- all data are ordered to provide stable `hashSchema`
+    mkRel classes ar = do
+      conkey <- mkNums ar.from $ fst <$> ar.cols
+      confkey <- mkNums ar.to $ snd <$> ar.cols
+      pure PgRelation
+        { constraint__namespace = PgTag "_add"
+        , conname               = ar.name
+        , constraint__class     = toPgClassShort ar.from
+        , constraint__fclass    = toPgClassShort ar.to
+        , .. }
+      where
+        toPgClassShort nns = PgClassShort
+          { class__namespace = PgTag nns.nnsNamespace
+          , relname          = nns.nnsName }
+        mkNums nns fields = do
+          pgcl <- L.find (\c -> c.class__namespace == PgTag nns.nnsNamespace
+            && c.relname == nns.nnsName) classes
+          inds <- for fields \fld ->
+            L.findIndex ((==fld) . (.attname)) pgcl.attribute__class.getSchList
+          pure $ PgArr $ fromIntegral . (+1) <$> inds
+
+-- all data are ordered to provide stable `hashSchema`
     qpTyp = qRoot @PgCatalog @(PGC "pg_type") do
       qOrderBy [ascf "typname", ordNS "typnamespace"]
       qPath "enum__type" do
@@ -107,9 +136,7 @@ getDefs
     , Map NameNS (TabDef, [NameNS], [NameNS])
     , Map NameNS RelDef)
 getDefs (types,classes,relations) =
-  ( M.fromList $ (ptypDef <$> ntypes)
-    <> [(pgc "int8",  simpleType "N"), (pgc "float8", simpleType "N")]
-    -- added ^^ for Aggr
+  ( M.fromList $ ptypDef <$> ntypes
   , M.fromList $ pfldDef <$> attrs
   , M.fromList $ ptabDef <$> classes
   , M.fromList relDefs )
@@ -123,7 +150,8 @@ getDefs (types,classes,relations) =
     ntypes = ntype <$> L.filter ((`S.member` attrsTypes) . typKey) types
       where
         ntype t = (t, typKey <$> M.lookup (fromPgOid $ typelem t) mtypes)
-        attrsTypes = S.fromList $ typKey . attribute__type . snd <$> attrs
+        attrsTypes = S.fromList $ (typKey . attribute__type . snd <$> attrs)
+          <> [pgc "int8", pgc "float8"] -- added for Aggr
         mtypes = M.fromList $ (\x -> (fromPgOid $ oid x , x)) <$> types
     ptypDef (x@PgType{..}, typElem) = (typKey x, TypDef {..})
       where
