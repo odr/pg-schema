@@ -162,6 +162,7 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
                 , "      from " <> qualTabName
                 , "      " <> sWhere <> ";"
                 , "  end if;"]
+          | L.null pk = addSemiColon ins0 -- support for tables without PK
           | otherwise = ins0 <> addSemiColon
             [ "    on conflict (" <> intercalate' ", " pk <> ")"
             , "      do update set " <> intercalate' ", " (plainsOthers <&>
