@@ -5,7 +5,9 @@ module Database.PostgreSQL.PgTagged where
 import Data.Aeson
 import Data.Coerce
 import Data.Maybe.Singletons
+#ifdef MK_HASHABLE
 import Data.Hashable
+#endif
 import Data.String
 import Data.Tagged
 import Data.Text as T
@@ -50,8 +52,11 @@ instance Flat b => Flat (PgTagged a b) where
 
 #endif
 
+#ifdef MK_HASHABLE
 instance Hashable b => Hashable (PgTagged a b) where
   hashWithSalt s = hashWithSalt @b s . coerce
+#endif
+
 
 {-# COMPLETE PgTag #-}
 pattern PgTag :: forall a b. b -> PgTagged a b

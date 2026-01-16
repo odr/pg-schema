@@ -1,6 +1,6 @@
 cabal-version:  2.4
 name:           pg-schema
-version:        0.3.0.0
+version:        0.4.0.0
 description:    Please see the README on GitHub at <https://github.com/odr/pg-schema#readme>
 homepage:       https://github.com/odr/pg-schema#readme
 bug-reports:    https://github.com/odr/pg-schema/issues
@@ -18,11 +18,6 @@ source-repository head
   type: git
   location: https://github.com/odr/pg-schema
 
-flag flat
-  description: Make Flat instances for all types (Enums, PgTagged, SchList)
-  manual:      False
-  default:     False
-
 flag arbitrary
   description: Make Arbitrary instances for all types (Enums, PgTagged, SchList)
   manual:      False
@@ -30,6 +25,16 @@ flag arbitrary
 
 flag debug
   description: Trace queries
+  manual:      False
+  default:     False
+
+flag flat
+  description: Make Flat instances for all types (Enums, PgTagged, SchList)
+  manual:      False
+  default:     False
+
+flag hashable
+  description: Make Hashable instances for all types (Enums, PgTagged, SchList)
   manual:      False
   default:     False
 
@@ -76,7 +81,6 @@ library
     , deepseq
     , directory
     , exceptions
-    , hashable
     , mtl
     , postgresql-simple
     , singletons
@@ -95,6 +99,10 @@ library
     build-depends:
       QuickCheck
     cpp-options: -DMK_ARBITRARY
+  if flag(hashable)
+    build-depends:
+      hashable
+    cpp-options: -DMK_HASHABLE
   if flag(debug)
     cpp-options: -DDEBUG
   ghc-options:

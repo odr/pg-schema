@@ -11,7 +11,6 @@ import Data.ByteString.Lazy as B.L
 import Data.CaseInsensitive
 import Data.Coerce
 import Data.Fixed
-import Data.Hashable
 import Data.List as L
 import Data.Text as T
 import Data.Time
@@ -32,6 +31,10 @@ import Test.QuickCheck hiding (Fixed)
 #ifdef MK_FLAT
 import Flat
 #endif
+#ifdef MK_HASHABLE
+import Data.Hashable
+#endif
+
 
 
 -- | Many to many relation between (db-type, is nullable field) and Haskell type
@@ -94,7 +97,11 @@ instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
 newtype PgChar = PgChar { unPgChar :: Char }
   deriving stock (Show, Read)
   deriving newtype (Eq, Ord, FromField, Enum, Bounded, FromJSON, ToJSON
-    , Hashable)
+#ifdef MK_HASHABLE
+    , Hashable )
+#else
+    )
+#endif
 
 instance ToField PgChar where
   toField = toField . (:[]) . unPgChar
@@ -105,7 +112,12 @@ newtype PgArr a = PgArr { unPgArr :: [a] }
   -- This one has both.
   deriving stock (Traversable, Show, Read)
   deriving newtype (Eq, Ord, FromJSON, ToJSON, Functor
-    , Applicative, Monad, MonadZip, Foldable, Hashable, Semigroup, Monoid)
+    , Applicative, Monad, MonadZip, Foldable, Semigroup, Monoid
+#ifdef MK_HASHABLE
+    , Hashable )
+#else
+    )
+#endif
 #ifdef MK_ARBITRARY
   deriving newtype Arbitrary
 #endif
@@ -127,9 +139,6 @@ newtype PgOid = PgOid { fromPgOid :: Oid }
 instance Eq PgOid where _ == _ = True
   -- we don't want to distinguish oids but names instead
   -- e.g. if we recreate some table or constraint
-
-instance Hashable PgOid where
-  hashWithSalt s _ = hashWithSalt s ()
 
 instance FromJSON PgOid where
   parseJSON = fmap (PgOid . read . ("Oid " ++)) . parseJSON

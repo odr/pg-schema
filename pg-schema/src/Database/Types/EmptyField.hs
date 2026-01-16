@@ -2,7 +2,9 @@
 module Database.Types.EmptyField where
 
 import Data.Aeson
+#ifdef MK_HASHABLE
 import Data.Hashable
+#endif
 import Data.Void
 import Database.PostgreSQL.Simple.FromField as PG
 import Database.PostgreSQL.Simple.ToField as PG
@@ -15,7 +17,12 @@ import Flat as F
 
 
 newtype EmptyField = EmptyField (Maybe Void) -- Maybe to omitNothingField in JSON
-  deriving newtype (Show, Eq, Ord, Hashable, FromJSON, ToJSON)
+  deriving newtype (Show, Eq, Ord, FromJSON, ToJSON
+#ifdef MK_HASHABLE
+    , Hashable )
+#else
+    )
+#endif
 
 emptyField :: EmptyField
 emptyField = EmptyField Nothing

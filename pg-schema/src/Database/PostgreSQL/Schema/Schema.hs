@@ -8,7 +8,6 @@ import Data.Bifunctor
 import Data.ByteString as BS hiding (readFile, writeFile)
 import Data.Coerce
 import Data.Functor
-import Data.Hashable
 import Data.List as L
 import Data.List.NonEmpty as NE
 import Data.Map as M
@@ -204,37 +203,28 @@ updateSchemaFile'
   -> Text       -- ^ name of generated haskell type for schema
   -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO Bool
-updateSchemaFile'  verbose fileName connStr moduleName schName genNames =
+updateSchemaFile' verbose fileName connStr moduleName schName genNames =
   if BS.null connStr
     then pure False
     else do
       fe <- doesFileExist fileName
       conn <- connectPostgreSQL connStr
       P.putStrLn "Trying to get schema"
-      (schema,h) <- ((,) <$> id <*> hash) <$> getSchema conn genNames
-      P.putStrLn $ "New hash: " <> P.show h
-      P.putStrLn "Trying to get old hash"
+      schema <- getSchema conn genNames
+      P.putStrLn "Generation"
+      let newTxt = moduleText schema
       needGen <- if fe
-        then do
-          mbhs
-            <- L.find ((== ["hashSchema","="]) . L.take 2) . L.map T.words . lines'
-            <$> T.readFile fileName
-          P.putStrLn $ "Old hash: " <> P.show mbhs
-          pure $ case mbhs of
-            Just [_,_,x] | x == fromString (P.show h) -> False
-            _                                       -> True
+        then (/= newTxt) <$> T.readFile fileName
         else pure True
       P.putStrLn $ "Need to generate file: " <> P.show needGen
       when needGen do
-        T.writeFile fileName $ moduleText h schema
+        copyFile fileName (fileName <> ".bak")
+        T.writeFile fileName newTxt
       when verbose $ print schema
       pure needGen
   where
-    moduleText h = genModuleText moduleName schName h . getDefs
+    moduleText = genModuleText moduleName schName . getDefs
     -- for eager file read
-    lines' s
-      | T.length s == 0 = []
-      | otherwise = T.lines s
 
 updateSchemaFile
   :: String     -- ^ file name

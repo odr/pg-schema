@@ -4,7 +4,6 @@ module Database.PostgreSQL.Schema.Info where
 
 import Control.Monad
 import Data.Aeson.TH
-import Data.Hashable
 import Data.List as L
 import Data.Text as T
 import Database.PostgreSQL.Convert
@@ -86,7 +85,6 @@ L.concat
         , [d|instance FromRow $(liftType n)|]
         , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
         , schemaRec id ''PgCatalog tabMap typMap s n []
-        , [d|instance Hashable $(liftType n)|]
         ])
   [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass
   , ''PgClassShort, ''PgRelation ]

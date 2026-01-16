@@ -12,9 +12,6 @@ import GHC.Generics
 import PgSchema
 
 
-hashSchema :: Int
-hashSchema = 346903126412565186
-
 data Sch
 
 instance CTypDef Sch ( "pg_catalog" ->> "_int4" ) where

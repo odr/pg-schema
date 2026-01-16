@@ -1,8 +1,8 @@
+{-# LANGUAGE CPP #-}
 module Database.Schema.Gen where
 
 import Data.List as L
 import Data.Map as M
-import Data.String
 import Data.Text(Text)
 import qualified Data.Text as T
 import Database.Schema.Def
@@ -30,7 +30,9 @@ textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
           ( T.intercalate " | "
             $ ((T.toTitle (nnsName typ) <> "_") <>) <$> typEnum )
         <> "  deriving (Show, Read, Ord, Eq, Generic, Bounded, Enum)\n\n"
+#ifdef MK_HASHABLE
         <> "instance Hashable (PGEnum " <> st <> ")\n\n"
+#endif
         <> "instance NFData (PGEnum " <> st <> ")\n\n"
 
 textFldDef :: Text -> NameNS -> Text -> FldDef -> Text
@@ -56,13 +58,12 @@ textTabRel sch tab froms tos
 genModuleText
   :: Text -- ^ module name
   -> Text -- ^ schema name
-  -> Int  -- ^ schema hash value
   -> (Map NameNS TypDef
     , Map (NameNS,Text) FldDef
     , Map NameNS (TabDef, [NameNS], [NameNS])
     , Map NameNS RelDef)
   -> Text
-genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
+genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   =  "{- HLINT ignore -}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n"
@@ -70,11 +71,11 @@ genModuleText moduleName schName hash (mtyp, mfld, mtab, mrel)
   <> "module " <> moduleName <> " where\n\n"
   <> "-- This file is generated and can't be edited.\n\n"
   <> "import Control.DeepSeq\n" -- for PGEnum if exist
+#ifdef MK_HASHABLE
   <> "import Data.Hashable\n" -- for PGEnum if exist
+#endif
   <> "import GHC.Generics\n" -- for PGEnum if exists
   <> "import PgSchema\n\n\n"
-  <> "hashSchema :: Int\n"
-  <> "hashSchema = " <> fromString (show hash) <> "\n\n"
   <> "data " <> schName <> "\n\n"
   <> mconcat (uncurry (textTypDef schName) <$> toList mtyp)
   <> mconcat ((\((a,b),c) -> textFldDef schName a b c) <$> toList mfld)

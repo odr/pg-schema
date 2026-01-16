@@ -1,9 +1,12 @@
+{-# LANGUAGE CPP #-}
 module Database.PostgreSQL.Schema.TH where
 
 import Control.DeepSeq
 import Control.Monad.Catch
 import Data.ByteString as BS
+#ifdef MK_HASHABLE
 import Data.Hashable
+#endif
 import Data.List as L
 import Data.Map as M
 import Data.Text as T
@@ -30,7 +33,9 @@ thTypDef sch name td@TypDef{..} = (++)
           [ [t|Show|], [t|Read|], [t|Ord|], [t|Eq|], [t|Generic|]
           , [t|Bounded|], [t|Enum|] ] ] ]
     <*> [d|
+#ifdef MK_HASHABLE
       instance Hashable (PGEnum $(liftType sch) $(liftType name))
+#endif
       instance NFData (PGEnum $(liftType sch) $(liftType name))
       |]
   where

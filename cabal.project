@@ -11,4 +11,4 @@ packages:
   pg-schema-tutorial
 
 constraints:
-  pg-schema +arbitrary +debug +flat
+  pg-schema +arbitrary +debug +flat +hashable
