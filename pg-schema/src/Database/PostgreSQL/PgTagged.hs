@@ -66,6 +66,8 @@ pattern PgTag b = PgTagged (Tagged b)
 (=:) _ = coerce
 infixr 5 =:
 
+type s := t = PgTagged s t
+
 pgTag :: forall a b. b -> PgTagged a b
 pgTag = coerce
 

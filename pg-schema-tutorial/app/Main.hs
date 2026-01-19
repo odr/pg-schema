@@ -198,7 +198,7 @@ main = do
     , selectText @Sch @(NSC "addresses") @(AddressRev A1 B1) qp
     , selectText @Sch @(NSC "addresses") @(AddressRev A2 B1) qp
     , selectText @Sch @(NSC "order_positions") @PosCnt qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "_cnt" (Aggr "count" Int64)) qpEmpty
+    , selectText @Sch @(NSC "order_positions") @("_cnt" := Aggr "count" Int64) qpEmpty
     , selectText @Sch @(NSC "order_positions") @(PgTagged "_cnt" (Aggr' "count" Int64)) qpEmpty
     , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr "count" Int64)) qpEmpty
     , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr' "count" Int64)) qpEmpty
@@ -245,7 +245,7 @@ main = do
   I2.upsertJSON_ Sch (NSC "addresses") conn upsVals
   T.putStrLn "\n====== 13 ========\n"
   (as2 :: [PgTagged '["id", "cust_addr"]
-    (Int32, SchList (PgTagged ["id", "updated_at"] (Int32, Maybe ZonedTime)))], _upsTxt)
+    (Int32, SchList ("id" := Int32 :.. "updated_at" := Maybe ZonedTime))], _upsTxt)
     <- I2.upsertJSON Sch (NSC "addresses") conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"
