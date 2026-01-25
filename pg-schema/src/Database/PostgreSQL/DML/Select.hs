@@ -14,6 +14,7 @@ import Data.Singletons
 import Data.String
 import Data.Text as T
 import Data.Tuple
+import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.Simple hiding(In(..))
 import Database.Schema.Def
@@ -223,8 +224,11 @@ convCond = \case
     tell [SomeToField v]
     qual @n <&> (<> " " <> showCmp cmp <> " ?")
   In @n (NE.toList -> vs) -> do
-    tell (SomeToField <$> vs)
-    qual @n <&> (<> " in (" <> T.intercalate "," ("?" <$ vs) <> ")")
+    tell [SomeToField $ PgArr vs]
+    qual @n <&> (<> " = any(?)")
+  InArr @n vs -> do
+    tell [SomeToField $ PgArr vs]
+    qual @n <&> (<> " = any(?)")
   Null @n -> qual @n <&> (<> " is null")
   Not c -> getNot <$> convCond c
   BoolOp bo c1 c2 -> getBoolOp bo <$> convCond c1 <*> convCond c2

@@ -171,6 +171,11 @@ data Cond (sch::Type) (tab::NameNSK) where
     , CanConvert sch (FdType (TFldDef sch tab fld))
       (FdNullable (TFldDef sch tab fld)) v )
     => NonEmpty v -> Cond sch tab
+  InArr :: forall fld v sch tab.
+    ( CFldDef sch tab fld, ToField v, Show v
+    , CanConvert sch (FdType (TFldDef sch tab fld))
+      (FdNullable (TFldDef sch tab fld)) v )
+    => [v] -> Cond sch tab
   Null :: forall fld sch tab.
     (CFldDef sch tab fld, FdNullable (TFldDef sch tab fld) ~ 'True) =>
     Cond sch tab
@@ -238,6 +243,14 @@ pin :: forall name -> forall sch tab v.
     (FdNullable (TFldDef sch tab name)) v ) =>
   NonEmpty v -> Cond sch tab
 pin name = In @name
+
+{-# INLINE pinArr #-}
+pinArr :: forall name -> forall sch tab v.
+  ( CFldDef sch tab name, Show v, ToField v
+  , CanConvert sch (FdType (TFldDef sch tab name))
+    (FdNullable (TFldDef sch tab name)) v ) =>
+  [v] -> Cond sch tab
+pinArr name = InArr @name
 
 (&&&), (|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
 EmptyCond &&& cond = cond
