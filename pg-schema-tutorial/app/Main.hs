@@ -274,12 +274,13 @@ main = do
   selectSch @Sch @(NSC "addresses") @(Address A2 B1) conn qp >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 24 ========\n"
-  selectSch @Sch @(NSC "addresses") @(AddressRev A1 B1) conn qp' >>= print
-  -- selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp >>= print
+  selectSch @Sch @(NSC "addresses") @(AddressRev A1 B1) conn qp >>= print
+  selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp' >>= print
   where
     qp = qRoot qpr
     qpr = do
-      qDistinctOn [ascf "street"]
+      qDistinct
+      -- qDistinctOn [ascf "street"]
       qWhere
         $ pparent (NSC "address_city")
         $ pparent (NSC "city_country")
@@ -289,8 +290,14 @@ main = do
       qLimit 5
       qOffset 0
       qPath "address_city" do
-        -- qDistinctOn [ascf "name"]               -- not work (reason: RelOne)
+        -- qDistinct -- not work (reason: RelOne)
         qWhere $ "name" =? Just @Text "street"
         qPath "address_city" do
           qLimit 2
           qDistinctOn [descf "street"]
+        qPath "city_country" do
+          qDistinctOn [descf "name"]
+          -- qLimit 3 -- not work (reason: RelOne)
+          qOrderBy [ascf "name"]
+          qWhere $ "name" >? ("Bar" :: Text)
+        qDistinctOn [ascf "name"]

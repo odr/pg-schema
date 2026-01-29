@@ -1,5 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE DerivingVia #-}
 module Database.PostgreSQL.DML.Select where
 
 import Control.Monad.RWS
@@ -10,6 +13,7 @@ import Data.Functor
 import Data.List as L
 import Data.List.NonEmpty as NE
 import Data.Maybe
+import Data.Monoid
 import Data.Singletons
 import Data.String
 import Data.Text as T
@@ -20,16 +24,40 @@ import Database.PostgreSQL.Simple hiding(In(..))
 import Database.Schema.Def
 import Database.Schema.Rec
 import Database.Schema.ShowType
+import GHC.Generics
 import GHC.TypeLits
 import PgSchema.Util
 import Prelude as P
+import Prelude.Singletons as SP hiding (Any)
 
+
+data QueryRead sch t = QueryRead
+  { qrCurrTabNum  :: Int
+  , qrPath        :: [Text]
+  , qrParam       :: QueryParam sch t }
+
+data ParentInfo = ParentInfo
+  { piRelDbName   :: Text
+  , piFromNum     :: Int
+  , piToNum       :: Int
+  , piParentTab   :: NameNS
+  , piRefs        :: [Ref' Text]
+  , piPath        :: [Text] }
+  deriving Show
+
+data QueryState = QueryState
+  { qsLastTabNum  :: Int
+ , qsParents     :: [ParentInfo] }
+  deriving Show
+
+type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
 selectSch :: forall sch tab r.
   (FromRow r, CRecordInfo sch tab r) =>
   Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
 selectSch conn (selectText @sch @tab @r -> (sql,fs)) =
-  trace' (T.unpack sql <> "\n\n" <> P.show fs <> "\n\n") $ (,(sql,fs)) <$> query conn (fromString $ unpack sql) fs
+  trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
+  $ (,(sql,fs)) <$> query conn (fromString $ unpack sql) fs
 
 selectQuery :: forall sch tab r. (CRecordInfo sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
@@ -37,15 +65,14 @@ selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
 selectText :: forall sch t r. (CRecordInfo sch t r) =>
   QueryParam sch t -> (Text,[SomeToField])
-selectText qp = evalRWS (selectM (getRecordInfo @sch @t @r)) (qr0 qp) qs0
+selectText qp = evalRWS (selectM "" (getRecordInfo @sch @t @r)) (qr0 qp) qs0
 
 qr0 :: QueryParam sch t -> QueryRead sch t
 qr0 qrParam = QueryRead
-  { qrCurrTabNum = 0 , qrIsRoot = True , qrPath = [] , qrParam }
+  { qrCurrTabNum = 0 , qrPath = [] , qrParam }
 
 qs0 :: QueryState
-qs0 = QueryState { qsLastTabNum = 0, qsJoins = [], qsHasWhere = False
-  , qsOrd = "", qsLimOff = "" }
+qs0 = QueryState { qsLastTabNum = 0, qsParents = [] }
 
 two :: (a,b,c) -> (a,b)
 two (a,b,_) = (a,b)
@@ -59,33 +86,63 @@ jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
     pairs = mapMaybe (\(a,b) -> if "$EmptyField" `T.isSuffixOf` b then Nothing
       else Just $ "'" <> b <> "'," <> a) fs
 
-selectM :: MonadQuery sch t m => RecordInfo -> m Text
-selectM ri = do
+newtype TextI (s::Symbol) = TextI { unTextI :: Text}
+
+instance KnownSymbol s => Semigroup (TextI s) where
+  TextI a <> TextI b =
+    TextI $ T.intercalate (demote @s) $ L.filter (not . T.null) [a,b]
+
+instance KnownSymbol s => Monoid (TextI s) where mempty = TextI mempty
+
+selectM :: MonadQuery sch t m => Text -> RecordInfo -> m Text
+selectM refTxt ri = do
   QueryRead {..} <- ask
   (fmap two -> flds) <- traverse fieldM ri.fields
-  joins <- gets $ L.reverse . qsJoins
+  -- qsParents are collected "in depth" (it is ok for joins etc) but in reverse order
+  parents <- gets
+    $ fmap (\p -> p { piPath = L.reverse p.piPath}) . L.reverse . qsParents
   let
-    (condText, condPars) =
-      condByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpConds
-    (ordText, ordPars) =
-      ordByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpOrds
-    (distTexts, distPars) =
-      distByPath qrCurrTabNum (L.reverse qrPath) qrParam.qpDistinct
+    basePath = L.reverse qrPath
+    (unTextI -> condText, condPars) = F.fold $ L.reverse
+      $ mapMaybe (\(CondWithPath @path cond) -> let p = demote @path in
+        if
+          | not (basePath `L.isPrefixOf` p) -> Nothing
+          | p == basePath -> Just $ first TextI $ pgCond qrCurrTabNum cond
+          | otherwise -> L.find ((p ==) . (basePath <>) . (.piPath)) parents
+            <&> \pari -> first (TextI @" and ") $ pgCond pari.piToNum cond
+        ) qrParam.qpConds
+    (unTextI -> ordText, ordPars) = F.fold $ L.reverse
+      $ mapMaybe (\(OrdWithPath @path ord) -> let p = demote @path in
+        if
+          | not (basePath `L.isPrefixOf` p) -> Nothing
+          | p == basePath -> Just $ pgOrd qrCurrTabNum ord
+          | otherwise -> L.find ((p ==) . (basePath <>) . (.piPath)) parents
+            <&> \pari -> pgOrd pari.piToNum ord
+        ) qrParam.qpOrds
+    (distTexts, distPars) = F.fold $ L.reverse
+      $ mapMaybe (\(DistWithPath @path dist) -> let p = demote @path in
+        if
+          | not (basePath `L.isPrefixOf` p) -> Nothing
+          | p == basePath -> Just $ pgDist qrCurrTabNum dist
+          | otherwise -> L.find ((p ==) . (basePath <>) . (.piPath)) parents
+            <&> \pari -> pgDist pari.piToNum dist
+        ) qrParam.qpDistinct
+    -- (distTexts, distPars) =
+    --   distByPath qrCurrTabNum basePath qrParam.qpDistinct
     sel
-      | qrIsRoot =
+      | L.null basePath =
         T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") flds
       | otherwise = jsonPairing flds
-    whereText
-      | condText == mempty = ""
-      | otherwise = " where " <> condText
+    whereText = let conds = L.filter (not . T.null) [refTxt, condText] in
+      if L.null conds then mempty else " where " <> T.intercalate " and " conds
     orderText
-      | T.null ordText && T.null distTexts.orderBy = ""
+      | T.null ordText && T.null distTexts.orderBy.unTextI = ""
       | otherwise = " order by " <> T.intercalate ","
-        (L.filter (not . T.null) [distTexts.orderBy, ordText])
+        (L.filter (not . T.null) [distTexts.orderBy.unTextI, ordText])
     distinctText
-      | distTexts.distinct = " distinct "
-      | T.null distTexts.distinctOn = ""
-      | otherwise = " distinct on (" <> distTexts.distinctOn <> ") "
+      | distTexts.distinct.getAny && T.null distTexts.distinctOn.unTextI = " distinct "
+      | T.null distTexts.distinctOn.unTextI = ""
+      | otherwise = " distinct on (" <> distTexts.distinctOn.unTextI <> ") "
     qsLimOff = loByPath (L.reverse qrPath) $ qpLOs qrParam
     groupByText
       | P.null aggrs || P.null others = ""
@@ -94,23 +151,21 @@ selectM ri = do
           RFPlain{} -> [fi.fieldDbName]
           RFToHere _ refs -> refs <&> \ref -> ref.toName
           RFFromHere _ refs -> refs <&> \ref -> ref.fromName
-          _ -> []  )
+          _ -> [])
       where
         (aggrs, others) = L.partition
           (\fld -> case fld.fieldKind of { RFAggr{} -> True; _ -> False })
           ri.fields
-  modify (\qs -> qs { qsHasWhere = whereText /= mempty })
-  unless qrIsRoot $ modify (\qs -> qs { qsOrd = orderText, qsLimOff })
   tell $ distPars <> condPars <> distPars <> ordPars
   pure $ "select "
     <> distinctText
     <> sel
     <> " from " <> qualName ri.tabName <> " t" <> show' qrCurrTabNum
-    <> " " <> T.unwords joins
+    <> " " <> T.unwords (joinText <$> trace' (show' parents) parents)
     <> whereText
     <> groupByText
-    <> (if qrIsRoot then orderText else "")
-    <> (if qrIsRoot then qsLimOff else "")
+    <> orderText
+    <> qsLimOff
 
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
@@ -129,49 +184,47 @@ fieldM fi = case fi.fieldKind of
       _ -> (val, fi.fieldName, val <> " is null")
   RFFromHere ri refs -> do
     QueryRead {..} <- ask
-    modify \QueryState{qsLastTabNum, qsJoins} -> QueryState
-      { qsLastTabNum = qsLastTabNum+1
-      , qsJoins = joinText qrCurrTabNum (qsLastTabNum+1) : qsJoins
-      , qsHasWhere = False
-      , qsOrd = ""
-      , qsLimOff = "" }
+    modify \QueryState{qsLastTabNum = (+1) -> n2, qsParents} -> QueryState
+      { qsLastTabNum = n2
+      -- , qsJoins = joinText qrCurrTabNum n2 : qsJoins
+      , qsParents = ParentInfo
+        { piRelDbName = fi.fieldDbName
+        , piFromNum   = qrCurrTabNum
+        , piToNum     = n2
+        , piParentTab = ri.tabName
+        , piRefs      = refs
+        , piPath      = fi.fieldDbName : qrPath } : qsParents }
     n2 <- gets qsLastTabNum
-    flds <- local
-      (\qr -> qr{ qrCurrTabNum = n2, qrIsRoot = False, qrPath = fi.fieldDbName : qrPath })
-      (traverse fieldM ri.fields)
-    let val = fldt flds
+    (flds, pars) <- listen $ local
+      (\qr -> qr{ qrCurrTabNum = n2, qrPath = fi.fieldDbName : qrPath })
+      $ traverse fieldM ri.fields
+    val <- if L.any (fdNullable . fromDef) refs
+      then do
+        tell pars
+        pure $ "case when " <> T.intercalate " and " (third <$> flds)
+          <> " then null else " <> jsonPairing (two <$> flds) <> " end"
+      else pure $ jsonPairing $ two <$> flds
     pure (val, fi.fieldDbName, val <> " is null")
-    where
-      nullable = L.any (fdNullable . fromDef) refs
-      joinText n1 n2 =
-        outer <> "join " <> qualName ri.tabName <> " t" <> show' n2
-            <> " on " <> refCond n1 n2 refs
-        where
-          outer
-            | nullable = "left outer "
-            | otherwise = ""
-      fldt flds
-        | nullable = "case when " <> isNull <>
-            " then null else " <> jsonPairing (two <$> flds) <> " end"
-        | otherwise = jsonPairing $ two <$> flds
-        where
-          isNull = T.intercalate " and " $ third <$> flds
   RFToHere ri refs -> do
     QueryRead{..} <- ask
-    QueryState {qsLastTabNum, qsJoins} <- get
-    modify (const $ QueryState (qsLastTabNum+1) [] False "" "")
+    QueryState {qsLastTabNum = (+1) -> tabNum, qsParents} <- get
+    modify (const $ QueryState tabNum [])
     selText <- local
-      (\qr -> qr
-        { qrCurrTabNum = qsLastTabNum+1, qrIsRoot = False
-        , qrPath = fi.fieldDbName : qrPath })
-      (selectM ri)
-    modify (\qs -> qs { qsJoins = qsJoins })
-    QueryState{qsHasWhere, qsOrd, qsLimOff} <- get
+      (\qr -> qr { qrCurrTabNum = tabNum, qrPath = fi.fieldDbName : qrPath })
+      $ selectM (refCond tabNum qrCurrTabNum refs) ri
+    modify (\qs -> qs { qsParents = qsParents })
     let
-      val = "array(" <> selText <> " " <> (if qsHasWhere then "and" else "where")
-        <> " " <> refCond (qsLastTabNum+1) qrCurrTabNum refs
-        <> qsOrd <> qsLimOff <> ")"
+      val = "array(" <> selText <> ")"
     pure ("array_to_json(" <> val <> ")", fi.fieldDbName, val <> " = '{}'")
+
+joinText :: ParentInfo -> Text
+joinText ParentInfo{..} =
+  outer <> "join " <> qualName piParentTab <> " t" <> show' piToNum
+    <> " on " <> refCond piFromNum piToNum piRefs
+  where
+    outer
+      | L.any (fdNullable . fromDef) piRefs = "left outer "
+      | otherwise = ""
 
 refCond :: Int -> Int -> [Ref] -> Text
 refCond nFrom nTo = T.intercalate " and " . fmap compFlds
@@ -191,7 +244,8 @@ withLOsWithPath
 withLOsWithPath f p = join . L.find isJust . L.map (withLOWithPath f p)
 
 lowp :: forall sch t. forall (path::[Symbol]) ->
-  (ToStar path, TabPath sch t path) => LO -> LimOffWithPath sch t
+  (ToStar path, TabPath sch t path
+  , Snd (TabOnPath2 sch t path) ~ RelMany) => LO -> LimOffWithPath sch t
 lowp p = LimOffWithPath @p
 
 rootLO :: forall sch t. LO -> LimOffWithPath sch t
@@ -257,7 +311,7 @@ convCond = \case
       tpp <- tabPref
       modify (+1)
       cnum <- get
-      (tpc, condInt, ordInt, condExt) <- local (second (cnum <|))
+      (tpc, condInt, TextI ordInt, condExt) <- local (second (cnum <|))
         $ (,,,) <$> tabPref <*> convCond tabParam.cond
           <*> convOrd tabParam.order <*> convCond cond
       pure $ mkExists tpp tpc condInt ordInt condExt
@@ -284,7 +338,7 @@ convCond = \case
 pgCond :: forall sch t . Int -> Cond sch t -> (Text, [SomeToField])
 pgCond n cond = evalRWS (convCond cond) ("q", pure n) 0
 
-pgOrd :: forall sch t. Int -> [OrdFld sch t] -> (Text, [SomeToField])
+pgOrd :: forall sch t. Int -> [OrdFld sch t] -> (TextI ",", [SomeToField])
 pgOrd n ord = evalRWS (convOrd ord) ("o", pure n) 0
 
 pgDist :: forall sch t. Int -> Dist sch t -> (DistTexts, [SomeToField])
@@ -308,12 +362,11 @@ rootCond = cwp []
 condByPath :: Int -> [Text] -> [CondWithPath sch t] -> (Text, [SomeToField])
 condByPath num p = F.fold . withCondsWithPath (pgCond num) p
 
-ordByPath :: Int -> [Text] -> [OrdWithPath sch t] -> (Text, [SomeToField])
+ordByPath :: Int -> [Text] -> [OrdWithPath sch t] -> (TextI ",", [SomeToField])
 ordByPath num p = F.fold . withOrdsWithPath (pgOrd num) p
 
 distByPath :: Int -> [Text] -> [DistWithPath sch t] -> (DistTexts, [SomeToField])
-distByPath num p =
-  fromMaybe (emptyDistTexts, []) . withDistsWithPath (pgDist num) p
+distByPath num p = F.fold . withDistsWithPath (pgDist num) p
 
 withOrdWithPath :: forall sch t r. (forall t'. [OrdFld sch t'] -> r) ->
   [Text] -> OrdWithPath sch t -> Maybe r
@@ -355,27 +408,24 @@ convPreOrd = traverse processFld
       OrdFld @fld od -> (, od) <$> qual @fld
       UnsafeOrd m -> m
 
-renderOrd :: [(Text, OrdDirection)] -> Text
-renderOrd = T.intercalate "," . fmap render
+renderOrd :: [(Text, OrdDirection)] -> TextI ","
+renderOrd = foldMap (TextI . render)
   where
     render (t, show' -> od) = t <> " " <> od <> " nulls last"
 
-convOrd :: forall sch tab. [OrdFld sch tab] -> CondMonad Text
+convOrd :: forall sch tab. [OrdFld sch tab] -> CondMonad (TextI ",")
 convOrd = fmap renderOrd . convPreOrd
 
 data DistTexts = DistTexts
-  { distinct :: Bool
-  , distinctOn :: Text
-  , orderBy :: Text }
-
-emptyDistTexts :: DistTexts
-emptyDistTexts = DistTexts { distinct = False, distinctOn = "", orderBy = "" }
+  { distinct :: Any
+  , distinctOn :: TextI ","
+  , orderBy :: TextI "," }
+  deriving Generic
+  deriving (Semigroup, Monoid) via (Generically DistTexts)
 
 convDist :: forall sch tab. Dist sch tab -> CondMonad DistTexts
 convDist = \case
-  Distinct -> pure $ DistTexts
-    { distinct = True, distinctOn = mempty, orderBy = mempty }
-  DistinctOn ofs -> convPreOrd ofs <&> \xs -> DistTexts
-    { distinct = False
-    , distinctOn = T.intercalate "," $ fst <$> xs
+  Distinct -> pure $ mempty { distinct = Any True }
+  DistinctOn ofs -> convPreOrd ofs <&> \xs -> mempty
+    { distinctOn = foldMap (TextI . fst) xs
     , orderBy = renderOrd xs }

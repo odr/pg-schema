@@ -12,7 +12,7 @@ import Data.List.NonEmpty as NE
 import Data.String
 import Data.Text(Text)
 import Data.Type.Bool
-import Data.Type.Equality
+-- import Data.Type.Equality
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.Simple.ToField
 import Database.Schema.Def
@@ -22,8 +22,7 @@ import GHC.TypeLits
 import GHC.TypeError qualified as TE
 import PgSchema.Util
 
-import Prelude.Singletons(type (++), demote)
-import Data.Proxy
+import Prelude.Singletons
 
 
 data QueryParam sch t = QueryParam
@@ -58,11 +57,11 @@ qDistinct :: forall sch t path t'. TabOnPath2 sch t path ~ '(t', 'RelMany) =>
   MonadQP sch t path
 qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpDistinct }
 
-qDistinctOn :: forall sch t path t'. TabOnPath2 sch t path ~ '(t', 'RelMany) =>
-  [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
+qDistinctOn :: forall sch t path. [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
 qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn ofs) : qp.qpDistinct }
 
-qLimit :: forall sch t path. Natural -> MonadQP sch t path
+qLimit :: forall sch t path. Snd (TabOnPath2 sch t path) ~ RelMany
+  => Natural -> MonadQP sch t path
 qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
@@ -72,7 +71,8 @@ qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
     upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{ limit = Just n }
     new = LimOffWithPath @path LO { limit = Just n, offset = Nothing }
 
-qOffset :: forall sch t path. Natural -> MonadQP sch t path
+qOffset :: forall sch t path. Snd (TabOnPath2 sch t path) ~ RelMany
+  => Natural -> MonadQP sch t path
 qOffset n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
@@ -91,31 +91,18 @@ data OrdWithPath sch t where
     => [OrdFld sch (TabOnPath sch t path)] -> OrdWithPath sch t
 
 data DistWithPath sch t where
-  DistWithPath :: forall (path :: [Symbol]) t' sch t
-    . (ToStar path, TabOnPath2 sch t path ~ '(t', 'RelMany))
-    => Dist sch t' -> DistWithPath sch t
+  DistWithPath :: forall (path :: [Symbol]) sch t. ToStar path
+    => Dist sch (TabOnPath sch t path) -> DistWithPath sch t
+
+-- data DistWithPath sch t where
+--   DistWithPath :: forall (path :: [Symbol]) t' sch t
+--     . (ToStar path, TabOnPath2 sch t path ~ '(t', 'RelMany))
+--     => Dist sch (TabOnPath sch t path) -> DistWithPath sch t
 
 data LimOffWithPath sch t where
-  LimOffWithPath :: forall (path :: [Symbol]) sch t. (TabPath sch t path, ToStar path)
+  LimOffWithPath :: forall (path :: [Symbol]) sch t.
+    (TabPath sch t path, ToStar path, Snd (TabOnPath2 sch t path) ~ 'RelMany)
     => LO -> LimOffWithPath sch t
-
-
-
-data QueryRead sch t = QueryRead
-  { qrCurrTabNum :: !Int
-  , qrIsRoot     :: !Bool
-  , qrPath       :: ![Text]
-  , qrParam      :: !(QueryParam sch t) }
-
-data QueryState = QueryState
-  { qsLastTabNum :: !Int
-  , qsJoins      :: ![Text]
-  , qsHasWhere   :: !Bool
-  , qsOrd        :: !Text
-  , qsLimOff     :: !Text }
-  deriving Show
-
-type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like | ILike
   deriving (Show, Eq, Generic)
