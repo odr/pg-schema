@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DerivingVia #-}
 module Database.PostgreSQL.PgProduct where
 
 import Data.Aeson
@@ -13,6 +14,7 @@ import Prelude.Singletons as SP
 import Data.Data (Typeable)
 
 data a :.. b = a :.. b deriving (Generic, Show)
+  deriving (Semigroup, Monoid) via (Generically (a :.. b))
 -- ^ ':.' but with all needed instances
 
 infixr 1 :..
