@@ -172,12 +172,9 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
         (plainsPK, plainsOthers) = L.partition ((`L.elem` foldMap fst mbKeyMand) . fst) plains
         jsonFld (dbn,def) = case mapTypes M.!? def.fdType of
           Just (TypDef "A" (Just t) _) ->
-            -- "translate(" <> rowN <> ".value->>'" <> fromText dbn
-            --   <> "'::text, '[]', '{}')::" <> fromText (qualName t) <> "[]"
-            "(select array_agg(__x)::" <> fromText (qualName t) <> "[]"
-              <> " from jsonb_array_elements_text(nullif("
-              <> rowN <> ".value->'" <> fromText dbn
-              <> "', 'null'::jsonb)) __x)"
+            "case when jsonb_typeof(" <> rowN <> ".value->'" <> fromText dbn <> "') = 'array'"
+            <> " then (select coalesce(array_agg(__x)::" <> fromText (qualName t) <> "[], '{}')"
+            <> " from jsonb_array_elements_text(" <> rowN <> ".value->'" <> fromText dbn <> "') __x) else null end"
           _ ->
             "(" <> rowN <> ".value->>'" <> fromText dbn <> "')::"
               <> fromText (qualName def.fdType)

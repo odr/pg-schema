@@ -84,7 +84,7 @@ instance CFldDef Sch ( "sch" ->> "addresses" ) "numbers" where
 
 instance CFldDef Sch ( "sch" ->> "addresses" ) "phones" where
   type TFldDef Sch ( "sch" ->> "addresses" ) "phones" = 
-    'FldDef ( "pg_catalog" ->> "_text" ) 'True 'False
+    'FldDef ( "pg_catalog" ->> "_text" ) 'False 'False
 
 instance CFldDef Sch ( "sch" ->> "addresses" ) "street" where
   type TFldDef Sch ( "sch" ->> "addresses" ) "street" = 

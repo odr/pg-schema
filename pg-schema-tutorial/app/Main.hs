@@ -59,7 +59,7 @@ data Address (a::A) (b::B) = MkAddress
   , home    :: If (a == A1) (Maybe Text) EmptyField
   , app     :: Maybe Text
   , zipcode :: Maybe Text
-  , phones  :: Maybe (PgArr Text)
+  , phones  :: PgArr Text
   , numbers :: Maybe (PgArr Int32) }
   deriving Generic
 
@@ -144,7 +144,7 @@ newtype CompanyI = MkCompanyI
 data AddressI = MkAddressI
   { street :: Maybe Text
   , zipcode :: Maybe Text
-  , phones :: Maybe (PgArr Text)
+  , phones :: PgArr Text
   , numbers :: Maybe (PgArr Int32)
   , cust_addr :: SchList CustomerI
   , comp_addr :: SchList CompanyI }
@@ -219,7 +219,7 @@ main = do
   T.putStrLn "\n====== 11 ========\n"
   let
     insData =
-      [ MkAddressI (Just "street") Nothing (Just $ PgArr ["s","S12"]) (Just $ PgArr [1,2]) (SchList
+      [ MkAddressI (Just "street") Nothing (PgArr ["s","S12"]) (Just $ PgArr [1,2]) (SchList
         [ MkCustomerI "Ivan" $ SchList
           [ MkOrderI d "1" 1 (Just Order_state_paid) $ SchList
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
@@ -230,8 +230,8 @@ main = do
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
           , MkOrderI d "xx" 5 (Just Order_state_delivered) $ SchList
             [ MkOrdPosI 5 6 3 4, MkOrdPosI 1 3 3 5.1 ] ] ]) mempty
-      , MkAddressI Nothing (Just "zipcode") Nothing (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
-      , MkAddressI (Just "street2") (Just "zip2") (Just mempty) Nothing (SchList [MkCustomerI "Dima" mempty])
+      , MkAddressI Nothing (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
+      , MkAddressI (Just "street2") (Just "zip2") mempty Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
   (as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged ["id", "name"] (Int32, Text)))], _insTxt)
     <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
@@ -252,9 +252,9 @@ main = do
   void $ updateByCond_ @Sch @(NSC "addresses") conn
     (pgTag @"zipcode" (Just @Text "zip_new"))
     $ "street" =? Just @Text "street2"
-  (xs :: [PgTagged ["zipcode", "phones"] (Maybe Text, Maybe (PgArr Text))]) <-
+  (xs :: ["zipcode" := Maybe Text :.. "phones" := PgArr Text]) <-
     updateByCond @Sch @(NSC "addresses") conn
-      (pgTag @"phones" (Just $ PgArr ["111" :: Text,"222"]))
+      ("phones" =: PgArr ["111" :: Text,"222"])
       $ "street" =? Just @Text "street2"
   mapM_ print xs
   T.putStrLn "\n====== 20 ========\n"

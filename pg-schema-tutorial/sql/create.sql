@@ -23,7 +23,7 @@ create table sch.addresses
   , home text
   , app text
   , zipcode text
-  , phones text[]
+  , phones text[] not null
   , numbers int[]
   , constraint address_city foreign key (city_id) references sch.cities(id)
   );
