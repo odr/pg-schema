@@ -127,8 +127,6 @@ selectM refTxt ri = do
           | otherwise -> L.find ((p ==) . (basePath <>) . (.piPath)) parents
             <&> \pari -> pgDist pari.piToNum dist
         ) qrParam.qpDistinct
-    -- (distTexts, distPars) =
-    --   distByPath qrCurrTabNum basePath qrParam.qpDistinct
     sel
       | L.null basePath =
         T.intercalate "," $ L.map (\(a,b) -> a <> " \"" <> b <> "\"") flds
@@ -223,7 +221,7 @@ joinText ParentInfo{..} =
     <> " on " <> refCond piFromNum piToNum piRefs
   where
     outer
-      | L.any (fdNullable . fromDef) piRefs = "left outer "
+      | hasNullable piRefs = "left outer "
       | otherwise = ""
 
 refCond :: Int -> Int -> [Ref] -> Text
