@@ -20,22 +20,22 @@ source-repository head
 
 flag arbitrary
   description: Make Arbitrary instances for all types (Enums, PgTagged, SchList)
-  manual:      False
+  manual:      True
   default:     False
 
 flag debug
   description: Trace queries
-  manual:      False
+  manual:      True
   default:     False
 
 flag flat
   description: Make Flat instances for all types (Enums, PgTagged, SchList)
-  manual:      False
+  manual:      True
   default:     False
 
 flag hashable
   description: Make Hashable instances for all types (Enums, PgTagged, SchList)
-  manual:      False
+  manual:      True
   default:     False
 
 library
