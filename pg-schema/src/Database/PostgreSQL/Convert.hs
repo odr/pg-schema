@@ -89,8 +89,6 @@ instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.S.ByteString)
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "bytea") (Binary B.L.ByteString)
 -- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
 -- used only in the root table
-instance CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") Value
-instance CanConvert1 ('TypDef "U" x y) sch (PGC "json") Value
 instance (FromJSON a, ToJSON a) => CanConvert1 ('TypDef "U" x y) sch (PGC "jsonb") a
 instance (FromJSON a, ToJSON a) => CanConvert1 ('TypDef "U" x y) sch (PGC "json") a
 instance CanConvert1 ('TypDef "U" x y) sch (PGC "uuid") UUID
