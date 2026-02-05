@@ -218,7 +218,7 @@ updateSchemaFile' verbose fileName connStr moduleName schName genNames =
         else pure True
       P.putStrLn $ "Need to generate file: " <> P.show needGen
       when needGen do
-        copyFile fileName (fileName <> ".bak")
+        when fe $ copyFile fileName (fileName <> ".bak")
         T.writeFile fileName newTxt
       when verbose $ print schema
       pure needGen
