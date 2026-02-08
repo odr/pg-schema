@@ -76,8 +76,9 @@ instance CanConvert1 ('TypDef "N" x y) sch (PGC "oid") PgOid
 
 instance CanConvert1 ('TypDef "D" x y) sch (PGC "date") Day
 instance CanConvert1 ('TypDef "D" x y) sch (PGC "time") TimeOfDay
-instance CanConvert1 ('TypDef "D" x y) sch (PGC "timestamp") UTCTime
+instance CanConvert1 ('TypDef "D" x y) sch (PGC "timestamp") LocalTime
 instance CanConvert1 ('TypDef "D" x y) sch (PGC "timestamptz") ZonedTime
+instance CanConvert1 ('TypDef "D" x y) sch (PGC "timestamptz") UTCTime
 
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "char") PgChar
 instance CanConvert1 ('TypDef "S" x y) sch (PGC "name") Text
