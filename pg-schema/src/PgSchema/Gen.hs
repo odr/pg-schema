@@ -6,7 +6,6 @@ import Data.Map as M
 import Data.Singletons
 import Data.Text as T
 
-import Database.Schema.ShowType
 import PgSchema
 
 

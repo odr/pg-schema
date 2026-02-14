@@ -23,12 +23,12 @@ import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.Simple hiding(In(..))
 import Database.Schema.Def
 import Database.Schema.Rec
-import Database.Schema.ShowType
 import GHC.Generics
 import GHC.TypeLits
 import PgSchema.Util
 import Prelude as P
 import Prelude.Singletons as SP hiding (Any)
+import Util.HListTag
 
 
 data QueryRead sch t = QueryRead
@@ -52,12 +52,15 @@ data QueryState = QueryState
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
-selectSch :: forall sch tab r.
-  (FromRow r, CRecordInfo sch tab r) =>
+selectSch :: forall sch tab ren -> forall r h.
+  ( IsoHListTag ren r
+  , FromRow h, CRecordInfo sch tab h
+  , h ~ HListTag (Fields ren r)
+  ) =>
   Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
-selectSch conn (selectText @sch @tab @r -> (sql,fs)) =
+selectSch sch tab ren @_ @h conn (selectText @sch @tab @h -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
-  $ (,(sql,fs)) <$> query conn (fromString $ unpack sql) fs
+  $ (,(sql,fs)) . fmap (fromHListTag @ren) <$> query conn (fromString $ unpack sql) fs
 
 selectQuery :: forall sch tab r. (CRecordInfo sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
@@ -85,14 +88,6 @@ jsonPairing fs = "jsonb_build_object(" <> T.intercalate "," pairs <> ")"
   where
     pairs = mapMaybe (\(a,b) -> if "$EmptyField" `T.isSuffixOf` b then Nothing
       else Just $ "'" <> b <> "'," <> a) fs
-
-newtype TextI (s::Symbol) = TextI { unTextI :: Text}
-
-instance KnownSymbol s => Semigroup (TextI s) where
-  TextI a <> TextI b =
-    TextI $ T.intercalate (demote @s) $ L.filter (not . T.null) [a,b]
-
-instance KnownSymbol s => Monoid (TextI s) where mempty = TextI mempty
 
 selectM :: MonadQuery sch t m => Text -> RecordInfo -> m Text
 selectM refTxt ri = do

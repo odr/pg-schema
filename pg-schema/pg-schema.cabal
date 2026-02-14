@@ -1,6 +1,6 @@
 cabal-version:  2.4
 name:           pg-schema
-version:        0.4.0.0
+version:        0.5.0.0
 description:    Please see the README on GitHub at <https://github.com/odr/pg-schema#readme>
 homepage:       https://github.com/odr/pg-schema#readme
 bug-reports:    https://github.com/odr/pg-schema/issues
@@ -65,6 +65,7 @@ library
     Database.Types.EmptyField
     Database.Types.SchList
     TH.Rec.Update
+    Util.HListTag
     Util.TH.LiftType
     PgSchema.Gen
     PgSchema.Util
@@ -129,3 +130,57 @@ library
     TypeAbstractions
     TypeFamilies
     ViewPatterns
+
+executable tests-gen
+  main-is:          Main.hs
+  build-depends:    base, postgresql-simple, directory, pg-schema, bytestring
+  hs-source-dirs:   test-gen
+
+test-suite pgs-tests
+  type:             exitcode-stdio-1.0
+  main-is:          Main.hs
+  other-modules:
+    Sch
+  hs-source-dirs:   test
+  default-extensions:
+    AllowAmbiguousTypes
+    BlockArguments
+    ExplicitNamespaces
+    DataKinds
+    -- ^^^ added in GHC2024
+    DerivingStrategies
+    FunctionalDependencies
+    LambdaCase
+    -- ^^^ added in GHC2024
+    MultiWayIf
+    OverloadedRecordDot
+    OverloadedStrings
+    PatternSynonyms
+    RecordWildCards
+    RequiredTypeArguments
+    TemplateHaskell
+    TypeAbstractions
+    TypeFamilies
+    ViewPatterns
+  build-depends:
+    base,
+    aeson,
+    pg-schema,
+    bytestring,
+    case-insensitive,
+    hedgehog >= 1.1,
+    postgresql-simple,
+    resource-pool,
+    scientific,
+    tasty >= 1.4,
+    tasty-hedgehog >= 1.2,
+    text,
+    time,
+    unordered-containers,
+    uuid-types,
+    vector,
+    -- they can be excluded by flags
+    hashable,
+    deepseq
+    ---------------
+  default-language: GHC2021

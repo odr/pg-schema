@@ -10,5 +10,8 @@ packages:
   pg-schema
   pg-schema-tutorial
 
+package *
+  ghc-options: -fwrite-ide-info -fprint-potential-instances
+
 constraints:
-  pg-schema +arbitrary -debug +flat +hashable
+  pg-schema +arbitrary +flat +hashable -debug

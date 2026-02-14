@@ -9,9 +9,12 @@ import Data.Aeson
 import Data.Hashable
 #endif
 import GHC.Exts
+import GHC.TypeLits
 import Database.PostgreSQL.Simple.FromField as PG
 import Database.PostgreSQL.Simple.ToField as PG
-import Database.Schema.Rec
+import Database.PostgreSQL.PgTagged
+-- import Database.Schema.Rec
+import PgSchema.Util
 import Type.Reflection
 #ifdef MK_ARBITRARY
 import Test.QuickCheck
@@ -45,6 +48,10 @@ instance (ToJSON a) => ToField (SchList a) where
   toField :: ToJSON a => SchList a -> Action
   toField = toJSONField
 
-instance CRecordInfo sch t r => CRecordInfo sch t (SchList r) where
-  type TRecordInfo sch t (SchList r) = TRecordInfo sch t r
-  getRecordInfo = getRecordInfo @sch @t @r
+instance
+  (FromJSON a, Typeable a, KnownSymbol n)
+  => FromField (PgTagged (n::Symbol) (SchList a)) where
+  fromField = fromJSONField
+
+instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) (SchList a)) where
+  toField = toJSONField

@@ -33,7 +33,7 @@ import GHC.Records
 import Prelude as P
 import System.Directory
 import System.Environment
-
+import Util.HListTag
 
 data ExceptionSch
   = ConnectException ByteString SomeException
@@ -59,12 +59,12 @@ getSchema
   -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn GenNames {..} = do
-  types <- selectSch conn qpTyp
+  types <- selectSch PgCatalog (PGC "pg_type") RenamerId conn qpTyp
     `catch` (throwM . GetDataException (selectText @_ @_ @PgType qpTyp))
-  classes <- L.filter checkClass . fst <$> selectSch conn qpClass
+  classes <- L.filter checkClass . fst <$> selectSch PgCatalog (PGC "pg_class") RenamerId conn qpClass
     `catch` (throwM . GetDataException (selectText @_ @_ @PgClass qpClass))
   relations <- L.filter checkRels . (Mb.mapMaybe (mkRel classes) addRelations <>)
-    . fst <$> selectSch conn qpRel
+    . fst <$> selectSch PgCatalog (PGC "pg_constraint") RenamerId conn qpRel
       `catch` (throwM . GetDataException (selectText @_ @_ @PgRelation qpRel))
   pure (fst types, classes, relations)
   where

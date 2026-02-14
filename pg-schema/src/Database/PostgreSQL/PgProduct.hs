@@ -3,32 +3,21 @@
 module Database.PostgreSQL.PgProduct where
 
 import Data.Aeson
+import Data.Data (Typeable)
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.ToRow
-import Database.Schema.Rec
 import GHC.Generics
-import Prelude.Singletons as SP
-import Data.Data (Typeable)
+import Util.HListTag
 
-data a :.. b = a :.. b deriving (Generic, Show)
+
+data a :.. b = a :.. b deriving (Generic, Show, Eq, Ord)
   deriving (Semigroup, Monoid) via (Generically (a :.. b))
 -- ^ ':.' but with all needed instances
 
 infixr 1 :..
-
-instance (CRecordInfo sch t r1, CRecordInfo sch t r2) =>
-  CRecordInfo sch t (r1 :.. r2) where
-  type TRecordInfo sch t (r1 :.. r2) =
-    TRecordInfo sch t r1 ++ TRecordInfo sch t r2
-  getRecordInfo = RecordInfo
-    { tabName = r1.tabName
-    , fields = r1.fields <> r2.fields }
-    where
-      r1 = getRecordInfo @sch @t @r1
-      r2 = getRecordInfo @sch @t @r2
 
 instance (FromJSON a, FromJSON b) => FromJSON (a :.. b) where
   parseJSON v = do
@@ -42,7 +31,6 @@ instance (ToJSON a, ToJSON b) => ToJSON (a :.. b) where
     _ -> error
       "try to convert to JSON a pair (:..) but one element is not an object"
 
-
 instance (ToRow a, ToRow b) => ToRow (a :.. b) where
   toRow (a :.. b) = toRow $ a :. b
 
@@ -55,3 +43,23 @@ instance (FromJSON (a :.. b), Typeable (a :.. b)) => FromField (a :.. b) where
   fromField = fromJSONField
 
 instance ToJSON (a :.. b) => ToField (a :.. b) where toField = toJSONField
+
+instance ( IsoHListTag r a
+         , IsoHListTag r b
+         , AppendHListTag (Fields r a) (Fields r b)
+         , SplitHListTag (Fields r a) (Fields r b)
+         ) => IsoHListTag r (a :.. b) where
+
+  type Fields r (a :.. b) = Append (Fields r a) (Fields r b)
+
+  toHListTag (a :.. b) =
+    appendHListTag (toHListTag @r a) (toHListTag @r b)
+
+  fromHListTag h =
+    let (h1, h2) = splitHListTag @(Fields r a) @(Fields r b) h
+    in fromHListTag @r h1 :.. fromHListTag @r h2
+
+-- >>> toHListTag @RenamerId $ ("f1" =: (5::Int)) :.. ("f2" =: True) :.. ("f3" =: [(1::Int)..3])
+-- f1 := 5 :* f2 := True :* f3 := [1,2,3] :* HNil
+-- >>> fromHListTag @RenamerId (toHListTag @RenamerId (("f1" =: (5::Int)) :.. ("f2" =: True) :.. ("f3" =: [(1::Int)..3]))) :: "f1" := Int :.. "f2" := Bool :.. "f3" := [Int]
+-- PgTagged (Tagged 5) :.. (PgTagged (Tagged True) :.. PgTagged (Tagged [1,2,3]))

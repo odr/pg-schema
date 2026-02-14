@@ -70,3 +70,37 @@ type InsertNonReturning sch t r = (SrcJSON sch t r, AllMandatory sch t r '[])
 type UpsertReturning sch t r r' = (UpsertNonReturning sch t r, TgtJSON sch t r')
 
 type UpsertNonReturning sch t r = (SrcJSON sch t r, AllMandatoryOrHasPK sch t r '[])
+
+--------------------------------------------------------------------------------
+-- CHECK BAD FIELD FOR INSERT
+--------------------------------------------------------------------------------
+
+type IsArray sch t f = IsJust (TypElem (GetTypDef sch t f))
+
+type family IsJust (m :: Maybe a) :: Bool where
+  IsJust ('Just _) = 'True
+  IsJust 'Nothing  = 'False
+
+type family CheckSafeInsArray sch t f cat isArr :: Constraint where
+  CheckSafeInsArray sch t f cat 'True =
+    -- Смотрим на категорию ЭЛЕМЕНТА
+    If (GetElemCategory sch t f == "N" ||
+        GetElemCategory sch t f == "B" ||
+        GetElemCategory sch t f == "S")
+       (() :: Constraint)
+       (TypeError ('Text "Forbidden Insert: Field '" ':<>: 'Text f
+             ':<>: 'Text "' is an array of category " ':<>: 'Text (GetElemCategory sch t f)
+             ':<>: 'Text ". Only N, B, S elements are allowed in 'executeMany'."))
+
+  CheckSafeInsArray _ _ _ _ 'False = ()
+
+class SafeInsRow sch t (fs :: [(Symbol, Type)])
+instance SafeInsRow sch t '[]
+
+instance
+  ( CFldDef sch t f
+  , CheckSafeInsArray sch t f
+      (GetTypCategory sch t f)
+      (IsArray sch t f)
+  , SafeInsRow sch t rest
+  ) => SafeInsRow sch t ('(f, v) ': rest)

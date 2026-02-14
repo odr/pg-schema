@@ -15,6 +15,7 @@ import Data.Aeson.TH
 import Data.Bifunctor
 import Data.Bitraversable
 import Data.Fixed
+import Data.Functor
 import Data.List as L
 import Data.Singletons
 import Data.Text as T
@@ -38,12 +39,15 @@ import Test.QuickCheck.Instances ()
 import Database.Types.EmptyField (EmptyField)
 import Prelude as P
 
+
 data Country = MkCountry
   { code :: Maybe Text
   , name :: Text }
   -- TODO: cycle references lead to halt! Should check to avoid it
   -- , city_country :: SchList City }
   deriving (Eq, Ord, Generic)
+
+instance IsoHListTag RenamerId Country
 
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
@@ -63,11 +67,17 @@ data Address (a::A) (b::B) = MkAddress
   , numbers :: Maybe (PgArr Int32) }
   deriving Generic
 
+instance IsoHListTag RenamerId (Address A1 B1)
+instance IsoHListTag RenamerId (Address A2 B1)
+
 data City a b = MkCity
   { name         :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
   , address_city :: SchList (Address a b) }
   deriving Generic
+
+instance IsoHListTag RenamerId (City A1 B1)
+instance IsoHListTag RenamerId (City A2 B1)
 
 data AddressRev a b = MkAddressRev
   { street       :: Maybe Text
@@ -76,6 +86,9 @@ data AddressRev a b = MkAddressRev
   , zipcode      :: Maybe Text
   , address_city :: Maybe (City a b) }
   deriving Generic
+
+instance IsoHListTag RenamerId (AddressRev A1 B1)
+instance IsoHListTag RenamerId (AddressRev A2 B1)
 
 data Company = MkCompany
   { name       :: Text
@@ -102,6 +115,8 @@ data PosCnt = MkPosCnt
   , sumPrice  :: Aggr "sum" (Maybe Double)
   , avgPrice  :: Aggr "avg" (Maybe Double) }
   deriving Generic
+
+instance IsoHListTag RenamerId PosCnt
 
 -- data Customer = Customer
 --   { }
@@ -190,27 +205,27 @@ main :: IO ()
 main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selectText @Sch @(NSC "countries") @Country qpEmpty
-    , selectText @Sch @(NSC "cities") @(City A1 B1) qpEmpty
-    , selectText @Sch @(NSC "cities") @(City A2 B1) qpEmpty
-    , selectText @Sch @(NSC "addresses") @(Address A1 B1) qpEmpty
-    , selectText @Sch @(NSC "addresses") @(Address A2 B1) qp
-    , selectText @Sch @(NSC "addresses") @(AddressRev A1 B1) qp
-    , selectText @Sch @(NSC "addresses") @(AddressRev A2 B1) qp
-    , selectText @Sch @(NSC "order_positions") @PosCnt qpEmpty
-    , selectText @Sch @(NSC "order_positions") @("_cnt" := Aggr "count" Int64) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "_cnt" (Aggr' "count" Int64)) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr "count" Int64)) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr' "count" Int64)) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr' "max" Int32)) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr "max" (Maybe Int32))) qpEmpty
+    [ selectText @Sch @(NSC "countries")        @(HListTag (Fields RenamerId Country)) qpEmpty
+    , selectText @Sch @(NSC "cities")           @(HListTag (Fields RenamerId (City A1 B1))) qpEmpty
+    , selectText @Sch @(NSC "cities")           @(HListTag (Fields RenamerId (City A2 B1))) qpEmpty
+    , selectText @Sch @(NSC "addresses")        @(HListTag (Fields RenamerId (Address A1 B1))) qpEmpty
+    , selectText @Sch @(NSC "addresses")        @(HListTag (Fields RenamerId (Address A2 B1))) qp
+    , selectText @Sch @(NSC "addresses")        @(HListTag (Fields RenamerId (AddressRev A1 B1))) qp
+    , selectText @Sch @(NSC "addresses")        @(HListTag (Fields RenamerId (AddressRev A2 B1))) qp
+    , selectText @Sch @(NSC "order_positions")  @(HListTag (Fields RenamerId PosCnt)) qpEmpty
+    , selectText @Sch @(NSC "order_positions")  @(HListTag (Fields RenamerId ("_cnt" := Aggr "count" Int64))) qpEmpty
+    , selectText @Sch @(NSC "order_positions")  @(HListTag (Fields RenamerId (PgTagged "_cnt" (Aggr' "count" Int64)))) qpEmpty
+    , selectText @Sch @(NSC "order_positions")  @(HListTag (Fields RenamerId (PgTagged "cnt" (Aggr "count" Int64)))) qpEmpty
+    , selectText @Sch @(NSC "order_positions")  @(HListTag (Fields RenamerId (PgTagged "cnt" (Aggr' "count" Int64)))) qpEmpty
+    , selectText @Sch @(NSC "order_positions")  @(HListTag (Fields RenamerId (PgTagged "cnt" (Aggr' "max" Int32)))) qpEmpty
+    , selectText @Sch @(NSC "order_positions")  @(HListTag (Fields RenamerId (PgTagged "cnt" (Aggr "max" (Maybe Int32))))) qpEmpty
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  ar <- selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp
+  ar <- selectSch Sch (NSC "addresses") RenamerId @(AddressRev A2 B1) conn qp
   print ar
   T.putStrLn "\n====== 8 ========\n"
-  (cids,t) <- insertSch Sch (NSC "countries") conn countries
+  (cids,t) <- insertSch Sch (NSC "countries") RenamerId conn countries
   T.putStrLn t
   mapM_ (print @(PgTagged "id" Int32)) cids
   d <- utctDay <$> getCurrentTime
@@ -233,24 +248,26 @@ main = do
       , MkAddressI Nothing (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
       , MkAddressI (Just "street2") (Just "zip2") mempty Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
-  (as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged ["id", "name"] (Int32, Text)))], _insTxt)
+  (as1 :: ["id" := Int32 :.. "phones" := PgArr Text
+    :.. "cust_addr" := SchList ("id" := Int32 :.. "name" := Text)], _insTxt)
     <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
   curTime <- T.show <$> getCurrentTime
-  I2.upsertJSON_ Sch (NSC "addresses") conn
-    $ fmap (fmap $ second $ fmap $ fmap $ second (<> ": " <> curTime <> " updated")) as1
+  I2.upsertJSON_ Sch (NSC "addresses") conn $ as1 <&> \(a :.. b :.. PgTag c) ->
+    a :.. b :.. "cust_addr" =:
+      (c <&> \(d :.. n) -> d :.. fmap (<> ": " <> curTime <> " updated") n)
   let
-    upsVals = fmap (second $ fmap \(PgTag (custId, _)) ->
-      PgTag @["id", "note"] (custId, Just curTime)) <$> as1
+    upsVals = as1 <&> \(a :.. b :.. PgTag c) -> a :.. b :.. "cust_addr" =:
+      (c <&> \(custId :.. _) -> custId :.. "note" =: Just curTime)
   mapM_ print upsVals
   I2.upsertJSON_ Sch (NSC "addresses") conn upsVals
   T.putStrLn "\n====== 13 ========\n"
-  (as2 :: [PgTagged '["id", "cust_addr"]
-    (Int32, SchList ("id" := Int32 :.. "updated_at" := Maybe ZonedTime))], _upsTxt)
+  (as2 :: ["id" := Int32 :.. "cust_addr" := SchList
+    ("id" := Int32 :.. "updated_at" := Maybe ZonedTime)], _upsTxt)
     <- I2.upsertJSON Sch (NSC "addresses") conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"
   void $ updateByCond_ @Sch @(NSC "addresses") conn
-    (pgTag @"zipcode" (Just @Text "zip_new"))
+    ("zipcode" =: Just @Text "zip_new")
     $ "street" =? Just @Text "street2"
   (xs :: ["zipcode" := Maybe Text :.. "phones" := PgArr Text]) <-
     updateByCond @Sch @(NSC "addresses") conn
@@ -259,23 +276,23 @@ main = do
   mapM_ print xs
   T.putStrLn "\n====== 20 ========\n"
   -- Prelude.putStrLn $ show as1
-  selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
+  selectSch Sch (NSC "countries") RenamerId @Country conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 22 ========\n"
   bitraverse T.putStrLn print $ selectText @Sch @(NSC "cities") @(City A1 B1) qpEmpty
-  selectSch @Sch @(NSC "cities") @(City A1 B1) conn qpEmpty >>= print
+  selectSch Sch (NSC "cities") RenamerId @(City A1 B1) conn qpEmpty >>= print
   T.putStrLn ""
   bitraverse T.putStrLn print  $ selectText @Sch @(NSC "cities") @(City A2 B1) qpEmpty
-  selectSch @Sch @(NSC "cities") @(City A2 B1) conn qpEmpty >>= print
+  selectSch Sch (NSC "cities") RenamerId @(City A2 B1) conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 23 ========\n"
-  selectSch @Sch @(NSC "addresses") @(Address A1 B1) conn qpEmpty >>= print
+  selectSch Sch (NSC "addresses") RenamerId @(Address A1 B1) conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @(NSC "addresses") @(Address A2 B1) conn qp >>= print
+  selectSch Sch (NSC "addresses") RenamerId @(Address A2 B1) conn qp >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 24 ========\n"
-  selectSch @Sch @(NSC "addresses") @(AddressRev A1 B1) conn qp >>= print
-  selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp' >>= print
+  selectSch Sch (NSC "addresses") RenamerId @(AddressRev A1 B1) conn qp >>= print
+  selectSch Sch (NSC "addresses") RenamerId @(AddressRev A2 B1) conn qp' >>= print
   where
     qp = qRoot qpr
     qpr = do

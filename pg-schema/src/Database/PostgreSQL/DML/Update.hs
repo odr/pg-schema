@@ -7,8 +7,8 @@ import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.Simple
 import GHC.Int
 
+import Database.Schema.Def
 import Database.Schema.Rec
-import Database.Schema.ShowType
 import PgSchema.Util
 import Prelude as P
 
@@ -43,7 +43,8 @@ updateText_ (pgCond 0 -> (condTxt, condParams)) =
   ("update " <> tn <> " t0 set " <> fs <> fromText whereTxt, condParams )
   where
     ri = getRecordInfo @sch @t @r
-    fs = intercalate' ", " [fromText fi.fieldDbName <> " = ?" | fi <- ri.fields]
+    fs = fromText $ T.intercalate ", "
+      [fi.fieldDbName <> " = " <> typedPar fi | fi <- ri.fields]
     tn = fromText $ qualName ri.tabName
     whereTxt
       | T.null condTxt = mempty

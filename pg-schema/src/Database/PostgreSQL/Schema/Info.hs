@@ -12,12 +12,13 @@ import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 -- import Database.Schema.Rec
+import Database.Schema.Def (tabInfoMap, typDefMap)
 import Database.Schema.TH
 import Database.Types.SchList
 import GHC.Generics
 import GHC.Int
 import Util.TH.LiftType
-import Database.Schema.Def (tabInfoMap, typDefMap)
+import Util.HListTag
 
 
 -- | Tables and views info
@@ -29,10 +30,19 @@ data PgClass = PgClass
   , constraint__class :: SchList PgConstraint }
   deriving (Show,Eq,Generic)
 
+instance IsoHListTag RenamerId PgClass
+
 data PgClassShort = PgClassShort
   { class__namespace :: PgTagged "nspname" Text
   , relname          :: Text }
   deriving (Show,Eq,Generic)
+
+instance IsoHListTag RenamerId PgClassShort
+
+-- >>> toHListTag @RenamerId (PgClassShort (PgTag "ns") "rel")
+-- "class__namespace" =: ("nspname" =: ("ns")) :* "relname" =: ("rel") :* HNil
+-- >>> fromHListTag @RenamerId (toHListTag @RenamerId (PgClassShort (PgTag "ns") "rel")) :: PgClassShort
+-- PgClassShort {class__namespace = "nspname" =: ("ns"), relname = "rel"}
 
 data PgAttribute = PgAttribute
   { attname         :: Text
@@ -58,6 +68,8 @@ data PgType = PgType
   , typelem         :: PgOid
   , enum__type      :: SchList PgEnum }
   deriving (Show,Eq,Generic)
+
+instance IsoHListTag RenamerId PgType
 --
 data PgEnum = PgEnum
   { enumlabel     :: Text
@@ -73,6 +85,8 @@ data PgRelation = PgRelation
   , conkey                :: PgArr Int16
   , confkey               :: PgArr Int16 }
   deriving (Show,Eq,Generic)
+
+instance IsoHListTag RenamerId PgRelation
 
 L.concat
   <$> zipWithM (\n s ->

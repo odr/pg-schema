@@ -1,41 +1,49 @@
 module Database.PostgreSQL.DML.Insert where
 
-import Data.Bifunctor
-import Data.String
 import Data.Text as T
 import Database.PostgreSQL.Simple
 import GHC.Int
 
 import Database.PostgreSQL.DML.Insert.Types
+import Database.Schema.Def
 import Database.Schema.Rec
-import Database.Schema.ShowType
 import PgSchema.Util
+import Util.HListTag
 
 
-insertSch :: forall r r'. forall sch t -> (InsertReturning' sch t r r') =>
+insertSch :: forall sch t ren -> forall h h' r r'.
+  ( IsoHListTag ren r
+  , IsoHListTag ren r'
+  , fs ~ Fields ren r, h ~ HListTag fs
+  , h' ~ HListTag (Fields ren r')
+  , InsertReturning' sch t h h'
+  , SafeInsRow sch t fs) =>
   Connection -> [r] -> IO ([r'], Text)
-insertSch sch t conn = let sql = insertText @r @r' sch t in
-  trace' (T.unpack sql)
-    $ fmap (, sql) . returning conn (fromString $ T.unpack sql)
+insertSch sch t ren @h @h' conn = let sql = insertText sch t @h @h' in
+  trace' (T.unpack sql) . fmap ((, sql) . fmap (fromHListTag @ren))
+    . returning conn (fromText sql) . fmap (toHListTag @ren)
 
-insertSch_ :: forall sch t -> forall r. (InsertNonReturning' sch t r) =>
+insertSch_ :: forall sch t ren -> forall h r.
+  ( IsoHListTag ren r
+  , fs ~ Fields ren r, h ~ HListTag fs
+  , InsertNonReturning' sch t h
+  , SafeInsRow sch t fs) =>
   Connection -> [r] -> IO (Int64, Text)
-insertSch_ sch t @r conn = let sql = insertText_ @r sch t in
-  trace' (T.unpack sql)
-    $ fmap (, sql) . executeMany conn (fromString $ T.unpack sql)
+insertSch_ sch t ren @h conn = let sql = insertText_ sch t @h in
+  trace' (T.unpack sql) . fmap (, sql)
+    . executeMany conn (fromText sql) . fmap (toHListTag @ren)
 
-insertText :: forall r r' s. (IsString s, Monoid s) =>
-  forall sch t -> InsertReturning' sch t r r' => s
-insertText sch t = insertText_ @r sch t <> " returning " <> fs'
+insertText :: forall sch t -> forall r r'. InsertReturning' sch t r r' => Text
+insertText sch t @r @r' = insertText_ sch t @r <> " returning " <> fs'
   where
     ri = getRecordInfo @sch @t @r'
-    fs' = fromText $ T.intercalate "," [ fi.fieldDbName | fi <- ri.fields]
+    fs' = unTextI @"," $ foldMap (TextI . (.fieldDbName)) ri.fields
 
-insertText_ :: forall r s. (IsString s, Monoid s) =>
-  forall sch t -> CRecordInfo sch t r => s
-insertText_ sch t = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
+insertText_ :: forall sch t -> forall r. CRecordInfo sch t r => Text
+insertText_ sch t @r =
+  "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"
   where
     ri = getRecordInfo @sch @t @r
-    (fs,qs) = bimap inter inter $ unzip [ (fi.fieldDbName,"?") | fi <- ri.fields]
+    (unTextI @"," -> fs, unTextI @"," -> qs) =
+      foldMap (\fi -> (TextI fi.fieldDbName, "?")) ri.fields
     tn = fromText $ qualName ri.tabName
-    inter = fromText . T.intercalate ","

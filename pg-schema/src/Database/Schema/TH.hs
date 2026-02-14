@@ -118,6 +118,11 @@ schemaRec' toDbName sch tabMap typMap tab (rt, fs) = do
         getRecordInfo = RecordInfo tab $(pure $ ListE $ fst <$> fis)
       |]
 
+    -- canonicalInst fis = [d|
+    --   instance CCanonical $(pure rt) where
+    --     type TCanonical $(pure rt) =
+    --   |]
+
 deriveQueryRecord
   :: (String -> String) -> Name -> Map NameNS TabInfo -> Map NameNS TypDef
   -> [((Name, [[Name]]), NameNS)] -> DecsQ

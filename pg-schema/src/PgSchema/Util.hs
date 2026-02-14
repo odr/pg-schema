@@ -1,10 +1,11 @@
 {-# LANGUAGE CPP #-}
 module PgSchema.Util where
 
-import Data.List as L
+import Data.List qualified as L
 import Data.Singletons
 import Data.String
 import Data.Text as T
+import GHC.TypeLits
 import Prelude as P
 
 #ifdef DEBUG
@@ -27,6 +28,16 @@ intercalate' a = mconcat . L.intersperse a
 unlines' :: (Monoid a, IsString a) => [a] -> a
 unlines' = intercalate' "\n"
 {-# INLINE unlines' #-}
+
+newtype TextI (s::Symbol) = TextI { unTextI :: Text}
+  deriving newtype (Eq, Show, Ord, IsString)
+
+instance KnownSymbol s => Semigroup (TextI s) where
+  TextI a <> TextI b = TextI $ intercalate' (fromString $ symbolVal (Proxy @s))
+    $ L.filter (/= mempty) [a,b]
+
+instance KnownSymbol s => Monoid (TextI s) where
+  mempty = TextI mempty
 
 type ToStar a = (SingKind (KindOf a), SingI a)
 

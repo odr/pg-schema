@@ -1,4 +1,8 @@
 .stack-work/
 *~
 dist-newstyle
+dist-debug
 hie.yaml
+**/*.bak
+**/*.lock
+**/.hie

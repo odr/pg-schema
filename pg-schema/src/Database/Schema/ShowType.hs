@@ -46,8 +46,3 @@ instance ShowType TabDef where
 instance ShowType RelDef where
   showType RelDef{..} = "'RelDef " <> T.intercalate " "
     [showType rdFrom, showType rdTo, showType rdCols]
-
-qualName :: NameNS -> Text
-qualName NameNS {..}
-  | nnsNamespace == "pg_catalog" = nnsName
-  | otherwise = nnsNamespace <> "." <> nnsName

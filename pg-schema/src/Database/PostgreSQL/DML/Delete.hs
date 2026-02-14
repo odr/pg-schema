@@ -7,7 +7,7 @@ import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.Simple
 import GHC.Int
 
-import Database.Schema.ShowType
+import Database.Schema.Def
 import PgSchema.Util
 import Data.Singletons
 
