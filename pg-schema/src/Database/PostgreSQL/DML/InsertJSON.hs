@@ -5,6 +5,8 @@ module Database.PostgreSQL.DML.InsertJSON
 
 import Control.Monad
 import Control.Monad.RWS
+import Data.Aeson as A
+import Data.ByteString.Lazy.Char8 qualified as BSL
 import Data.Bifunctor
 import Data.Foldable as F
 import Data.Function
@@ -51,7 +53,7 @@ insertJSONImpl :: forall r r'. forall sch t ->
 insertJSONImpl sch t conn rs = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
   [Only (SchList res)] <- let q = "select pg_temp.__ins(?)" in
-    traceShow' q $ query conn q $ Only $ SchList rs
+    traceShow' q $ trace' (BSL.unpack $ A.encode (SchList rs))  $ query conn q $ Only $ SchList rs
   void $ execute_ conn "drop function pg_temp.__ins"
   pure (res, sql)
   where
