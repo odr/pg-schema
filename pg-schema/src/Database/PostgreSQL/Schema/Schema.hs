@@ -21,6 +21,7 @@ import Data.Traversable
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.DML.Select.Types
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Schema.Info
@@ -33,7 +34,7 @@ import GHC.Records
 import Prelude as P
 import System.Directory
 import System.Environment
-import Util.HListTag
+
 
 data ExceptionSch
   = ConnectException ByteString SomeException

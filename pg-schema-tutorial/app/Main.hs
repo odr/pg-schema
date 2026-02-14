@@ -30,6 +30,7 @@ import Database.PostgreSQL.Simple.ToField
 import Generic.Random
 import GHC.Generics
 import GHC.Int
+import GHC.TypeLits
 import PgSchema
 import Database.PostgreSQL.DML.InsertJSON qualified as I2
 import Database.PostgreSQL.DML.Update
@@ -110,13 +111,39 @@ data OrdPos = MkOrdPos
 data PosCnt = MkPosCnt
   { order_id  :: Int32
   , cnt       :: Aggr "count" Int64
-  , minPrice  :: Aggr "min" (Maybe Centi)
-  , maxPrice  :: Aggr "max" (Maybe Centi)
-  , sumPrice  :: Aggr "sum" (Maybe Double)
-  , avgPrice  :: Aggr "avg" (Maybe Double) }
+  --
+  -- for aggregates currently we need:
+  -- 1. Renamer to move minPrice -> price etc
+  -- 2. instance CFldDef sch tab "minPrice"
+  --
+  -- , minPrice  :: Aggr "min" (Maybe Centi)
+  -- , maxPrice  :: Aggr "max" (Maybe Centi)
+  -- , sumPrice  :: Aggr "sum" (Maybe Double)
+  -- , avgPrice  :: Aggr "avg" (Maybe Double)
+  }
   deriving Generic
 
+data Renamer'
+instance Renamer Renamer' where
+  type Apply Renamer' s = RImpl' s
+
+type family RImpl' (s :: Symbol) :: Symbol where
+  RImpl' "minPrice" = "price"
+  RImpl' "maxPrice" = "price"
+  RImpl' "sumPrice" = "price"
+  RImpl' "avgPrice" = "price"
+  RImpl' s = s
+
+instance IsoHListTag Renamer' PosCnt
 instance IsoHListTag RenamerId PosCnt
+
+-- >>> MkPosCnt 1 (Aggr 3) (Aggr $ Just 1) (Aggr $ Just 5) (Aggr $ Just 9) (Aggr $ Just 3)
+-- MkPosCnt {order_id = 1, cnt = Aggr {unAggr = 3}, minPrice = Aggr {unAggr = Just 1.00}, maxPrice = Aggr {unAggr = Just 5.00}, sumPrice = Aggr {unAggr = Just 9.0}, avgPrice = Aggr {unAggr = Just 3.0}}
+
+-- >>> toHListTag @Renamer' (MkPosCnt 1 (Aggr 3) (Aggr $ Just 1) (Aggr $ Just 5) (Aggr $ Just 9) (Aggr $ Just 3))
+
+-- >>> fromHListTag @RenamerId (toHListTag @RenamerId (MkPosCnt 1 (Aggr 3) (Aggr $ Just 1) (Aggr $ Just 5) (Aggr $ Just 9) (Aggr $ Just 3))) :: PosCnt
+-- MkPosCnt {order_id = 1, cnt = Aggr {unAggr = 3}, minPrice = Aggr {unAggr = Just 1.00}, maxPrice = Aggr {unAggr = Just 5.00}, sumPrice = Aggr {unAggr = Just 9.0}, avgPrice = Aggr {unAggr = Just 3.0}}
 
 -- data Customer = Customer
 --   { }

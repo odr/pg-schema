@@ -11,6 +11,7 @@ import Data.Singletons.TH
 import Data.String
 import Data.Text as T (Text, pack)
 import Database.PostgreSQL.Convert
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.PgProduct
 import Database.PostgreSQL.PgTagged
 import Database.Schema.Def
@@ -24,7 +25,6 @@ import Prelude as P
 import Prelude.Singletons as SP
 import Text.Show.Singletons
 import Util.TH.LiftType
-import Util.HListTag
 
 
 singletons [d|
@@ -265,11 +265,19 @@ type family PgTaggedFldDef sch t n r :: RecFieldK NameNSK where
   PgTaggedFldDef sch t n (Aggr "count" r) = PgTaggedFldDef sch t n (Aggr' "count" r)
   PgTaggedFldDef sch t n (Aggr' fname r) = 'RFAggr
     (FromMaybe
-      (TypeError (TL.Text "Can't process aggregate with name " :<>: TL.ShowType fname))
+      (TypeError (TL.Text "Can't process aggregate' with name " :<>: TL.ShowType fname
+        :$$: TL.Text "schema: " :<>: TL.ShowType sch
+        :$$: TL.Text "table: " :<>: TL.ShowType t
+        :$$: TL.Text "field name: " :<>: TL.ShowType n
+        ))
       (AggrFldDefJ' (TTypDefSym1 sch) fname ('Just (TFldDef sch t n)))) fname 'False
   PgTaggedFldDef sch t n (Aggr fname r) = 'RFAggr
     (FromMaybe
-      (TypeError (TL.Text "Can't process aggregate with name " :<>: TL.ShowType fname))
+      (TypeError (TL.Text "Can't process aggregate with name " :<>: TL.ShowType fname
+        :$$: TL.Text "schema: " :<>: TL.ShowType sch
+        :$$: TL.Text "table: " :<>: TL.ShowType t
+        :$$: TL.Text "field name: " :<>: TL.ShowType n
+        ))
       (AggrFldDefJ (TTypDefSym1 sch) fname ('Just (TFldDef sch t n)))) fname 'True
   PgTaggedFldDef sch t n r = GetRecField t (TTabDef sch t) (TTabRelFrom sch t)
     (TTabRelTo sch t) (TFldDefSym1 sch) n

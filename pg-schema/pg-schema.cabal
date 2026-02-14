@@ -49,6 +49,7 @@ library
     Database.PostgreSQL.DML.Select
     Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Update
+    Database.PostgreSQL.HListTag
     Database.PostgreSQL.PgProduct
     Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
@@ -65,7 +66,7 @@ library
     Database.Types.EmptyField
     Database.Types.SchList
     TH.Rec.Update
-    Util.HListTag
+    -- Util.HListTag
     Util.TH.LiftType
     PgSchema.Gen
     PgSchema.Util

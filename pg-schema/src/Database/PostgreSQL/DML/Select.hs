@@ -20,6 +20,7 @@ import Data.Text as T
 import Data.Tuple
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DML.Select.Types
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple hiding(In(..))
 import Database.Schema.Def
 import Database.Schema.Rec
@@ -28,7 +29,6 @@ import GHC.TypeLits
 import PgSchema.Util
 import Prelude as P
 import Prelude.Singletons as SP hiding (Any)
-import Util.HListTag
 
 
 data QueryRead sch t = QueryRead

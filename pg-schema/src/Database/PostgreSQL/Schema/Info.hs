@@ -7,6 +7,7 @@ import Data.Aeson.TH
 import Data.List as L
 import Data.Text as T
 import Database.PostgreSQL.Convert
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Simple.FromField
@@ -18,7 +19,6 @@ import Database.Types.SchList
 import GHC.Generics
 import GHC.Int
 import Util.TH.LiftType
-import Util.HListTag
 
 
 -- | Tables and views info
