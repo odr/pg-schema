@@ -10,7 +10,7 @@ import GHC.Int
 import Database.Schema.Def
 import PgSchema.Util
 import Data.Singletons
-
+import Database.PostgreSQL.SomeToField
 -- TODO (?):
 -- deleteByKey Connection -> [r] -> IO [r']
 

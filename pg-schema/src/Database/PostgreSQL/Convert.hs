@@ -36,7 +36,6 @@ import Data.Hashable
 #endif
 
 
-
 -- | Many to many relation between (db-type, is nullable field) and Haskell type
 class CTypDef sch tn => CanConvert sch (tn::NameNSK) (nullable :: Bool) t
 
@@ -46,8 +45,8 @@ instance CTypDef sch tn => CanConvert sch tn 'True EmptyField
 
 instance {-# OVERLAPPING #-} (CTypDef sch tn
   , TL.TypeError (TL.Text "You can't use Maybe for mandatory fields"
-    :$$: TL.Text "Table: " :<>: TL.ShowType tn
-    :$$: TL.Text "Field type: " :<>: TL.ShowType (Maybe t))
+    :$$: TL.Text "DB Type Name: " :<>: TL.ShowType tn
+    :$$: TL.Text "Haskell Field type: " :<>: TL.ShowType (Maybe t))
   )
   => CanConvert sch tn 'False (Maybe t)
 

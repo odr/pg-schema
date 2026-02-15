@@ -15,6 +15,7 @@ import Data.Type.Bool
 -- import Data.Type.Equality
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.Simple.ToField
+import Database.PostgreSQL.SomeToField
 import Database.Schema.Def
 import GHC.Generics
 import GHC.Natural
@@ -135,14 +136,6 @@ showCmp = \case
 * State: Last number of table "in use"
 -}
 type CondMonad = RWS (Text, NonEmpty Int) [SomeToField] Int
-
-data SomeToField where
-  SomeToField :: (ToField a, Show a) => a -> SomeToField
-
-deriving instance Show SomeToField
-
-instance ToField SomeToField where
-  toField (SomeToField v) = toField v
 
 -- https://github.com/emmanueljs1/ghc-proposals/blob/5a685faf899a2b00361b221d7e945a4922bf7863/existental-type-variables.rst#implementation-plan
 -- we have to add Proxy to existensials while ^ this proposal isn't implemented

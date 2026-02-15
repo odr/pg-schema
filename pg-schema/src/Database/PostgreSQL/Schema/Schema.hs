@@ -26,6 +26,7 @@ import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Schema.Info
 import Database.PostgreSQL.Simple
+import Database.PostgreSQL.SomeToField
 import Database.Schema.Def
 import Database.Schema.Gen
 import Database.Types.SchList

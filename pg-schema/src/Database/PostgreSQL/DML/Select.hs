@@ -22,6 +22,7 @@ import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple hiding(In(..))
+import Database.PostgreSQL.SomeToField
 import Database.Schema.Def
 import Database.Schema.Rec
 import GHC.Generics

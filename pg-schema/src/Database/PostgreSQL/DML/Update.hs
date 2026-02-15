@@ -4,7 +4,9 @@ import Data.String
 import Data.Text as T
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.DML.Select.Types
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple
+import Database.PostgreSQL.SomeToField
 import GHC.Int
 
 import Database.Schema.Def
@@ -17,17 +19,27 @@ import Prelude as P
 -- updateByKeyJSON Connection -> [r] -> IO [r']
 -- updateExp (e.q. update t set a = a + c + 1 where b > 10)
 
-updateByCond :: forall sch t r r'.
-  (UpdateReturning sch t r r', AllPlain sch t r, ToRow r, FromRow r') =>
+updateByCond :: forall sch t ren -> forall r r' h h'.
+  ( IsoHListTag ren r
+  , IsoHListTag ren r'
+  , fs ~ Fields ren r, h ~ HListTag fs, ToRow h
+  , h' ~ HListTag (Fields ren r'), FromRow h'
+  , UpdateReturning sch t h h') =>
+  -- (UpdateReturning sch t r r', AllPlain sch t r, ToRow r, FromRow r') =>
   Connection -> r -> Cond sch t -> IO [r']
-updateByCond conn r (updateText @sch @t @r @r' -> (q,ps)) =
-  trace' (q <> "\n\n" <> P.show ps <> "\n\n") $ query conn (fromString q) $ r :. ps
+updateByCond sch t ren @_ @_ @r @r' conn r (updateText @sch @t @r @r' -> (q,ps)) =
+  trace' (q <> "\n\n" <> P.show ps <> "\n\n")
+    $ fmap (fromHListTag @ren)
+    <$> query conn (fromString q) (toHListTag @ren r :. ps)
 
-updateByCond_ :: forall sch t r.
-  (CRecordInfo sch t r, ToRow r, AllPlain sch t r) =>
+updateByCond_ :: forall sch t ren -> forall r h.
+  ( IsoHListTag ren r
+  , fs ~ Fields ren r, h ~ HListTag fs, ToRow h
+  , CRecordInfo sch t h, ToRow r, AllPlain sch t h) =>
   Connection -> r -> Cond sch t -> IO Int64
-updateByCond_ conn r (updateText_ @sch @t @r -> (q, ps)) =
-  trace' (q <> "\n\n" <> P.show ps <> "\n\n") $ execute conn (fromString q) (r :. ps)
+updateByCond_ sch t ren @_ @h conn r (updateText_ @sch @t @h -> (q, ps)) =
+  trace' (q <> "\n\n" <> P.show ps <> "\n\n")
+    $ execute conn (fromString q) (toHListTag @ren r :. ps)
 
 updateText :: forall sch t r r' s.
   (UpdateReturning sch t r r', IsString s, Monoid s) =>

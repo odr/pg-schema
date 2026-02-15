@@ -11,7 +11,7 @@ import Database.Schema.Rec
 import PgSchema.Util
 
 
-insertSch :: forall sch t ren -> forall h h' r r'.
+insertSch :: forall sch t ren -> forall r r' h h' .
   ( IsoHListTag ren r
   , IsoHListTag ren r'
   , fs ~ Fields ren r, h ~ HListTag fs
@@ -19,17 +19,17 @@ insertSch :: forall sch t ren -> forall h h' r r'.
   , InsertReturning' sch t h h'
   , SafeInsRow sch t fs) =>
   Connection -> [r] -> IO ([r'], Text)
-insertSch sch t ren @h @h' conn = let sql = insertText sch t @h @h' in
+insertSch sch t ren @_ @_ @h @h' conn = let sql = insertText sch t @h @h' in
   trace' (T.unpack sql) . fmap ((, sql) . fmap (fromHListTag @ren))
     . returning conn (fromText sql) . fmap (toHListTag @ren)
 
-insertSch_ :: forall sch t ren -> forall h r.
+insertSch_ :: forall sch t ren -> forall r h.
   ( IsoHListTag ren r
   , fs ~ Fields ren r, h ~ HListTag fs
   , InsertNonReturning' sch t h
   , SafeInsRow sch t fs) =>
   Connection -> [r] -> IO (Int64, Text)
-insertSch_ sch t ren @h conn = let sql = insertText_ sch t @h in
+insertSch_ sch t ren @_ @h conn = let sql = insertText_ sch t @h in
   trace' (T.unpack sql) . fmap (, sql)
     . executeMany conn (fromText sql) . fmap (toHListTag @ren)
 

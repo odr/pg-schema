@@ -296,11 +296,11 @@ main = do
     <- I2.upsertJSON Sch (NSC "addresses") conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"
-  void $ updateByCond_ @Sch @(NSC "addresses") conn
+  void $ updateByCond_ Sch (NSC "addresses") RenamerId conn
     ("zipcode" =: Just @Text "zip_new")
     $ "street" =? ("street2" :: Text)
   (xs :: ["zipcode" := Maybe Text :.. "phones" := Maybe (PgArr Text)]) <-
-    updateByCond @Sch @(NSC "addresses") conn
+    updateByCond Sch (NSC "addresses") RenamerId conn
       ("phones" =: Just (PgArr ["111" :: Text,"222"]))
       $ "street" =? ("street2" :: Text)
   mapM_ print xs
