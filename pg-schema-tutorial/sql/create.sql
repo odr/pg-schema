@@ -19,11 +19,11 @@ create table sch.cities
 create table sch.addresses
   ( id serial primary key
   , city_id int
-  , street text
+  , street text not null
   , home text
   , app text
   , zipcode text
-  , phones text[] not null
+  , phones text[] -- not null
   , numbers int[]
   , constraint address_city foreign key (city_id) references sch.cities(id)
   );
