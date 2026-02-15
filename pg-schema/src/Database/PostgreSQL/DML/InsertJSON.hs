@@ -20,7 +20,7 @@ import Database.PostgreSQL.DML.Insert.Types
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Rec
-import Database.Schema.ShowType (qualName)
+import Database.Schema.ShowType
 import Database.Types.SchList
 import Data.String
 import GHC.Int
@@ -109,6 +109,8 @@ type MonadInsert s = RWS (s, Int) ([s],[s]) Int
 -- W: (lines of declarations, lines of function body)
 -- S: maximum number of table in tree "in use"
 
+data OP = INS | UPD | UPS deriving (Eq, Show)
+
 insertJSONTextM
   :: forall s. (IsString s, Monoid s, Ord s)
   => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo
@@ -128,12 +130,12 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
     startLoop =
       ["for " <> rowN <> " in select * from jsonb_array_elements("
       <> dataN <> ")", "loop"]
-    ins = case mbKeyMand of
+    (ins, op) = case mbKeyMand of
       Just (pk, mflds)
         | not $ P.null $ mflds L.\\ (fromFields <> (fst <$> plains)) ->
-          addSemiColon (upd0 <> rets)
-        | P.null $ pk L.\\ (fromFields <> (fst <$> plainsPK))        -> ups0 pk
-      _ -> addSemiColon (ins0 <> rets)
+          (addSemiColon (upd0 <> rets), UPD)
+        | P.null $ pk L.\\ (fromFields <> (fst <$> plainsPK)) -> (ups0 pk, UPS)
+      _ -> (addSemiColon (ins0 <> rets), INS)
       where
         srcFlds = fromFields <> (fst <$> plains)
         srcVars = toVars <> (jsonFld <$> iplains)
@@ -165,10 +167,11 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
                 , "      " <> sWhere <> ";"
                 , "  end if;"]
           | L.null pk = addSemiColon ins0 -- support for tables without PK
-          | otherwise = ins0 <> addSemiColon
-            [ "    on conflict (" <> intercalate' ", " pk <> ")"
-            , "      do update set " <> intercalate' ", " (plainsOthers <&>
-                \(name, _) -> name <> " = " <> "EXCLUDED." <> name) ]
+          | otherwise = addSemiColon $ ins0
+            <> [ "    on conflict (" <> intercalate' ", " pk <> ")"
+              , "      do update set " <> intercalate' ", " (plainsOthers <&>
+                  \(name, _) -> name <> " = " <> "EXCLUDED." <> name) ]
+            <> rets
         qretVars = (<> sn) <$> qretFlds
         plains = iplains <&> \ip -> (fromText (fst ip), jsonFld ip)
         (plainsPK, plainsOthers) = L.partition ((`L.elem` foldMap fst mbKeyMand) . fst) plains
@@ -185,28 +188,37 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
           | otherwise = ["    returning " <> intercalate' ", " qretFlds
             <> " into " <> intercalate' ", " qretVars]
     endLoop = "end loop;"
+    processChildren = do
+      (spaces', _) <- ask
+      (mapMaybe sequenceA -> arrs) <- for ichildren \ic -> do
+        modify (+1)
+        n' <- get
+        tell (mempty, pure $ spaces' <> "data_" <> show' n' <> " := "
+          <> rowN <> ".value->'" <> fromText (fst $ fst ic) <> "';")
+        let
+          qfs' = foldMap ((.fields) . snd)
+            $ L.find (\qc -> ((==) `on` (fst . fst)) qc ic) qchildren
+        mbArr <- local (second $ const n') $ insertJSONTextM mapTypes mapTabs
+          (snd ic) qfs' (fromText . (.fromName) <$> snd (fst ic))
+          ((<> sn) . fromText . (.toName) <$> snd (fst ic))
+        pure (fromText (fst $ fst ic), mbArr)
+      let
+        appendArray = foldMap (\arrN -> pure $ arrN <> ":= array_append("
+          <> arrN <> ", jsonb_build_object(" <> jsonFlds <> "));") mbArrN
+          where
+            jsonFlds = intercalate' ", "
+              $ (qplains <&> \qp -> let fld = fromText (fst qp) in
+                "'" <> fld <> "', " <> fld <> sn)
+              <> (arrs <&> \(dbn, arr) -> "'" <> dbn <> "', to_jsonb(" <> arr <> ")")
+      tell (mempty, fmap (spaces' <>) appendArray)
   tell (decs, fmap (spaces <>) $ initArray <> startLoop <> ins)
-  (mapMaybe sequenceA -> arrs) <- local (first ("  " <>)) $ for ichildren \ic -> do
-    modify (+1)
-    n' <- get
-    tell (mempty, pure $ spaces <> "  data_" <> show' n' <> " := "
-      <> rowN <> ".value->'" <> fromText (fst $ fst ic) <> "';")
-    let
-      qfs' = foldMap ((.fields) . snd)
-        $ L.find (\qc -> ((==) `on` (fst . fst)) qc ic) qchildren
-    mbArr <- local (second $ const n') $ insertJSONTextM mapTypes mapTabs
-      (snd ic) qfs' (fromText . (.fromName) <$> snd (fst ic))
-      ((<> sn) . fromText . (.toName) <$> snd (fst ic))
-    pure (fromText (fst $ fst ic), mbArr)
-  let
-    appendArray = foldMap (\arrN -> pure $ "  " <> arrN <> ":= array_append("
-      <> arrN <> ", jsonb_build_object(" <> jsonFlds <> "));") mbArrN
-      where
-        jsonFlds = intercalate' ", "
-          $ (qplains <&> \qp -> let fld = fromText (fst qp) in
-            "'" <> fld <> "', " <> fld <> sn)
-          <> (arrs <&> \(dbn, arr) -> "'" <> dbn <> "', to_jsonb(" <> arr <> ")")
-  tell (mempty, fmap (spaces <>) $ appendArray <> [endLoop] )
+  case op of
+    UPD -> do
+      tell (mempty, pure $ spaces <> "  if found then")
+      local (first ("    " <>)) processChildren
+      tell (mempty, pure $ spaces <> "  end if;")
+    _ -> local (first ("  " <>)) processChildren
+  tell (mempty, pure $ spaces <> endLoop)
   pure mbArrN
   where
     splitFields = P.foldr (\fi -> case fi.fieldKind of

@@ -21,16 +21,16 @@ with
           join qctry c on c.code = v.column2
       returning id, name, country_id
   ), qaddr as (
-    insert into sch.addresses(city_id, street)
-      select c.id,v.column2
+    insert into sch.addresses(city_id, street, phones)
+      select c.id,v.column2,v.column3::text[]
         from (values
-          ('Москва','Ордынка'),
-          ('Spb','Gorohovaya'),
-          ('Spb','Nevskiy'),
-          ('תל-אביב','שדרות ירושלמי'),
-          ('London','Baker st'),
-          ('New-York','5 ave'),
-          ('New-York','7 ave')) v
+          ('Москва','Ордынка','{}'),
+          ('Spb','Gorohovaya','{"02"}'),
+          ('Spb','Nevskiy','{}'),
+          ('תל-אביב','שדרות ירושלמי','{}'),
+          ('London','Baker st','{"sh-h","dr-w"}'),
+          ('New-York','5 ave','{}'),
+          ('New-York','7 ave','{}')) v
           join qcty c on c.name = v.column1
       returning id, street, city_id
   )
