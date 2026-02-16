@@ -192,6 +192,8 @@ data AddressI = MkAddressI
   , comp_addr :: SchList CompanyI }
   deriving Generic
 
+instance IsoHListTag RenamerId AddressI
+
 instance HasResolution a => FromField (Fixed a) where
   fromField f mb = (realToFrac :: Rational -> Fixed a) <$> fromField f mb
 
@@ -279,9 +281,9 @@ main = do
     :.. "street" := Text
     :.. "phones" := Maybe (PgArr Text)
     :.. "cust_addr" := SchList ("id" := Int32 :.. "name" := Text)], _insTxt)
-    <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
+    <- I2.insertJSON Sch (NSC "addresses") RenamerId @AddressI conn insData
   curTime <- T.show <$> getCurrentTime
-  I2.upsertJSON_ Sch (NSC "addresses") conn $ as1 <&> \(a :.. b :.. p :.. PgTag c) ->
+  I2.upsertJSON_ Sch (NSC "addresses") RenamerId conn $ as1 <&> \(a :.. b :.. p :.. PgTag c) ->
     a :.. b :.. p :.. "cust_addr" =:
       (c <&> \(d :.. n) -> d :.. fmap (<> ": " <> curTime <> " updated") n)
   let
@@ -289,11 +291,11 @@ main = do
       :.. PgTag c) -> a :.. b :.. p :.. "cust_addr" =:
       (c <&> \(custId :.. _) -> custId :.. "note" =: Just curTime)
   mapM_ print upsVals
-  I2.upsertJSON_ Sch (NSC "addresses") conn upsVals
+  I2.upsertJSON_ Sch (NSC "addresses") RenamerId conn upsVals
   T.putStrLn "\n====== 13 ========\n"
   (as2 :: ["id" := Int32 :.. "cust_addr" := SchList
     ("id" := Int32 :.. "updated_at" := Maybe ZonedTime)], _upsTxt)
-    <- I2.upsertJSON Sch (NSC "addresses") conn upsVals
+    <- I2.upsertJSON Sch (NSC "addresses") RenamerId conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"
   void $ updateByCond_ Sch (NSC "addresses") RenamerId conn

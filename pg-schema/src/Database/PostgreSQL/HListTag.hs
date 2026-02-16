@@ -21,6 +21,10 @@ module Database.PostgreSQL.HListTag
 import GHC.Generics
 import GHC.TypeLits
 import Data.Kind
+import Data.Aeson
+import Data.Aeson.Types
+import Data.Aeson.Key qualified as Key
+import Data.Aeson.KeyMap qualified as KM
 import Data.Proxy
 import Database.PostgreSQL.PgProduct
 import Database.PostgreSQL.PgTagged
@@ -48,7 +52,9 @@ instance (KnownSymbol s, Show t, Show (HListTag ts)) => Show (HListTag ('(s, t) 
   show (x :* xs) = show x ++ " :* " ++ show xs
 
 --------------------------------------------------------------------------------
--- 2. ALGEBRAIC STRUCTURES AND TRANSFORMATIONS
+-- 2. INSTANCES
+--
+-- 2.1. Algebraic structures and transformations
 --------------------------------------------------------------------------------
 
 instance Semigroup (HListTag '[]) where
@@ -79,6 +85,68 @@ instance HLift '[] where
 
 instance HLift ts => HLift ('(s, t) ': ts) where
   hlift f (PgTag x :* xs) = PgTag (f x) :* hlift f xs
+
+--------------------------------------------------------------------------------
+-- 2.2. Database instances
+--------------------------------------------------------------------------------
+instance ToRow (HListTag '[]) where
+  toRow _ = []
+
+instance (ToField t, ToRow (HListTag ts)) => ToRow (HListTag ('(s, t) ': ts)) where
+  toRow (PgTag val :* xs) = toField val : toRow xs
+
+instance FromRow (HListTag '[]) where
+  fromRow = pure HNil
+
+instance (FromField t, FromRow (HListTag ts)) => FromRow (HListTag ('(s, t) ': ts)) where
+  fromRow = ((:*) . PgTag <$> field) <*> fromRow
+
+--------------------------------------------------------------------------------
+-- 2.3. JSON instances
+--------------------------------------------------------------------------------
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+
+-- Класс-помощник для сериализации и десериализации полей
+class HListToJSON ts where
+  toSeriesFields :: HListTag ts -> Series
+  toMapFields    :: HListTag ts -> KM.KeyMap Value
+  parseFields    :: KM.KeyMap Value -> Parser (HListTag ts)
+
+instance HListToJSON '[] where
+  toSeriesFields HNil = mempty
+  toMapFields    HNil = KM.empty
+  parseFields    _    = pure HNil
+
+instance (KnownSymbol s, ToJSON t, FromJSON t, HListToJSON ts)
+      => HListToJSON ('(s, t) ': ts) where
+
+  toSeriesFields (PgTagged val :* rest) =
+    Key.fromString (symbolVal (Proxy @s)) .= val <> toSeriesFields rest
+
+  toMapFields (PgTagged val :* rest) =
+    KM.insert (Key.fromString $ symbolVal (Proxy @s)) (toJSON val) (toMapFields rest)
+
+  parseFields km = do
+    let keyString = symbolVal (Proxy @s)
+        key = Key.fromString keyString
+
+    -- Ищем значение в объекте
+    case KM.lookup key km of
+      Nothing -> fail $ "HListTag: missing key " ++ show keyString
+      Just v  -> do
+        -- Парсим значение и, если падает, добавляем контекст с именем поля
+        val  <- parseJSON v <?> Key key
+        rest <- parseFields km
+        pure (PgTagged val :* rest)
+
+-- Финальные инстансы
+instance HListToJSON ts => ToJSON (HListTag ts) where
+  toEncoding hlist = pairs (toSeriesFields hlist)
+  toJSON     hlist = Object (toMapFields hlist)
+
+instance HListToJSON ts => FromJSON (HListTag ts) where
+  parseJSON = withObject "HListTag" $ \obj -> parseFields obj
 
 --------------------------------------------------------------------------------
 -- 3. RENAMING ENGINE (Defunctionalization)
@@ -155,21 +223,6 @@ instance ( IsoHListTag r a
 -- "f1" =: (5) :* "f2" =: (True) :* "f3" =: ([1,2,3]) :* HNil
 -- >>> fromHListTag @RenamerId (toHListTag @RenamerId (("f1" =: (5::Int)) :.. ("f2" =: True) :.. ("f3" =: [(1::Int)..3]))) :: "f1" := Int :.. "f2" := Bool :.. "f3" := [Int]
 -- "f1" =: (5) :.. ("f2" =: (True) :.. "f3" =: ([1,2,3]))
-
---------------------------------------------------------------------------------
--- 5. DATABASE INSTANCES
---------------------------------------------------------------------------------
-instance ToRow (HListTag '[]) where
-  toRow _ = []
-
-instance (ToField t, ToRow (HListTag ts)) => ToRow (HListTag ('(s, t) ': ts)) where
-  toRow (PgTag val :* xs) = toField val : toRow xs
-
-instance FromRow (HListTag '[]) where
-  fromRow = pure HNil
-
-instance (FromField t, FromRow (HListTag ts)) => FromRow (HListTag ('(s, t) ': ts)) where
-  fromRow = ((:*) . PgTag <$> field) <*> fromRow
 
 --------------------------------------------------------------------------------
 -- 6. RECURSION (INTERNAL)
