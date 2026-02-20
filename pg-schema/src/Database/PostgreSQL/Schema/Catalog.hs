@@ -1,8 +1,10 @@
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.Schema.Catalog where
 
 import Data.Text as T
 import Database.Schema.Def
+import Database.Schema.Def (RecFieldK, RecField'(RFPlain, RFToHere, RFFromHere), Ref'(Ref))
 
 data PgCatalog
 
@@ -217,6 +219,7 @@ instance CRelDef PgCatalog (PGC "constraint__namespace") where
 instance CRelDef PgCatalog (PGC "enum__type") where
   type TRelDef PgCatalog (PGC "enum__type") =
     'RelDef (PGC "pg_enum") (PGC "pg_type") '[ '("enumtypid","oid")]
+
 --
 instance CRelDef PgCatalog (PGC "type__namespace") where
   type TRelDef PgCatalog (PGC "type__namespace") =
@@ -285,3 +288,174 @@ instance CTypDef PgCatalog (PGC "name") where
 
 instance CTypDef PgCatalog (PGC "char") where
   type TTypDef PgCatalog (PGC "char") = SimpleType "S"
+
+---------- CFieldInfo ----------
+
+-- CFieldInfo: plain columns (oid shared by many tables)
+instance (CFldDef PgCatalog tab "oid") =>
+  CFieldInfo PgCatalog (tab :: NameNSK) "oid" where
+  type TFieldInfo PgCatalog tab "oid" = 'RFPlain (TFldDef PgCatalog tab "oid")
+
+instance CFieldInfo PgCatalog (PGC "pg_attribute") "attrelid" where
+  type TFieldInfo PgCatalog (PGC "pg_attribute") "attrelid" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_attribute") "attrelid")
+instance CFieldInfo PgCatalog (PGC "pg_attribute") "attname" where
+  type TFieldInfo PgCatalog (PGC "pg_attribute") "attname" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_attribute") "attname")
+instance CFieldInfo PgCatalog (PGC "pg_attribute") "atttypid" where
+  type TFieldInfo PgCatalog (PGC "pg_attribute") "atttypid" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_attribute") "atttypid")
+instance CFieldInfo PgCatalog (PGC "pg_attribute") "attnum" where
+  type TFieldInfo PgCatalog (PGC "pg_attribute") "attnum" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_attribute") "attnum")
+instance CFieldInfo PgCatalog (PGC "pg_attribute") "attnotnull" where
+  type TFieldInfo PgCatalog (PGC "pg_attribute") "attnotnull" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_attribute") "attnotnull")
+instance CFieldInfo PgCatalog (PGC "pg_attribute") "atthasdef" where
+  type TFieldInfo PgCatalog (PGC "pg_attribute") "atthasdef" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_attribute") "atthasdef")
+
+instance CFieldInfo PgCatalog (PGC "pg_class") "relnamespace" where
+  type TFieldInfo PgCatalog (PGC "pg_class") "relnamespace" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_class") "relnamespace")
+instance CFieldInfo PgCatalog (PGC "pg_class") "relname" where
+  type TFieldInfo PgCatalog (PGC "pg_class") "relname" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_class") "relname")
+instance CFieldInfo PgCatalog (PGC "pg_class") "relkind" where
+  type TFieldInfo PgCatalog (PGC "pg_class") "relkind" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_class") "relkind")
+
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "connamespace" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "connamespace" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "connamespace")
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "conname" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "conname" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "conname")
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "contype" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "contype" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "contype")
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "conrelid" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "conrelid" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "conrelid")
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "confrelid" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "confrelid" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "confrelid")
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "confupdtypeid" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "confupdtypeid" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "confupdtypeid")
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "confdeltypeid" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "confdeltypeid" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "confdeltypeid")
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "conkey" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "conkey" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "conkey")
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "confkey" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "confkey" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_constraint") "confkey")
+
+instance CFieldInfo PgCatalog (PGC "pg_enum") "enumtypid" where
+  type TFieldInfo PgCatalog (PGC "pg_enum") "enumtypid" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_enum") "enumtypid")
+instance CFieldInfo PgCatalog (PGC "pg_enum") "enumlabel" where
+  type TFieldInfo PgCatalog (PGC "pg_enum") "enumlabel" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_enum") "enumlabel")
+instance CFieldInfo PgCatalog (PGC "pg_enum") "enumsortorder" where
+  type TFieldInfo PgCatalog (PGC "pg_enum") "enumsortorder" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_enum") "enumsortorder")
+
+instance CFieldInfo PgCatalog (PGC "pg_namespace") "nspname" where
+  type TFieldInfo PgCatalog (PGC "pg_namespace") "nspname" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_namespace") "nspname")
+
+instance CFieldInfo PgCatalog (PGC "pg_type") "typnamespace" where
+  type TFieldInfo PgCatalog (PGC "pg_type") "typnamespace" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_type") "typnamespace")
+instance CFieldInfo PgCatalog (PGC "pg_type") "typname" where
+  type TFieldInfo PgCatalog (PGC "pg_type") "typname" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_type") "typname")
+instance CFieldInfo PgCatalog (PGC "pg_type") "typcategory" where
+  type TFieldInfo PgCatalog (PGC "pg_type") "typcategory" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_type") "typcategory")
+instance CFieldInfo PgCatalog (PGC "pg_type") "typelem" where
+  type TFieldInfo PgCatalog (PGC "pg_type") "typelem" =
+    'RFPlain (TFldDef PgCatalog (PGC "pg_type") "typelem")
+
+-- Relation names (RFFromHere / RFToHere)
+instance CFieldInfo PgCatalog (PGC "pg_attribute") "attribute__class" where
+  type TFieldInfo PgCatalog (PGC "pg_attribute") "attribute__class" =
+    'RFFromHere (PGC "pg_class")
+      '[ 'Ref "attrelid" (TFldDef PgCatalog (PGC "pg_attribute") "attrelid")
+           "oid" (TFldDef PgCatalog (PGC "pg_class") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_attribute") "attribute__type" where
+  type TFieldInfo PgCatalog (PGC "pg_attribute") "attribute__type" =
+    'RFFromHere (PGC "pg_type")
+      '[ 'Ref "atttypid" (TFldDef PgCatalog (PGC "pg_attribute") "atttypid")
+           "oid" (TFldDef PgCatalog (PGC "pg_type") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_class") "attribute__class" where
+  type TFieldInfo PgCatalog (PGC "pg_class") "attribute__class" =
+    'RFToHere (PGC "pg_attribute")
+      '[ 'Ref "attrelid" (TFldDef PgCatalog (PGC "pg_attribute") "attrelid")
+           "oid" (TFldDef PgCatalog (PGC "pg_class") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_class") "class__namespace" where
+  type TFieldInfo PgCatalog (PGC "pg_class") "class__namespace" =
+    'RFFromHere (PGC "pg_namespace")
+      '[ 'Ref "relnamespace" (TFldDef PgCatalog (PGC "pg_class") "relnamespace")
+           "oid" (TFldDef PgCatalog (PGC "pg_namespace") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_class") "constraint__class" where
+  type TFieldInfo PgCatalog (PGC "pg_class") "constraint__class" =
+    'RFToHere (PGC "pg_constraint")
+      '[ 'Ref "conrelid" (TFldDef PgCatalog (PGC "pg_constraint") "conrelid")
+           "oid" (TFldDef PgCatalog (PGC "pg_class") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_class") "constraint__fclass" where
+  type TFieldInfo PgCatalog (PGC "pg_class") "constraint__fclass" =
+    'RFToHere (PGC "pg_constraint")
+      '[ 'Ref "confrelid" (TFldDef PgCatalog (PGC "pg_constraint") "confrelid")
+           "oid" (TFldDef PgCatalog (PGC "pg_class") "oid") ]
+
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "constraint__class" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "constraint__class" =
+    'RFFromHere (PGC "pg_class")
+      '[ 'Ref "conrelid" (TFldDef PgCatalog (PGC "pg_constraint") "conrelid")
+           "oid" (TFldDef PgCatalog (PGC "pg_class") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "constraint__fclass" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "constraint__fclass" =
+    'RFFromHere (PGC "pg_class")
+      '[ 'Ref "confrelid" (TFldDef PgCatalog (PGC "pg_constraint") "confrelid")
+           "oid" (TFldDef PgCatalog (PGC "pg_class") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_constraint") "constraint__namespace" where
+  type TFieldInfo PgCatalog (PGC "pg_constraint") "constraint__namespace" =
+    'RFFromHere (PGC "pg_namespace")
+      '[ 'Ref "connamespace" (TFldDef PgCatalog (PGC "pg_constraint") "connamespace")
+           "oid" (TFldDef PgCatalog (PGC "pg_namespace") "oid") ]
+
+instance CFieldInfo PgCatalog (PGC "pg_enum") "enum__type" where
+  type TFieldInfo PgCatalog (PGC "pg_enum") "enum__type" =
+    'RFFromHere (PGC "pg_type")
+      '[ 'Ref "enumtypid" (TFldDef PgCatalog (PGC "pg_enum") "enumtypid")
+           "oid" (TFldDef PgCatalog (PGC "pg_type") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_type") "enum__type" where
+  type TFieldInfo PgCatalog (PGC "pg_type") "enum__type" =
+    'RFToHere (PGC "pg_enum")
+      '[ 'Ref "enumtypid" (TFldDef PgCatalog (PGC "pg_enum") "enumtypid")
+           "oid" (TFldDef PgCatalog (PGC "pg_type") "oid") ]
+
+instance CFieldInfo PgCatalog (PGC "pg_type") "type__namespace" where
+  type TFieldInfo PgCatalog (PGC "pg_type") "type__namespace" =
+    'RFFromHere (PGC "pg_namespace")
+      '[ 'Ref "typnamespace" (TFldDef PgCatalog (PGC "pg_type") "typnamespace")
+           "oid" (TFldDef PgCatalog (PGC "pg_namespace") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_namespace") "type__namespace" where
+  type TFieldInfo PgCatalog (PGC "pg_namespace") "type__namespace" =
+    'RFToHere (PGC "pg_type")
+      '[ 'Ref "typnamespace" (TFldDef PgCatalog (PGC "pg_type") "typnamespace")
+           "oid" (TFldDef PgCatalog (PGC "pg_namespace") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_namespace") "class__namespace" where
+  type TFieldInfo PgCatalog (PGC "pg_namespace") "class__namespace" =
+    'RFToHere (PGC "pg_class")
+      '[ 'Ref "relnamespace" (TFldDef PgCatalog (PGC "pg_class") "relnamespace")
+           "oid" (TFldDef PgCatalog (PGC "pg_namespace") "oid") ]
+instance CFieldInfo PgCatalog (PGC "pg_namespace") "constraint__namespace" where
+  type TFieldInfo PgCatalog (PGC "pg_namespace") "constraint__namespace" =
+    'RFToHere (PGC "pg_constraint")
+      '[ 'Ref "connamespace" (TFldDef PgCatalog (PGC "pg_constraint") "connamespace")
+           "oid" (TFldDef PgCatalog (PGC "pg_namespace") "oid") ]

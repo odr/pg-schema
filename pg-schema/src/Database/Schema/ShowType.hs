@@ -4,6 +4,7 @@ import Data.List as L
 import Data.String
 import Data.Text as T
 import Database.Schema.Def
+import Database.Schema.Rec
 import Prelude as P
 
 
@@ -46,6 +47,18 @@ instance ShowType TabDef where
 instance ShowType RelDef where
   showType RelDef{..} = "'RelDef " <> T.intercalate " "
     [showType rdFrom, showType rdTo, showType rdCols]
+
+instance ShowType Ref where
+  showType Ref{..} = "'Ref " <> T.intercalate " "
+    [showType fromName, showType fromDef, showType toName, showType toDef]
+
+instance ShowType (RecField NameNS) where
+  showType = \case
+    RFEmpty s     -> "'RFEmpty " <> showType s
+    RFPlain fd    -> "'RFPlain " <> showType fd
+    RFAggr fd fn b -> "'RFAggr " <> T.intercalate " " [showType fd, showType fn, showType b]
+    RFToHere t rr -> "'RFToHere " <> showType t <> " " <> showType rr
+    RFFromHere t rr -> "'RFFromHere " <> showType t <> " " <> showType rr
 
 qualName :: NameNS -> Text
 qualName NameNS {..}

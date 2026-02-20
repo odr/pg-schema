@@ -3,9 +3,10 @@ module Database.Schema.Gen where
 
 import Data.List as L
 import Data.Map as M
-import Data.Text(Text)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Database.Schema.Def
+import Database.Schema.Rec
 import Database.Schema.ShowType
 
 
@@ -55,6 +56,51 @@ textTabRel sch tab froms tos
   where
     pars = T.intercalate " " [sch, showType tab]
 
+-- Build Ref list for a relation (from/to column pairs and FldDefs from mfld).
+refsForRel :: RelDef -> M.Map (NameNS, Text) FldDef -> [Ref]
+refsForRel rel mfld =
+  [ Ref { fromName, toName
+        , fromDef = mfld M.! (rdFrom rel, fromName)
+        , toDef = mfld M.! (rdTo rel, toName) }
+  | (fromName, toName) <- rdCols rel
+  ]
+
+-- Generate Ref in type-level format (using 'FldDef directly)
+textRef :: FldDef -> FldDef -> Text -> Text -> Text
+textRef fromDef toDef fromName toName =
+  "'Ref " <> showType fromName <> " (" <> showType fromDef <> ") "
+  <> showType toName <> " (" <> showType toDef <> ")"
+
+textFieldInfoPlain :: Text -> NameNS -> Text -> Text
+textFieldInfoPlain sch tab fldName =
+  "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
+  <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = "
+  <> "'RFPlain (TFldDef " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\")\n\n"
+
+textFieldInfoToHere :: Text -> NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
+textFieldInfoToHere sch tab relName rel mfld =
+  let fldName = nnsName relName
+      fromTab = rdFrom rel
+      refsText = T.intercalate " " $
+        [ textRef (mfld M.! (fromTab, fromName)) (mfld M.! (tab, toName)) fromName toName
+        | (fromName, toName) <- rdCols rel
+        ]
+  in "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
+  <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = \n"
+  <> "    'RFToHere " <> showType fromTab <> " '[ " <> refsText <> " ]\n\n"
+
+textFieldInfoFromHere :: Text -> NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
+textFieldInfoFromHere sch tab relName rel mfld =
+  let fldName = nnsName relName
+      toTab = rdTo rel
+      refsText = T.intercalate " " $
+        [ textRef (mfld M.! (tab, fromName)) (mfld M.! (toTab, toName)) fromName toName
+        | (fromName, toName) <- rdCols rel
+        ]
+  in "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
+  <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = \n"
+  <> "    'RFFromHere " <> showType toTab <> " '[ " <> refsText <> " ]\n\n"
+
 genModuleText
   :: Text -- ^ module name
   -> Text -- ^ schema name
@@ -65,6 +111,8 @@ genModuleText
   -> Text
 genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   =  "{- HLINT ignore -}\n"
+  <> "{-# LANGUAGE UndecidableInstances #-}\n"
+  <> "{-# LANGUAGE UndecidableSuperClasses #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n"
   <> "{-# OPTIONS_GHC -freduction-depth=300 #-}\n"
@@ -83,6 +131,19 @@ genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   <> mconcat (L.map (uncurry $ textRelDef schName) $ toList mrel)
   <> mconcat ((\(tab,(_,froms,tos)) -> textTabRel schName tab froms tos)
     <$> toList mtab)
+  <> mconcat
+      ((\((tab, fldName), _fd) -> textFieldInfoPlain schName tab fldName)
+        <$> toList mfld)
+  <> mconcat
+      ([ textFieldInfoToHere schName tab relName (mrel M.! relName) mfld
+       | (tab, (_, _froms, tos)) <- toList mtab
+       , relName <- tos
+       ])
+  <> mconcat
+      ([ textFieldInfoFromHere schName tab relName (mrel M.! relName) mfld
+       | (tab, (_, froms, _tos)) <- toList mtab
+       , relName <- froms
+       ])
   <> "instance CSchema " <> schName <> " where\n"
   <> "  type TTabs " <> schName <> " = " <> showSplit 4 70 (keys mtab) <> "\n"
   <> "  type TTypes " <> schName <> " = " <> showSplit 4 70 (keys mtyp) <> "\n"

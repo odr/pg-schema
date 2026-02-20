@@ -1,4 +1,6 @@
 {- HLINT ignore -}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableSuperClasses #-}
 {-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_GHC -freduction-depth=300 #-}
@@ -377,6 +379,210 @@ instance CTabRels Sch ( "sch" ->> "orders" ) where
 
   type TTo Sch ( "sch" ->> "orders" ) = 
     '[ ( "sch" ->> "opos_order" ) ]
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "app" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "app" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "app")
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "city_id" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "city_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "city_id")
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "home" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "home" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "home")
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "id" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "id")
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "numbers" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "numbers" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "numbers")
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "phones" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "phones" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "phones")
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "street" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "street" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "street")
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "zipcode" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "zipcode" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "zipcode")
+
+instance CFieldInfo Sch ( "sch" ->> "articles" ) "code" where
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "code" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "code")
+
+instance CFieldInfo Sch ( "sch" ->> "articles" ) "created_at" where
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "created_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "created_at")
+
+instance CFieldInfo Sch ( "sch" ->> "articles" ) "id" where
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "id")
+
+instance CFieldInfo Sch ( "sch" ->> "articles" ) "name" where
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "name")
+
+instance CFieldInfo Sch ( "sch" ->> "articles" ) "updated_at" where
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "updated_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "updated_at")
+
+instance CFieldInfo Sch ( "sch" ->> "cities" ) "country_id" where
+  type TFieldInfo Sch ( "sch" ->> "cities" ) "country_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "cities" ) "country_id")
+
+instance CFieldInfo Sch ( "sch" ->> "cities" ) "id" where
+  type TFieldInfo Sch ( "sch" ->> "cities" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "cities" ) "id")
+
+instance CFieldInfo Sch ( "sch" ->> "cities" ) "name" where
+  type TFieldInfo Sch ( "sch" ->> "cities" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "cities" ) "name")
+
+instance CFieldInfo Sch ( "sch" ->> "companies" ) "address_id" where
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "address_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "address_id")
+
+instance CFieldInfo Sch ( "sch" ->> "companies" ) "created_at" where
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "created_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "created_at")
+
+instance CFieldInfo Sch ( "sch" ->> "companies" ) "id" where
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "id")
+
+instance CFieldInfo Sch ( "sch" ->> "companies" ) "name" where
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "name")
+
+instance CFieldInfo Sch ( "sch" ->> "companies" ) "updated_at" where
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "updated_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "updated_at")
+
+instance CFieldInfo Sch ( "sch" ->> "countries" ) "code" where
+  type TFieldInfo Sch ( "sch" ->> "countries" ) "code" = 'RFPlain (TFldDef Sch ( "sch" ->> "countries" ) "code")
+
+instance CFieldInfo Sch ( "sch" ->> "countries" ) "id" where
+  type TFieldInfo Sch ( "sch" ->> "countries" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "countries" ) "id")
+
+instance CFieldInfo Sch ( "sch" ->> "countries" ) "name" where
+  type TFieldInfo Sch ( "sch" ->> "countries" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "countries" ) "name")
+
+instance CFieldInfo Sch ( "sch" ->> "customers" ) "address_id" where
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "address_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "address_id")
+
+instance CFieldInfo Sch ( "sch" ->> "customers" ) "created_at" where
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "created_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "created_at")
+
+instance CFieldInfo Sch ( "sch" ->> "customers" ) "id" where
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "id")
+
+instance CFieldInfo Sch ( "sch" ->> "customers" ) "name" where
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "name")
+
+instance CFieldInfo Sch ( "sch" ->> "customers" ) "note" where
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "note" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "note")
+
+instance CFieldInfo Sch ( "sch" ->> "customers" ) "updated_at" where
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "updated_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "updated_at")
+
+instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "article_id" where
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "article_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "article_id")
+
+instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "cnt" where
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "cnt" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "cnt")
+
+instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "num" where
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "num" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "num")
+
+instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "order_id" where
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "order_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "order_id")
+
+instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "price" where
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "price" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "price")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "created_at" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "created_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "created_at")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "customer_id" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "customer_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "customer_id")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "day" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "day" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "day")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "id" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "id")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "num" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "num" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "num")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "seller_id" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "seller_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "seller_id")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "state" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "state" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "state")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "trader_id" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "trader_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "trader_id")
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "updated_at" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "updated_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "updated_at")
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "comp_addr" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "comp_addr" = 
+    'RFToHere ( "sch" ->> "companies" ) '[ 'Ref "address_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "cust_addr" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "cust_addr" = 
+    'RFToHere ( "sch" ->> "customers" ) '[ 'Ref "address_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "articles" ) "opos_article" where
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "opos_article" = 
+    'RFToHere ( "sch" ->> "order_positions" ) '[ 'Ref "article_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "cities" ) "address_city" where
+  type TFieldInfo Sch ( "sch" ->> "cities" ) "address_city" = 
+    'RFToHere ( "sch" ->> "addresses" ) '[ 'Ref "city_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "companies" ) "ord_seller" where
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "ord_seller" = 
+    'RFToHere ( "sch" ->> "orders" ) '[ 'Ref "seller_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "companies" ) "ord_trader" where
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "ord_trader" = 
+    'RFToHere ( "sch" ->> "orders" ) '[ 'Ref "trader_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "countries" ) "city_country" where
+  type TFieldInfo Sch ( "sch" ->> "countries" ) "city_country" = 
+    'RFToHere ( "sch" ->> "cities" ) '[ 'Ref "country_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "customers" ) "ord_cust" where
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "ord_cust" = 
+    'RFToHere ( "sch" ->> "orders" ) '[ 'Ref "customer_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "opos_order" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "opos_order" = 
+    'RFToHere ( "sch" ->> "order_positions" ) '[ 'Ref "order_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "addresses" ) "address_city" where
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "address_city" = 
+    'RFFromHere ( "sch" ->> "cities" ) '[ 'Ref "city_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "cities" ) "city_country" where
+  type TFieldInfo Sch ( "sch" ->> "cities" ) "city_country" = 
+    'RFFromHere ( "sch" ->> "countries" ) '[ 'Ref "country_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "companies" ) "comp_addr" where
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "comp_addr" = 
+    'RFFromHere ( "sch" ->> "addresses" ) '[ 'Ref "address_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "customers" ) "cust_addr" where
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "cust_addr" = 
+    'RFFromHere ( "sch" ->> "addresses" ) '[ 'Ref "address_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "opos_article" where
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "opos_article" = 
+    'RFFromHere ( "sch" ->> "articles" ) '[ 'Ref "article_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "opos_order" where
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "opos_order" = 
+    'RFFromHere ( "sch" ->> "orders" ) '[ 'Ref "order_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "ord_cust" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "ord_cust" = 
+    'RFFromHere ( "sch" ->> "customers" ) '[ 'Ref "customer_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "ord_seller" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "ord_seller" = 
+    'RFFromHere ( "sch" ->> "companies" ) '[ 'Ref "seller_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
+
+instance CFieldInfo Sch ( "sch" ->> "orders" ) "ord_trader" where
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "ord_trader" = 
+    'RFFromHere ( "sch" ->> "companies" ) '[ 'Ref "trader_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
 
 instance CSchema Sch where
   type TTabs Sch = '[ ( "sch" ->> "addresses" ),( "sch" ->> "articles" )
