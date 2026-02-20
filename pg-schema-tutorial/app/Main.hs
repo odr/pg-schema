@@ -55,11 +55,11 @@ data A = A1 | A2
 data B = B1 | B2
 
 data Address (a::A) (b::B) = MkAddress
-  { street  :: Maybe Text
+  { street  :: Text
   , home    :: If (a == A1) (Maybe Text) EmptyField
   , app     :: Maybe Text
   , zipcode :: Maybe Text
-  , phones  :: PgArr Text
+  , phones  :: Maybe (PgArr Text)
   , numbers :: Maybe (PgArr Int32) }
   deriving Generic
 
@@ -70,7 +70,7 @@ data City a b = MkCity
   deriving Generic
 
 data AddressRev a b = MkAddressRev
-  { street       :: Maybe Text
+  { street       :: Text
   , home         :: Maybe Text
   , app          :: If (a == A1) (Maybe Text) EmptyField
   , zipcode      :: Maybe Text
@@ -142,9 +142,9 @@ newtype CompanyI = MkCompanyI
   deriving Generic
 
 data AddressI = MkAddressI
-  { street :: Maybe Text
+  { street :: Text
   , zipcode :: Maybe Text
-  , phones :: PgArr Text
+  , phones :: Maybe (PgArr Text)
   , numbers :: Maybe (PgArr Int32)
   , cust_addr :: SchList CustomerI
   , comp_addr :: SchList CompanyI }
@@ -219,7 +219,7 @@ main = do
   T.putStrLn "\n====== 11 ========\n"
   let
     insData =
-      [ MkAddressI (Just "street") Nothing (PgArr ["s","S12"]) (Just $ PgArr [1,2]) (SchList
+      [ MkAddressI "street" Nothing (Just $ PgArr ["s","S12"]) (Just $ PgArr [1,2]) (SchList
         [ MkCustomerI "Ivan" $ SchList
           [ MkOrderI d "1" 1 (Just Order_state_paid) $ SchList
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
@@ -230,8 +230,8 @@ main = do
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
           , MkOrderI d "xx" 5 (Just Order_state_delivered) $ SchList
             [ MkOrdPosI 5 6 3 4, MkOrdPosI 1 3 3 5.1 ] ] ]) mempty
-      , MkAddressI Nothing (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
-      , MkAddressI (Just "street2") (Just "zip2") mempty Nothing (SchList [MkCustomerI "Dima" mempty])
+      , MkAddressI "str" (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
+      , MkAddressI "street2" (Just "zip2") mempty Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
   (as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged ["id", "name"] (Int32, Text)))], _insTxt)
     <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
@@ -251,11 +251,11 @@ main = do
   T.putStrLn "\n====== 15 ========\n"
   void $ updateByCond_ @Sch @(NSC "addresses") conn
     (pgTag @"zipcode" (Just @Text "zip_new"))
-    $ "street" =? Just @Text "street2"
-  (xs :: ["zipcode" := Maybe Text :.. "phones" := PgArr Text]) <-
+    $ "street" =? ("street2"::Text)
+  (xs :: ["zipcode" := Maybe Text :.. "phones" := Maybe (PgArr Text)]) <-
     updateByCond @Sch @(NSC "addresses") conn
-      ("phones" =: PgArr ["111" :: Text,"222"])
-      $ "street" =? Just @Text "street2"
+      ("phones" =: Just (PgArr ["111" :: Text,"222"]))
+      $ "street" =? ("street2"::Text)
   mapM_ print xs
   T.putStrLn "\n====== 20 ========\n"
   -- Prelude.putStrLn $ show as1
