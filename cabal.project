@@ -12,3 +12,6 @@ packages:
 
 constraints:
   pg-schema +arbitrary -debug +flat +hashable
+
+package *
+  ghc-options: -fwrite-ide-info -fprint-potential-instances
