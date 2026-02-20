@@ -27,23 +27,6 @@ singletons [d|
     , fieldDbName :: s
     , fieldKind   :: RecField' s p }
     deriving Show
-
-  data RecField' s p
-    = RFEmpty s
-    | RFPlain (FldDef' s)
-    | RFAggr (FldDef' s) s Bool
-    -- True in RFAggr means: "Can be used in any selects",
-    -- False means: "Can be used only in selects with GROUP BY"
-    | RFToHere p [Ref' s]
-    | RFFromHere p [Ref' s]
-    deriving Show
-
-  data Ref' s = Ref
-    { fromName :: s -- db field name
-    , fromDef  :: FldDef' s
-    , toName   :: s
-    , toDef    :: FldDef' s }
-    deriving (Eq, Show)
   |]
 
 promote [d|
@@ -123,11 +106,10 @@ promote [d|
 
 
 type FieldInfoK = FieldInfo' Symbol
-type RecFieldK = RecField' Symbol
-type RefK = Ref' Symbol
 type FieldInfo = FieldInfo' Text
 type RecField = RecField' Text
 type Ref = Ref' Text
+-- RecFieldK and RefK are defined in Database.Schema.Def
 
 data RecordInfo = RecordInfo
   { tabName :: NameNS
