@@ -171,10 +171,13 @@ type family RefsToCols (refs :: [RefK]) :: [(Symbol, Symbol)] where
   RefsToCols '[] = '[]
   RefsToCols (r ': rs) = RefFromTo r ': RefsToCols rs
 
--- | Extract RelDef from a relation field (RFToHere / RFFromHere).
-type family RelDefFromField (r :: RecFieldK NameNSK) (tab :: NameNSK) :: RelDefK where
-  RelDefFromField ('RFToHere fromTab refs) tab = 'RelDef fromTab tab (RefsToCols refs)
-  RelDefFromField ('RFFromHere toTab refs) tab = 'RelDef tab toTab (RefsToCols refs)
+-- | Extract RelDef from a relation field (RFToHere / RFFromHere). Class avoids stuck TF on non-relation fields.
+class CRelFldDef (r :: RecFieldK NameNSK) (tab :: NameNSK) where
+  type RelDefFromField r tab :: RelDefK
+instance CRelFldDef ('RFToHere fromTab refs) tab where
+  type RelDefFromField ('RFToHere fromTab refs) tab = 'RelDef fromTab tab (RefsToCols refs)
+instance CRelFldDef ('RFFromHere toTab refs) tab where
+  type RelDefFromField ('RFFromHere toTab refs) tab = 'RelDef tab toTab (RefsToCols refs)
 
 -- | RelDef for (sch, tab, name) when the field is a relation (for value-level or when tab is known).
 type family GetRelDef (sch :: k) (tab :: NameNSK) (name :: Symbol) :: RelDefK where
@@ -246,8 +249,6 @@ type family TTabFldDefsList sch (tabs :: [NameNSK]) (tabFlds :: [[Symbol]]) :: [
 type TTabFldDefs sch = TTabFldDefsList sch (TTabs sch) (TTabFlds sch)
 type TTabRelFroms sch = Map3 (TRelDefSym1 sch) (TFromSym1 sch) (TTabs sch)
 type TTabRelTos sch = Map3 (TRelDefSym1 sch) (TToSym1 sch) (TTabs sch)
-
-type TTypeDefs sch = Map2 (TTypDefSym1 sch) (TTypes sch)
 
 --
 data TabInfo = TabInfo

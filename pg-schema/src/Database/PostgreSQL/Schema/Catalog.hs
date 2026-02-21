@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
-{-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.Schema.Catalog where
 
 import Data.Text as T
