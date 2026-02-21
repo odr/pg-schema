@@ -6,7 +6,6 @@ import Data.Map as M
 import Data.Text (Text)
 import qualified Data.Text as T
 import Database.Schema.Def
-import Database.Schema.Rec
 import Database.Schema.ShowType
 
 
@@ -112,7 +111,6 @@ genModuleText
 genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   =  "{- HLINT ignore -}\n"
   <> "{-# LANGUAGE UndecidableInstances #-}\n"
-  <> "{-# LANGUAGE UndecidableSuperClasses #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n"
   <> "{-# OPTIONS_GHC -freduction-depth=300 #-}\n"

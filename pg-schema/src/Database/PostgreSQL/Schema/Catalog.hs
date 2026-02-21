@@ -4,7 +4,6 @@ module Database.PostgreSQL.Schema.Catalog where
 
 import Data.Text as T
 import Database.Schema.Def
-import Database.Schema.Def (RecFieldK, RecField'(RFPlain, RFToHere, RFFromHere), Ref'(Ref))
 
 data PgCatalog
 

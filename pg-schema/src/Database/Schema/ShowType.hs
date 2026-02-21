@@ -4,7 +4,6 @@ import Data.List as L
 import Data.String
 import Data.Text as T
 import Database.Schema.Def
-import Database.Schema.Rec
 import Prelude as P
 
 
