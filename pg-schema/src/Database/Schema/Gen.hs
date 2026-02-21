@@ -40,7 +40,7 @@ textTabDef sch tab = mkInst "TabDef" [sch, showType tab]
 
 textRelDef :: Text -> NameNS -> RelDef -> Text
 textRelDef sch relName rel =
-  "type instance TRelDef " <> sch <> " " <> showType relName <> " = " <> showType rel <> "\n\n"
+  "type instance TRelDef " <> sch <> "\n  " <> showType relName <> " = " <> showType rel <> "\n\n"
 
 textTabRel :: Text -> NameNS -> [NameNS] -> [NameNS] -> Text
 textTabRel sch tab froms tos
@@ -70,8 +70,8 @@ textRef fromDef toDef fromName toName =
 textFieldInfoPlain :: Text -> NameNS -> Text -> FldDef -> Text
 textFieldInfoPlain sch tab fldName fd =
   "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
-  <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = "
-  <> "'RFPlain (" <> showType fd <> ")\n\n"
+  <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = \n"
+  <> "    'RFPlain (" <> showType fd <> ")\n\n"
 
 textFieldInfoToHere :: Text -> NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
 textFieldInfoToHere sch tab relName rel mfld =
@@ -83,7 +83,7 @@ textFieldInfoToHere sch tab relName rel mfld =
         ]
   in "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
   <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = \n"
-  <> "    'RFToHere " <> showType fromTab <> " '[ " <> refsText <> " ]\n\n"
+  <> "    'RFToHere " <> showType fromTab <> "\n      '[ " <> refsText <> " ]\n\n"
 
 textFieldInfoFromHere :: Text -> NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
 textFieldInfoFromHere sch tab relName rel mfld =
@@ -95,7 +95,7 @@ textFieldInfoFromHere sch tab relName rel mfld =
         ]
   in "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
   <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = \n"
-  <> "    'RFFromHere " <> showType toTab <> " '[ " <> refsText <> " ]\n\n"
+  <> "    'RFFromHere " <> showType toTab <> "\n      '[ " <> refsText <> " ]\n\n"
 
 genModuleText
   :: Text -- ^ module name
