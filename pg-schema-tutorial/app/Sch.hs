@@ -101,50 +101,23 @@ instance CTabDef Sch ( "sch" ->> "orders" ) where
     'TabDef '[ "id","day","num","customer_id","seller_id"
       ,"trader_id","state","created_at","updated_at" ] '[ "id" ] '[  ]
 
-instance CRelDef Sch ( "sch" ->> "address_city" ) where
-  type TRelDef Sch ( "sch" ->> "address_city" ) = 
-    'RelDef ( "sch" ->> "addresses" ) ( "sch" ->> "cities" ) '[ '( "city_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "address_city" ) = 'RelDef ( "sch" ->> "addresses" ) ( "sch" ->> "cities" ) '[ '( "city_id","id" ) ]
 
-instance CRelDef Sch ( "sch" ->> "city_country" ) where
-  type TRelDef Sch ( "sch" ->> "city_country" ) = 
-    'RelDef ( "sch" ->> "cities" ) ( "sch" ->> "countries" ) '[ '( "country_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "city_country" ) = 'RelDef ( "sch" ->> "cities" ) ( "sch" ->> "countries" ) '[ '( "country_id","id" ) ]
 
-instance CRelDef Sch ( "sch" ->> "comp_addr" ) where
-  type TRelDef Sch ( "sch" ->> "comp_addr" ) = 
-    'RelDef ( "sch" ->> "companies" ) ( "sch" ->> "addresses" ) '[ '( "address_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "comp_addr" ) = 'RelDef ( "sch" ->> "companies" ) ( "sch" ->> "addresses" ) '[ '( "address_id","id" ) ]
 
-instance CRelDef Sch ( "sch" ->> "cust_addr" ) where
-  type TRelDef Sch ( "sch" ->> "cust_addr" ) = 
-    'RelDef ( "sch" ->> "customers" ) ( "sch" ->> "addresses" ) '[ '( "address_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "cust_addr" ) = 'RelDef ( "sch" ->> "customers" ) ( "sch" ->> "addresses" ) '[ '( "address_id","id" ) ]
 
-instance CRelDef Sch ( "sch" ->> "opos_article" ) where
-  type TRelDef Sch ( "sch" ->> "opos_article" ) = 
-    'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "articles" ) '[ '( "article_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "opos_article" ) = 'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "articles" ) '[ '( "article_id","id" ) ]
 
-instance CRelDef Sch ( "sch" ->> "opos_order" ) where
-  type TRelDef Sch ( "sch" ->> "opos_order" ) = 
-    'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "orders" ) '[ '( "order_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "opos_order" ) = 'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "orders" ) '[ '( "order_id","id" ) ]
 
-instance CRelDef Sch ( "sch" ->> "ord_cust" ) where
-  type TRelDef Sch ( "sch" ->> "ord_cust" ) = 
-    'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "customers" ) '[ '( "customer_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "ord_cust" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "customers" ) '[ '( "customer_id","id" ) ]
 
-instance CRelDef Sch ( "sch" ->> "ord_seller" ) where
-  type TRelDef Sch ( "sch" ->> "ord_seller" ) = 
-    'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "seller_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "ord_seller" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "seller_id","id" ) ]
 
-instance CRelDef Sch ( "sch" ->> "ord_trader" ) where
-  type TRelDef Sch ( "sch" ->> "ord_trader" ) = 
-    'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "trader_id"
-      ,"id" ) ]
+type instance TRelDef Sch ( "sch" ->> "ord_trader" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "trader_id","id" ) ]
 
 instance CTabRels Sch ( "sch" ->> "addresses" ) where
   type TFrom Sch ( "sch" ->> "addresses" ) = 

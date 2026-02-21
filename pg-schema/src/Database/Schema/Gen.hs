@@ -39,7 +39,8 @@ textTabDef :: Text -> NameNS -> TabDef -> Text
 textTabDef sch tab = mkInst "TabDef" [sch, showType tab]
 
 textRelDef :: Text -> NameNS -> RelDef -> Text
-textRelDef sch rel = mkInst "RelDef" [sch, showType rel]
+textRelDef sch relName rel =
+  "type instance TRelDef " <> sch <> " " <> showType relName <> " = " <> showType rel <> "\n\n"
 
 textTabRel :: Text -> NameNS -> [NameNS] -> [NameNS] -> Text
 textTabRel sch tab froms tos
@@ -121,7 +122,7 @@ genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   <> "data " <> schName <> "\n\n"
   <> mconcat (uncurry (textTypDef schName) <$> toList mtyp)
   <> mconcat ((\(tab,(td,_,_)) -> textTabDef schName tab td) <$> toList mtab)
-  <> mconcat (L.map (uncurry $ textRelDef schName) $ toList mrel)
+  <> mconcat ([ textRelDef schName relName rel | (relName, rel) <- toList mrel ])
   <> mconcat ((\(tab,(_,froms,tos)) -> textTabRel schName tab froms tos)
     <$> toList mtab)
   <> mconcat
