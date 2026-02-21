@@ -173,11 +173,11 @@ data Cond (sch::Type) (tab::NameNSK) where
   -- condition "EXIST"
   Child :: forall ref rel sch tab from.
     ( rel ~ TRelDef sch ref, tab ~ RdTo rel, from ~ RdFrom rel
-    , CTabDef sch from, CRelDef sch ref ) =>
+    , CTabDef sch from, ToStar (RdCols rel) ) =>
     TabParam sch from -> Cond sch from -> Cond sch tab
   -- condition "JOIN"
   Parent :: forall ref sch.
-    ( CTabDef sch (RdTo (TRelDef sch ref)) , CRelDef sch ref ) =>
+    ( CTabDef sch (RdTo (TRelDef sch ref)), ToStar (RdCols (TRelDef sch ref)) ) =>
     Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
   UnsafeCond :: CondMonad Text -> Cond sch tab
 
@@ -206,14 +206,14 @@ pnull name = Null @name
 
 {-# INLINE pchild #-}
 pchild :: forall sch. forall name ->
-  (CTabDef sch (RdFrom (TRelDef sch name)), CRelDef sch name) =>
+  ( CTabDef sch (RdFrom (TRelDef sch name)), ToStar (RdCols (TRelDef sch name)) ) =>
   TabParam sch (RdFrom (TRelDef sch name)) ->
   Cond sch (RdFrom (TRelDef sch name)) -> Cond sch (RdTo (TRelDef sch name))
 pchild name = Child @name
 
 {-# INLINE pparent #-}
 pparent :: forall sch. forall ref ->
-  ( CTabDef sch (RdTo (TRelDef sch ref)) , CRelDef sch ref ) =>
+  ( CTabDef sch (RdTo (TRelDef sch ref)), ToStar (RdCols (TRelDef sch ref)) ) =>
   Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
 pparent name = Parent @name @sch
 
