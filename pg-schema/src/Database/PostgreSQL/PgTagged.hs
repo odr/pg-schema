@@ -137,7 +137,8 @@ type family PgTaggedFldDef sch t n r :: RecFieldK NameNSK where
   PgTaggedFldDef sch t n r = GetRecField t (TTabDef sch t) (TTabRelFrom sch t)
     (TTabRelTo sch t) (TFldDefSym1 sch) n
 
-instance (MkRecField sch (FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
+instance (MkRecField sch (
+  FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
   , ToStar n, ToStar t) =>
   CRecordInfo sch t (PgTagged (n::Symbol) r) where
   type TRecordInfo sch t (PgTagged n r) = '[ '( 'FieldInfo n n (PgTaggedFldDef sch t n r), r) ]

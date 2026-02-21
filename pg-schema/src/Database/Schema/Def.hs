@@ -12,7 +12,6 @@ import Data.Map as M
 import Data.Ord.Singletons
 import Data.Singletons.TH
 import Data.Text as T
-import GHC.TypeLits qualified as TL
 import Language.Haskell.TH.Syntax
 import PgSchema.Util
 import Prelude.Singletons as SP
@@ -282,6 +281,10 @@ type TabOnPath sch (t :: NameNSK) (path :: [Symbol]) = Fst (TabOnPath2 sch t pat
 type family TabPath sch (t :: NameNSK) (path :: [Symbol]) :: Constraint where
   TabPath sch t '[] = ()
   TabPath sch t (x ': xs) = TabPath sch (Fst (TRelTab sch t x)) xs
+
+type RecField = RecField' Text
+type Ref = Ref' Text
+
 --
 instance LiftType NameNS where
   liftType NameNS{..} =
@@ -306,3 +309,15 @@ instance LiftType RelDef where
   liftType RelDef{..} =
     [t| 'RelDef $(liftType rdFrom) $(liftType rdTo) $(liftType rdCols) |]
 --
+
+instance LiftType Ref where
+  liftType Ref{..} = [t| 'Ref $(liftType fromName) $(liftType fromDef)
+    $(liftType toName) $(liftType toDef) |]
+
+instance LiftType p => LiftType (RecField p) where
+  liftType = \case
+    RFEmpty s -> [t| 'RFEmpty $(liftType s) |]
+    RFPlain fd -> [t| 'RFPlain $(liftType fd) |]
+    RFAggr fd fname b -> [t| 'RFAggr $(liftType fd) $(liftType fname) $(liftType b)|]
+    RFToHere t rr -> [t| 'RFToHere $(liftType t) $(liftType rr) |]
+    RFFromHere t rr -> [t| 'RFFromHere $(liftType t) $(liftType rr) |]

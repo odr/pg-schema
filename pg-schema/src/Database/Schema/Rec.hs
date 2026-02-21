@@ -107,9 +107,6 @@ promote [d|
 
 type FieldInfoK = FieldInfo' Symbol
 type FieldInfo = FieldInfo' Text
-type RecField = RecField' Text
-type Ref = Ref' Text
--- RecFieldK and RefK are defined in Database.Schema.Def
 
 data RecordInfo = RecordInfo
   { tabName :: NameNS
@@ -117,18 +114,6 @@ data RecordInfo = RecordInfo
   deriving Show
 
 --------- LiftType for TH ----------
-instance LiftType Ref where
-  liftType Ref{..} = [t| 'Ref $(liftType fromName) $(liftType fromDef)
-    $(liftType toName) $(liftType toDef) |]
-
-instance LiftType p => LiftType (RecField p) where
-  liftType = \case
-    RFEmpty s -> [t| 'RFEmpty $(liftType s) |]
-    RFPlain fd -> [t| 'RFPlain $(liftType fd) |]
-    RFAggr fd fname b -> [t| 'RFAggr $(liftType fd) $(liftType fname) $(liftType b)|]
-    RFToHere t rr -> [t| 'RFToHere $(liftType t) $(liftType rr) |]
-    RFFromHere t rr -> [t| 'RFFromHere $(liftType t) $(liftType rr) |]
-
 instance LiftType p => LiftType (FieldInfo p) where
   liftType FieldInfo{..} = [t| 'FieldInfo $(liftType fieldName)
     $(liftType fieldDbName) $(liftType fieldKind) |]
