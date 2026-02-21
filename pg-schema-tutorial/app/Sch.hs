@@ -63,182 +63,6 @@ instance Hashable (PGEnum Sch ( "sch" ->> "order_state" ))
 
 instance NFData (PGEnum Sch ( "sch" ->> "order_state" ))
 
-instance CFldDef Sch ( "sch" ->> "addresses" ) "app" where
-  type TFldDef Sch ( "sch" ->> "addresses" ) "app" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "addresses" ) "city_id" where
-  type TFldDef Sch ( "sch" ->> "addresses" ) "city_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "addresses" ) "home" where
-  type TFldDef Sch ( "sch" ->> "addresses" ) "home" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "addresses" ) "id" where
-  type TFldDef Sch ( "sch" ->> "addresses" ) "id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "addresses" ) "numbers" where
-  type TFldDef Sch ( "sch" ->> "addresses" ) "numbers" = 
-    'FldDef ( "pg_catalog" ->> "_int4" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "addresses" ) "phones" where
-  type TFldDef Sch ( "sch" ->> "addresses" ) "phones" = 
-    'FldDef ( "pg_catalog" ->> "_text" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "addresses" ) "street" where
-  type TFldDef Sch ( "sch" ->> "addresses" ) "street" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "addresses" ) "zipcode" where
-  type TFldDef Sch ( "sch" ->> "addresses" ) "zipcode" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "articles" ) "code" where
-  type TFldDef Sch ( "sch" ->> "articles" ) "code" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "articles" ) "created_at" where
-  type TFldDef Sch ( "sch" ->> "articles" ) "created_at" = 
-    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "articles" ) "id" where
-  type TFldDef Sch ( "sch" ->> "articles" ) "id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "articles" ) "name" where
-  type TFldDef Sch ( "sch" ->> "articles" ) "name" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "articles" ) "updated_at" where
-  type TFldDef Sch ( "sch" ->> "articles" ) "updated_at" = 
-    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "cities" ) "country_id" where
-  type TFldDef Sch ( "sch" ->> "cities" ) "country_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "cities" ) "id" where
-  type TFldDef Sch ( "sch" ->> "cities" ) "id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "cities" ) "name" where
-  type TFldDef Sch ( "sch" ->> "cities" ) "name" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "companies" ) "address_id" where
-  type TFldDef Sch ( "sch" ->> "companies" ) "address_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "companies" ) "created_at" where
-  type TFldDef Sch ( "sch" ->> "companies" ) "created_at" = 
-    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "companies" ) "id" where
-  type TFldDef Sch ( "sch" ->> "companies" ) "id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "companies" ) "name" where
-  type TFldDef Sch ( "sch" ->> "companies" ) "name" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "companies" ) "updated_at" where
-  type TFldDef Sch ( "sch" ->> "companies" ) "updated_at" = 
-    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "countries" ) "code" where
-  type TFldDef Sch ( "sch" ->> "countries" ) "code" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "countries" ) "id" where
-  type TFldDef Sch ( "sch" ->> "countries" ) "id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "countries" ) "name" where
-  type TFldDef Sch ( "sch" ->> "countries" ) "name" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "customers" ) "address_id" where
-  type TFldDef Sch ( "sch" ->> "customers" ) "address_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "customers" ) "created_at" where
-  type TFldDef Sch ( "sch" ->> "customers" ) "created_at" = 
-    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "customers" ) "id" where
-  type TFldDef Sch ( "sch" ->> "customers" ) "id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "customers" ) "name" where
-  type TFldDef Sch ( "sch" ->> "customers" ) "name" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "customers" ) "note" where
-  type TFldDef Sch ( "sch" ->> "customers" ) "note" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "customers" ) "updated_at" where
-  type TFldDef Sch ( "sch" ->> "customers" ) "updated_at" = 
-    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "order_positions" ) "article_id" where
-  type TFldDef Sch ( "sch" ->> "order_positions" ) "article_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "order_positions" ) "cnt" where
-  type TFldDef Sch ( "sch" ->> "order_positions" ) "cnt" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "order_positions" ) "num" where
-  type TFldDef Sch ( "sch" ->> "order_positions" ) "num" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "order_positions" ) "order_id" where
-  type TFldDef Sch ( "sch" ->> "order_positions" ) "order_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "order_positions" ) "price" where
-  type TFldDef Sch ( "sch" ->> "order_positions" ) "price" = 
-    'FldDef ( "pg_catalog" ->> "numeric" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "created_at" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "created_at" = 
-    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "customer_id" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "customer_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "day" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "day" = 
-    'FldDef ( "pg_catalog" ->> "date" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "id" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'True
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "num" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "num" = 
-    'FldDef ( "pg_catalog" ->> "text" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "seller_id" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "seller_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'False 'False
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "state" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "state" = 
-    'FldDef ( "sch" ->> "order_state" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "trader_id" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "trader_id" = 
-    'FldDef ( "pg_catalog" ->> "int4" ) 'True 'False
-
-instance CFldDef Sch ( "sch" ->> "orders" ) "updated_at" where
-  type TFldDef Sch ( "sch" ->> "orders" ) "updated_at" = 
-    'FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False
-
 instance CTabDef Sch ( "sch" ->> "addresses" ) where
   type TTabDef Sch ( "sch" ->> "addresses" ) = 
     'TabDef '[ "id","city_id"
@@ -380,136 +204,136 @@ instance CTabRels Sch ( "sch" ->> "orders" ) where
     '[ ( "sch" ->> "opos_order" ) ]
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "app" where
-  type TFieldInfo Sch ( "sch" ->> "addresses" ) "app" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "app")
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "app" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "city_id" where
-  type TFieldInfo Sch ( "sch" ->> "addresses" ) "city_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "city_id")
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "city_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "home" where
-  type TFieldInfo Sch ( "sch" ->> "addresses" ) "home" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "home")
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "home" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "id" where
-  type TFieldInfo Sch ( "sch" ->> "addresses" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "id")
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "numbers" where
-  type TFieldInfo Sch ( "sch" ->> "addresses" ) "numbers" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "numbers")
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "numbers" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_int4" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "phones" where
-  type TFieldInfo Sch ( "sch" ->> "addresses" ) "phones" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "phones")
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "phones" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_text" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "street" where
-  type TFieldInfo Sch ( "sch" ->> "addresses" ) "street" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "street")
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "street" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "zipcode" where
-  type TFieldInfo Sch ( "sch" ->> "addresses" ) "zipcode" = 'RFPlain (TFldDef Sch ( "sch" ->> "addresses" ) "zipcode")
+  type TFieldInfo Sch ( "sch" ->> "addresses" ) "zipcode" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "articles" ) "code" where
-  type TFieldInfo Sch ( "sch" ->> "articles" ) "code" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "code")
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "articles" ) "created_at" where
-  type TFieldInfo Sch ( "sch" ->> "articles" ) "created_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "created_at")
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "articles" ) "id" where
-  type TFieldInfo Sch ( "sch" ->> "articles" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "id")
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "articles" ) "name" where
-  type TFieldInfo Sch ( "sch" ->> "articles" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "name")
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "articles" ) "updated_at" where
-  type TFieldInfo Sch ( "sch" ->> "articles" ) "updated_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "articles" ) "updated_at")
+  type TFieldInfo Sch ( "sch" ->> "articles" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "cities" ) "country_id" where
-  type TFieldInfo Sch ( "sch" ->> "cities" ) "country_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "cities" ) "country_id")
+  type TFieldInfo Sch ( "sch" ->> "cities" ) "country_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "cities" ) "id" where
-  type TFieldInfo Sch ( "sch" ->> "cities" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "cities" ) "id")
+  type TFieldInfo Sch ( "sch" ->> "cities" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "cities" ) "name" where
-  type TFieldInfo Sch ( "sch" ->> "cities" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "cities" ) "name")
+  type TFieldInfo Sch ( "sch" ->> "cities" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "companies" ) "address_id" where
-  type TFieldInfo Sch ( "sch" ->> "companies" ) "address_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "address_id")
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "address_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "companies" ) "created_at" where
-  type TFieldInfo Sch ( "sch" ->> "companies" ) "created_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "created_at")
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "companies" ) "id" where
-  type TFieldInfo Sch ( "sch" ->> "companies" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "id")
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "companies" ) "name" where
-  type TFieldInfo Sch ( "sch" ->> "companies" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "name")
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "companies" ) "updated_at" where
-  type TFieldInfo Sch ( "sch" ->> "companies" ) "updated_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "companies" ) "updated_at")
+  type TFieldInfo Sch ( "sch" ->> "companies" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "countries" ) "code" where
-  type TFieldInfo Sch ( "sch" ->> "countries" ) "code" = 'RFPlain (TFldDef Sch ( "sch" ->> "countries" ) "code")
+  type TFieldInfo Sch ( "sch" ->> "countries" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "countries" ) "id" where
-  type TFieldInfo Sch ( "sch" ->> "countries" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "countries" ) "id")
+  type TFieldInfo Sch ( "sch" ->> "countries" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "countries" ) "name" where
-  type TFieldInfo Sch ( "sch" ->> "countries" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "countries" ) "name")
+  type TFieldInfo Sch ( "sch" ->> "countries" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "customers" ) "address_id" where
-  type TFieldInfo Sch ( "sch" ->> "customers" ) "address_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "address_id")
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "address_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "customers" ) "created_at" where
-  type TFieldInfo Sch ( "sch" ->> "customers" ) "created_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "created_at")
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "customers" ) "id" where
-  type TFieldInfo Sch ( "sch" ->> "customers" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "id")
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "customers" ) "name" where
-  type TFieldInfo Sch ( "sch" ->> "customers" ) "name" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "name")
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "customers" ) "note" where
-  type TFieldInfo Sch ( "sch" ->> "customers" ) "note" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "note")
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "note" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "customers" ) "updated_at" where
-  type TFieldInfo Sch ( "sch" ->> "customers" ) "updated_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "customers" ) "updated_at")
+  type TFieldInfo Sch ( "sch" ->> "customers" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "article_id" where
-  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "article_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "article_id")
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "article_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "cnt" where
-  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "cnt" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "cnt")
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "cnt" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "num" where
-  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "num" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "num")
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "num" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "order_id" where
-  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "order_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "order_id")
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "order_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "order_positions" ) "price" where
-  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "price" = 'RFPlain (TFldDef Sch ( "sch" ->> "order_positions" ) "price")
+  type TFieldInfo Sch ( "sch" ->> "order_positions" ) "price" = 'RFPlain ('FldDef ( "pg_catalog" ->> "numeric" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "created_at" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "created_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "created_at")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "customer_id" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "customer_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "customer_id")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "customer_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "day" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "day" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "day")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "day" = 'RFPlain ('FldDef ( "pg_catalog" ->> "date" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "id" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "id" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "id")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "num" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "num" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "num")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "num" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "seller_id" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "seller_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "seller_id")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "seller_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "state" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "state" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "state")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "state" = 'RFPlain ('FldDef ( "sch" ->> "order_state" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "trader_id" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "trader_id" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "trader_id")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "trader_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "orders" ) "updated_at" where
-  type TFieldInfo Sch ( "sch" ->> "orders" ) "updated_at" = 'RFPlain (TFldDef Sch ( "sch" ->> "orders" ) "updated_at")
+  type TFieldInfo Sch ( "sch" ->> "orders" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
 
 instance CFieldInfo Sch ( "sch" ->> "addresses" ) "comp_addr" where
   type TFieldInfo Sch ( "sch" ->> "addresses" ) "comp_addr" = 

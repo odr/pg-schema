@@ -55,7 +55,6 @@ library
     Database.PostgreSQL.Schema.Info
     Database.PostgreSQL.Schema.Schema
     Database.PostgreSQL.Enum
-    Database.PostgreSQL.Schema.TH
     Database.Schema.Gen
     Database.Schema.Def
     Database.Schema.Rec
@@ -78,7 +77,6 @@ library
     , bytestring
     , case-insensitive
     , containers
-    , deepseq
     , directory
     , exceptions
     , mtl

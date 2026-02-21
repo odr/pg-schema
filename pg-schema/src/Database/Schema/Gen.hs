@@ -35,10 +35,6 @@ textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
 #endif
         <> "instance NFData (PGEnum " <> st <> ")\n\n"
 
-textFldDef :: Text -> NameNS -> Text -> FldDef -> Text
-textFldDef sch tab fld =
-  mkInst "FldDef" [sch, showType tab, showType fld]
-
 textTabDef :: Text -> NameNS -> TabDef -> Text
 textTabDef sch tab = mkInst "TabDef" [sch, showType tab]
 
@@ -70,11 +66,11 @@ textRef fromDef toDef fromName toName =
   "'Ref " <> showType fromName <> " (" <> showType fromDef <> ") "
   <> showType toName <> " (" <> showType toDef <> ")"
 
-textFieldInfoPlain :: Text -> NameNS -> Text -> Text
-textFieldInfoPlain sch tab fldName =
+textFieldInfoPlain :: Text -> NameNS -> Text -> FldDef -> Text
+textFieldInfoPlain sch tab fldName fd =
   "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
   <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = "
-  <> "'RFPlain (TFldDef " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\")\n\n"
+  <> "'RFPlain (" <> showType fd <> ")\n\n"
 
 textFieldInfoToHere :: Text -> NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
 textFieldInfoToHere sch tab relName rel mfld =
@@ -124,13 +120,12 @@ genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   <> "import PgSchema\n\n\n"
   <> "data " <> schName <> "\n\n"
   <> mconcat (uncurry (textTypDef schName) <$> toList mtyp)
-  <> mconcat ((\((a,b),c) -> textFldDef schName a b c) <$> toList mfld)
   <> mconcat ((\(tab,(td,_,_)) -> textTabDef schName tab td) <$> toList mtab)
   <> mconcat (L.map (uncurry $ textRelDef schName) $ toList mrel)
   <> mconcat ((\(tab,(_,froms,tos)) -> textTabRel schName tab froms tos)
     <$> toList mtab)
   <> mconcat
-      ((\((tab, fldName), _fd) -> textFieldInfoPlain schName tab fldName)
+      ((\((tab, fldName), fd) -> textFieldInfoPlain schName tab fldName fd)
         <$> toList mfld)
   <> mconcat
       ([ textFieldInfoToHere schName tab relName (mrel M.! relName) mfld
