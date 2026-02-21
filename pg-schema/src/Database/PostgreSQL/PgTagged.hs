@@ -132,11 +132,11 @@ type family PgTaggedFldDef sch t n r :: RecFieldK NameNSK where
   PgTaggedFldDef sch t n (Aggr' fname r) = 'RFAggr
     (FromMaybe
       (TypeError (TL.Text "Can't process aggregate with name " :<>: TL.ShowType fname))
-      (AggrFldDefJ' (TTypDefSym1 sch) fname ('Just (TFldDef sch t n)))) fname 'False
+      (AggrFldDefJ' (TTypDefSym1 sch) fname ('Just (GetFldDef sch t n)))) fname 'False
   PgTaggedFldDef sch t n (Aggr fname r) = 'RFAggr
     (FromMaybe
       (TypeError (TL.Text "Can't process aggregate with name " :<>: TL.ShowType fname))
-      (AggrFldDefJ (TTypDefSym1 sch) fname ('Just (TFldDef sch t n)))) fname 'True
+      (AggrFldDefJ (TTypDefSym1 sch) fname ('Just (GetFldDef sch t n)))) fname 'True
   -- Non-aggregate fields: use schema-level field info.
   PgTaggedFldDef sch t n r = TFieldInfo sch t n
 

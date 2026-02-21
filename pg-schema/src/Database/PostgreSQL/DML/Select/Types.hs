@@ -149,22 +149,24 @@ instance ToField SomeToField where
 data Cond (sch::Type) (tab::NameNSK) where
   EmptyCond :: Cond sch tab
   Cmp :: forall fld v sch tab.
-    ( CFldDef sch tab fld, ToField v, Show v
-    , CanConvert sch (FdType (TFldDef sch tab fld))
-      (FdNullable (TFldDef sch tab fld)) v)
+    ( CFieldInfo sch tab fld, ToField v, Show v
+    , CanConvert sch (FdType (GetFldDef sch tab fld))
+      (FdNullable (GetFldDef sch tab fld)) v)
     => Cmp -> v -> Cond sch tab
   In :: forall fld v sch tab.
-    ( CFldDef sch tab fld, ToField v, Show v
-    , CanConvert sch (FdType (TFldDef sch tab fld))
-      (FdNullable (TFldDef sch tab fld)) v )
+    ( CFieldInfo sch tab fld, CPlainFldDef (TFieldInfo sch tab fld)
+    , ToField v, Show v
+    , CanConvert sch (FdType (GetFldDef sch tab fld))
+      (FdNullable (GetFldDef sch tab fld)) v )
     => NonEmpty v -> Cond sch tab
   InArr :: forall fld v sch tab.
-    ( CFldDef sch tab fld, ToField v, Show v
-    , CanConvert sch (FdType (TFldDef sch tab fld))
-      (FdNullable (TFldDef sch tab fld)) v )
+    ( CFieldInfo sch tab fld, CPlainFldDef (TFieldInfo sch tab fld)
+    , ToField v, Show v
+    , CanConvert sch (FdType (GetFldDef sch tab fld))
+      (FdNullable (GetFldDef sch tab fld)) v )
     => [v] -> Cond sch tab
   Null :: forall fld sch tab.
-    (CFldDef sch tab fld, FdNullable (TFldDef sch tab fld) ~ 'True) =>
+    (CFieldInfo sch tab fld, FdNullable (GetFldDef sch tab fld) ~ 'True) =>
     Cond sch tab
   Not :: Cond sch tab -> Cond sch tab
   BoolOp :: BoolOp -> Cond sch tab -> Cond sch tab -> Cond sch tab
@@ -198,7 +200,7 @@ defTabParam = TabParam mempty mempty defLO
 
 {-# INLINE pnull #-}
 pnull :: forall sch tab. forall name ->
-  (CFldDef sch tab name, FdNullable (TFldDef sch tab name) ~ 'True) =>
+  (CFieldInfo sch tab name, FdNullable (GetFldDef sch tab name) ~ 'True) =>
   Cond sch tab
 pnull name = Null @name
 
@@ -225,17 +227,19 @@ pUnsafeCond = UnsafeCond
 
 {-# INLINE pin #-}
 pin :: forall name -> forall sch tab v.
-  ( CFldDef sch tab name, Show v, ToField v
-  , CanConvert sch (FdType (TFldDef sch tab name))
-    (FdNullable (TFldDef sch tab name)) v ) =>
+  ( CFieldInfo sch tab name, CPlainFldDef (TFieldInfo sch tab name)
+  , Show v, ToField v
+  , CanConvert sch (FdType (GetFldDef sch tab name))
+    (FdNullable (GetFldDef sch tab name)) v ) =>
   NonEmpty v -> Cond sch tab
 pin name = In @name
 
 {-# INLINE pinArr #-}
 pinArr :: forall name -> forall sch tab v.
-  ( CFldDef sch tab name, Show v, ToField v
-  , CanConvert sch (FdType (TFldDef sch tab name))
-    (FdNullable (TFldDef sch tab name)) v ) =>
+  ( CFieldInfo sch tab name, CPlainFldDef (TFieldInfo sch tab name)
+  , Show v, ToField v
+  , CanConvert sch (FdType (GetFldDef sch tab name))
+    (FdNullable (GetFldDef sch tab name)) v ) =>
   [v] -> Cond sch tab
 pinArr name = InArr @name
 
@@ -257,9 +261,9 @@ infixl 3 &&&
 {-# INLINE (~=?) #-}
 {-# INLINE (~~?) #-}
 (<?),(>?),(<=?),(>=?),(=?),(~=?),(~~?) :: forall fld -> forall sch tab v.
-  ( CFldDef sch tab fld, ToField v, Show v
-  , CanConvert sch (FdType (TFldDef sch tab fld))
-    (FdNullable (TFldDef sch tab fld)) v) =>
+  ( CFieldInfo sch tab fld, ToField v, Show v
+  , CanConvert sch (FdType (GetFldDef sch tab fld))
+    (FdNullable (GetFldDef sch tab fld)) v) =>
   v -> Cond sch tab
 x <? b  = Cmp @x (:<)  b
 x >? b  = Cmp @x (:>)  b
@@ -280,7 +284,7 @@ type RelTab2 sch rel tab = If (RdTo (TRelDef sch rel) == tab)
       :<>: TE.Text " is not connected to table " :<>: TE.ShowType tab)))
 
 data OrdFld sch tab where
-  OrdFld :: forall fld sch tab. CFldDef sch tab fld =>
+  OrdFld :: forall fld sch tab. CFieldInfo sch tab fld =>
     OrdDirection -> OrdFld sch tab
   -- SelFld :: forall (rel :: NameNSK) (fld :: Symbol) sch tab. CRelDef sch rel =>
   --   Cond sch (RelTab2 sch rel tab) -> [OrdFld sch (RelTab2 sch rel tab)] ->
@@ -303,16 +307,16 @@ data Dist sch tab where
 {-# INLINE ordf #-}
 ordf
   :: forall fld
-  -> forall sch tab. CFldDef sch tab fld
+  -> forall sch tab. CFieldInfo sch tab fld
   => OrdDirection -> OrdFld sch tab
 ordf fld = OrdFld @fld
 
 {-# INLINE ascf #-}
-ascf :: forall fld -> forall sch tab. CFldDef sch tab fld => OrdFld sch tab
+ascf :: forall fld -> forall sch tab. CFieldInfo sch tab fld => OrdFld sch tab
 ascf fld = ordf fld Asc
 
 {-# INLINE descf #-}
-descf :: forall fld -> forall sch tab. CFldDef sch tab fld => OrdFld sch tab
+descf :: forall fld -> forall sch tab. CFieldInfo sch tab fld => OrdFld sch tab
 descf fld = ordf fld Desc
 
 data LO = LO
