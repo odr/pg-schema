@@ -51,65 +51,29 @@ schemaRec
   :: (String -> String) -> Name -> Map NameNS TabInfo -> Map NameNS TypDef
   -> NameNS -> Name -> [[Name]] -> DecsQ
 schemaRec toDbName sch tabMap typMap tab rn npss =
-  applyTypes rn npss >>= fmap L.concat . traverse (schemaRec' toDbName sch tabMap typMap tab )
+  applyTypes rn npss >>= fmap L.concat . traverse (schemaRec' toDbName sch tabMap typMap tab)
 
 schemaRec'
   :: (String -> String) -> Name -> Map NameNS TabInfo -> Map NameNS TypDef
   -> NameNS -> (Type, [(String, Type)]) -> DecsQ
 schemaRec' toDbName sch tabMap typMap tab (rt, fs) = do
-  tinfo <- maybe (fail $ "unknown table" <> show tab) pure $ tabMap M.!? tab
+  tinfo <- maybe (fail $ "unknown table " <> show tab) pure $ tabMap M.!? tab
   aggrC <- [t| Aggr |]
   aggrC' <- [t| Aggr' |]
-  when ((Any True, Any False) == foldMap ((\t -> if
-    | t == aggrC' -> (Any True, mempty)
-    | t /= aggrC -> (mempty, Any True)
-    | otherwise -> mempty) . snd) fs)
-    $ fail "There is a record with AggrC' fields without any non-Aggr fields. It is unsafe."
-  traverse (getFieldInfo aggrC aggrC' tinfo) fs >>= recordInfoInst
+  when ((Any True, Any False) == foldMap (classifyField aggrC aggrC' . snd) fs)
+    $ fail "Record has Aggr' fields but no non-Aggr fields. It is unsafe."
+  traverse (fieldInfoDec aggrC aggrC' tinfo) fs >>= recordInfoInst
   where
-    getFieldInfo aggrC aggrC' tinfo (sname, ft) = do
-      fieldInfo <- mkFieldInfo
+    classifyField aggrC aggrC' t = (Any (t == aggrC'), Any (t /= aggrC))
+
+    fieldInfoDec aggrC aggrC' tinfo (sname, ft) = do
+      let tDbName = fromString @Text $ toDbName sname
+      kind <- resolveFieldKind tab tinfo tabMap typMap aggrC aggrC' tDbName sname ft
+      let fieldInfo = FieldInfo (T.pack sname) tDbName kind
       (,)
         <$> [| FieldInfo (T.pack $(stringE sname)) (T.pack $(stringE $ toDbName sname))
-          $ mkRecField @($(conT sch)) @($(liftType fieldInfo.fieldKind)) @($(pure ft))|]
+          $ mkRecField @($(conT sch)) @($(liftType kind)) @($(pure ft))|]
         <*> [t| '( $(liftType fieldInfo), $(pure ft)) |]
-      where
-        tDbName = fromString @Text $ toDbName sname
-        mkFieldInfo = do
-          let mbPlainFldDef = tinfo.tiFlds M.!? tDbName
-          (kind :: RecField NameNS) <- maybe
-            (fail $ "can't determine kind of field '" <> sname
-              <> "' for table " <> show tab)
-            pure
-            $ checkAggr mbPlainFldDef
-              <|> fmap RFPlain mbPlainFldDef
-              <|> (toFrom =<< tinfo.tiFrom M.!? (tab.nnsNamespace ->> tDbName))
-              <|> (toTo . snd <=<
-                L.find ((== tDbName) . (.nnsName) . fst) $ M.toList tinfo.tiTo)
-          pure FieldInfo
-            { fieldName   = T.pack sname
-            , fieldDbName = tDbName
-            , fieldKind   = kind }
-          where
-            checkAggr mbPlainFldDef = case ft of
-              AppT (AppT ac (LitT (StrTyLit (T.pack -> fname)))) _aggrT
-                | ac == aggrC -> aggrFldDef (typMap M.!?) fname mbPlainFldDef
-                  <&> \fd -> RFAggr fd fname True
-                | ac == aggrC' -> aggrFldDef' (typMap M.!?) fname mbPlainFldDef
-                  <&> \fd -> RFAggr fd fname False
-              _ -> Nothing
-            toFrom rd = RFFromHere rd.rdTo <$> traverse conv rd.rdCols
-              where
-                conv (fromName, toName) = do
-                  fromDef <- tinfo.tiFlds M.!? fromName
-                  toDef <- tabMap M.!? rd.rdTo >>= (M.!? toName) . (.tiFlds)
-                  pure Ref{..}
-            toTo rd = RFToHere rd.rdFrom <$> traverse conv rd.rdCols
-              where
-                conv (fromName, toName) = do
-                  toDef <- tinfo.tiFlds M.!? toName
-                  fromDef <- tabMap M.!? rd.rdFrom >>= (M.!? fromName) . (.tiFlds)
-                  pure Ref{..}
 
     recordInfoInst fis = [d|
       instance CRecordInfo $(conT sch) $(liftType tab) $(pure rt) where
@@ -117,6 +81,34 @@ schemaRec' toDbName sch tabMap typMap tab (rt, fs) = do
           $(pure $ toPromotedList $ snd <$> fis)
         getRecordInfo = RecordInfo tab $(pure $ ListE $ fst <$> fis)
       |]
+
+-- | Resolve field (by DB name) to RecField kind: plain column, aggr, or relation (to/from).
+resolveFieldKind
+  :: NameNS -> TabInfo -> Map NameNS TabInfo -> Map NameNS TypDef
+  -> Type -> Type  -- Aggr, Aggr'
+  -> Text -> String -> Type  -- tDbName, sname (for error), ft
+  -> Q (RecField NameNS)
+resolveFieldKind tab tinfo tabMap typMap aggrC aggrC' tDbName sname ft =
+  maybe
+    (fail $ "can't determine kind of field '" <> sname <> "' for table " <> show tab)
+    pure
+    $ checkAggr mbPlain
+      <|> fmap RFPlain mbPlain
+      <|> (toFrom =<< tinfo.tiFrom M.!? (tab.nnsNamespace ->> tDbName))
+      <|> (toTo . snd <=< L.find ((== tDbName) . (.nnsName) . fst) $ M.toList tinfo.tiTo)
+  where
+    mbPlain = tinfo.tiFlds M.!? tDbName
+    checkAggr mbPlain' = case ft of
+      AppT (AppT ac (LitT (StrTyLit (T.pack -> fname)))) _
+        | ac == aggrC  -> aggrFldDef (typMap M.!?) fname mbPlain' <&> \fd -> RFAggr fd fname True
+        | ac == aggrC' -> aggrFldDef' (typMap M.!?) fname mbPlain' <&> \fd -> RFAggr fd fname False
+      _ -> Nothing
+    toFrom rd = RFFromHere rd.rdTo <$> refs tinfo.tiFlds (maybe M.empty tiFlds $ tabMap M.!? rd.rdTo) rd.rdCols
+    toTo rd = RFToHere rd.rdFrom <$> refs (maybe M.empty tiFlds $ tabMap M.!? rd.rdFrom) tinfo.tiFlds rd.rdCols
+    refs fromFlds toFlds = traverse \(fromName, toName) -> do
+      fromDef <- fromFlds M.!? fromName
+      toDef <- toFlds M.!? toName
+      pure Ref{..}
 
 deriveQueryRecord
   :: (String -> String) -> Name -> Map NameNS TabInfo -> Map NameNS TypDef
