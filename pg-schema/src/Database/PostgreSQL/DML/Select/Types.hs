@@ -4,7 +4,6 @@
 module Database.PostgreSQL.DML.Select.Types where
 
 import Control.Monad.RWS
--- import Control.Monad.State
 import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Kind
 import Data.List as L
@@ -12,7 +11,6 @@ import Data.List.NonEmpty as NE
 import Data.String
 import Data.Text(Text)
 import Data.Type.Bool
--- import Data.Type.Equality
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.Simple.ToField
 import Database.Schema.Def
