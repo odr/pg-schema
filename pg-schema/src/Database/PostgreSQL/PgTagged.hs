@@ -4,6 +4,7 @@ module Database.PostgreSQL.PgTagged where
 
 import Data.Aeson
 import Data.Coerce
+import Data.Kind (Constraint)
 import Data.Maybe.Singletons
 #ifdef MK_HASHABLE
 import Data.Hashable
@@ -122,6 +123,8 @@ instance
 instance (ToJSON a, ToStar n) => ToField (PgTagged (n::Symbol) (SchList a)) where
   toField = toJSONField
 
+-- | Type-level field description for a tagged field.
+-- Aggregates are handled specially; all other cases delegate to 'TFieldInfo'.
 type family PgTaggedFldDef sch t n r :: RecFieldK NameNSK where
   PgTaggedFldDef sch t n (Aggr' "count" r) =
     'RFAggr ('FldDef ('NameNS "pg_catalog" "int8") 'False 'False) "count" 'True
@@ -134,12 +137,20 @@ type family PgTaggedFldDef sch t n r :: RecFieldK NameNSK where
     (FromMaybe
       (TypeError (TL.Text "Can't process aggregate with name " :<>: TL.ShowType fname))
       (AggrFldDefJ (TTypDefSym1 sch) fname ('Just (TFldDef sch t n)))) fname 'True
-  PgTaggedFldDef sch t n r = GetRecField t (TTabDef sch t) (TTabRelFrom sch t)
-    (TTabRelTo sch t) (TFldDefSym1 sch) n
+  -- Non-aggregate fields: use schema-level field info.
+  PgTaggedFldDef sch t n r = TFieldInfo sch t n
 
-instance (MkRecField sch (
-  FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
-  , ToStar n, ToStar t) =>
+-- | Extra context needed to use 'PgTaggedFldDef':
+-- for aggregates we don't need schema info; for plain/rel fields we require 'CFieldInfo'.
+type family PgTaggedFldCtx sch t n r :: Constraint where
+  PgTaggedFldCtx sch t n (Aggr' fname r) = ()
+  PgTaggedFldCtx sch t n (Aggr fname r)  = ()
+  PgTaggedFldCtx sch t n r               = CFieldInfo sch t n
+
+instance ( PgTaggedFldCtx sch t n r
+         , MkRecField sch (
+             FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) r
+         , ToStar n, ToStar t) =>
   CRecordInfo sch t (PgTagged (n::Symbol) r) where
   type TRecordInfo sch t (PgTagged n r) = '[ '( 'FieldInfo n n (PgTaggedFldDef sch t n r), r) ]
   getRecordInfo = RecordInfo (demote @t) [FieldInfo (demote @n) (demote @n)
