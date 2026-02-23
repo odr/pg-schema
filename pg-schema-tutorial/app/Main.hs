@@ -15,6 +15,7 @@ import Data.Aeson.TH
 import Data.Bifunctor
 import Data.Bitraversable
 import Data.Fixed
+import Data.Functor
 import Data.List as L
 import Data.Singletons
 import Data.Text as T
@@ -233,19 +234,20 @@ main = do
       , MkAddressI "str" (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
       , MkAddressI "street2" (Just "zip2") mempty Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
-  (as1 :: [PgTagged '["id", "cust_addr"] (Int32, SchList (PgTagged ["id", "name"] (Int32, Text)))], _insTxt)
+  (as1 :: ["id" := Int32 :.. "cust_addr" := SchList ("id" := Int32 :.. "name" := Text)], _insTxt)
     <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
   curTime <- T.show <$> getCurrentTime
-  I2.upsertJSON_ Sch (NSC "addresses") conn
-    $ fmap (fmap $ second $ fmap $ fmap $ second (<> ": " <> curTime <> " updated")) as1
+  I2.upsertJSON_ Sch (NSC "addresses") conn $ as1 <&> \(a :.. PgTag xs) ->
+    a :.. "cust_addr" =: (xs <&> \(cid :.. cname) ->
+      cid :.. fmap (<> ": " <> curTime <> " updated") cname)
   let
-    upsVals = fmap (second $ fmap \(PgTag (custId, _)) ->
-      PgTag @["id", "note"] (custId, Just curTime)) <$> as1
+    upsVals = as1 <&> \(a :.. PgTag xs) -> a :.. "cust_addr" =:
+      (xs <&> \(cid :.. _) -> cid :.. "note" =: Just curTime)
   mapM_ print upsVals
   I2.upsertJSON_ Sch (NSC "addresses") conn upsVals
   T.putStrLn "\n====== 13 ========\n"
-  (as2 :: [PgTagged '["id", "cust_addr"]
-    (Int32, SchList ("id" := Int32 :.. "updated_at" := Maybe ZonedTime))], _upsTxt)
+  (as2 :: ["id" := Int32 :.. "cust_addr" := SchList
+    ("id" := Int32 :.. "updated_at" := Maybe ZonedTime)], _upsTxt)
     <- I2.upsertJSON Sch (NSC "addresses") conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"

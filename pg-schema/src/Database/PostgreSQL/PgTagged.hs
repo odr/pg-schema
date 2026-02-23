@@ -22,6 +22,7 @@ import Database.Schema.Rec
 import Database.Types.Aggr
 import GHC.TypeLits as TL
 import PgSchema.Util
+import Prelude as P
 import Prelude.Singletons
 import Type.Reflection
 import Database.Types.SchList (SchList)
@@ -34,11 +35,28 @@ import Flat as F
 
 
 newtype PgTagged a b = PgTagged (Tagged a b)
-  deriving stock (Read, Show)
+  -- deriving stock (Read, Show)
   deriving newtype
   ( Eq, Ord, Functor, Applicative, Monad, Foldable, Monoid
   , Semigroup, Num, Real, Integral, Enum, Bounded, RealFloat, RealFrac, Floating
   , Fractional, IsString )
+
+type SymNat = (Symbol, Nat)
+
+type KnownSymNat sn s n = (sn ~ '(s,n), KnownSymbol s, KnownNat n)
+
+nameSymNat :: forall sn -> forall s n. KnownSymNat sn s n => String
+nameSymNat _ @s @n = if n == 0 then s else s <> "___" <> P.show n
+  where
+    n = natVal (Proxy @n)
+    s = symbolVal (Proxy @s)
+
+instance (KnownSymbol s, Show b) => Show (PgTagged (s :: Symbol) b)  where
+  show (PgTag v) = symbolVal (Proxy @s) <> " =: " <> P.show v
+
+instance (KnownSymNat sn s n, KnownNat n, Show b)
+  => Show (PgTagged (sn :: SymNat) b)  where
+    show (PgTag v) = nameSymNat sn <> " =: " <> P.show v
 
 #ifdef MK_ARBITRARY
 instance Arbitrary b => Arbitrary (PgTagged a b) where
@@ -82,29 +100,8 @@ instance (ToStar a, FromJSON b) => FromJSON (PgTagged (a::Symbol) b) where
   parseJSON = withObject "PgTagged " \v ->
     pgTag <$> v .: fromString (T.unpack $ demote @a)
 
-instance (ToStar a, FromJSON b) => FromJSON (PgTagged ('[a]::[Symbol]) b) where
-  parseJSON = withObject "PgTagged " \v ->
-    pgTag <$> v .: fromString (T.unpack $ demote @a)
-
-instance (FromJSON (PgTagged n r), FromJSON (PgTagged (n1 ': ns) r1))
-  => FromJSON (PgTagged (n ': n1 ': ns::[Symbol]) (r,r1)) where
-  parseJSON v = do
-    o1 <- parseJSON @(PgTagged n r) v
-    o2 <- parseJSON @(PgTagged (n1 ': ns) r1) v
-    pure $ pgTag (unPgTag o1, unPgTag o2)
-
 instance (ToStar a, ToJSON b) => ToJSON (PgTagged (a::Symbol) b) where
   toJSON v = object [fromString (T.unpack $ demote @a) .= unPgTag v]
-
-instance (ToStar a, ToJSON b) => ToJSON (PgTagged ('[a]::[Symbol]) b) where
-  toJSON v = object [fromString (T.unpack $ demote @a) .= unPgTag v]
-
-instance (ToJSON (PgTagged n r), ToJSON (PgTagged (n1 ': ns) r1))
-  => ToJSON (PgTagged (n ': n1 ': ns ::[Symbol]) (r,r1)) where
-  toJSON (PgTagged (Tagged (r,r1))) =
-    case (toJSON $ pgTag @n r, toJSON $ pgTag @(n1 ': ns) r1) of
-      (Object x1, Object x2) -> Object $ x1 <> x2
-      _ -> error "PgTagged instances should be always objects"
 
 -- | Tag as type-level pair (Symbol, Nat). JSON uses the Symbol as key.
 instance (KnownSymbol s, FromJSON b) => FromJSON (PgTagged '(s, n) b) where
@@ -170,51 +167,8 @@ instance ( PgTaggedFldCtx sch t n r
   getRecordInfo = RecordInfo (demote @t) [FieldInfo (demote @n) (demote @n)
     $ mkRecField @sch @(FieldKind (Fst (Head (TRecordInfo sch t (PgTagged n r))))) @r]
 
-instance
-  CRecordInfo sch t (PgTagged n r) => CRecordInfo sch t (PgTagged ('[n]::[Symbol]) r) where
-  type TRecordInfo sch t (PgTagged '[n] r) = TRecordInfo sch t (PgTagged n r)
-  getRecordInfo = getRecordInfo @sch @t @(PgTagged n r)
-
-instance
-  ( CRecordInfo sch t (PgTagged n r), CRecordInfo sch t (PgTagged (n1 ':ns) r1))
-  => CRecordInfo sch t (PgTagged (n ': n1 ':ns ::[Symbol]) (r,r1)) where
-  type TRecordInfo sch t (PgTagged (n ': n1 ':ns) (r,r1)) =
-    TRecordInfo sch t (PgTagged n r) ++ TRecordInfo sch t (PgTagged (n1 ': ns) r1)
-  getRecordInfo = let r1 = getRecordInfo @sch @t @(PgTagged n r) in r1
-    { fields = r1.fields
-      <> (getRecordInfo @sch @t @(PgTagged (n1 ': ns) r1)).fields }
-
 instance FromRow (Only b) => FromRow (PgTagged (n::Symbol) b) where
   fromRow = coerce @(Only b) <$> fromRow
 
-instance FromRow (Only b) => FromRow (PgTagged ('[n]::[Symbol]) b) where
-  fromRow = coerce @(Only b) <$> fromRow
-
-instance (FromRow (Only a), FromRow (PgTagged (n2 ': ns) as))
-  => FromRow (PgTagged (n1 ': n2 ': ns) (a,as)) where
-    fromRow =
-      coerce @(Only a, PgTagged (n2 ': ns) as) <$> ((,) <$> fromRow <*> fromRow)
-
 instance ToRow (Only b) => ToRow (PgTagged (n::Symbol) b) where
   toRow = toRow @(Only b) . coerce
-
-instance ToRow (Only b) => ToRow (PgTagged ('[n]::[Symbol]) b) where
-  toRow = toRow @(Only b) . coerce
-
-instance (ToRow (Only a), ToRow (PgTagged (n2 ': ns) as))
-  => ToRow (PgTagged (n1 ': n2 ': ns) (a,as)) where
-    toRow
-      = toRow @(Only a PG.:. PgTagged (n2 ': ns) as)
-      . ((PG.:.) <$> fst <*> snd) . coerce
-
--- data SomeFieldVal sch t where
---   SomeFieldVal
---     :: forall fld v sch tab. CRecordInfo sch tab (PgTagged fld v)
---     => PgTagged fld v -> SomeFieldVal sch tab
-
--- (=:) :: forall sch t v. forall fld ->
---   CRecordInfo sch t (PgTagged fld v) => v -> SomeFieldVal sch t
--- fld =: val = SomeFieldVal (pgTag @fld val)
-
--- instance CRecordInfo sch t (SomeFieldVal sch t) where
---   type TRecordInfo sch t (SomeFieldVal sch t)
