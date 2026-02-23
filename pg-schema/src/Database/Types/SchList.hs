@@ -11,7 +11,6 @@ import Data.Hashable
 import GHC.Exts
 import Database.PostgreSQL.Simple.FromField as PG
 import Database.PostgreSQL.Simple.ToField as PG
-import Database.Schema.Rec
 import Type.Reflection
 #ifdef MK_ARBITRARY
 import Test.QuickCheck
@@ -44,7 +43,3 @@ instance (FromJSON a, Typeable a) => FromField (SchList a) where
 instance (ToJSON a) => ToField (SchList a) where
   toField :: ToJSON a => SchList a -> Action
   toField = toJSONField
-
-instance CRecordInfo sch t r => CRecordInfo sch t (SchList r) where
-  type TRecordInfo sch t (SchList r) = TRecordInfo sch t r
-  getRecordInfo = getRecordInfo @sch @t @r

@@ -13,6 +13,7 @@ import Database.PostgreSQL.Convert
 import Database.Schema.Def
 import Database.Types.Aggr
 import Database.Types.EmptyField
+import Database.Types.SchList
 import GHC.TypeLits qualified as TL
 import GHC.TypeError
 import PgSchema.Util
@@ -183,6 +184,10 @@ promote [d|
   dbNames :: [(FieldInfo' s p, x)] -> [s]
   dbNames = map (fieldDbName . fst)
   |]
+
+instance CRecordInfo sch t r => CRecordInfo sch t (SchList r) where
+  type TRecordInfo sch t (SchList r) = TRecordInfo sch t r
+  getRecordInfo = getRecordInfo @sch @t @r
 
 ------ For Dml -------
 
