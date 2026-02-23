@@ -5,9 +5,14 @@
 module Database.PostgreSQL.HListTag where
 
 import Data.Aeson
+import Data.Aeson.Decoding (toEitherValue)
+import Data.Aeson.Decoding.ByteString.Lazy (lbsToTokens)
+import Data.Aeson.Decoding.Tokens (Tokens (..), TkRecord (..))
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KM
 import Data.Aeson.Types
+import Data.ByteString.Lazy qualified as BL
+import Control.Applicative (Alternative (..))
 import Data.Kind (Type)
 import Data.Proxy
 import Database.PostgreSQL.PgTagged
@@ -27,7 +32,7 @@ type family (xs :: [Type]) ++ (ys :: [Type]) :: [Type] where
 -- 1. DATA STRUCTURE
 --------------------------------------------------------------------------------
 
-infixr 3 :*
+infixr 5 :*
 
 -- | Heterogeneous list with Symbol tags (field names)
 data HListTag (ts :: [(SymNat, Type)]) where
@@ -38,7 +43,13 @@ instance Show (HListTag '[]) where
   show HNil = "HNil"
 
 instance (Show t, KnownSymNat sn s n, Show (HListTag ts)) => Show (HListTag ('(sn, t) ': ts)) where
-  show (x :* xs) = show x <> " :* " <> show xs
+  show (x :* xs) = "(" <> show x <> ") :* " <> show xs
+
+instance Eq (HListTag '[]) where
+  _ == _ = True
+
+instance (Eq t, KnownSymNat sn s n, Eq (HListTag ts)) => Eq (HListTag ('(sn, t) ': ts)) where
+  (x :* xs) == (y :* ys) = x == y && xs == ys
 
 --------------------------------------------------------------------------------
 -- 2. INSTANCES
@@ -96,6 +107,26 @@ instance (FromField t, FromRow (HListTag ts)) => FromRow (HListTag ('(s, t) ': t
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- $json
+--
+-- Round-trip and decode examples:
+--
+-- >>> type SimpleRec = HListTag '[ '( '("b", 0), Bool), '( '("a", 0), Int) ]
+-- >>> let val = PgTag False :* PgTag (1::Int) :* HNil :: SimpleRec
+-- >>> encode val
+-- "{\"b\":false,\"a\":1}"
+--
+-- >>> decode "{\"a\":10,\"b\":true}" :: Maybe SimpleRec
+-- Just (b =: True) :* (a =: 10) :* HNil
+--
+-- >>> decode "{\"a\":10}" :: Maybe SimpleRec
+-- Nothing
+--
+-- Extra keys in JSON are allowed when decoding:
+--
+-- >>> decode "{\"a\":1,\"b\":false,\"extra\":42}" :: Maybe SimpleRec
+-- Just (b =: False) :* (a =: 1) :* HNil
+--
 -- Класс-помощник для сериализации и десериализации полей
 class HListToJSON ts where
   toSeriesFields :: HListTag ts -> Series
@@ -135,3 +166,124 @@ instance HListToJSON ts => ToJSON (HListTag ts) where
 
 instance HListToJSON ts => FromJSON (HListTag ts) where
   parseJSON = withObject "HListTag" $ \obj -> parseFields obj
+
+--------------------------------------------------------------------------------
+-- 3. Streaming decoding from JSON tokens
+--------------------------------------------------------------------------------
+
+-- $streaming
+--
+-- Stream decoding avoids building an intermediate 'Data.Aeson.Types.Object':
+--
+-- >>> let bs = encode (object ["b" .= False, "a" .= (1::Int)])
+-- >>> streamDecodeHListTag @('[ '( '("b", 0), Bool), '( '("a", 0), Int) ]) bs
+-- Right (b =: False) :* (a =: 1) :* HNil
+--
+-- The primed variant also returns the leftover input:
+--
+-- >>> let (Right (h, rest)) = streamDecodeHListTag' @('[ '( '("a", 0), Int), '( '("b", 0), Bool) ]) bs
+-- >>> BL.null rest
+-- True
+--
+-- | Generic initialization of an 'HListTag' lifted into an 'Alternative'
+-- functor @f@ (e.g. @Maybe@). All slots are set to 'empty'.
+class HEmpty ts f where
+  hEmpty :: HListTag (Lifted ts f)
+
+instance Alternative f => HEmpty '[] f where
+  hEmpty = HNil
+
+instance (Alternative f, HEmpty ts f) => HEmpty ('(s, t) ': ts) f where
+  hEmpty = PgTag empty :* hEmpty @ts @f
+
+-- | Rank-2 \"sequence\" for 'HListTag': collapse an extra 'Applicative'
+-- layer around all fields.
+class HUnLift ts f where
+  hUnLift :: Applicative f => HListTag (Lifted ts f) -> f (HListTag ts)
+
+instance Applicative f => HUnLift '[] f where
+  hUnLift HNil = pure HNil
+
+instance (Applicative f, HUnLift ts f) => HUnLift ('(s, t) ': ts) f where
+  hUnLift (PgTag ft :* rest) =
+    (:*) . PgTag <$> ft <*> hUnLift rest
+
+-- | Update a lifted 'HListTag' by JSON key: for the matching field name,
+-- parse the given 'Value' into the field's type and store it in @f@.
+class HUpdateByKey ts f where
+  hUpdateByKey
+    :: Applicative f
+    => Key.Key
+    -> Value
+    -> HListTag (Lifted ts f)
+    -> Either String (HListTag (Lifted ts f))
+
+instance Applicative f => HUpdateByKey '[] f where
+  hUpdateByKey _ _ HNil = Right HNil
+
+instance
+  ( KnownSymNat sn s n
+  , FromJSON t
+  , Applicative f
+  , HUpdateByKey ts f
+  ) => HUpdateByKey ('(sn, t) ': ts) f where
+  hUpdateByKey key v (PgTag ft :* rest)
+    | key == expectedKey = do
+        x <- firstPrefix "HListTag field parse error: " (parseEither parseJSON v)
+        pure (PgTag (pure x) :* rest)
+    | otherwise = do
+        rest' <- hUpdateByKey @ts @f key v rest
+        pure (PgTag ft :* rest')
+    where
+      expectedKey = Key.fromString (nameSymNat sn)
+
+      firstPrefix :: String -> Either String a -> Either String a
+      firstPrefix _ (Right a) = Right a
+      firstPrefix pfx (Left e) = Left (pfx <> e)
+
+-- | Internal: parse an 'HListTag ts' from a JSON object token stream.
+-- The result also returns the leftover continuation @k@ after the object.
+parseFromRecord
+  :: forall ts k. (HEmpty ts Maybe, HUpdateByKey ts Maybe, HUnLift ts Maybe)
+  => TkRecord k String
+  -> Either String (HListTag ts, k)
+parseFromRecord = go (hEmpty @ts @Maybe)
+  where
+    go
+      :: HListTag (Lifted ts Maybe)
+      -> TkRecord k String
+      -> Either String (HListTag ts, k)
+    go acc rec = case rec of
+      TkRecordErr e -> Left e
+      TkRecordEnd k ->
+        case hUnLift @ts @Maybe acc of
+          Nothing -> Left "HListTag: missing required field(s)"
+          Just h  -> Right (h, k)
+      TkPair key toks ->
+        case toEitherValue toks of
+          Left e -> Left e
+          Right (val, rec') -> do
+            acc' <- hUpdateByKey @ts @Maybe key val acc
+            go acc' rec'
+
+-- | Streamingly decode an 'HListTag' from a lazy 'ByteString', returning
+-- both the decoded value and the leftover input.
+streamDecodeHListTag'
+  :: forall ts. (HEmpty ts Maybe, HUpdateByKey ts Maybe, HUnLift ts Maybe)
+  => BL.ByteString
+  -> Either String (HListTag ts, BL.ByteString)
+streamDecodeHListTag' bs =
+  case lbsToTokens bs of
+    TkRecordOpen rec ->
+      case parseFromRecord @ts rec of
+        Left e          -> Left e
+        Right (h, rest) -> Right (h, rest)
+    TkErr e -> Left e
+    _       -> Left "HListTag: expected top-level JSON object"
+
+-- | Streamingly decode an 'HListTag' from a lazy 'ByteString'.
+streamDecodeHListTag
+  :: forall ts. (HEmpty ts Maybe, HUpdateByKey ts Maybe, HUnLift ts Maybe)
+  => BL.ByteString
+  -> Either String (HListTag ts)
+streamDecodeHListTag bs = fmap fst (streamDecodeHListTag' @ts bs)

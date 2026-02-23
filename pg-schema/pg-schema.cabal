@@ -127,3 +127,18 @@ library
     TypeAbstractions
     TypeFamilies
     ViewPatterns
+
+test-suite doctest
+  type: exitcode-stdio-1.0
+  main-is: doctest.hs
+  other-modules: HListTagDoctest
+  hs-source-dirs: test
+  build-depends:
+      base
+    , aeson
+    , bytestring
+    , doctest
+    , pg-schema
+  build-tool-depends: doctest:doctest
+  default-language: GHC2021
+  ghc-options: -Wall
