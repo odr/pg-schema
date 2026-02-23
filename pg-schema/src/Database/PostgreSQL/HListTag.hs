@@ -30,7 +30,7 @@ import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.ToRow
 import Database.Schema.Def
   ( CFieldInfo (..), HasNullableRefs, TFieldInfo
-  , RecFieldK, NameNSK, RecField'(RFPlain, RFFromHere, RFToHere) )
+  , RecFieldK, NameNSK, RecField'(RFPlain, RFFromHere, RFToHere, RFAggr) )
 import Database.Schema.Rec (IsMaybe, UnMaybe)
 import GHC.Generics (Generic (..), Rep, M1 (..), K1 (..), (:*:)(..), U1 (..), D1, C1, S, R, Meta (..))
 import GHC.TypeLits
@@ -561,6 +561,7 @@ type family FieldHListType' (ren :: Type) (sch :: k) (rf :: RecFieldK NameNSK) (
        (HListTag (HListTagRep ren sch toTab t))
   FieldHListType' ren sch ('RFToHere fromTab _refs) (SchList child) =
     SchList (HListTag (HListTagRep ren sch fromTab child))
+  FieldHListType' ren sch ('RFAggr _ _ _) t = t
 
 type family If (b :: Bool) (t :: Type) (f :: Type) :: Type where
   If 'True t _ = t
@@ -720,6 +721,13 @@ instance (rf ~ TFieldInfo sch tab fld, ToHListField' rf ren sch tab fld t)
 instance (rf ~ TFieldInfo sch tab fld, FromHListField' rf ren sch tab fld t)
   => FromHListField ren sch tab fld t where
   fromHListField = fromHListField' @rf @ren @sch @tab @fld @t
+
+instance (FieldHListType ren sch tab fld t ~ t)
+  => ToHListField' ('RFAggr fd fname canAny) ren sch tab fld t where
+  toHListField' = id
+instance (FieldHListType ren sch tab fld t ~ t)
+  => FromHListField' ('RFAggr fd fname canAny) ren sch tab fld t where
+  fromHListField' = id
 
 instance (FieldHListType ren sch tab fld t ~ t)
   => ToHListField' ('RFPlain _fd) ren sch tab fld t where
