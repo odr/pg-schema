@@ -167,6 +167,20 @@ class
 type family RefFromTo (r :: RefK) :: (Symbol, Symbol) where
   RefFromTo ('Ref fn _fd1 tn _fd2) = '(fn, tn)
 
+-- | Extract FldDef from a Ref (fromDef).
+type family RefFromDef (r :: RefK) :: FldDefK where
+  RefFromDef ('Ref _ fd _ _) = fd
+
+-- | Type-level logical Or for Bool (avoids conflict with SP.Or).
+type family OrBool (a :: Bool) (b :: Bool) :: Bool where
+  OrBool 'True _ = 'True
+  OrBool 'False b = b
+
+-- | Whether any ref in the list has a nullable column (fromDef).
+type family HasNullableRefs (refs :: [RefK]) :: Bool where
+  HasNullableRefs '[] = 'False
+  HasNullableRefs (r ': rs) = OrBool (FdNullable (RefFromDef r)) (HasNullableRefs rs)
+
 type family RefsToCols (refs :: [RefK]) :: [(Symbol, Symbol)] where
   RefsToCols '[] = '[]
   RefsToCols (r ': rs) = RefFromTo r ': RefsToCols rs
@@ -296,6 +310,11 @@ type family TabPath sch (t :: NameNSK) (path :: [Symbol]) :: Constraint where
 
 type RecField = RecField' Text
 type Ref = Ref' Text
+
+-- | Value-level: whether any ref in the list has a nullable column.
+-- Companion to type-level 'HasNullableRefs'.
+hasNullableRefs :: [Ref] -> Bool
+hasNullableRefs = L.any (fdNullable . fromDef)
 
 --
 instance LiftType NameNS where

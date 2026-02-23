@@ -57,9 +57,6 @@ promote [d|
             , fromDef = f (rdFrom rd) s1
             , toDef = f tabName s2 }
 
-  hasNullable :: [Ref' s] -> Bool
-  hasNullable = any (fdNullable . fromDef)
-
   -- subDmlRecord :: Eq s => QueryRecord' s -> DmlRecord' s -> Bool
   -- subDmlRecord (QueryRecord tn flds) ir2 =
   --   tn == iTableName ir2 && all check flds
@@ -152,7 +149,7 @@ instance {-# OVERLAPPABLE #-} (ToStar x, CRecordInfo sch tab t) =>
   MkRecField sch (RFToHere tab x) t where
     mkRecField = RFToHere (getRecordInfo @sch @tab @t) (demote @x)
 instance {-# OVERLAPPABLE #-} (ToStar rr, CRecordInfo sch tab (UnMaybe t)
-  , Assert (HasNullable rr == IsMaybe t)
+  , Assert (HasNullableRefs rr == IsMaybe t)
     (TL.TypeError
       ( TL.Text "Condition for mandatory in DB not correspond to field type"
       :$$: TL.Text "Reference: "
@@ -179,6 +176,10 @@ type family IsMaybe (x :: Type) :: Bool where
 type family UnMaybe (x :: Type) :: Type where
   UnMaybe (Maybe a) = a
   UnMaybe a = a
+
+-- | Re-export of Def.hasNullableRefs for backward compatibility.
+hasNullable :: [Ref] -> Bool
+hasNullable = hasNullableRefs
 
 promote [d|
   dbNames :: [(FieldInfo' s p, x)] -> [s]
