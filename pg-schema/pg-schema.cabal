@@ -55,6 +55,7 @@ library
     Database.PostgreSQL.Schema.Info
     Database.PostgreSQL.Schema.Schema
     Database.PostgreSQL.Enum
+    Database.PostgreSQL.HListTag
     Database.Schema.Gen
     Database.Schema.Def
     Database.Schema.Rec

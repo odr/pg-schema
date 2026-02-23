@@ -106,6 +106,20 @@ instance (ToJSON (PgTagged n r), ToJSON (PgTagged (n1 ': ns) r1))
       (Object x1, Object x2) -> Object $ x1 <> x2
       _ -> error "PgTagged instances should be always objects"
 
+-- | Tag as type-level pair (Symbol, Nat). JSON uses the Symbol as key.
+instance (KnownSymbol s, FromJSON b) => FromJSON (PgTagged '(s, n) b) where
+  parseJSON = withObject "PgTagged (Symbol, Nat)" \v ->
+    pgTag <$> v .: fromString (T.unpack $ demote @s)
+
+instance (KnownSymbol s, ToJSON b) => ToJSON (PgTagged '(s, n) b) where
+  toJSON v = object [fromString (T.unpack $ demote @s) .= unPgTag v]
+
+instance FromRow (Only b) => FromRow (PgTagged '(s, n) b) where
+  fromRow = coerce @(Only b) <$> fromRow
+
+instance ToRow (Only b) => ToRow (PgTagged '(s, n) b) where
+  toRow = toRow @(Only b) . coerce
+
 -- used in child (SchList) fields
 instance
   (FromJSON a, Typeable a, KnownSymbol n)
