@@ -7,7 +7,7 @@ module Database.PostgreSQL.HListTag where
 import Data.Aeson
 import Data.Aeson.Decoding (toEitherValue)
 import Data.Aeson.Decoding.ByteString.Lazy (lbsToTokens)
-import Data.Aeson.Decoding.Tokens (Tokens (..), TkRecord (..))
+import Data.Aeson.Decoding.Tokens (Tokens (..), TkRecord (..), TkArray (..), Lit (..))
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KM
 import Data.Aeson.Types
@@ -16,6 +16,7 @@ import Control.Applicative (Alternative (..))
 import Data.Kind (Type)
 import Data.Proxy
 import Database.PostgreSQL.PgTagged
+import Database.Types.SchList (SchList (..))
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
@@ -168,7 +169,7 @@ instance HListToJSON ts => FromJSON (HListTag ts) where
   parseJSON = withObject "HListTag" $ \obj -> parseFields obj
 
 --------------------------------------------------------------------------------
--- 3. Streaming decoding from JSON tokens
+-- 2.4. Streaming decoding from JSON tokens
 --------------------------------------------------------------------------------
 
 -- $streaming
@@ -241,10 +242,88 @@ instance
       firstPrefix _ (Right a) = Right a
       firstPrefix pfx (Left e) = Left (pfx <> e)
 
+-- | Parse a value of type @t@ from a JSON token stream (one value).
+-- Returns the value and the continuation (rest of the stream after the value).
+-- Used for streaming decode of field values without building an intermediate 'Value'.
+class ParseFromTokens t where
+  parseFromTokens :: Tokens k String -> Either String (t, k)
+
+instance (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
+      => ParseFromTokens (HListTag ts) where
+  parseFromTokens (TkRecordOpen rec) = parseFromRecord @ts rec
+  parseFromTokens _ = Left "HListTag: expected JSON object"
+
+parseArray
+  :: forall ts k.
+     (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
+  => TkArray k String
+  -> Either String (SchList (HListTag ts), k)
+parseArray = go []
+  where
+    go _ (TkArrayErr e) = Left e
+    go acc (TkArrayEnd k) = Right (SchList (reverse acc), k)
+    go acc (TkItem toks) = do
+      (h, arr') <- parseFromTokens @(HListTag ts) toks
+      go (h : acc) arr'
+
+instance (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
+      => ParseFromTokens (SchList (HListTag ts)) where
+  parseFromTokens (TkArrayOpen arr) = parseArray @ts arr
+  parseFromTokens _ = Left "SchList HListTag: expected JSON array"
+
+instance (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
+      => ParseFromTokens (Maybe (HListTag ts)) where
+  parseFromTokens (TkLit LitNull k) = Right (Nothing, k)
+  parseFromTokens (TkRecordOpen rec) = do
+    (h, k) <- parseFromRecord @ts rec
+    pure (Just h, k)
+  parseFromTokens _ = Left "Maybe HListTag: expected null or JSON object"
+
+instance {-# OVERLAPPABLE #-} FromJSON t => ParseFromTokens t where
+  parseFromTokens toks = do
+    (v, k) <- toEitherValue toks
+    x <- firstPrefix "ParseFromTokens: " (parseEither parseJSON v)
+    pure (x, k)
+   where
+    firstPrefix _ (Right a) = Right a
+    firstPrefix pfx (Left e) = Left (pfx <> e)
+
+-- | Update a lifted 'HListTag' by JSON key using the token stream of the value.
+-- When the key matches the current field, parses from tokens (streaming for
+-- HListTag/SchList/Maybe); when it does not, skips the value and recurses.
+class HUpdateByKeyStream ts f where
+  hUpdateByKeyStream
+    :: Applicative f
+    => Key.Key
+    -> Tokens (TkRecord k String) String
+    -> HListTag (Lifted ts f)
+    -> Either String (HListTag (Lifted ts f), TkRecord k String)
+
+instance Applicative f => HUpdateByKeyStream '[] f where
+  hUpdateByKeyStream _key toks HNil = do
+    (_, rec') <- toEitherValue toks
+    pure (HNil, rec')
+
+instance
+  ( KnownSymNat sn s n
+  , ParseFromTokens t
+  , Applicative f
+  , HUpdateByKeyStream ts f
+  ) => HUpdateByKeyStream ('(sn, t) ': ts) f where
+  hUpdateByKeyStream key toks (PgTag ft :* rest)
+    | key == expectedKey = do
+        (x, rec') <- parseFromTokens @t toks
+        pure (PgTag (pure x) :* rest, rec')
+    | otherwise = do
+        (rest', rec'') <- hUpdateByKeyStream @ts @f key toks rest
+        pure (PgTag ft :* rest', rec'')
+   where
+    expectedKey = Key.fromString (nameSymNat sn)
+
 -- | Internal: parse an 'HListTag ts' from a JSON object token stream.
 -- The result also returns the leftover continuation @k@ after the object.
 parseFromRecord
-  :: forall ts k. (HEmpty ts Maybe, HUpdateByKey ts Maybe, HUnLift ts Maybe)
+  :: forall ts k. (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
   => TkRecord k String
   -> Either String (HListTag ts, k)
 parseFromRecord = go (hEmpty @ts @Maybe)
@@ -259,17 +338,14 @@ parseFromRecord = go (hEmpty @ts @Maybe)
         case hUnLift @ts @Maybe acc of
           Nothing -> Left "HListTag: missing required field(s)"
           Just h  -> Right (h, k)
-      TkPair key toks ->
-        case toEitherValue toks of
-          Left e -> Left e
-          Right (val, rec') -> do
-            acc' <- hUpdateByKey @ts @Maybe key val acc
-            go acc' rec'
+      TkPair key toks -> do
+        (acc', rec') <- hUpdateByKeyStream @ts @Maybe key toks acc
+        go acc' rec'
 
 -- | Streamingly decode an 'HListTag' from a lazy 'ByteString', returning
 -- both the decoded value and the leftover input.
 streamDecodeHListTag'
-  :: forall ts. (HEmpty ts Maybe, HUpdateByKey ts Maybe, HUnLift ts Maybe)
+  :: forall ts. (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
   => BL.ByteString
   -> Either String (HListTag ts, BL.ByteString)
 streamDecodeHListTag' bs =
@@ -283,7 +359,20 @@ streamDecodeHListTag' bs =
 
 -- | Streamingly decode an 'HListTag' from a lazy 'ByteString'.
 streamDecodeHListTag
-  :: forall ts. (HEmpty ts Maybe, HUpdateByKey ts Maybe, HUnLift ts Maybe)
+  :: forall ts. (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
   => BL.ByteString
   -> Either String (HListTag ts)
 streamDecodeHListTag bs = fmap fst (streamDecodeHListTag' @ts bs)
+
+--------------------------------------------------------------------------------
+-- 3. RENAMING ENGINE (Defunctionalization)
+--------------------------------------------------------------------------------
+
+-- | Class for type-level string transformation "functions"
+class Renamer r where
+  type Apply r (s :: Symbol) :: Symbol
+
+-- | Identity renamer: keeps field names as is
+data RenamerId
+instance Renamer RenamerId where
+  type Apply RenamerId s = s

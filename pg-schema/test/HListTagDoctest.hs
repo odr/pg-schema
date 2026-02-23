@@ -56,7 +56,6 @@ runTests = do
     Right (h', rest) -> do
       unless (h' == val) $ error $ "streamDecodeHListTag': got " ++ show h'
       unless (BL.null rest) $ error "streamDecodeHListTag': expected null rest"
-  putStrLn "Inner test"
 
   let innerVal = PgTag (42 :: Int) :* PgTag True :* HNil :: InnerRec
   let outerVal = PgTag False :* PgTag innerVal :* HNil :: OuterRec
