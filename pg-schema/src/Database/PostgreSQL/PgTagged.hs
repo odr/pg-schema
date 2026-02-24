@@ -41,22 +41,12 @@ newtype PgTagged a b = PgTagged (Tagged a b)
   , Semigroup, Num, Real, Integral, Enum, Bounded, RealFloat, RealFrac, Floating
   , Fractional, IsString )
 
-type SymNat = (Symbol, Nat)
-
-type KnownSymNat sn s n = (sn ~ '(s,n), KnownSymbol s, KnownNat n)
-
-nameSymNat :: forall sn -> forall s n. KnownSymNat sn s n => String
-nameSymNat _ @s @n = if n == 0 then s else s <> "___" <> P.show n
-  where
-    n = natVal (Proxy @n)
-    s = symbolVal (Proxy @s)
-
 instance (KnownSymbol s, Show b) => Show (PgTagged (s :: Symbol) b)  where
   show (PgTag v) = symbolVal (Proxy @s) <> " =: " <> P.show v
 
-instance (KnownSymNat sn s n, KnownNat n, Show b)
+instance (KnownSymNat sn, Show b)
   => Show (PgTagged (sn :: SymNat) b)  where
-    show (PgTag v) = nameSymNat sn <> " =: " <> P.show v
+    show (PgTag v) = T.unpack (nameSymNat sn) <> " =: " <> P.show v
 
 #ifdef MK_ARBITRARY
 instance Arbitrary b => Arbitrary (PgTagged a b) where

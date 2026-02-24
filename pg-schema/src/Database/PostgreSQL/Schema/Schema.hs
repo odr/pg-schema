@@ -19,6 +19,7 @@ import Data.Text as T
 import Data.Text.IO as T
 import Data.Traversable
 import Database.PostgreSQL.Convert
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.PgTagged
@@ -54,18 +55,23 @@ data GenNames = GenNames
   , addRelations :: [AddRelation] -- ^ additional relations. Be carefull!!
   }
 
+-- withCat :: forall (tab :: Symbol) -> (forall (sch :: Type) (tab' :: NameNSK) (ren :: Type) -> a) -> a
+-- withCat tab f = f PgCatalog (PGC tab) RenamerId
+
+type HLT s r = HListTag (HListTagRep RenamerId PgCatalog (PGC s) r)
+
 getSchema
   :: Connection -- ^ connection to PostgreSQL database
   -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn GenNames {..} = do
-  types <- selectSch conn qpTyp
-    `catch` (throwM . GetDataException (selectText @_ @_ @PgType qpTyp))
-  classes <- L.filter checkClass . fst <$> selectSch conn qpClass
-    `catch` (throwM . GetDataException (selectText @_ @_ @PgClass qpClass))
+  types <- selectSch PgCatalog (PGC "pg_type") RenamerId conn qpTyp
+    `catch` (throwM . GetDataException (selectText @_ @_ @(HLT "pg_type" PgType) qpTyp))
+  classes <- L.filter checkClass . fst <$> selectSch PgCatalog (PGC "pg_class") RenamerId conn qpClass
+    `catch` (throwM . GetDataException (selectText @_ @_ @(HLT "pg_class" PgClass) qpClass))
   relations <- L.filter checkRels . (Mb.mapMaybe (mkRel classes) addRelations <>)
-    . fst <$> selectSch conn qpRel
-      `catch` (throwM . GetDataException (selectText @_ @_ @PgRelation qpRel))
+    . fst <$> selectSch PgCatalog (PGC "pg_constraint") RenamerId conn qpRel
+      `catch` (throwM . GetDataException (selectText @_ @_ @(HLT "pg_constraint" PgRelation) qpRel))
   pure (fst types, classes, relations)
   where
     mkRel classes ar = do

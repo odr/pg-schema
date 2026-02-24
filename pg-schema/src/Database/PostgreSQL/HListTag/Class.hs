@@ -10,7 +10,6 @@ import Database.PostgreSQL.HListTag.Utils
 import Database.PostgreSQL.PgProduct
 import Database.PostgreSQL.PgTagged
 import Database.Types.EmptyField (EmptyField, emptyField)
-import Database.Types.Aggr
 import Database.Types.SchList (SchList (..))
 import Database.Schema.Def
 import GHC.Generics

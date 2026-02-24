@@ -6,13 +6,15 @@ import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KM
 import Data.Aeson.Types
 import Data.Kind
-import Data.Proxy
+import Data.Text as T
+import Data.Typeable
+import Database.Schema.Def
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.ToRow
-import GHC.TypeLits
+import Prelude as P
 
 --------------------------------------------------------------------------------
 -- 1. DATA STRUCTURE
@@ -28,13 +30,13 @@ data HListTag (ts :: [(SymNat, Type)]) where
 instance Show (HListTag '[]) where
   show HNil = "HNil"
 
-instance (Show t, KnownSymNat sn s n, Show (HListTag ts)) => Show (HListTag ('(sn, t) ': ts)) where
-  show (x :* xs) = "(" <> show x <> ") :* " <> show xs
+instance (Show t, KnownSymNat sn, Show (HListTag ts)) => Show (HListTag ('(sn, t) ': ts)) where
+  show (x :* xs) = "(" <> P.show x <> ") :* " <> P.show xs
 
 instance Eq (HListTag '[]) where
   _ == _ = True
 
-instance (Eq t, KnownSymNat sn s n, Eq (HListTag ts)) => Eq (HListTag ('(sn, t) ': ts)) where
+instance (Eq t, KnownSymNat sn, Eq (HListTag ts)) => Eq (HListTag ('(sn, t) ': ts)) where
   (x :* xs) == (y :* ys) = x == y && xs == ys
 
 --------------------------------------------------------------------------------
@@ -71,6 +73,11 @@ instance FromRow (HListTag '[]) where
 instance (FromField t, FromRow (HListTag ts)) => FromRow (HListTag ('(s, t) ': ts)) where
   fromRow = ((:*) . PgTag <$> field) <*> fromRow
 
+instance (FromJSON (HListTag xs), Typeable (HListTag xs)) => FromField (HListTag xs) where
+  fromField = fromJSONField
+
+instance (ToJSON (HListTag xs), Typeable (HListTag xs)) => ToField (HListTag xs) where
+  toField = toJSONField
 --------------------------------------------------------------------------------
 -- 2.3. JSON instances
 --------------------------------------------------------------------------------
@@ -108,25 +115,25 @@ instance HListToJSON '[] where
   toMapFields    HNil = KM.empty
   parseFields    _    = pure HNil
 
-instance (KnownSymNat sn s n, ToJSON t, FromJSON t, HListToJSON ts)
+instance (KnownSymNat sn, ToJSON t, FromJSON t, HListToJSON ts)
       => HListToJSON ('(sn, t) ': ts) where
 
   toSeriesFields (PgTagged val :* rest) =
-    Key.fromString (nameSymNat sn) .= val <> toSeriesFields rest
+    Key.fromString (T.unpack $ nameSymNat sn) .= val <> toSeriesFields rest
 
   toMapFields (PgTagged val :* rest) =
-    KM.insert (Key.fromString $ symbolVal (Proxy @s)) (toJSON val) (toMapFields rest)
+    KM.insert (Key.fromString (T.unpack $ nameSymNat sn)) (toJSON val) (toMapFields rest)
 
   parseFields km = do
     case KM.lookup key km of
-      Nothing -> fail $ "HListTag: missing key " ++ show keyString
+      Nothing -> fail $ "HListTag: missing key " ++ P.show keyString
       Just v  -> do
         -- Парсим значение и, если падает, добавляем контекст с именем поля
         val  <- parseJSON v <?> Key key
         rest <- parseFields km
         pure (PgTagged val :* rest)
     where
-      keyString = nameSymNat sn
+      keyString = T.unpack $ nameSymNat sn
       key = Key.fromString keyString
 
 -- Финальные инстансы

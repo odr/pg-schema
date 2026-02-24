@@ -8,13 +8,16 @@ import Data.Aeson.Decoding.Tokens (Tokens (..), TkRecord (..), TkArray (..), Lit
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.Types
 import Data.ByteString.Lazy qualified as BL
+import Data.Text as T
 import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Utils
 import Database.PostgreSQL.PgTagged
+import Database.Schema.Def
 import Database.Types.SchList (SchList (..))
+import Prelude as P
 
 --------------------------------------------------------------------------------
--- 2.4. Streaming decoding from JSON tokens
+-- Streaming decoding from JSON tokens
 --------------------------------------------------------------------------------
 
 -- $streaming
@@ -46,7 +49,7 @@ instance Applicative f => HUpdateByKey '[] f where
   hUpdateByKey _ _ HNil = Right HNil
 
 instance
-  ( KnownSymNat sn s n
+  ( KnownSymNat sn
   , FromJSON t
   , Applicative f
   , HUpdateByKey ts f
@@ -59,7 +62,7 @@ instance
         rest' <- hUpdateByKey @ts @f key v rest
         pure (PgTag ft :* rest')
     where
-      expectedKey = Key.fromString (nameSymNat sn)
+      expectedKey = Key.fromString (T.unpack $ nameSymNat sn)
 
       firstPrefix :: String -> Either String a -> Either String a
       firstPrefix _ (Right a) = Right a
@@ -84,7 +87,7 @@ parseArray
 parseArray = go []
   where
     go _ (TkArrayErr e) = Left e
-    go acc (TkArrayEnd k) = Right (SchList (reverse acc), k)
+    go acc (TkArrayEnd k) = Right (SchList (P.reverse acc), k)
     go acc (TkItem toks) = do
       (h, arr') <- parseFromTokens @(HListTag ts) toks
       go (h : acc) arr'
@@ -128,7 +131,7 @@ instance Applicative f => HUpdateByKeyStream '[] f where
     pure (HNil, rec')
 
 instance
-  ( KnownSymNat sn s n
+  ( KnownSymNat sn
   , ParseFromTokens t
   , Applicative f
   , HUpdateByKeyStream ts f
@@ -141,7 +144,7 @@ instance
         (rest', rec'') <- hUpdateByKeyStream @ts @f key toks rest
         pure (PgTag ft :* rest', rec'')
    where
-    expectedKey = Key.fromString (nameSymNat sn)
+    expectedKey = Key.fromString (T.unpack $ nameSymNat sn)
 
 -- | Internal: parse an 'HListTag ts' from a JSON object token stream.
 -- The result also returns the leftover continuation @k@ after the object.

@@ -6,6 +6,7 @@ import Data.Kind (Type)
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
+import Database.Schema.Def
 import GHC.TypeLits
 
 
@@ -65,7 +66,7 @@ instance NormalizeGoHListTag prefix '[] where
 
 instance
   ( NormalizeGoHListTag (sn ': prefix) rest
-  , KnownSymNat sn s n
+  , KnownSymNat sn
   , s ~ SymNatSymbol sn
   , n' ~ CountSymInKeys prefix s
   , KnownNat n'

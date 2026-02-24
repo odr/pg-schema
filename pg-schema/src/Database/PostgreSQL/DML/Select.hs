@@ -55,19 +55,19 @@ type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m
 
 selectSch :: forall sch tab ren -> forall r h.
   ( IsoHListTag ren sch tab r, h ~ HListTag (HListTagRep ren sch tab r)
-  , CHListInfo sch tab h)
+  , CHListInfo sch tab h, FromRow h)
   => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
-selectSch sch tab ren @r @h conn (selectText @sch @tab @r -> (sql,fs)) =
+selectSch sch tab ren @r @h conn (selectText @sch @tab @h -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
-  $ (,(sql,fs)) . fmap fromHListTag <$> query conn (fromString $ unpack sql) fs
+  $ (,(sql,fs)) . fmap (fromHListTag @ren @sch @tab @r) <$> query conn (fromString $ unpack sql) fs
 
 selectQuery :: forall sch tab r. (CHListInfo sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
 selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
-selectText :: forall sch t r. (CHListInfo sch t r) =>
+selectText :: forall sch t r. CHListInfo sch t r =>
   QueryParam sch t -> (Text,[SomeToField])
-selectText qp = evalRWS (selectM "" (getRecordInfo sch t r)) (qr0 qp) qs0
+selectText qp = evalRWS (selectM "" (getRecordInfo @sch @t @r)) (qr0 qp) qs0
 
 qr0 :: QueryParam sch t -> QueryRead sch t
 qr0 qrParam = QueryRead
@@ -180,8 +180,8 @@ fieldM fi = case fi.fieldKind of
     n <- asks qrCurrTabNum
     let val = fname <> "(" <> "t" <> show' n <> "." <> fi.fieldDbName <> ")"
     pure case fname of
-      "count" -> ("count(*)", fi.fieldName, " false")
-      _ -> (val, fi.fieldName, val <> " is null")
+      "count" -> ("count(*)", fi.fieldDbName, " false")
+      _ -> (val, fi.fieldDbName, val <> " is null")
   RFFromHere ri refs -> do
     QueryRead {..} <- ask
     modify \QueryState{qsLastTabNum = (+1) -> n2, qsParents} -> QueryState
@@ -223,7 +223,7 @@ joinText ParentInfo{..} =
     <> " on " <> refCond piFromNum piToNum piRefs
   where
     outer
-      | hasNullable piRefs = "left outer "
+      | hasNullableRefs piRefs = "left outer "
       | otherwise = ""
 
 refCond :: Int -> Int -> [Ref] -> Text

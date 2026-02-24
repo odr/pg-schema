@@ -4,7 +4,7 @@ module Database.PostgreSQL.HListTag.Internal where
 import Data.Kind
 import GHC.Generics
 import GHC.TypeLits
-import Database.PostgreSQL.PgTagged
+import Database.Schema.Def
 
 
 -- | Type-level append for list of types.
