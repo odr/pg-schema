@@ -20,9 +20,10 @@ import Data.Text as T
 import Data.Tuple
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DML.Select.Types
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple hiding(In(..))
 import Database.Schema.Def
-import Database.Schema.Rec
+-- import Database.Schema.Rec
 import Database.Schema.ShowType
 import GHC.Generics
 import GHC.TypeLits
@@ -52,20 +53,21 @@ data QueryState = QueryState
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
-selectSch :: forall sch tab r.
-  (FromRow r, CRecordInfo sch tab r) =>
-  Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
-selectSch conn (selectText @sch @tab @r -> (sql,fs)) =
+selectSch :: forall sch tab ren -> forall r h.
+  ( IsoHListTag ren sch tab r, h ~ HListTag (HListTagRep ren sch tab r)
+  , CHListInfo sch tab h)
+  => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
+selectSch sch tab ren @r @h conn (selectText @sch @tab @r -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
-  $ (,(sql,fs)) <$> query conn (fromString $ unpack sql) fs
+  $ (,(sql,fs)) . fmap fromHListTag <$> query conn (fromString $ unpack sql) fs
 
-selectQuery :: forall sch tab r. (CRecordInfo sch tab r) =>
+selectQuery :: forall sch tab r. (CHListInfo sch tab r) =>
   QueryParam sch tab -> (Query,[SomeToField])
 selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
-selectText :: forall sch t r. (CRecordInfo sch t r) =>
+selectText :: forall sch t r. (CHListInfo sch t r) =>
   QueryParam sch t -> (Text,[SomeToField])
-selectText qp = evalRWS (selectM "" (getRecordInfo @sch @t @r)) (qr0 qp) qs0
+selectText qp = evalRWS (selectM "" (getRecordInfo sch t r)) (qr0 qp) qs0
 
 qr0 :: QueryParam sch t -> QueryRead sch t
 qr0 qrParam = QueryRead
@@ -167,7 +169,7 @@ selectM refTxt ri = do
 
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
-fieldM :: MonadQuery sch tab m => FieldInfo RecordInfo -> m (Text, Text, Text)
+fieldM :: MonadQuery sch tab m => FieldInfo -> m (Text, Text, Text)
 fieldM fi = case fi.fieldKind of
   RFEmpty s -> pure ("null", s, "true")
   RFPlain {} -> do
