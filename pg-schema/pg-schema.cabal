@@ -56,6 +56,11 @@ library
     Database.PostgreSQL.Schema.Schema
     Database.PostgreSQL.Enum
     Database.PostgreSQL.HListTag
+    Database.PostgreSQL.HListTag.Class
+    Database.PostgreSQL.HListTag.Internal
+    Database.PostgreSQL.HListTag.JsonStream
+    Database.PostgreSQL.HListTag.Type
+    Database.PostgreSQL.HListTag.Utils
     Database.Schema.Gen
     Database.Schema.Def
     Database.Schema.Rec
