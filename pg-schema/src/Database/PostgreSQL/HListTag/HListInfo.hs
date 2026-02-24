@@ -31,16 +31,16 @@ type RecordInfoK = RecordInfo' Symbol
 type FieldInfo = FieldInfo' Text
 type FieldInfoK = FieldInfo' Symbol
 
-class CHListInfo sch tab r where
-  type TRecordInfo sch tab r :: [(FieldInfoK, Type)]
+class CHListInfo sch (tab :: NameNSK) r where
+  type TRecordInfo sch tab r :: [FieldInfoK]
 
 instance CHListInfo sch tab (HListTag '[]) where
   type TRecordInfo sch tab (HListTag '[]) = '[]
 
-instance CHListInfo sch (tab :: NameNSK) xs
+instance CHListInfo sch tab xs
   => CHListInfo sch tab (HListTag ('( '(s,n),t) ': xs)) where
     type TRecordInfo sch tab (HListTag ('( '(s,n),t) ': xs))
-      = '( 'FieldInfo s (TTagFieldInfo sch (TFieldInfo sch tab s) t), t)
+      = 'FieldInfo s (TTagFieldInfo sch (TFieldInfo sch tab s) t)
       ': TRecordInfo sch tab xs
 
 class CTagFieldInfo sch (fi :: RecFieldK NameNSK) (t :: Type) where
@@ -57,9 +57,16 @@ type family PlainField fd t where
 instance CHListInfo sch fromTab t
   => CTagFieldInfo sch (RFToHere fromTab refs) (SchList t) where
     type TTagFieldInfo sch (RFToHere fromTab refs) (SchList t) = RFToHere
-      ('RecordInfo fromTab (Map FstSym0 (TRecordInfo sch fromTab t))) refs
+      ('RecordInfo fromTab (TRecordInfo sch fromTab t)) refs
 
 instance CHListInfo sch toTab (UnMaybe t)
   => CTagFieldInfo sch (RFFromHere toTab refs) t where
     type TTagFieldInfo sch (RFFromHere toTab refs) t = RFFromHere
-      ('RecordInfo toTab (Map FstSym0 (TRecordInfo sch toTab (UnMaybe t)))) refs
+      ('RecordInfo toTab (TRecordInfo sch toTab (UnMaybe t))) refs
+
+getRecordInfo
+  :: forall sch t r
+  -> (SingI t, SingI (TRecordInfo sch t r), CHListInfo sch t r)
+  => RecordInfo
+getRecordInfo sch t r =
+  RecordInfo (demote @t) (demote @(TRecordInfo sch t r))
