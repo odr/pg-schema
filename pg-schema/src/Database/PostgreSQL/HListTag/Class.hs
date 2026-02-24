@@ -10,6 +10,7 @@ import Database.PostgreSQL.HListTag.Utils
 import Database.PostgreSQL.PgProduct
 import Database.PostgreSQL.PgTagged
 import Database.Types.EmptyField (EmptyField, emptyField)
+import Database.Types.Aggr
 import Database.Types.SchList (SchList (..))
 import Database.Schema.Def
 import GHC.Generics
@@ -38,11 +39,12 @@ class Renamer ren => IsoHListTag ren sch (tab :: NameNSK) r where
   default toHListTag
     :: ( Generic r
        , rep ~ Rep r
-       , HListTagRep ren sch tab r ~ GHListTagRep ren sch tab rep
+       , HListTagRep ren sch tab r ~ Normalize (GHListTagRep ren sch tab rep)
        , GIsoHListTag ren sch tab rep
+       , NormalizeHListTag (GHListTagRep ren sch tab rep)
        )
     => r -> HListTag (HListTagRep ren sch tab r)
-  toHListTag = (gToHListTag @ren @sch @tab @(Rep r)) . from
+  toHListTag = normalizeHListTag . gToHListTag @ren @sch @tab @(Rep r) . from
 
   default fromHListTag
     :: ( Generic r
@@ -53,99 +55,115 @@ class Renamer ren => IsoHListTag ren sch (tab :: NameNSK) r where
     => HListTag (HListTagRep ren sch tab r) -> r
   fromHListTag = to . (gFromHListTag @ren @sch @tab @(Rep r))
 
-class GIsoHListTag ren sch tab (rep :: Type -> Type) where
+class GIsoHListTag (ren :: Type) (sch :: Type) (tab :: NameNSK) (rep :: Type -> Type) where
+  type GHListTagRep ren sch tab rep :: [(SymNat, Type)]
   gToHListTag   :: rep x -> HListTag (GHListTagRep ren sch tab rep)
   gFromHListTag :: HListTag (GHListTagRep ren sch tab rep) -> rep x
 
-instance (ts ~ GFieldsToHList ren sch tab fields, GFieldsIso ren sch tab fields ts)
-  => GIsoHListTag ren sch tab (D1 d (C1 c fields)) where
-  gToHListTag   (M1 (M1 x)) = gFieldsToHList @ren @sch @tab @fields @ts x
-  gFromHListTag h           = M1 (M1 (gFieldsFromHList @ren @sch @tab @fields @ts h))
+instance GIsoHListTag ren sch tab fields => GIsoHListTag ren sch tab (D1 d (C1 c fields)) where
+  type GHListTagRep ren sch tab (D1 d (C1 c fields)) = GHListTagRep ren sch tab fields
+  gToHListTag (M1 (M1 x)) = gToHListTag @ren @sch @tab @fields x
+  gFromHListTag h = M1 (M1 (gFromHListTag @ren @sch @tab @fields h))
 
-class GFieldsIso ren sch tab (fields :: Type -> Type) (ts :: [(SymNat, Type)]) where
-  gFieldsToHList   :: fields x -> HListTag ts
-  gFieldsFromHList :: HListTag ts -> fields x
-
-instance GFieldsIso ren sch tab U1 '[] where
-  gFieldsToHList   U1 = HNil
-  gFieldsFromHList HNil = U1
-
--- Skip fields whose Haskell type is 'EmptyField' in the generic Iso: they do
--- not appear in 'HListTag', and on the way back we fill them with 'emptyField'.
-instance
-  ( GFieldsIso ren sch tab rest ts
-  ) =>
-  GFieldsIso ren sch tab (M1 S (MetaSel ('Just fld) u v w) (K1 R EmptyField) :*: rest) ts
+instance (GIsoHListTag ren sch tab a, GIsoHListTag ren sch tab b
+  , HListAppend (GHListTagRep ren sch tab a) (GHListTagRep ren sch tab b)
+  , SplitAtHListTag (GHListTagRep ren sch tab a) (GHListTagRep ren sch tab b)
+  )
+  => GIsoHListTag ren sch tab (a :*: b)
   where
-  gFieldsToHList (M1 (K1 _) :*: rest) =
-    gFieldsToHList @ren @sch @tab @rest @ts rest
-  gFieldsFromHList h =
-    M1 (K1 emptyField) :*: gFieldsFromHList @ren @sch @tab @rest @ts h
+  type GHListTagRep ren sch tab (a :*: b) =
+    AppendHList (GHListTagRep ren sch tab a) (GHListTagRep ren sch tab b)
+  gToHListTag (a :*: b) =
+    appendHListTag (gToHListTag @ren @sch @tab a) (gToHListTag @ren @sch @tab b)
+  gFromHListTag ab =
+    let (a, b) = splitAtHListTag @(GHListTagRep ren sch tab a) @(GHListTagRep ren sch tab b) ab
+      in gFromHListTag @ren @sch @tab a :*: gFromHListTag @ren @sch @tab b
 
-instance {-# OVERLAPPING #-}
-  ( GFieldsIso ren sch tab rest ts
-  , CFieldInfo sch tab fld
-  , sn ~ Apply ren fld
-  , rf ~ TFieldInfo sch tab fld
-  , rf ~ 'RFPlain _fd
-  ) =>
-  GFieldsIso ren sch tab (M1 S (MetaSel ('Just fld) u v w) (K1 R t) :*: rest)
-    ( '( '(sn, n), t) ': ts)
+instance (CGHListTagRepEmpty ren sch tab fld t b, b ~ IsEmptyField t)
+  => GIsoHListTag ren sch tab (S1 (MetaSel ('Just fld) u v w) (Rec0 t))
   where
-  gFieldsToHList (M1 (K1 v) :*: rest) = PgTag v :* gFieldsToHList @ren @sch @tab @rest @ts rest
-  gFieldsFromHList (PgTag v :* rest) = M1 (K1 v) :*: gFieldsFromHList @ren @sch @tab @rest @ts rest
+  type GHListTagRep ren sch tab (S1 (MetaSel ('Just fld) u v w) (Rec0 t)) =
+    GHListTagRepEmpty ren sch tab fld t (IsEmptyField t)
+  gToHListTag (M1 (K1 t)) = gToHListTagEmpty @ren @sch @tab @fld @t @(IsEmptyField t) t
+  gFromHListTag h = M1 $ K1 $ gFromHListTagEmpty @ren @sch @tab @fld @t @(IsEmptyField t) h
 
-instance {-# OVERLAPPABLE #-}
-  ( GFieldsIso ren sch tab rest ts
-  , CFieldInfo sch tab fld
-  , sn ~ Apply ren fld
-  , ft ~ FieldHListType ren sch tab fld t
-  , rf ~ TFieldInfo sch tab fld
-  , rf ~ 'RFFromHere _toTab refs
-  , RFFromHereNullable refs t
-  , ToHListField ren sch tab fld t
-  , FromHListField ren sch tab fld t
-  ) =>
-  GFieldsIso ren sch tab (M1 S (MetaSel ('Just fld) u v w) (K1 R t) :*: rest)
-    ( '( '(sn, n), ft) ': ts)
+type family IsEmptyField t :: Bool where
+  IsEmptyField EmptyField = 'True
+  IsEmptyField _ = 'False
+
+class CGHListTagRepEmpty ren sch tab fld t (b::Bool) where
+  type GHListTagRepEmpty ren sch tab fld t b :: [(SymNat, Type)]
+  gToHListTagEmpty :: t -> HListTag (GHListTagRepEmpty ren sch tab fld t b)
+  gFromHListTagEmpty :: HListTag (GHListTagRepEmpty ren sch tab fld t b) -> t
+
+instance CGHListTagRepEmpty ren sch tab fld EmptyField 'True where
+  type GHListTagRepEmpty ren sch tab fld EmptyField 'True = '[]
+  gToHListTagEmpty _ = HNil
+  gFromHListTagEmpty _ = emptyField
+
+instance (CGHListTagRepRen ren sch tab s t, s ~ Apply ren fld)
+  => CGHListTagRepEmpty ren sch tab fld t 'False where
+    type GHListTagRepEmpty ren sch tab fld t 'False = GHListTagRepRen ren sch tab (Apply ren fld) t
+    gToHListTagEmpty = gToHListTagRen @ren @sch @tab @s @t
+    gFromHListTagEmpty = gFromHListTagRen @ren @sch @tab @s @t
+
+class CGHListTagRepRen ren sch tab s t where
+  type GHListTagRepRen ren sch tab s t :: [(SymNat, Type)]
+  gToHListTagRen :: t -> HListTag (GHListTagRepRen ren sch tab s t)
+  gFromHListTagRen :: HListTag (GHListTagRepRen ren sch tab s t) -> t
+
+instance (CFieldInfo sch tab fld, TFieldInfo sch tab fld ~ fi
+  , CGHListTagRepFi ren sch tab fld fi t) => CGHListTagRepRen ren sch tab fld t
   where
-  gFieldsToHList (M1 (K1 v) :*: rest) =
-    PgTag (toHListField @ren @sch @tab @fld @t v) :* gFieldsToHList @ren @sch @tab @rest @ts rest
-  gFieldsFromHList (PgTag v :* rest) =
-    M1 (K1 (fromHListField @ren @sch @tab @fld @t v)) :*: gFieldsFromHList @ren @sch @tab @rest @ts rest
+    type GHListTagRepRen ren sch tab fld t =
+      GHListTagRepFi ren sch tab fld (TFieldInfo sch tab fld) t
+    gToHListTagRen = gToHListTagFi @ren @sch @tab @fld @fi @t
+    gFromHListTagRen = gFromHListTagFi @ren @sch @tab @fld @fi @t
 
-instance {-# OVERLAPPING #-}
-  ( GFieldsIso ren sch tab rest ts
-  , CFieldInfo sch tab fld
-  , sn ~ Apply ren fld
-  , IsoHListTag ren sch fromTab child
-  , htr ~ HListTagRep ren sch fromTab child
-  , rf ~ TFieldInfo sch tab fld
-  , rf ~ 'RFToHere fromTab _refs
-  ) =>
-  GFieldsIso ren sch tab (M1 S (MetaSel ('Just fld) u v w) (K1 R (SchList child)) :*: rest)
-    ( '( '(sn, n), SchList (HListTag htr)) ': ts)
-  where
-  gFieldsToHList (M1 (K1 (SchList vs)) :*: rest) =
-    PgTag (SchList (map (toHListTag @ren @sch @fromTab) vs))
-      :* gFieldsToHList @ren @sch @tab @rest @ts rest
-  gFieldsFromHList (PgTag (SchList hs) :* rest) =
-    M1 (K1 (SchList (map (fromHListTag @ren @sch @fromTab) hs)))
-      :*: gFieldsFromHList @ren @sch @tab @rest @ts rest
+class CGHListTagRepFi (ren :: Type) (sch :: Type) (tab :: NameNSK) (fld :: Symbol) fi (t :: Type) where
+  type GHListTagRepFi ren sch tab fld fi t :: [(SymNat, Type)]
+  gToHListTagFi :: t -> HListTag (GHListTagRepFi ren sch tab fld fi t)
+  gFromHListTagFi :: HListTag (GHListTagRepFi ren sch tab fld fi t) -> t
 
--- | Build HListTag list from Generic product (:*:).
-type family GFieldsToHList ren sch tab (f :: Type -> Type) :: [(SymNat, Type)] where
-  -- Skip fields whose Haskell type is 'EmptyField' in the generic representation.
-  GFieldsToHList ren sch tab (M1 S sel (K1 R EmptyField) :*: rest) =
-    GFieldsToHList ren sch tab rest
-  GFieldsToHList ren sch tab (M1 S sel (K1 R t) :*: rest) =
-    AddOneField ren sch tab (GSelName sel) t (GFieldsToHList ren sch tab rest)
-  GFieldsToHList ren sch tab U1 = '[]
+instance CGHListTagRepFi ren sch tab fld (RFPlain fd) t where
+  type GHListTagRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), t)]
+  gToHListTagFi t = PgTag t :* HNil
+  gFromHListTagFi (PgTag t :* HNil) = t
 
--- | HListTag representation of Rep r (single constructor).
-type family GHListTagRep ren sch tab (rep :: Type -> Type) :: [(SymNat, Type)] where
-  GHListTagRep ren sch tab (D1 _d (C1 _c fields)) =
-    GFieldsToHList ren sch tab fields
+type family HListTagMaybe (ren :: Type) (sch :: Type) (tab :: NameNSK) (t :: Type) :: Type where
+  HListTagMaybe ren sch tab (Maybe t) = Maybe (HListTag (HListTagRep ren sch tab t))
+  HListTagMaybe ren sch tab t = HListTag (HListTagRep ren sch tab t)
+
+instance (CGHListTagRepFromMaybe ren sch fld toTab t b, b ~ IsMaybe t)
+  => CGHListTagRepFi ren sch tab fld (RFFromHere (toTab :: NameNSK) refs) t where
+  type GHListTagRepFi ren sch tab fld (RFFromHere toTab refs) t = GHListTagRepFromMaybe ren sch fld toTab t (IsMaybe t)
+  gToHListTagFi = gToHListTagFromMaybe @ren @sch @fld @toTab @t @b
+  gFromHListTagFi = gFromHListTagFromMaybe @ren @sch @fld @toTab @t @b
+
+class CGHListTagRepFromMaybe (ren :: Type) (sch :: Type) (fld :: Symbol) (toTab :: NameNSK) t (b::Bool) where
+  type GHListTagRepFromMaybe ren sch fld toTab t b :: [(SymNat, Type)]
+  gToHListTagFromMaybe :: t -> HListTag (GHListTagRepFromMaybe ren sch fld toTab t b)
+  gFromHListTagFromMaybe :: HListTag (GHListTagRepFromMaybe ren sch fld toTab t b) -> t
+
+instance (IsoHListTag ren sch toTab t) => CGHListTagRepFromMaybe ren sch fld toTab (Maybe t) 'True where
+  type GHListTagRepFromMaybe ren sch fld toTab (Maybe t) 'True = '[ '( '(fld, 0), Maybe (HListTag (HListTagRep ren sch toTab t))) ]
+  gToHListTagFromMaybe (Just t) = PgTag (Just $ toHListTag @ren @sch @toTab t) :* HNil
+  gToHListTagFromMaybe Nothing = PgTag Nothing :* HNil
+  gFromHListTagFromMaybe (PgTag (Just t) :* HNil) = Just $ fromHListTag @ren @sch @toTab t
+  gFromHListTagFromMaybe (PgTag Nothing :* HNil) = Nothing
+
+instance IsoHListTag ren sch toTab t => CGHListTagRepFromMaybe ren sch fld toTab t 'False where
+  type GHListTagRepFromMaybe ren sch fld toTab t 'False = '[ '( '(fld, 0), HListTag (HListTagRep ren sch toTab t)) ]
+  gToHListTagFromMaybe t = PgTag (toHListTag @ren @sch @toTab t) :* HNil
+  gFromHListTagFromMaybe (PgTag t :* HNil) = fromHListTag @ren @sch @toTab t
+
+instance IsoHListTag ren sch fromTab t
+  => CGHListTagRepFi ren sch tab fld (RFToHere (fromTab :: NameNSK) refs) (SchList t) where
+  type GHListTagRepFi ren sch tab fld (RFToHere fromTab refs) (SchList t) = '[ '( '(fld, 0), SchList (HListTag (HListTagRep ren sch fromTab t))) ]
+  gToHListTagFi xs = PgTag (toHListTag @ren @sch @fromTab <$> xs) :* HNil
+  gFromHListTagFi (PgTag xs :* HNil) = fromHListTag @ren @sch @fromTab <$> xs
+
+
 
 -- | Constraint for RFFromHere: nullable refs must match Maybe type (variant B).
 type family RFFromHereNullable refs t :: Constraint where
@@ -157,7 +175,7 @@ type family RFFromHereNullable refs t :: Constraint where
                 :$$: 'Text "User type:" :<>: ShowType t))
 
 -- | HListTag field type from schema field kind and record field type.
-type family FieldHListType' (ren :: Type) (sch :: k) (rf :: RecFieldK NameNSK) (t :: Type) :: Type where
+type family FieldHListType' (ren :: Type) (sch :: Type) (rf :: RecFieldK NameNSK) (t :: Type) :: Type where
   FieldHListType' ren sch ('RFPlain _fd) t = t
   FieldHListType' ren sch ('RFFromHere toTab _refs) t =
     If (IsMaybe t)
@@ -186,7 +204,7 @@ type family HListTagRep ren sch tab r :: [(SymNat, Type)] where
   HListTagRep ren sch tab (PgTagged (s :: Symbol) EmptyField) = '[]
   HListTagRep ren sch tab (PgTagged (s :: Symbol) t) =
     '[ '( '(Apply ren s, 0), FieldHListType ren sch tab s t) ]
-  HListTagRep ren sch tab r = GHListTagRep ren sch tab (Rep r)
+  HListTagRep ren sch tab r = Normalize (GHListTagRep ren sch tab (Rep r))
 
 class ToHListField ren sch tab (fld :: Symbol) t where
   toHListField :: t -> FieldHListType ren sch tab fld t
@@ -309,16 +327,3 @@ instance {-# OVERLAPPING #-}
 type family IsPgProduct (r :: Type) :: Bool where
   IsPgProduct (a :.. b) = 'True
   IsPgProduct r = 'False
-
-instance
-  ( IsPgProduct r ~ 'False
-  , Renamer ren
-  , Generic r
-  , rep ~ Rep r
-  , GIsoHListTag ren sch tab rep
-  , HListTagRep ren sch tab r ~ GHListTagRep ren sch tab (Rep r)
-  )
-  => IsoHListTag ren sch tab r
-  where
-  toHListTag = (gToHListTag @ren @sch @tab @(Rep r)) . from
-  fromHListTag = to . (gFromHListTag @ren @sch @tab @(Rep r))

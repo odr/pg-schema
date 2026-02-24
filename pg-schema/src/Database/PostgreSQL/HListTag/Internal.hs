@@ -8,7 +8,7 @@ import Database.PostgreSQL.PgTagged
 
 
 -- | Type-level append for list of types.
-type family (xs :: [Type]) ++ (ys :: [Type]) :: [Type] where
+type family (xs :: [k]) ++ (ys :: [k]) :: [k] where
   '[] ++ ys = ys
   (x ': xs) ++ ys = x ': (xs ++ ys)
 

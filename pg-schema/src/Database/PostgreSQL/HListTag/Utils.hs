@@ -119,4 +119,4 @@ instance RetagHListTag '[] '[] where
 instance (RetagHListTag resta restb, TypesOf a ~ TypesOf b) =>
   RetagHListTag ('(sna, t) ': resta) ('(snb, t) ': restb)
   where
-  retagHListTag (PgTag x :* rest) = PgTag @snb x :* retagHListTag rest
+  retagHListTag (PgTag x :* rest) = PgTag x :* retagHListTag rest
