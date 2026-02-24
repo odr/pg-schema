@@ -12,7 +12,6 @@ import Database.Types.Aggr
 import Database.Types.SchList
 import Prelude.Singletons
 import Text.Show.Singletons
-import GHC.TypeLits (KnownSymbol)
 
 
 singletons [d|
@@ -32,15 +31,13 @@ type RecordInfoK = RecordInfo' Symbol
 type FieldInfo = FieldInfo' Text
 type FieldInfoK = FieldInfo' Symbol
 
-class (SingI tab, SingI (TRecordInfo sch tab r)) => CHListInfo sch (tab :: NameNSK) r where
+class CHListInfo sch (tab :: NameNSK) r where
   type TRecordInfo sch tab r :: [FieldInfoK]
 
-instance SingI tab => CHListInfo sch tab (HListTag '[]) where
+instance CHListInfo sch tab (HListTag '[]) where
   type TRecordInfo sch tab (HListTag '[]) = '[]
 
-instance (CHListInfo sch tab xs, SingI tab, KnownSymbol s
-  , CTagFieldInfo sch (TFieldInfo sch tab s) t
-  , SingI (TTagFieldInfo sch (TFieldInfo sch tab s) t))
+instance CHListInfo sch tab xs
   => CHListInfo sch tab (HListTag ('( '(s,n),t) ': xs)) where
     type TRecordInfo sch tab (HListTag ('( '(s,n),t) ': xs))
       = 'FieldInfo s (TTagFieldInfo sch (TFieldInfo sch tab s) t)

@@ -18,7 +18,6 @@ import GHC.Generics
 import GHC.Int
 import Util.TH.LiftType
 import Database.Schema.Def (tabInfoMap, typDefMap)
-import Database.PostgreSQL.HListTag
 
 
 -- | Tables and views info
@@ -59,9 +58,6 @@ data PgType = PgType
   , typelem         :: PgOid
   , enum__type      :: SchList PgEnum }
   deriving (Show,Eq,Generic)
-
-instance IsoHListTag RenamerId PgCatalog (PGC "pg_type") PgType
-
 --
 data PgEnum = PgEnum
   { enumlabel     :: Text

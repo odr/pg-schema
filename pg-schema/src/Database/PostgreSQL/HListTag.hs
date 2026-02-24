@@ -1,5 +1,5 @@
 module Database.PostgreSQL.HListTag
-  ( HListTag(..), IsoHListTag(..), HListTagRep, Renamer(..), RenamerId
+  ( HListTag(..), IsoHListTag(..), HListTagRep
   , streamDecodeHListTag, streamDecodeHListTag'
   , module HListInfo
   ) where
