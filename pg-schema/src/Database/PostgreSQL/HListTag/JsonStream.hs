@@ -1,7 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.HListTag.JsonStream where
 
-import Control.Applicative
 import Data.Aeson
 import Data.Aeson.Decoding (toEitherValue)
 import Data.Aeson.Decoding.ByteString.Lazy (lbsToTokens)
@@ -10,6 +9,7 @@ import Data.Aeson.Key qualified as Key
 import Data.Aeson.Types
 import Data.ByteString.Lazy qualified as BL
 import Database.PostgreSQL.HListTag.Type
+import Database.PostgreSQL.HListTag.Utils
 import Database.PostgreSQL.PgTagged
 import Database.Types.SchList (SchList (..))
 
@@ -31,28 +31,6 @@ import Database.Types.SchList (SchList (..))
 -- >>> BL.null rest
 -- True
 --
--- | Generic initialization of an 'HListTag' lifted into an 'Alternative'
--- functor @f@ (e.g. @Maybe@). All slots are set to 'empty'.
-class HEmpty ts f where
-  hEmpty :: HListTag (Lifted ts f)
-
-instance Alternative f => HEmpty '[] f where
-  hEmpty = HNil
-
-instance (Alternative f, HEmpty ts f) => HEmpty ('(s, t) ': ts) f where
-  hEmpty = PgTag empty :* hEmpty @ts @f
-
--- | Rank-2 \"sequence\" for 'HListTag': collapse an extra 'Applicative'
--- layer around all fields.
-class HUnLift ts f where
-  hUnLift :: Applicative f => HListTag (Lifted ts f) -> f (HListTag ts)
-
-instance Applicative f => HUnLift '[] f where
-  hUnLift HNil = pure HNil
-
-instance (Applicative f, HUnLift ts f) => HUnLift ('(s, t) ': ts) f where
-  hUnLift (PgTag ft :* rest) =
-    (:*) . PgTag <$> ft <*> hUnLift rest
 
 -- | Update a lifted 'HListTag' by JSON key: for the matching field name,
 -- parse the given 'Value' into the field's type and store it in @f@.

@@ -57,6 +57,7 @@ library
     Database.PostgreSQL.Enum
     Database.PostgreSQL.HListTag
     Database.PostgreSQL.HListTag.Class
+    Database.PostgreSQL.HListTag.HListInfo
     Database.PostgreSQL.HListTag.Internal
     Database.PostgreSQL.HListTag.JsonStream
     Database.PostgreSQL.HListTag.Type

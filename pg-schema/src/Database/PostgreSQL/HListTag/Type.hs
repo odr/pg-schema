@@ -56,22 +56,6 @@ instance Monoid (HListTag '[]) where
 instance (Monoid t, Monoid (HListTag ts)) => Monoid (HListTag ('(s, t) ': ts)) where
   mempty = PgTag mempty :* mempty
 
--- | Lifting values into an Applicative/Functor structure
-class HLift (ts :: [(SymNat, Type)]) where
-  hlift :: (forall x. x -> f x)
-        -> HListTag ts
-        -> HListTag (Lifted ts f)
-
-type family Lifted (ts :: [(SymNat, Type)]) (f :: Type -> Type) :: [(SymNat, Type)] where
-  Lifted '[] f = '[]
-  Lifted ('(s, t) ': ts) f = '(s, f t) ': Lifted ts f
-
-instance HLift '[] where
-  hlift _ HNil = HNil
-
-instance HLift ts => HLift ('(s, t) ': ts) where
-  hlift f (PgTag x :* xs) = PgTag (f x) :* hlift f xs
-
 --------------------------------------------------------------------------------
 -- 2.2. Database instances
 --------------------------------------------------------------------------------

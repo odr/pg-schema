@@ -30,6 +30,29 @@ instance Renamer RenamerId where
 -- IsoHListTag: Generic record <-> HListTag
 --------------------------------------------------------------------------------
 
+-- | Iso between record @r@ and HListTag for table @tab@ in schema @sch@.
+class Renamer ren => IsoHListTag ren sch (tab :: NameNSK) r where
+  toHListTag   :: r -> HListTag (HListTagRep ren sch tab r)
+  fromHListTag :: HListTag (HListTagRep ren sch tab r) -> r
+
+  default toHListTag
+    :: ( Generic r
+       , rep ~ Rep r
+       , HListTagRep ren sch tab r ~ GHListTagRep ren sch tab rep
+       , GIsoHListTag ren sch tab rep
+       )
+    => r -> HListTag (HListTagRep ren sch tab r)
+  toHListTag = (gToHListTag @ren @sch @tab @(Rep r)) . from
+
+  default fromHListTag
+    :: ( Generic r
+       , rep ~ Rep r
+       , HListTagRep ren sch tab r ~ GHListTagRep ren sch tab rep
+       , GIsoHListTag ren sch tab rep
+       )
+    => HListTag (HListTagRep ren sch tab r) -> r
+  fromHListTag = to . (gFromHListTag @ren @sch @tab @(Rep r))
+
 class GIsoHListTag ren sch tab (rep :: Type -> Type) where
   gToHListTag   :: rep x -> HListTag (GHListTagRep ren sch tab rep)
   gFromHListTag :: HListTag (GHListTagRep ren sch tab rep) -> rep x
@@ -164,29 +187,6 @@ type family HListTagRep ren sch tab r :: [(SymNat, Type)] where
   HListTagRep ren sch tab (PgTagged (s :: Symbol) t) =
     '[ '( '(Apply ren s, 0), FieldHListType ren sch tab s t) ]
   HListTagRep ren sch tab r = GHListTagRep ren sch tab (Rep r)
-
--- | Iso between record @r@ and HListTag for table @tab@ in schema @sch@.
-class (Renamer ren) => IsoHListTag ren sch (tab :: NameNSK) r where
-  toHListTag   :: r -> HListTag (HListTagRep ren sch tab r)
-  fromHListTag :: HListTag (HListTagRep ren sch tab r) -> r
-
-  default toHListTag
-    :: ( Generic r
-       , rep ~ Rep r
-       , HListTagRep ren sch tab r ~ GHListTagRep ren sch tab rep
-       , GIsoHListTag ren sch tab rep
-       )
-    => r -> HListTag (HListTagRep ren sch tab r)
-  toHListTag = (gToHListTag @ren @sch @tab @(Rep r)) . from
-
-  default fromHListTag
-    :: ( Generic r
-       , rep ~ Rep r
-       , HListTagRep ren sch tab r ~ GHListTagRep ren sch tab rep
-       , GIsoHListTag ren sch tab rep
-       )
-    => HListTag (HListTagRep ren sch tab r) -> r
-  fromHListTag = to . (gFromHListTag @ren @sch @tab @(Rep r))
 
 class ToHListField ren sch tab (fld :: Symbol) t where
   toHListField :: t -> FieldHListType ren sch tab fld t
