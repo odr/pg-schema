@@ -4,6 +4,7 @@ import Database.PostgreSQL.Convert as PGS
 import Database.PostgreSQL.Enum as PGS
 import Database.PostgreSQL.PgProduct as PGS
 import Database.PostgreSQL.PgTagged as PGS
+import Database.PostgreSQL.HListTag as PGS
 import Database.PostgreSQL.DML.Delete as PGS
 import Database.PostgreSQL.DML.Insert as PGS
 import Database.PostgreSQL.DML.Insert.Types as PGS

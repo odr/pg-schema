@@ -8,6 +8,7 @@ import Data.Bifunctor
 import Data.ByteString as BS hiding (readFile, writeFile)
 import Data.Coerce
 import Data.Functor
+import Data.Kind
 import Data.List as L
 import Data.List.NonEmpty as NE
 import Data.Map as M
@@ -21,6 +22,7 @@ import Data.Traversable
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.DML.Select.Types
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Schema.Info
@@ -30,6 +32,7 @@ import Database.Schema.Gen
 import Database.Types.SchList
 import GHC.Int
 import GHC.Records
+import GHC.TypeLits
 import Prelude as P
 import System.Directory
 import System.Environment
@@ -54,20 +57,25 @@ data GenNames = GenNames
   , addRelations :: [AddRelation] -- ^ additional relations. Be carefull!!
   }
 
+-- forTab :: forall (t::Symbol) -> (forall (ren::Type) (sch::Type) (t'::NameNSK) -> a) -> a
+-- forTab t f = f RenamerId PgCatalog (PGC t)
+
 getSchema
   :: Connection -- ^ connection to PostgreSQL database
   -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn GenNames {..} = do
-  types <- selectSch conn qpTyp
-    `catch` (throwM . GetDataException (selectText @_ @_ @PgType qpTyp))
-  classes <- L.filter checkClass . fst <$> selectSch conn qpClass
-    `catch` (throwM . GetDataException (selectText @_ @_ @PgClass qpClass))
+  types <- selectSch RenamerId PgCatalog (PGC "pg_type") conn qpTyp
+    -- `catch` (throwM . GetDataException (selectText @_ @_ @PgType qpTyp))
+  classes <- L.filter checkClass . fst <$> sel (PGC "pg_class") conn qpClass
+    `catch` (throwM . GetDataException (selectText @_ @_
+      @(HListTag (HListTagRep RenamerId PgCatalog (PGC "pg_class") PgClass)) qpClass))
   relations <- L.filter checkRels . (Mb.mapMaybe (mkRel classes) addRelations <>)
-    . fst <$> selectSch conn qpRel
+    . fst <$> sel (PGC "pg_constraint") conn qpRel
       `catch` (throwM . GetDataException (selectText @_ @_ @PgRelation qpRel))
   pure (fst types, classes, relations)
   where
+    sel = selectSch RenamerId PgCatalog
     mkRel classes ar = do
       conkey <- mkNums ar.from $ fst <$> ar.cols
       confkey <- mkNums ar.to $ snd <$> ar.cols

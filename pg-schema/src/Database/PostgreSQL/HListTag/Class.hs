@@ -31,7 +31,7 @@ instance Renamer RenamerId where
 --------------------------------------------------------------------------------
 
 -- | Iso between record @r@ and HListTag for table @tab@ in schema @sch@.
-class Renamer ren => IsoHListTag ren sch (tab :: NameNSK) r where
+class IsoHListTag ren sch (tab :: NameNSK) r where
   toHListTag   :: r -> HListTag (HListTagRep ren sch tab r)
   fromHListTag :: HListTag (HListTagRep ren sch tab r) -> r
 

@@ -48,24 +48,25 @@ data ParentInfo = ParentInfo
 
 data QueryState = QueryState
   { qsLastTabNum  :: Int
- , qsParents     :: [ParentInfo] }
+  , qsParents     :: [ParentInfo]
+  , qsLastAggrNum :: Int }
   deriving Show
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
-selectSch :: forall sch tab ren -> forall r h.
+selectSch :: forall ren sch tab -> forall r h.
   ( IsoHListTag ren sch tab r, h ~ HListTag (HListTagRep ren sch tab r)
-  , CHListInfo sch tab h)
+  , CHListInfo sch tab h, FromRow h, SingI tab)
   => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
-selectSch sch tab ren @r @h conn (selectText @sch @tab @r -> (sql,fs)) =
+selectSch ren sch tab @_ @h conn (selectText @sch @tab @h -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
-  $ (,(sql,fs)) . fmap fromHListTag <$> query conn (fromString $ unpack sql) fs
+  $ (,(sql,fs)) . fmap (fromHListTag @ren @sch @tab) <$> query conn (fromString $ unpack sql) fs
 
-selectQuery :: forall sch tab r. (CHListInfo sch tab r) =>
+selectQuery :: forall sch tab r. (CHListInfo sch tab r, SingI tab) =>
   QueryParam sch tab -> (Query,[SomeToField])
 selectQuery = first (fromString . unpack) . selectText @sch @tab @r
 
-selectText :: forall sch t r. (CHListInfo sch t r) =>
+selectText :: forall sch t r. (CHListInfo sch t r, SingI t) =>
   QueryParam sch t -> (Text,[SomeToField])
 selectText qp = evalRWS (selectM "" (getRecordInfo sch t r)) (qr0 qp) qs0
 
@@ -74,7 +75,7 @@ qr0 qrParam = QueryRead
   { qrCurrTabNum = 0 , qrPath = [] , qrParam }
 
 qs0 :: QueryState
-qs0 = QueryState { qsLastTabNum = 0, qsParents = [] }
+qs0 = QueryState { qsLastTabNum = 0, qsParents = [], qsLastAggrNum = 0 }
 
 two :: (a,b,c) -> (a,b)
 two (a,b,_) = (a,b)
@@ -180,20 +181,22 @@ fieldM fi = case fi.fieldKind of
     n <- asks qrCurrTabNum
     let val = fname <> "(" <> "t" <> show' n <> "." <> fi.fieldDbName <> ")"
     pure case fname of
-      "count" -> ("count(*)", fi.fieldName, " false")
-      _ -> (val, fi.fieldName, val <> " is null")
+      "count" -> ("count(*)", fi.fieldDbName, " false")
+      _ -> (val, fi.fieldDbName, val <> " is null")
   RFFromHere ri refs -> do
     QueryRead {..} <- ask
-    modify \QueryState{qsLastTabNum = (+1) -> n2, qsParents} -> QueryState
-      { qsLastTabNum = n2
-      -- , qsJoins = joinText qrCurrTabNum n2 : qsJoins
-      , qsParents = ParentInfo
-        { piRelDbName = fi.fieldDbName
-        , piFromNum   = qrCurrTabNum
-        , piToNum     = n2
-        , piParentTab = ri.tabName
-        , piRefs      = refs
-        , piPath      = fi.fieldDbName : qrPath } : qsParents }
+    modify \QueryState{qsLastTabNum = (+1) -> n2, qsParents, qsLastAggrNum} ->
+      QueryState
+        { qsLastTabNum = n2
+        -- , qsJoins = joinText qrCurrTabNum n2 : qsJoins
+        , qsParents = ParentInfo
+          { piRelDbName = fi.fieldDbName
+          , piFromNum   = qrCurrTabNum
+          , piToNum     = n2
+          , piParentTab = ri.tabName
+          , piRefs      = refs
+          , piPath      = fi.fieldDbName : qrPath } : qsParents
+        , qsLastAggrNum}
     n2 <- gets qsLastTabNum
     (flds, pars) <- listen $ local
       (\qr -> qr{ qrCurrTabNum = n2, qrPath = fi.fieldDbName : qrPath })
@@ -208,7 +211,7 @@ fieldM fi = case fi.fieldKind of
   RFToHere ri refs -> do
     QueryRead{..} <- ask
     QueryState {qsLastTabNum = (+1) -> tabNum, qsParents} <- get
-    modify (const $ QueryState tabNum [])
+    modify (const $ QueryState tabNum [] 0)
     selText <- local
       (\qr -> qr { qrCurrTabNum = tabNum, qrPath = fi.fieldDbName : qrPath })
       $ selectM (refCond tabNum qrCurrTabNum refs) ri
@@ -223,7 +226,7 @@ joinText ParentInfo{..} =
     <> " on " <> refCond piFromNum piToNum piRefs
   where
     outer
-      | hasNullable piRefs = "left outer "
+      | hasNullableRefs piRefs = "left outer "
       | otherwise = ""
 
 refCond :: Int -> Int -> [Ref] -> Text
