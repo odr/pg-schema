@@ -255,7 +255,7 @@ main = do
     , selSchText "order_positions" @(PgTagged "_cnt" (Aggr' "count" Int64)) qpEmpty
     , selSchText "order_positions" @(PgTagged "cnt" (Aggr "count" Int64)) qpEmpty
     , selSchText "order_positions" @(PgTagged "cnt" (Aggr' "count" Int64)) qpEmpty
-    , selSchText "order_positions" @("cnt" := Aggr' "max" Int32) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr' "max" Int32 :.. "cnt" := Aggr' "count" Int64) qpEmpty
     , selSchText "order_positions" @("cnt" := Aggr "max" (Maybe Int32)) qpEmpty
     ]
   T.putStrLn "\n====== 5 ========\n"
