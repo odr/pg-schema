@@ -31,9 +31,11 @@ import Database.Schema.Gen
 import Database.Types.SchList
 import GHC.Int
 import GHC.Records
+import GHC.TypeLits ( Symbol )
 import Prelude as P
 import System.Directory
 import System.Environment
+
 
 
 data ExceptionSch
@@ -55,8 +57,11 @@ data GenNames = GenNames
   , addRelations :: [AddRelation] -- ^ additional relations. Be carefull!!
   }
 
--- withCat :: forall (tab :: Symbol) -> (forall (sch :: Type) (tab' :: NameNSK) (ren :: Type) -> a) -> a
--- withCat tab f = f PgCatalog (PGC tab) RenamerId
+selCat :: forall (tn :: Symbol) -> forall r h.
+  ( IsoHListTag RenamerId PgCatalog (PGC tn) r, h ~ HLT tn r
+  , CHListInfo PgCatalog (PGC tn) h, FromRow h )
+  => Connection -> QueryParam PgCatalog (PGC tn) -> IO ([r], (Text,[SomeToField]))
+selCat tn = selectSch PgCatalog (PGC tn) RenamerId
 
 type HLT s r = HListTag (HListTagRep RenamerId PgCatalog (PGC s) r)
 
@@ -65,13 +70,13 @@ getSchema
   -> GenNames   -- ^ names of schemas in database or tables to generate
   -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn GenNames {..} = do
-  types <- selectSch PgCatalog (PGC "pg_type") RenamerId conn qpTyp
-    `catch` (throwM . GetDataException (selectText @_ @_ @(HLT "pg_type" PgType) qpTyp))
-  classes <- L.filter checkClass . fst <$> selectSch PgCatalog (PGC "pg_class") RenamerId conn qpClass
-    `catch` (throwM . GetDataException (selectText @_ @_ @(HLT "pg_class" PgClass) qpClass))
+  types <- selCat "pg_type" conn qpTyp `catch`
+    (throwM . GetDataException (selectText @_ @_ @(HLT "pg_type" PgType) qpTyp))
+  classes <- L.filter checkClass . fst <$> selCat "pg_class" conn qpClass `catch`
+    (throwM . GetDataException (selectText @_ @_ @(HLT "pg_class" PgClass) qpClass))
   relations <- L.filter checkRels . (Mb.mapMaybe (mkRel classes) addRelations <>)
-    . fst <$> selectSch PgCatalog (PGC "pg_constraint") RenamerId conn qpRel
-      `catch` (throwM . GetDataException (selectText @_ @_ @(HLT "pg_constraint" PgRelation) qpRel))
+    . fst <$> selCat "pg_constraint" conn qpRel `catch`
+      (throwM . GetDataException (selectText @_ @_ @(HLT "pg_constraint" PgRelation) qpRel))
   pure (fst types, classes, relations)
   where
     mkRel classes ar = do

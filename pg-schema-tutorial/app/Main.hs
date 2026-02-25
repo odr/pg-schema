@@ -6,7 +6,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE BlockArguments #-}
--- {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE RequiredTypeArguments #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeAbstractions #-}
 module Main where
 
 import Control.Monad
@@ -30,6 +32,7 @@ import Database.PostgreSQL.Simple.ToField
 import Generic.Random
 import GHC.Generics
 import GHC.Int
+import GHC.TypeLits
 import PgSchema
 import Database.PostgreSQL.DML.InsertJSON qualified as I2
 import Database.PostgreSQL.DML.Update
@@ -39,12 +42,28 @@ import Test.QuickCheck.Instances ()
 import Database.Types.EmptyField (EmptyField)
 import Prelude as P
 
+type NSC name = "sch" ->> name
+
+data RenamerSch
+
+type family TRenamerSch (s :: Symbol) :: Symbol where
+  TRenamerSch "minPrice" = "price"
+  TRenamerSch "maxPrice" = "price"
+  TRenamerSch "sumPrice" = "price"
+  TRenamerSch "avgPrice" = "price"
+  TRenamerSch s = s
+
+instance Renamer RenamerSch where
+  type Apply RenamerSch s = TRenamerSch s
+
 data Country = MkCountry
   { code :: Maybe Text
   , name :: Text }
   -- TODO: cycle references lead to halt! Should check to avoid it
   -- , city_country :: SchList City }
   deriving (Eq, Ord, Generic)
+
+instance IsoHListTag RenamerSch Sch (NSC "countries") Country where
 
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
@@ -64,11 +83,17 @@ data Address (a::A) (b::B) = MkAddress
   , numbers :: Maybe (PgArr Int32) }
   deriving Generic
 
+instance IsoHListTag RenamerSch Sch (NSC "addresses") (Address A1 b)
+instance IsoHListTag RenamerSch Sch (NSC "addresses") (Address A2 b)
+
 data City a b = MkCity
   { name         :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
   , address_city :: SchList (Address a b) }
   deriving Generic
+
+instance IsoHListTag RenamerSch Sch (NSC "cities") (City A1 b)
+instance IsoHListTag RenamerSch Sch (NSC "cities") (City A2 b)
 
 data AddressRev a b = MkAddressRev
   { street       :: Text
@@ -78,15 +103,22 @@ data AddressRev a b = MkAddressRev
   , address_city :: Maybe (City a b) }
   deriving Generic
 
+instance IsoHListTag RenamerSch Sch (NSC "addresses") (AddressRev A1 b)
+instance IsoHListTag RenamerSch Sch (NSC "addresses") (AddressRev A2 b)
+
 data Company = MkCompany
   { name       :: Text
   , address_id :: Maybe Int32 }
   deriving Generic
 
+instance IsoHListTag RenamerSch Sch (NSC "companies") Company where
+
 data Article = MkArticle
   { name :: Text
   , code :: Maybe Text }
   deriving Generic
+
+instance IsoHListTag RenamerSch Sch (NSC "articles") Article where
 
 data OrdPos = MkOrdPos
   { num          :: Int32
@@ -94,6 +126,8 @@ data OrdPos = MkOrdPos
   , cnt          :: Int32
   , price        :: Centi }
   deriving Generic
+
+instance IsoHListTag RenamerSch Sch (NSC "order_positions") OrdPos where
 
 data PosCnt = MkPosCnt
   { order_id  :: Int32
@@ -104,6 +138,7 @@ data PosCnt = MkPosCnt
   , avgPrice  :: Aggr "avg" (Maybe Double) }
   deriving Generic
 
+instance IsoHListTag RenamerSch Sch (NSC "order_positions") PosCnt where
 -- data Customer = Customer
 --   { }
 data Order = MkOrder
@@ -114,12 +149,16 @@ data Order = MkOrder
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
   deriving Generic
 
+instance IsoHListTag RenamerSch Sch (NSC "orders") Order where
+
 data OrdPosI = MkOrdPosI
   { num          :: Int32
   , article_id   :: Int32
   , cnt          :: Int32
   , price        :: Centi }
   deriving Generic
+
+instance IsoHListTag RenamerSch Sch (NSC "order_positions") OrdPosI where
 
 data OrderI = MkOrderI
   { day        :: Day
@@ -128,6 +167,8 @@ data OrderI = MkOrderI
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state"))
   , opos_order :: SchList OrdPosI }
   deriving Generic
+
+instance IsoHListTag RenamerSch Sch (NSC "orders") OrderI where
 
 data CustomerI = MkCustomerI
   { name :: Text
@@ -186,29 +227,40 @@ deriveQueryRecord (\s -> if P.drop 3 s == "Price" then "price" else s) ''Sch
   (tabInfoMap @Sch) (typDefMap @Sch)
   [((''PosCnt,[]), "sch" ->> "order_positions")]
 
-type NSC name = "sch" ->> name
+type HSch s r = HListTag (HListTagRep RenamerSch Sch (NSC s) r)
+
+selSch :: forall (tn :: Symbol) -> forall r h.
+  ( IsoHListTag RenamerSch Sch (NSC tn) r, h ~ HSch tn r
+  , CHListInfo Sch (NSC tn) h, FromRow h )
+  => Connection -> QueryParam Sch (NSC tn) -> IO ([r], (Text,[SomeToField]))
+selSch tn = selectSch Sch (NSC tn) RenamerSch
+
+selSchText :: forall tn -> forall r h. (CHListInfo Sch (NSC tn) h, h ~ HSch tn r) =>
+  QueryParam Sch (NSC tn) -> (Text,[SomeToField])
+selSchText tn @r = selectText @Sch @(NSC tn) @(HSch tn r)
+
 main :: IO ()
 main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selectText @Sch @(NSC "countries") @Country qpEmpty
-    , selectText @Sch @(NSC "cities") @(City A1 B1) qpEmpty
-    , selectText @Sch @(NSC "cities") @(City A2 B1) qpEmpty
-    , selectText @Sch @(NSC "addresses") @(Address A1 B1) qpEmpty
-    , selectText @Sch @(NSC "addresses") @(Address A2 B1) qp
-    , selectText @Sch @(NSC "addresses") @(AddressRev A1 B1) qp
-    , selectText @Sch @(NSC "addresses") @(AddressRev A2 B1) qp
-    , selectText @Sch @(NSC "order_positions") @PosCnt qpEmpty
-    , selectText @Sch @(NSC "order_positions") @("_cnt" := Aggr "count" Int64) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "_cnt" (Aggr' "count" Int64)) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr "count" Int64)) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr' "count" Int64)) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr' "max" Int32)) qpEmpty
-    , selectText @Sch @(NSC "order_positions") @(PgTagged "cnt" (Aggr "max" (Maybe Int32))) qpEmpty
+    [ selSchText "countries" @Country qpEmpty
+    , selSchText "cities" @(City A1 B1) qpEmpty
+    , selSchText "cities" @(City A2 B1) qpEmpty
+    , selSchText "addresses" @(Address A1 B1) qpEmpty
+    , selSchText "addresses" @(Address A2 B1) qp
+    , selSchText "addresses" @(AddressRev A1 B1) qp
+    , selSchText "addresses" @(AddressRev A2 B1) qp
+    , selSchText "order_positions" @PosCnt qpEmpty
+    , selSchText "order_positions" @(PgTagged "_cnt" (Aggr "count" Int64)) qpEmpty
+    , selSchText "order_positions" @(PgTagged "_cnt" (Aggr' "count" Int64)) qpEmpty
+    , selSchText "order_positions" @(PgTagged "cnt" (Aggr "count" Int64)) qpEmpty
+    , selSchText "order_positions" @(PgTagged "cnt" (Aggr' "count" Int64)) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr' "max" Int32) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr "max" (Maybe Int32)) qpEmpty
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
-  ar <- selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp
+  ar <- selSch "addresses" @(AddressRev A2 B1) conn qp
   print ar
   T.putStrLn "\n====== 8 ========\n"
   (cids,t) <- insertSch Sch (NSC "countries") conn countries
@@ -261,23 +313,23 @@ main = do
   mapM_ print xs
   T.putStrLn "\n====== 20 ========\n"
   -- Prelude.putStrLn $ show as1
-  selectSch @Sch @(NSC "countries") @Country conn qpEmpty >>= print
+  selSch "countries" @Country conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 22 ========\n"
-  bitraverse T.putStrLn print $ selectText @Sch @(NSC "cities") @(City A1 B1) qpEmpty
-  selectSch @Sch @(NSC "cities") @(City A1 B1) conn qpEmpty >>= print
+  bitraverse T.putStrLn print $ selSchText "cities" @(City A1 B1) qpEmpty
+  selSch "cities" @(City A1 B1) conn qpEmpty >>= print
   T.putStrLn ""
-  bitraverse T.putStrLn print  $ selectText @Sch @(NSC "cities") @(City A2 B1) qpEmpty
-  selectSch @Sch @(NSC "cities") @(City A2 B1) conn qpEmpty >>= print
+  bitraverse T.putStrLn print  $ selSchText "cities" @(City A2 B1) qpEmpty
+  selSch "cities" @(City A2 B1) conn qpEmpty >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 23 ========\n"
-  selectSch @Sch @(NSC "addresses") @(Address A1 B1) conn qpEmpty >>= print
+  selSch "addresses" @(Address A1 B1) conn qpEmpty >>= print
   T.putStrLn ""
-  selectSch @Sch @(NSC "addresses") @(Address A2 B1) conn qp >>= print
+  selSch "addresses" @(Address A2 B1) conn qp >>= print
   T.putStrLn ""
   T.putStrLn "\n====== 24 ========\n"
-  selectSch @Sch @(NSC "addresses") @(AddressRev A1 B1) conn qp >>= print
-  selectSch @Sch @(NSC "addresses") @(AddressRev A2 B1) conn qp' >>= print
+  selSch "addresses" @(AddressRev A1 B1) conn qp >>= print
+  selSch "addresses" @(AddressRev A2 B1) conn qp' >>= print
   where
     qp = qRoot qpr
     qpr = do

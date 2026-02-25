@@ -8,6 +8,7 @@ import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
 import Database.Schema.Def
 import GHC.TypeLits
+import Prelude.Singletons
 
 
 -- | Generic initialization of an 'HListTag' lifted into an 'Alternative'
@@ -50,7 +51,7 @@ instance (Applicative f, HUnLift ts f) => HUnLift ('(s, t) ': ts) f where
     (:*) . PgTag <$> ft <*> hUnLift rest
 
 class HListAppend (xs :: [(SymNat, Type)]) (ys :: [(SymNat, Type)]) where
-  appendHListTag :: HListTag xs -> HListTag ys -> HListTag (AppendHList xs ys)
+  appendHListTag :: HListTag xs -> HListTag ys -> HListTag (xs ++ ys)
 
 instance HListAppend '[] ys where
   appendHListTag HNil ys = ys
@@ -67,7 +68,7 @@ instance NormalizeGoHListTag prefix '[] where
 instance
   ( NormalizeGoHListTag (sn ': prefix) rest
   , KnownSymNat sn
-  , s ~ SymNatSymbol sn
+  , '(s,n) ~ sn
   , n' ~ CountSymInKeys prefix s
   , KnownNat n'
   )
@@ -78,12 +79,15 @@ instance
 
 class NormalizeHListTag (xs :: [(SymNat, Type)]) where
   normalizeHListTag :: HListTag xs -> HListTag (Normalize xs)
+  denormalizeHListTag :: HListTag (Normalize xs) -> HListTag xs
 
-instance (out ~ NormalizeGo '[] xs, NormalizeGoHListTag '[] xs) => NormalizeHListTag xs where
-  normalizeHListTag = normalizeGoHListTag @'[] @xs
+instance (out ~ NormalizeGo '[] xs, NormalizeGoHListTag '[] xs, RetagHListTag out xs)
+  => NormalizeHListTag xs where
+    normalizeHListTag = normalizeGoHListTag @'[] @xs
+    denormalizeHListTag = retagHListTag @(Normalize xs) @xs
 
 class SplitAtHListTag (xs :: [(SymNat, Type)]) (ys :: [(SymNat, Type)]) where
-  splitAtHListTag :: HListTag (AppendHList xs ys) -> (HListTag xs, HListTag ys)
+  splitAtHListTag :: HListTag (xs ++ ys) -> (HListTag xs, HListTag ys)
 
 instance SplitAtHListTag '[] ys where
   splitAtHListTag h = (HNil, h)
@@ -93,31 +97,11 @@ instance SplitAtHListTag rest ys => SplitAtHListTag ('(sn, t) ': rest) ys where
     let (restH, ysH) = splitAtHListTag tl
     in (PgTag x :* restH, ysH)
 
-class SplitAtHListTagN (n :: Nat) (zs :: [(SymNat, Type)]) where
-  splitAtHListTagN :: HListTag zs -> (HListTag (Take n zs), HListTag (Drop n zs))
-
-instance SplitAtHListTagN 0 zs where
-  splitAtHListTagN h = (HNil, h)
-
-instance
-  ( m ~ (n - 1)
-  , SplitAtHListTagN m rest
-  , Take n ('(sn, t) ': rest) ~ ('(sn, t) ': Take m rest)
-  , Drop n ('(sn, t) ': rest) ~ Drop m rest
-  )
-  => SplitAtHListTagN n ('(sn, t) ': rest)
-  where
-  splitAtHListTagN (PgTag x :* tl) =
-    let (a, b) = splitAtHListTagN @m @rest tl
-    in (PgTag x :* a, b)
-
 class RetagHListTag (a :: [(SymNat, Type)]) (b :: [(SymNat, Type)]) where
   retagHListTag :: HListTag a -> HListTag b
 
 instance RetagHListTag '[] '[] where
   retagHListTag HNil = HNil
 
-instance (RetagHListTag resta restb, TypesOf a ~ TypesOf b) =>
-  RetagHListTag ('(sna, t) ': resta) ('(snb, t) ': restb)
-  where
-  retagHListTag (PgTag x :* rest) = PgTag x :* retagHListTag rest
+instance (RetagHListTag as bs) => RetagHListTag ('(sa, t) ': as) ('(sb, t) ': bs) where
+  retagHListTag (PgTag x :* xs) = PgTag x :* retagHListTag xs

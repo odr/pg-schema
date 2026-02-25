@@ -42,7 +42,8 @@ instance (SingI tab) => CHListInfo sch tab (HListTag '[]) where
   type TRecordInfo sch tab (HListTag '[]) = '[]
   getRecordInfo = RecordInfo (demote @tab) []
 
-instance (CHListInfo sch tab (HListTag xs), KnownSymNat '(s,n), KnownSymbol s, CTagFieldInfo sch (TFieldInfo sch tab s) t)
+instance (CHListInfo sch tab (HListTag xs), KnownSymNat '(s,n), KnownSymbol s
+  , CTagFieldInfo sch (TFieldInfo sch tab s) t, CFieldInfo sch tab s)
   => CHListInfo sch tab (HListTag ('( '(s,n),t) ': xs)) where
     type TRecordInfo sch tab (HListTag ('( '(s,n),t) ': xs))
       = 'FieldInfo (NameSymNat '(s,n)) s (TTagFieldInfo sch (TFieldInfo sch tab s) t)

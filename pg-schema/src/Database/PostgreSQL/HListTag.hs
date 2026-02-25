@@ -1,7 +1,8 @@
 module Database.PostgreSQL.HListTag
-  ( HListTag(..), IsoHListTag(..), Renamer(..), RenamerId, HListTagRep
+  ( HListTag(..), IsoHListTag(..), Renamer(..), RenamerId
   , streamDecodeHListTag, streamDecodeHListTag'
-  , module HListInfo
+  , CHListInfo(..), RecordInfo'(..), FieldInfo'(..), RecordInfo, FieldInfo, RecordInfoK, FieldInfoK
+  -- , module HListInfo
   ) where
 
 import Database.PostgreSQL.HListTag.Class
