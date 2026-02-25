@@ -42,21 +42,46 @@ instance (SingI tab) => CHListInfo sch tab (HListTag '[]) where
   type TRecordInfo sch tab (HListTag '[]) = '[]
   getRecordInfo = RecordInfo (demote @tab) []
 
-instance (CHListInfo sch tab (HListTag xs), KnownSymNat '(s,n), KnownSymbol s
-  , CTagFieldInfo sch (TFieldInfo sch tab s) t, CFieldInfo sch tab s)
-  => CHListInfo sch tab (HListTag ('( '(s,n),t) ': xs)) where
-    type TRecordInfo sch tab (HListTag ('( '(s,n),t) ': xs))
-      = 'FieldInfo (NameSymNat '(s,n)) s (TTagFieldInfo sch (TFieldInfo sch tab s) t)
-      ': TRecordInfo sch tab (HListTag xs)
-    getRecordInfo = RecordInfo
-      { tabName = ri.tabName
-      , fields = FieldInfo
-        { fieldName = nameSymNat (s,n)
-        , fieldDbName = demote @s
-        , fieldKind = demote @(TTagFieldInfo sch (TFieldInfo sch tab s) t) }
-        : ri.fields }
+data RecTypeCase = RTCAggrCount | RTCCommon
+
+type family GetFldTypeCase t where
+  GetFldTypeCase (Aggr "count" s) = RTCAggrCount
+  GetFldTypeCase (Aggr' "count" s) = RTCAggrCount
+  GetFldTypeCase t = RTCCommon
+
+class CFieldInfoTypeCase sch (tab :: NameNSK) (fld :: (SymNat, Type)) rtc where
+  type TFieldInfoTypeCase sch tab fld rtc :: FieldInfoK
+  getFieldInfo :: FieldInfo
+
+instance (KnownSymNat '(s,n), KnownSymbol s)
+  => CFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCAggrCount where
+    type TFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCAggrCount =
+      'FieldInfo (NameSymNat '(s,n)) s
+        ('RFAggr ('FldDef ("pg_catalog" ->> "int8") False False) "count" 'True)
+    getFieldInfo = FieldInfo
+      { fieldName = nameSymNat (s,n)
+      , fieldDbName = demote @s
+      , fieldKind = RFAggr (FldDef ("pg_catalog" ->> "int8") False False) "count" True }
+
+instance (CHListInfo sch tab (HListTag xs), CFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t) )
+  => CHListInfo sch tab (HListTag ('(sn,t) ': xs)) where
+    type TRecordInfo sch tab (HListTag ('(sn,t) ': xs)) =
+      TFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t)
+        ': TRecordInfo sch tab (HListTag xs)
+    getRecordInfo = ri
+      { fields = getFieldInfo @sch @tab @'(sn,t) @(GetFldTypeCase t) : fields ri}
       where
         ri = getRecordInfo @sch @tab @(HListTag xs)
+
+instance (KnownSymNat '(s,n), KnownSymbol s
+  , CTagFieldInfo sch (TFieldInfo sch tab s) t, CFieldInfo sch tab s)
+  => CFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCCommon where
+    type TFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCCommon
+      = 'FieldInfo (NameSymNat '(s,n)) s (TTagFieldInfo sch (TFieldInfo sch tab s) t)
+    getFieldInfo = FieldInfo
+      { fieldName = nameSymNat (s,n)
+      , fieldDbName = demote @s
+      , fieldKind = demote @(TTagFieldInfo sch (TFieldInfo sch tab s) t) }
 
 class ToStar (TTagFieldInfo sch fi t) => CTagFieldInfo sch (fi :: RecFieldK NameNSK) (t :: Type) where
   type TTagFieldInfo sch fi t :: RecFieldK RecordInfoK
