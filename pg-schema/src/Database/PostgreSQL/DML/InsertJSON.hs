@@ -20,7 +20,6 @@ import Database.PostgreSQL.DML.Insert.Types
 import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
--- import Database.Schema.Rec
 import Database.Schema.ShowType
 import Database.Types.SchList
 import Data.String

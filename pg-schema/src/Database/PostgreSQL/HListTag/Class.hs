@@ -5,10 +5,10 @@ module Database.PostgreSQL.HListTag.Class
   where
 
 import Data.Kind
+import Database.PostgreSQL.Simple
 import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Utils
-import Database.PostgreSQL.PgProduct
 import Database.PostgreSQL.PgTagged
 import Database.Types.Aggr
 import Database.Types.EmptyField (EmptyField, emptyField)
@@ -183,19 +183,19 @@ instance IsoHListTag ren sch fromTab t
   fromHListTagFi (PgTag xs :* HNil) = fromHListTag @ren @sch @fromTab <$> xs
 
 --------------------------------------------------------------------------------
--- (:..) and PgTagged
+-- (:.) and PgTagged
 --------------------------------------------------------------------------------
 instance (IsoHListTag ren sch tab a, IsoHListTag ren sch tab b
   , HListAppend (HListTagRep ren sch tab a) (HListTagRep ren sch tab b)
   , SplitAtHListTag (HListTagRep ren sch tab a) (HListTagRep ren sch tab b)
   , NormalizeHListTag (HListTagRep ren sch tab a SP.++ HListTagRep ren sch tab b)
   )
-  => IsoHListTag ren sch tab (a :.. b) where
-    type HListTagRep ren sch tab (a :.. b) =
+  => IsoHListTag ren sch tab (a :. b) where
+    type HListTagRep ren sch tab (a :. b) =
       Normalize (HListTagRep ren sch tab a SP.++ HListTagRep ren sch tab b)
-    toHListTag (a :.. b) = normalizeHListTag
+    toHListTag (a :. b) = normalizeHListTag
       $ appendHListTag (toHListTag @ren @sch @tab a) (toHListTag @ren @sch @tab b)
-    fromHListTag ab = fromHListTag @ren @sch @tab a :.. fromHListTag @ren @sch @tab b
+    fromHListTag ab = fromHListTag @ren @sch @tab a :. fromHListTag @ren @sch @tab b
       where
         (a, b) = splitAtHListTag @(HListTagRep ren sch tab a) @(HListTagRep ren sch tab b)
           $ denormalizeHListTag ab

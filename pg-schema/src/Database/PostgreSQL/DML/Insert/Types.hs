@@ -5,7 +5,6 @@ import Data.Aeson
 import Data.Kind
 import Data.Typeable
 import Database.Schema.Def
--- import Database.Schema.Rec
 import Database.Types.SchList
 import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple.FromRow

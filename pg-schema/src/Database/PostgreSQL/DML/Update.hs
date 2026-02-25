@@ -9,7 +9,6 @@ import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple
 import GHC.Int
 
--- import Database.Schema.Rec
 import Database.Schema.ShowType
 import PgSchema.Util
 import Prelude as P

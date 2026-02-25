@@ -7,7 +7,6 @@ import Database.PostgreSQL.Simple
 import GHC.Int
 
 import Database.PostgreSQL.DML.Insert.Types
--- import Database.Schema.Rec
 import Database.Schema.ShowType
 import PgSchema.Util
 import Database.PostgreSQL.HListTag

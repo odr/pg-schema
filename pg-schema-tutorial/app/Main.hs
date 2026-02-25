@@ -294,7 +294,7 @@ main = do
     , selSchText "order_positions" @(PgTagged "_cnt" (Aggr' "count" Int64)) qpEmpty
     , selSchText "order_positions" @(PgTagged "cnt" (Aggr "count" Int64)) qpEmpty
     , selSchText "order_positions" @(PgTagged "cnt" (Aggr' "count" Int64)) qpEmpty
-    , selSchText "order_positions" @("cnt" := Aggr' "max" Int32 :.. "cnt" := Aggr' "count" Int64) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr' "max" Int32 :. "cnt" := Aggr' "count" Int64) qpEmpty
     , selSchText "order_positions" @("cnt" := Aggr "max" (Maybe Int32)) qpEmpty
     ]
   T.putStrLn "\n====== 5 ========\n"
@@ -326,26 +326,26 @@ main = do
       , MkAddressI "street2" (Just "zip2") mempty Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
   void $ insJSON_ "addresses" @AddressI conn insData
-  (as1 :: ["id" := Int32 :.. "cust_addr" := SchList ("id" := Int32 :.. "name" := Text)], _insTxt)
+  (as1 :: ["id" := Int32 :. "cust_addr" := SchList ("id" := Int32 :. "name" := Text)], _insTxt)
     <- insJSON "addresses" @AddressI conn insData
   curTime <- T.show <$> getCurrentTime
-  upsJSON_ "addresses" conn $ as1 <&> \(a :.. PgTag xs) ->
-    a :.. "cust_addr" =: (xs <&> \(cid :.. cname) ->
-      cid :.. fmap (<> ": " <> curTime <> " updated") cname)
+  upsJSON_ "addresses" conn $ as1 <&> \(a :. PgTag xs) ->
+    a :. "cust_addr" =: (xs <&> \(cid :. cname) ->
+      cid :. fmap (<> ": " <> curTime <> " updated") cname)
   let
-    upsVals = as1 <&> \(a :.. PgTag xs) -> a :.. "cust_addr" =:
-      (xs <&> \(cid :.. _) -> cid :.. "note" =: Just curTime)
+    upsVals = as1 <&> \(a :. PgTag xs) -> a :. "cust_addr" =:
+      (xs <&> \(cid :. _) -> cid :. "note" =: Just curTime)
   mapM_ print upsVals
   upsJSON_ "addresses" conn upsVals
   T.putStrLn "\n====== 13 ========\n"
-  (as2 :: ["id" := Int32 :.. "cust_addr" := SchList
-    ("id" := Int32 :.. "updated_at" := Maybe ZonedTime)], _upsTxt)
+  (as2 :: ["id" := Int32 :. "cust_addr" := SchList
+    ("id" := Int32 :. "updated_at" := Maybe ZonedTime)], _upsTxt)
     <- upsJSON "addresses" conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"
-  void $ updByCond_ "addresses" conn (pgTag @"zipcode" (Just @Text "zip_new"))
+  void $ updByCond_ "addresses" conn ("zipcode" =: Just @Text "zip_new")
     $ "street" =? ("street2"::Text)
-  (xs :: ["zipcode" := Maybe Text :.. "phones" := Maybe (PgArr Text)]) <-
+  (xs :: ["zipcode" := Maybe Text :. "phones" := Maybe (PgArr Text)]) <-
     updByCond "addresses" conn
       ("phones" =: Just (PgArr ["111" :: Text,"222"]))
       $ "street" =? ("street2"::Text)

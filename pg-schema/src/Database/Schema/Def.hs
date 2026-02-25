@@ -13,11 +13,9 @@ import Data.Ord.Singletons
 import Data.Singletons.TH
 import Data.Text as T
 import GHC.TypeLits
-import Language.Haskell.TH.Syntax
 import PgSchema.Util
 import Prelude.Singletons as SP
 import Text.Show.Singletons
-import Util.TH.LiftType
 
 
 singletons [d|
@@ -328,40 +326,3 @@ type Ref = Ref' Text
 -- Companion to type-level 'HasNullableRefs'.
 hasNullableRefs :: [Ref] -> Bool
 hasNullableRefs = L.any (fdNullable . fromDef)
-
---
-instance LiftType NameNS where
-  liftType NameNS{..} =
-    [t| $(liftType nnsNamespace) ->> $(liftType nnsName) |]
-
-instance Lift NameNS where
-  liftTyped (NameNS ns n) = [|| NameNS $$(liftTyped ns) $$(liftTyped n) ||]
-
-instance LiftType TypDef where
-  liftType TypDef{..} = [t| 'TypDef
-    $(liftType typCategory) $(liftType typElem) $(liftType typEnum) |]
-
-instance LiftType FldDef where
-  liftType FldDef{..} = [t| 'FldDef
-    $(liftType fdType) $(liftType fdNullable) $(liftType fdHasDefault) |]
-
-instance LiftType TabDef where
-  liftType TabDef{..} =
-    [t| 'TabDef $(liftType tdFlds) $(liftType tdKey) $(liftType tdUniq) |]
-
-instance LiftType RelDef where
-  liftType RelDef{..} =
-    [t| 'RelDef $(liftType rdFrom) $(liftType rdTo) $(liftType rdCols) |]
---
-
-instance LiftType Ref where
-  liftType Ref{..} = [t| 'Ref $(liftType fromName) $(liftType fromDef)
-    $(liftType toName) $(liftType toDef) |]
-
-instance LiftType p => LiftType (RecField p) where
-  liftType = \case
-    RFEmpty s -> [t| 'RFEmpty $(liftType s) |]
-    RFPlain fd -> [t| 'RFPlain $(liftType fd) |]
-    RFAggr fd fname b -> [t| 'RFAggr $(liftType fd) $(liftType fname) $(liftType b)|]
-    RFToHere t rr -> [t| 'RFToHere $(liftType t) $(liftType rr) |]
-    RFFromHere t rr -> [t| 'RFFromHere $(liftType t) $(liftType rr) |]

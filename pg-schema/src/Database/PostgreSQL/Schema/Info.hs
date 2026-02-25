@@ -2,23 +2,14 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.Schema.Info where
 
-import Control.Monad
-import Data.Aeson.TH
-import Data.List as L
 import Data.Text as T
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Schema.Catalog
-import Database.PostgreSQL.Simple.FromField
-import Database.PostgreSQL.Simple.FromRow
--- import Database.Schema.Rec
-import Database.Schema.TH
 import Database.Types.SchList
 import GHC.Generics
 import GHC.Int
-import Util.TH.LiftType
-import Database.Schema.Def (tabInfoMap, typDefMap)
 
 
 -- | Tables and views info
@@ -81,20 +72,3 @@ data PgRelation = PgRelation
   , confkey               :: PgArr Int16 }
   deriving (Show,Eq,Generic)
 instance IsoHListTag RenamerId PgCatalog (PGC "pg_constraint") PgRelation
-
-L.concat
-  <$> zipWithM (\n s ->
-    let
-      tabMap = tabInfoMap @PgCatalog
-      typMap = typDefMap @PgCatalog
-    in
-      L.concat <$> sequenceA
-        [ deriveJSON defaultOptions n
-        , [d|instance FromRow $(liftType n)|]
-        , [d|instance FromField $(liftType n) where fromField = fromJSONField |]
-        , schemaRec id ''PgCatalog tabMap typMap s n []
-        ])
-  [ ''PgEnum, ''PgType, ''PgConstraint, ''PgAttribute, ''PgClass
-  , ''PgClassShort, ''PgRelation ]
-  [ pgc "pg_enum", pgc "pg_type", pgc "pg_constraint", pgc "pg_attribute"
-  , pgc "pg_class", pgc "pg_class", pgc "pg_constraint" ]
