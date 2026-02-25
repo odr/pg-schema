@@ -1,10 +1,6 @@
-module Database.PostgreSQL.HListTag
-  ( HListTag(..), IsoHListTag(..), Renamer(..), RenamerId
-  , streamDecodeHListTag, streamDecodeHListTag'
-  , CHListInfo(..), RecordInfo'(..), FieldInfo'(..), RecordInfo, FieldInfo, RecordInfoK, FieldInfoK
-  ) where
+module Database.PostgreSQL.HListTag (module X) where
 
-import Database.PostgreSQL.HListTag.Class
-import Database.PostgreSQL.HListTag.JsonStream
-import Database.PostgreSQL.HListTag.Type
-import Database.PostgreSQL.HListTag.HListInfo as HListInfo
+import Database.PostgreSQL.HListTag.Class as X
+import Database.PostgreSQL.HListTag.JsonStream as X
+import Database.PostgreSQL.HListTag.Type as X
+import Database.PostgreSQL.HListTag.HListInfo as X

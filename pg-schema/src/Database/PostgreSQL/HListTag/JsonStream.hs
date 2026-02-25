@@ -1,5 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Database.PostgreSQL.HListTag.JsonStream where
+module Database.PostgreSQL.HListTag.JsonStream
+  (streamDecodeHListTag, streamDecodeHListTag')
+  where
 
 import Data.Aeson
 import Data.Aeson.Decoding (toEitherValue)

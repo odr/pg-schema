@@ -5,8 +5,9 @@ import Data.Aeson
 import Data.Kind
 import Data.Typeable
 import Database.Schema.Def
-import Database.Schema.Rec
+-- import Database.Schema.Rec
 import Database.Types.SchList
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
 import GHC.TypeError
@@ -22,21 +23,30 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
       ( TL.Text "We can't insert data because not all mandatory fields in record."
       :$$: (TL.Text "Table: " :<>: TL.ShowType t)
       :$$: (TL.Text "Record Type: " :<>: TL.ShowType r)
+      :$$: (TL.Text "TRecordInfo: " :<>: TL.ShowType (TRecordInfo sch t r))
       :$$: (TL.Text "To insert data you have to add fields: "
         :<>: TL.ShowType (RestMand sch t r rFlds))
       ))
 
--- For "plain" insert
-type InsertReturning' sch t r r' = (InsertNonReturning' sch t r
-  , CRecordInfo sch t r', Typeable r', FromRow r', AllPlain sch t r')
+type HListInfo ren sch t r h = ( IsoHListTag ren sch t r, CHListInfo sch t h )
+type HRep ren sch t r = HListTag (HListTagRep ren sch t r)
 
-type InsertNonReturning' sch t r = (CRecordInfo sch t r
-  , AllMandatory sch t r '[], CSchema sch, ToRow r, AllPlain sch t r)
+-- For "plain" insert
+type InsertReturning' ren sch t r r' h h' =
+  ( InsertNonReturning' ren sch t r h, h' ~ HRep ren sch t r'
+  , HListInfo ren sch t r' h', Typeable h', FromRow h', AllPlain sch t h')
+
+type InsertNonReturning' ren sch t r h =
+  ( h ~ HRep ren sch t r, HListInfo ren sch t r h
+  , AllMandatory sch t h '[], CSchema sch, ToRow h, AllPlain sch t h)
 
 -- For insertJSON
-type SrcJSON sch t r = (CRecordInfo sch t r, ToJSON r, CSchema sch)
+type SrcJSON ren sch t r h =
+  ( IsoHListTag ren sch t r, h ~ HListTag (HListTagRep ren sch t r)
+  , CHListInfo sch t h, ToJSON h, CSchema sch )
 
-type TgtJSON sch t r' = (CRecordInfo sch t r', FromJSON r', Typeable r')
+type TgtJSON ren sch t r' h' =
+  ( h' ~ HRep ren sch t r', HListInfo ren sch t r' h', FromJSON h', Typeable h')
   -- We have to check that return data only from tables in which we insert
   -- Now it is not possible because we don't store
   -- recursive RecordInfo RecordInfo on the type level...
@@ -63,10 +73,14 @@ type family AllMandatoryOrHasPK (sch::Type) (tab::NameNSK) (r::Type) rFlds where
         :<>: TL.ShowType (RestPKFlds sch t r rFlds))
       ))
 
-type InsertReturning sch t r r' = (InsertNonReturning sch t r, TgtJSON sch t r')
+type InsertReturning ren sch t r r' h h' = (InsertNonReturning ren sch t r h, TgtJSON ren sch t r' h')
 
-type InsertNonReturning sch t r = (SrcJSON sch t r, AllMandatory sch t r '[])
+type InsertNonReturning ren sch t r h = (SrcJSON ren sch t r h, AllMandatory sch t h '[])
 
-type UpsertReturning sch t r r' = (UpsertNonReturning sch t r, TgtJSON sch t r')
+type UpsertReturning ren sch t r r' h h' = (UpsertNonReturning ren sch t r h, TgtJSON ren sch t r' h')
 
-type UpsertNonReturning sch t r = (SrcJSON sch t r, AllMandatoryOrHasPK sch t r '[])
+type UpsertNonReturning ren sch t r h = (SrcJSON ren sch t r h, AllMandatoryOrHasPK sch t h '[])
+
+type UpdateReturning ren sch t r r' h h' =
+  ( h ~ HRep ren sch t r, HListInfo ren sch t r h
+  , h' ~ HRep ren sch t r', HListInfo ren sch t r' h' )

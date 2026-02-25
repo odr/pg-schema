@@ -1,6 +1,8 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Database.PostgreSQL.HListTag.Class where
+module Database.PostgreSQL.HListTag.Class
+  (IsoHListTag(..), Renamer(..), RenamerId)
+  where
 
 import Data.Kind
 import Database.PostgreSQL.HListTag.Internal
@@ -145,10 +147,6 @@ instance CHListTagRepFi ren sch tab fld (RFPlain fd) t where
   type GHListTagRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), t)]
   toHListTagFi t = PgTag t :* HNil
   fromHListTagFi (PgTag t :* HNil) = t
-
-type family HListTagMaybe ren sch tab t where
-  HListTagMaybe ren sch tab (Maybe t) = Maybe (HListTag (HListTagRep ren sch tab t))
-  HListTagMaybe ren sch tab t = HListTag (HListTagRep ren sch tab t)
 
 instance (CHListTagRepFromMaybe ren sch fld toTab t b, b ~ IsMaybe t)
   => CHListTagRepFi ren sch tab fld (RFFromHere toTab refs) t where

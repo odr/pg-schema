@@ -4,10 +4,12 @@ import Data.String
 import Data.Text as T
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.DML.Select.Types
+import Database.PostgreSQL.DML.Insert.Types
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple
 import GHC.Int
 
-import Database.Schema.Rec
+-- import Database.Schema.Rec
 import Database.Schema.ShowType
 import PgSchema.Util
 import Prelude as P
@@ -17,29 +19,35 @@ import Prelude as P
 -- updateByKeyJSON Connection -> [r] -> IO [r']
 -- updateExp (e.q. update t set a = a + c + 1 where b > 10)
 
-updateByCond :: forall sch t r r'.
-  (UpdateReturning sch t r r', AllPlain sch t r, ToRow r, FromRow r') =>
+updateByCond :: forall ren sch t -> forall r r' h h'.
+  (UpdateReturning ren sch t r r' h h', AllPlain sch t h, ToRow h, FromRow h') =>
   Connection -> r -> Cond sch t -> IO [r']
-updateByCond conn r (updateText @sch @t @r @r' -> (q,ps)) =
-  trace' (q <> "\n\n" <> P.show ps <> "\n\n") $ query conn (fromString q) $ r :. ps
+updateByCond ren sch t @_r @_r' @h @h' conn r (updateText sch t @h @h' -> (q,ps)) =
+  trace' (q <> "\n\n" <> P.show ps <> "\n\n")
+  $ fmap (fmap (fromHListTag @ren @sch @t))
+  $ query conn (fromString q)
+  $ toHListTag @ren @sch @t r :. ps
 
-updateByCond_ :: forall sch t r.
-  (CRecordInfo sch t r, ToRow r, AllPlain sch t r) =>
+updateByCond_ :: forall ren sch t -> forall r h.
+  (h ~ HRep ren sch t r, HListInfo ren sch t r h, ToRow h, AllPlain sch t h) =>
   Connection -> r -> Cond sch t -> IO Int64
-updateByCond_ conn r (updateText_ @sch @t @r -> (q, ps)) =
-  trace' (q <> "\n\n" <> P.show ps <> "\n\n") $ execute conn (fromString q) (r :. ps)
+updateByCond_ ren sch t @_r @h conn r (updateText_ sch t @h -> (q, ps)) =
+  trace' (q <> "\n\n" <> P.show ps <> "\n\n")
+  $ execute conn (fromString q)
+  $ toHListTag @ren @sch @t r :. ps
 
-updateText :: forall sch t r r' s.
-  (UpdateReturning sch t r r', IsString s, Monoid s) =>
+updateText :: forall sch t -> forall r r' s.
+  (CHListInfo sch t r, CHListInfo sch t r', IsString s, Monoid s) =>
   Cond sch t -> (s, [SomeToField])
-updateText (updateText_ @sch @t @r -> (q, p)) = (q <> " returning " <> fs', p)
+updateText sch t @r @r' (updateText_ sch t @r -> (q, p)) = (q <> " returning " <> fs', p)
   where
     ri' = getRecordInfo @sch @t @r'
     fs' = fromText $ T.intercalate "," [fi.fieldDbName | fi <- ri'.fields]
 
-updateText_ :: forall sch t r s. (IsString s, Monoid s, CRecordInfo sch t r) =>
-  Cond sch t -> (s, [SomeToField])
-updateText_ (pgCond 0 -> (condTxt, condParams)) =
+updateText_
+  :: forall sch t -> forall r s. (IsString s, Monoid s, CHListInfo sch t r)
+  => Cond sch t -> (s, [SomeToField])
+updateText_ sch t @r (pgCond 0 -> (condTxt, condParams)) =
   ("update " <> tn <> " t0 set " <> fs <> fromText whereTxt, condParams )
   where
     ri = getRecordInfo @sch @t @r

@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Database.PostgreSQL.HListTag.Type where
+module Database.PostgreSQL.HListTag.Type(HListTag(..), HListToJSON(..)) where
 
 import Data.Aeson
 import Data.Aeson.Key qualified as Key

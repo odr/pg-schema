@@ -61,7 +61,7 @@ selCat :: forall (tn :: Symbol) -> forall r h.
   ( IsoHListTag RenamerId PgCatalog (PGC tn) r, h ~ HLT tn r
   , CHListInfo PgCatalog (PGC tn) h, FromRow h )
   => Connection -> QueryParam PgCatalog (PGC tn) -> IO ([r], (Text,[SomeToField]))
-selCat tn = selectSch PgCatalog (PGC tn) RenamerId
+selCat tn = selectSch RenamerId PgCatalog (PGC tn)
 
 type HLT s r = HListTag (HListTagRep RenamerId PgCatalog (PGC s) r)
 

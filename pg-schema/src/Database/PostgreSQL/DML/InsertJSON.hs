@@ -17,9 +17,10 @@ import Data.Maybe
 import Data.Text as T hiding (any)
 import Data.Traversable
 import Database.PostgreSQL.DML.Insert.Types
+import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
-import Database.Schema.Rec
+-- import Database.Schema.Rec
 import Database.Schema.ShowType
 import Database.Types.SchList
 import Data.String
@@ -29,35 +30,37 @@ import Prelude as P
 
 
 insertJSON
-  :: forall r r'. forall sch t -> InsertReturning sch t r r'
+  :: forall ren sch t -> forall r r' h h'. InsertReturning ren sch t r r' h h'
   => Connection -> [r] -> IO ([r'], Text)
-insertJSON sch t = insertJSONImpl sch t
+insertJSON ren sch t = insertJSONImpl ren sch t
 
 insertJSON_
-  :: forall r. forall sch t -> InsertNonReturning sch t r
+  :: forall ren sch t -> forall r h. InsertNonReturning ren sch t r h
   => Connection -> [r] -> IO Text
-insertJSON_ sch t = insertJSONImpl_ sch t
+insertJSON_ ren sch t = insertJSONImpl_ ren sch t
 
 upsertJSON
-  :: forall r r'. forall sch t -> UpsertReturning sch t r r'
+  :: forall ren sch t -> forall r r' h h'. UpsertReturning ren sch t r r' h h'
   => Connection -> [r] -> IO ([r'], Text)
-upsertJSON sch t = insertJSONImpl sch t
+upsertJSON ren sch t = insertJSONImpl ren sch t
 
 upsertJSON_
-  :: forall r. forall sch t -> UpsertNonReturning sch t r
+  :: forall ren sch t -> forall r h. UpsertNonReturning ren sch t r h
   => Connection -> [r] -> IO Text
-upsertJSON_ sch t = insertJSONImpl_ sch t
+upsertJSON_ ren sch t = insertJSONImpl_ ren sch t
 
-insertJSONImpl :: forall r r'. forall sch t ->
-  (SrcJSON sch t r, TgtJSON sch t r') => Connection -> [r] -> IO ([r'], Text)
-insertJSONImpl sch t conn rs = withTransactionIfNot conn do
+insertJSONImpl :: forall ren sch t -> forall r r' h h'.
+  (SrcJSON ren sch t r h, TgtJSON ren sch t r' h') => Connection -> [r] -> IO ([r'], Text)
+insertJSONImpl ren sch t @r @r' @h @h' conn rs = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
   [Only (SchList res)] <- let q = "select pg_temp.__ins(?)" in
-    traceShow' q $ trace' (BSL.unpack $ A.encode (SchList rs))  $ query conn q $ Only $ SchList rs
+    traceShow' q
+      $ trace' (BSL.unpack $ A.encode (SchList $ toHListTag @ren @sch @t <$> rs))
+      $ query conn q $ Only $ SchList $ toHListTag @ren @sch @t <$> rs
   void $ execute_ conn "drop function pg_temp.__ins"
-  pure (res, sql)
+  pure (fromHListTag @ren @sch @t <$> res, sql)
   where
-    sql = insertJSONText @r @r' sch t
+    sql = insertJSONText ren sch t @r @r' @h @h'
 
 withTransactionIfNot :: Connection -> IO a -> IO a
 withTransactionIfNot conn act = do
@@ -66,28 +69,28 @@ withTransactionIfNot conn act = do
   (if isInTrans then id else withTransaction conn) act
 
 insertJSONImpl_
-  :: forall r. forall  sch t -> SrcJSON sch t r
+  :: forall ren sch t -> forall r h. SrcJSON ren sch t r h
   => Connection -> [r] -> IO Text
-insertJSONImpl_ sch t conn rs = withTransactionIfNot conn do
+insertJSONImpl_ ren sch t @r @h conn rs = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
-  void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList rs
+  void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList $ toHListTag @ren @sch @t <$> rs
   sql <$ execute_ conn "drop procedure pg_temp.__ins"
   where
-    sql = insertJSONText_ @r sch t
+    sql = insertJSONText_ ren sch t @r @h
 
-insertJSONText_ :: forall r s. forall sch t ->
-  (IsString s, Monoid s, SrcJSON sch t r, Ord s) => s
-insertJSONText_ sch t = insertJSONText' @s (typDefMap @sch) (tabInfoMap @sch)
-  (getRecordInfo @sch @t @r) []
+insertJSONText_ :: forall ren sch t -> forall r h s.
+  (IsString s, Monoid s, SrcJSON ren sch t r h, Ord s) => s
+insertJSONText_ _ren sch t @_r @h = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
+  (getRecordInfo @sch @t @h) []
 
-insertJSONText :: forall r r' s. forall sch t ->
-  (SrcJSON sch t r, TgtJSON sch t r', IsString s, Monoid s, Ord s) => s
-insertJSONText sch t = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
-  (getRecordInfo @sch @t @r) (getRecordInfo @sch @t @r').fields
+insertJSONText :: forall ren sch t -> forall r r' h h' s.
+  (SrcJSON ren sch t r h, TgtJSON ren sch t r' h', IsString s, Monoid s, Ord s) => s
+insertJSONText _ren sch t @_r @_r' @h @h' = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
+  (getRecordInfo @sch @t @h) (getRecordInfo @sch @t @h').fields
 
 insertJSONText'
   :: forall s. (IsString s, Monoid s, Ord s)
-  => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo -> [FieldInfo RecordInfo] -> s
+  => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo -> [FieldInfo] -> s
 insertJSONText' mapTypes mapTabs ir qfs = unlines'
   [ maybe
     "create or replace procedure pg_temp.__ins(data_0 jsonb) as $$"
@@ -114,7 +117,7 @@ data OP = INS | UPD | UPS deriving (Eq, Show)
 insertJSONTextM
   :: forall s. (IsString s, Monoid s, Ord s)
   => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo
-  -> [FieldInfo RecordInfo] -> [s] -> [s] -> MonadInsert s (Maybe s)
+  -> [FieldInfo] -> [s] -> [s] -> MonadInsert s (Maybe s)
 insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
   (spaces, n) <- ask
   let

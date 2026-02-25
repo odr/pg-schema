@@ -1,6 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DataKinds #-}
@@ -61,15 +60,12 @@ data Country = MkCountry
   , name :: Text }
   -- TODO: cycle references lead to halt! Should check to avoid it
   -- , city_country :: SchList City }
-  deriving (Eq, Ord, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance IsoHListTag RenamerSch Sch (NSC "countries") Country where
 
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
-
-deriveQueryRecord id ''Sch (tabInfoMap @Sch) mempty
-  [ ((''Country, []), "sch" ->> "countries") ]
 
 data A = A1 | A2
 data B = B1 | B2
@@ -83,6 +79,9 @@ data Address (a::A) (b::B) = MkAddress
   , numbers :: Maybe (PgArr Int32) }
   deriving Generic
 
+deriving instance Show (Address A2 B1)
+deriving instance Show (Address A1 B1)
+
 instance IsoHListTag RenamerSch Sch (NSC "addresses") (Address A1 b)
 instance IsoHListTag RenamerSch Sch (NSC "addresses") (Address A2 b)
 
@@ -91,6 +90,9 @@ data City a b = MkCity
   , city_country :: If (a == A1) EmptyField (Maybe Country)
   , address_city :: SchList (Address a b) }
   deriving Generic
+
+deriving instance Show (City A2 B1)
+deriving instance Show (City A1 B1)
 
 instance IsoHListTag RenamerSch Sch (NSC "cities") (City A1 b)
 instance IsoHListTag RenamerSch Sch (NSC "cities") (City A2 b)
@@ -102,6 +104,9 @@ data AddressRev a b = MkAddressRev
   , zipcode      :: Maybe Text
   , address_city :: Maybe (City a b) }
   deriving Generic
+
+deriving instance Show (AddressRev A2 B1)
+deriving instance Show (AddressRev A1 B1)
 
 instance IsoHListTag RenamerSch Sch (NSC "addresses") (AddressRev A1 b)
 instance IsoHListTag RenamerSch Sch (NSC "addresses") (AddressRev A2 b)
@@ -179,9 +184,13 @@ data CustomerI = MkCustomerI
   }
   deriving Generic
 
+instance IsoHListTag RenamerSch Sch (NSC "customers") CustomerI where
+
 newtype CompanyI = MkCompanyI
   { name :: Text }
   deriving Generic
+
+instance IsoHListTag RenamerSch Sch (NSC "companies") CompanyI where
 
 data AddressI = MkAddressI
   { street :: Text
@@ -191,6 +200,8 @@ data AddressI = MkAddressI
   , cust_addr :: SchList CustomerI
   , comp_addr :: SchList CompanyI }
   deriving Generic
+
+instance IsoHListTag RenamerSch Sch (NSC "addresses") AddressI where
 
 instance HasResolution a => FromField (Fixed a) where
   fromField f mb = (realToFrac :: Rational -> Fixed a) <$> fromField f mb
@@ -206,38 +217,66 @@ data AddressRet = AddressRet
   , cust_addr :: SchList (PgTagged "id" Int32)}
   deriving Generic
 
-deriveQueryRecord P.id ''Sch (tabInfoMap @Sch) (typDefMap @Sch)
-  [ ((''Company,[]), "sch" ->> "companies")
-  , ((''Article,[]), "sch" ->> "articles")
-  , ((''Address, [['A1,'B1],['A2,'B1]]), "sch" ->> "addresses")
-  , ((''City, [['A1,'B1],['A2,'B1]]), "sch" ->> "cities")
-  , ((''AddressRev, [['A1,'B1],['A2,'B1]]), "sch" ->> "addresses")
-  , ((''OrdPosI, []), "sch" ->> "order_positions")
-  , ((''OrderI, []), "sch" ->> "orders")
-  , ((''CustomerI, []), "sch" ->> "customers")
-  , ((''CompanyI, []), "sch" ->> "companies")
-  , ((''AddressI, []), "sch" ->> "addresses")
-  , ((''OrdPos, []), "sch" ->> "order_positions")
-  , ((''Order, []), "sch" ->> "orders")
-  , ((''CustId, []), "sch" ->> "customers")
-  , ((''AddressRet,[]), "sch" ->> "addresses")
-  ]
-
-deriveQueryRecord (\s -> if P.drop 3 s == "Price" then "price" else s) ''Sch
-  (tabInfoMap @Sch) (typDefMap @Sch)
-  [((''PosCnt,[]), "sch" ->> "order_positions")]
-
 type HSch s r = HListTag (HListTagRep RenamerSch Sch (NSC s) r)
 
 selSch :: forall (tn :: Symbol) -> forall r h.
   ( IsoHListTag RenamerSch Sch (NSC tn) r, h ~ HSch tn r
   , CHListInfo Sch (NSC tn) h, FromRow h )
   => Connection -> QueryParam Sch (NSC tn) -> IO ([r], (Text,[SomeToField]))
-selSch tn = selectSch Sch (NSC tn) RenamerSch
+selSch tn = selectSch RenamerSch Sch (NSC tn)
+
+insSch
+  :: forall tn -> forall r r' h h'
+  . InsertReturning' RenamerSch Sch (NSC tn) r r' h h'
+  => Connection -> [r] -> IO ([r'], Text)
+insSch tn = insertSch RenamerSch Sch (NSC tn)
+
+insSch_
+  :: forall tn -> forall r h
+  . InsertNonReturning' RenamerSch Sch (NSC tn) r h
+  => Connection -> [r] -> IO (Int64, Text)
+insSch_ tn = insertSch_ RenamerSch Sch (NSC tn)
 
 selSchText :: forall tn -> forall r h. (CHListInfo Sch (NSC tn) h, h ~ HSch tn r) =>
   QueryParam Sch (NSC tn) -> (Text,[SomeToField])
 selSchText tn @r = selectText @Sch @(NSC tn) @(HSch tn r)
+
+insJSONText :: forall tn -> forall r r' h h'.
+  ( SrcJSON RenamerSch Sch (NSC tn) r h, TgtJSON RenamerSch Sch (NSC tn) r' h') => Text
+insJSONText tn @r @r' @h @h' = insertJSONText RenamerSch Sch (NSC tn) @r @r' @h @h'
+
+insJSON_
+  :: forall tn -> forall r h. InsertNonReturning RenamerSch Sch (NSC tn) r h
+  => Connection -> [r] -> IO Text
+insJSON_ tn = insertJSON_ RenamerSch Sch (NSC tn)
+
+insJSON
+  :: forall tn -> forall r r' h h'. InsertReturning RenamerSch Sch (NSC tn) r r' h h'
+  => Connection -> [r] -> IO ([r'], Text)
+insJSON tn = insertJSON RenamerSch Sch (NSC tn)
+
+upsJSON_
+  :: forall tn -> forall r h. UpsertNonReturning RenamerSch Sch (NSC tn) r h
+  => Connection -> [r] -> IO Text
+upsJSON_ tn = upsertJSON_ RenamerSch Sch (NSC tn)
+
+upsJSON
+  :: forall tn -> forall r r' h h'. UpsertReturning RenamerSch Sch (NSC tn) r r' h h'
+  => Connection -> [r] -> IO ([r'], Text)
+upsJSON tn = upsertJSON RenamerSch Sch (NSC tn)
+
+updByCond_
+  :: forall tn -> forall r h.
+  ( h ~ HRep RenamerSch Sch (NSC tn) r, HListInfo RenamerSch Sch (NSC tn) r h
+  , ToRow h, AllPlain Sch (NSC tn) h )
+  => Connection -> r -> Cond Sch (NSC tn) -> IO Int64
+updByCond_ tn = updateByCond_ RenamerSch Sch (NSC tn)
+
+updByCond :: forall tn -> forall r r' h h'.
+  ( UpdateReturning RenamerSch Sch (NSC tn) r r' h h'
+  , AllPlain Sch (NSC tn) h, ToRow h, FromRow h' )
+  => Connection -> r -> Cond Sch (NSC tn) -> IO [r']
+updByCond tn = updateByCond RenamerSch Sch (NSC tn)
 
 main :: IO ()
 main = do
@@ -263,12 +302,12 @@ main = do
   ar <- selSch "addresses" @(AddressRev A2 B1) conn qp
   print ar
   T.putStrLn "\n====== 8 ========\n"
-  (cids,t) <- insertSch Sch (NSC "countries") conn countries
+  (cids,t) <- insSch "countries" conn countries
   T.putStrLn t
   mapM_ (print @(PgTagged "id" Int32)) cids
   d <- utctDay <$> getCurrentTime
   T.putStrLn "\n====== 10 ========\n"
-  T.putStrLn $ I2.insertJSONText @AddressI @(PgTagged "id" Int32) Sch (NSC "addresses")
+  T.putStrLn $ insJSONText "addresses" @AddressI @(PgTagged "id" Int32)
   T.putStrLn "\n====== 11 ========\n"
   let
     insData =
@@ -286,28 +325,28 @@ main = do
       , MkAddressI "str" (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
       , MkAddressI "street2" (Just "zip2") mempty Nothing (SchList [MkCustomerI "Dima" mempty])
         $ SchList [MkCompanyI "WellTyped"] ]
+  void $ insJSON_ "addresses" @AddressI conn insData
   (as1 :: ["id" := Int32 :.. "cust_addr" := SchList ("id" := Int32 :.. "name" := Text)], _insTxt)
-    <- I2.insertJSON @AddressI Sch (NSC "addresses") conn insData
+    <- insJSON "addresses" @AddressI conn insData
   curTime <- T.show <$> getCurrentTime
-  I2.upsertJSON_ Sch (NSC "addresses") conn $ as1 <&> \(a :.. PgTag xs) ->
+  upsJSON_ "addresses" conn $ as1 <&> \(a :.. PgTag xs) ->
     a :.. "cust_addr" =: (xs <&> \(cid :.. cname) ->
       cid :.. fmap (<> ": " <> curTime <> " updated") cname)
   let
     upsVals = as1 <&> \(a :.. PgTag xs) -> a :.. "cust_addr" =:
       (xs <&> \(cid :.. _) -> cid :.. "note" =: Just curTime)
   mapM_ print upsVals
-  I2.upsertJSON_ Sch (NSC "addresses") conn upsVals
+  upsJSON_ "addresses" conn upsVals
   T.putStrLn "\n====== 13 ========\n"
   (as2 :: ["id" := Int32 :.. "cust_addr" := SchList
     ("id" := Int32 :.. "updated_at" := Maybe ZonedTime)], _upsTxt)
-    <- I2.upsertJSON Sch (NSC "addresses") conn upsVals
+    <- upsJSON "addresses" conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"
-  void $ updateByCond_ @Sch @(NSC "addresses") conn
-    (pgTag @"zipcode" (Just @Text "zip_new"))
+  void $ updByCond_ "addresses" conn (pgTag @"zipcode" (Just @Text "zip_new"))
     $ "street" =? ("street2"::Text)
   (xs :: ["zipcode" := Maybe Text :.. "phones" := Maybe (PgArr Text)]) <-
-    updateByCond @Sch @(NSC "addresses") conn
+    updByCond "addresses" conn
       ("phones" =: Just (PgArr ["111" :: Text,"222"]))
       $ "street" =? ("street2"::Text)
   mapM_ print xs

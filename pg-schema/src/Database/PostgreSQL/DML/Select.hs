@@ -53,11 +53,11 @@ data QueryState = QueryState
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
-selectSch :: forall sch tab ren -> forall r h.
+selectSch :: forall ren sch tab -> forall r h.
   ( IsoHListTag ren sch tab r, h ~ HListTag (HListTagRep ren sch tab r)
   , CHListInfo sch tab h, FromRow h)
   => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
-selectSch sch tab ren @r @h conn (selectText @sch @tab @h -> (sql,fs)) =
+selectSch ren sch tab @r @h conn (selectText @sch @tab @h -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
   $ (,(sql,fs)) . fmap (fromHListTag @ren @sch @tab @r) <$> query conn (fromString $ unpack sql) fs
 

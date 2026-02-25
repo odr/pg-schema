@@ -16,7 +16,7 @@ import Database.PostgreSQL.Schema.Schema as PGS
 import Database.Schema.Def as PGS
 import Database.Schema.Rec as PGS hiding
   (CRecordInfo(..), FieldInfo'(..), FieldInfoK, FieldInfo
-    , RecordInfo, fields, tabName)
+    , RecordInfo, fields, tabName, AllPlain, allPlainB, RestMand, RestPKFlds)
 import Database.Schema.TH as PGS
 import Database.Types.Aggr as PGS
 import Database.Types.SchList as PGS

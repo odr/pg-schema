@@ -1,16 +1,21 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Database.PostgreSQL.HListTag.HListInfo where
+module Database.PostgreSQL.HListTag.HListInfo
+  ( CHListInfo(..), RecordInfo'(..), FieldInfo'(..)
+  , RecordInfo, FieldInfo, RecordInfoK, FieldInfoK
+  , RestMand, AllPlain, RestPKFlds, allPlainB )
+  where
 
 import Data.Kind
 import Data.Singletons.TH
 import Data.String.Singletons
-import Data.Text as T
+import Data.Text as T ( Text )
 import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
 import Database.Schema.Def
 import Database.Types.Aggr
 import Database.Types.SchList
-import GHC.TypeLits
+import GHC.TypeLits as TL
+import GHC.TypeError
 import PgSchema.Util
 import Prelude.Singletons
 import Text.Show.Singletons
@@ -27,6 +32,11 @@ singletons [d|
     { tabName :: NameNS' s
     , fields :: [FieldInfo' s] }
     deriving Show
+  |]
+
+promote [d|
+  allPlainB :: [FieldInfo' s] -> Bool
+  allPlainB = all (\fi -> case fieldKind fi of RFPlain _ -> True; _ -> False)
   |]
 
 type RecordInfo = RecordInfo' Text
@@ -103,3 +113,19 @@ instance (ToStar (TTagFieldInfo sch (RFFromHere toTab refs) t), CHListInfo sch t
   => CTagFieldInfo sch (RFFromHere toTab refs) t where
     type TTagFieldInfo sch (RFFromHere toTab refs) t = RFFromHere
       ('RecordInfo toTab (TRecordInfo sch toTab (UnMaybe t))) refs
+
+type RestMand sch t r rFlds =
+  RestMandatory sch t (Map FieldDbNameSym0 (TRecordInfo sch t r) ++ rFlds)
+
+type RestPKFlds sch t r rFlds =
+  RestPK sch t (Map FieldDbNameSym0  (TRecordInfo sch t r) ++ rFlds)
+
+
+type family AllPlain sch tab r where
+  AllPlain sch t r = Assert
+    (AllPlainB (TRecordInfo sch t r))
+    (TL.TypeError
+      (TL.Text "Not all fields in record are 'plain' fields "
+        :$$: TL.Text "Table: " :<>: TL.ShowType t
+        :$$: TL.Text "Type: " :<>: TL.ShowType r
+        :$$: TL.Text "Record Info: " :<>: TL.ShowType (TRecordInfo sch t r)))
