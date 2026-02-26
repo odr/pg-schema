@@ -47,7 +47,7 @@ data ParentInfo = ParentInfo
 
 data QueryState = QueryState
   { qsLastTabNum  :: Int
- , qsParents     :: [ParentInfo] }
+  , qsParents     :: [ParentInfo] }
   deriving Show
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)

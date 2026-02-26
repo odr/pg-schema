@@ -1,4 +1,3 @@
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
 module Database.PostgreSQL.HListTag.Class
   (IsoHListTag(..), Renamer(..), RenamerId)
@@ -35,21 +34,31 @@ instance Renamer RenamerId where
 -- | Iso between record @r@ and HListTag for table @tab@ in schema @sch@.
 class IsoHListTag ren sch (tab :: NameNSK) r where
   type HListTagRep ren sch tab r :: [(SymNat, Type)]
-  type HListTagRep ren sch tab r = GHListTagRep ren sch tab (Rep r)
   toHListTag   :: r -> HListTag (HListTagRep ren sch tab r)
   fromHListTag :: HListTag (HListTagRep ren sch tab r) -> r
 
-  default toHListTag
-    :: ( Generic r, rep ~ Rep r, GIsoHListTag ren sch tab rep
-      , HListTagRep ren sch tab r ~ GHListTagRep ren sch tab rep )
-    => r -> HListTag (HListTagRep ren sch tab r)
-  toHListTag = gToHListTag @ren @sch @tab @(Rep r) . from
+data IsoCase = TaggedCase | ProductCase | GenericCase
 
-  default fromHListTag
-    :: ( Generic r, rep ~ Rep r, GIsoHListTag ren sch tab rep
-       , HListTagRep ren sch tab r ~ GHListTagRep ren sch tab rep )
-    => HListTag (HListTagRep ren sch tab r) -> r
-  fromHListTag = to . (gFromHListTag @ren @sch @tab @(Rep r))
+type family TFIsoCase t :: IsoCase where
+  TFIsoCase (a :. b) = ProductCase
+  TFIsoCase (a := b) = TaggedCase
+  TFIsoCase t = GenericCase
+
+class IsoHListTagIsoCase (ren :: Type) (sch :: Type) (tab :: NameNSK) t (ic :: IsoCase) where
+  type HListTagRepIsoCase ren sch tab t ic :: [(SymNat, Type)]
+  toHListTagIsoCase :: t -> HListTag (HListTagRepIsoCase ren sch tab t ic)
+  fromHListTagIsoCase :: HListTag (HListTagRepIsoCase ren sch tab t ic) -> t
+
+instance IsoHListTagIsoCase ren sch tab t (TFIsoCase t) => IsoHListTag ren sch tab t where
+  type HListTagRep ren sch tab t = HListTagRepIsoCase ren sch tab t (TFIsoCase t)
+  toHListTag = toHListTagIsoCase @ren @sch @tab @t @(TFIsoCase t)
+  fromHListTag = fromHListTagIsoCase @ren @sch @tab @t @(TFIsoCase t)
+
+instance (Generic r, rep ~ Rep r, GIsoHListTag ren sch tab rep)
+  => IsoHListTagIsoCase ren sch tab r 'GenericCase where
+  type HListTagRepIsoCase ren sch tab r 'GenericCase = GHListTagRep ren sch tab (Rep r)
+  toHListTagIsoCase = gToHListTag @ren @sch @tab @(Rep r) . from
+  fromHListTagIsoCase = to . (gFromHListTag @ren @sch @tab @(Rep r))
 
 
 class GIsoHListTag (ren :: Type) (sch :: Type) (tab :: NameNSK) (rep :: Type -> Type) where
@@ -190,20 +199,20 @@ instance (IsoHListTag ren sch tab a, IsoHListTag ren sch tab b
   , SplitAtHListTag (HListTagRep ren sch tab a) (HListTagRep ren sch tab b)
   , NormalizeHListTag (HListTagRep ren sch tab a SP.++ HListTagRep ren sch tab b)
   )
-  => IsoHListTag ren sch tab (a :. b) where
-    type HListTagRep ren sch tab (a :. b) =
+  => IsoHListTagIsoCase ren sch tab (a :. b) 'ProductCase where
+    type HListTagRepIsoCase ren sch tab (a :. b) 'ProductCase =
       Normalize (HListTagRep ren sch tab a SP.++ HListTagRep ren sch tab b)
-    toHListTag (a :. b) = normalizeHListTag
+    toHListTagIsoCase (a :. b) = normalizeHListTag
       $ appendHListTag (toHListTag @ren @sch @tab a) (toHListTag @ren @sch @tab b)
-    fromHListTag ab = fromHListTag @ren @sch @tab a :. fromHListTag @ren @sch @tab b
+    fromHListTagIsoCase ab = fromHListTag @ren @sch @tab a :. fromHListTag @ren @sch @tab b
       where
         (a, b) = splitAtHListTag @(HListTagRep ren sch tab a) @(HListTagRep ren sch tab b)
           $ denormalizeHListTag ab
 
 instance CHListTagRepTypeCase ren sch tab fld t (GetTypeCase t)
-  => IsoHListTag ren sch tab (PgTagged fld t) where
-    type HListTagRep ren sch tab (PgTagged fld t) =
+  => IsoHListTagIsoCase ren sch tab (PgTagged fld t) 'TaggedCase where
+    type HListTagRepIsoCase ren sch tab (PgTagged fld t) 'TaggedCase =
       HListTagRepTypeCase ren sch tab fld t (GetTypeCase t)
-    toHListTag (PgTag t) =
+    toHListTagIsoCase (PgTag t) =
       toHListTagTypeCase @ren @sch @tab @fld @t @(GetTypeCase t) t
-    fromHListTag = PgTag . fromHListTagTypeCase @ren @sch @tab @fld @t @(GetTypeCase t)
+    fromHListTagIsoCase = PgTag . fromHListTagTypeCase @ren @sch @tab @fld @t @(GetTypeCase t)

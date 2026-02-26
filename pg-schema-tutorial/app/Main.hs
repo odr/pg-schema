@@ -62,8 +62,6 @@ data Country = MkCountry
   -- , city_country :: SchList City }
   deriving (Eq, Ord, Show, Generic)
 
-instance IsoHListTag RenamerSch Sch (NSC "countries") Country where
-
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
 
@@ -82,9 +80,6 @@ data Address (a::A) (b::B) = MkAddress
 deriving instance Show (Address A2 B1)
 deriving instance Show (Address A1 B1)
 
-instance IsoHListTag RenamerSch Sch (NSC "addresses") (Address A1 b)
-instance IsoHListTag RenamerSch Sch (NSC "addresses") (Address A2 b)
-
 data City a b = MkCity
   { name         :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
@@ -93,9 +88,6 @@ data City a b = MkCity
 
 deriving instance Show (City A2 B1)
 deriving instance Show (City A1 B1)
-
-instance IsoHListTag RenamerSch Sch (NSC "cities") (City A1 b)
-instance IsoHListTag RenamerSch Sch (NSC "cities") (City A2 b)
 
 data AddressRev a b = MkAddressRev
   { street       :: Text
@@ -108,22 +100,15 @@ data AddressRev a b = MkAddressRev
 deriving instance Show (AddressRev A2 B1)
 deriving instance Show (AddressRev A1 B1)
 
-instance IsoHListTag RenamerSch Sch (NSC "addresses") (AddressRev A1 b)
-instance IsoHListTag RenamerSch Sch (NSC "addresses") (AddressRev A2 b)
-
 data Company = MkCompany
   { name       :: Text
   , address_id :: Maybe Int32 }
   deriving Generic
 
-instance IsoHListTag RenamerSch Sch (NSC "companies") Company where
-
 data Article = MkArticle
   { name :: Text
   , code :: Maybe Text }
   deriving Generic
-
-instance IsoHListTag RenamerSch Sch (NSC "articles") Article where
 
 data OrdPos = MkOrdPos
   { num          :: Int32
@@ -131,8 +116,6 @@ data OrdPos = MkOrdPos
   , cnt          :: Int32
   , price        :: Centi }
   deriving Generic
-
-instance IsoHListTag RenamerSch Sch (NSC "order_positions") OrdPos where
 
 data PosCnt = MkPosCnt
   { order_id  :: Int32
@@ -143,7 +126,6 @@ data PosCnt = MkPosCnt
   , avgPrice  :: Aggr "avg" (Maybe Double) }
   deriving Generic
 
-instance IsoHListTag RenamerSch Sch (NSC "order_positions") PosCnt where
 -- data Customer = Customer
 --   { }
 data Order = MkOrder
@@ -154,16 +136,12 @@ data Order = MkOrder
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
   deriving Generic
 
-instance IsoHListTag RenamerSch Sch (NSC "orders") Order where
-
 data OrdPosI = MkOrdPosI
   { num          :: Int32
   , article_id   :: Int32
   , cnt          :: Int32
   , price        :: Centi }
   deriving Generic
-
-instance IsoHListTag RenamerSch Sch (NSC "order_positions") OrdPosI where
 
 data OrderI = MkOrderI
   { day        :: Day
@@ -172,8 +150,6 @@ data OrderI = MkOrderI
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state"))
   , opos_order :: SchList OrdPosI }
   deriving Generic
-
-instance IsoHListTag RenamerSch Sch (NSC "orders") OrderI where
 
 data CustomerI = MkCustomerI
   { name :: Text
@@ -184,13 +160,9 @@ data CustomerI = MkCustomerI
   }
   deriving Generic
 
-instance IsoHListTag RenamerSch Sch (NSC "customers") CustomerI where
-
 newtype CompanyI = MkCompanyI
   { name :: Text }
   deriving Generic
-
-instance IsoHListTag RenamerSch Sch (NSC "companies") CompanyI where
 
 data AddressI = MkAddressI
   { street :: Text
@@ -200,8 +172,6 @@ data AddressI = MkAddressI
   , cust_addr :: SchList CustomerI
   , comp_addr :: SchList CompanyI }
   deriving Generic
-
-instance IsoHListTag RenamerSch Sch (NSC "addresses") AddressI where
 
 instance HasResolution a => FromField (Fixed a) where
   fromField f mb = (realToFrac :: Rational -> Fixed a) <$> fromField f mb
