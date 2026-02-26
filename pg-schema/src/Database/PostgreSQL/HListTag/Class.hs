@@ -132,8 +132,8 @@ instance (CHListTagRepRen ren sch tab s t, s ~ Apply ren fld)
 
 instance CHListTagRepTypeCase ren sch tab (fld :: Symbol) t 'AggrCountCase where
   type HListTagRepTypeCase ren sch tab fld t 'AggrCountCase = '[ '( '(fld, 0), t)]
-  toHListTagTypeCase t = PgTag t :* HNil
-  fromHListTagTypeCase (PgTag t :* HNil) = t
+  toHListTagTypeCase t = t :* HNil
+  fromHListTagTypeCase (t :* HNil) = t
 
 class CHListTagRepRen ren sch tab s t where
   type HListTagRepRen ren sch tab s t :: [(SymNat, Type)]
@@ -157,8 +157,8 @@ instance CanConvert sch (FdType fd) (FdNullable fd) t
   => CHListTagRepFi ren sch tab fld (RFPlain fd) t
   where
     type GHListTagRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), t)]
-    toHListTagFi t = PgTag t :* HNil
-    fromHListTagFi (PgTag t :* HNil) = t
+    toHListTagFi t = t :* HNil
+    fromHListTagFi (t :* HNil) = t
 
 instance (CHListTagRepFromMaybe ren sch fld toTab t b, b ~ IsMaybe t)
   => CHListTagRepFi ren sch tab fld (RFFromHere toTab refs) t where
@@ -176,23 +176,23 @@ instance IsoHListTag ren sch toTab t
   => CHListTagRepFromMaybe ren sch fld toTab (Maybe t) 'True where
     type HListTagRepFromMaybe ren sch fld toTab (Maybe t) 'True =
       '[ '( '(fld, 0), Maybe (HListTag (HListTagRep ren sch toTab t))) ]
-    toHListTagFromMaybe (Just t) = PgTag (Just $ toHListTag @ren @sch @toTab t) :* HNil
-    toHListTagFromMaybe Nothing = PgTag Nothing :* HNil
-    fromHListTagFromMaybe (PgTag (Just t) :* HNil) = Just $ fromHListTag @ren @sch @toTab t
-    fromHListTagFromMaybe (PgTag Nothing :* HNil) = Nothing
+    toHListTagFromMaybe (Just t) = Just (toHListTag @ren @sch @toTab t) :* HNil
+    toHListTagFromMaybe Nothing = Nothing :* HNil
+    fromHListTagFromMaybe ((Just t) :* HNil) = Just $ fromHListTag @ren @sch @toTab t
+    fromHListTagFromMaybe (Nothing :* HNil) = Nothing
 
 instance IsoHListTag ren sch toTab t
   => CHListTagRepFromMaybe ren sch fld toTab t 'False where
     type HListTagRepFromMaybe ren sch fld toTab t 'False =
       '[ '( '(fld, 0), HListTag (HListTagRep ren sch toTab t)) ]
-    toHListTagFromMaybe t = PgTag (toHListTag @ren @sch @toTab t) :* HNil
-    fromHListTagFromMaybe (PgTag t :* HNil) = fromHListTag @ren @sch @toTab t
+    toHListTagFromMaybe t = toHListTag @ren @sch @toTab t :* HNil
+    fromHListTagFromMaybe (t :* HNil) = fromHListTag @ren @sch @toTab t
 
 instance IsoHListTag ren sch fromTab t
   => CHListTagRepFi ren sch tab fld (RFToHere (fromTab :: NameNSK) refs) (SchList t) where
   type GHListTagRepFi ren sch tab fld (RFToHere fromTab refs) (SchList t) = '[ '( '(fld, 0), SchList (HListTag (HListTagRep ren sch fromTab t))) ]
-  toHListTagFi xs = PgTag (toHListTag @ren @sch @fromTab <$> xs) :* HNil
-  fromHListTagFi (PgTag xs :* HNil) = fromHListTag @ren @sch @fromTab <$> xs
+  toHListTagFi xs = (toHListTag @ren @sch @fromTab <$> xs) :* HNil
+  fromHListTagFi (xs :* HNil) = fromHListTag @ren @sch @fromTab <$> xs
 
 --------------------------------------------------------------------------------
 -- (:.) and PgTagged

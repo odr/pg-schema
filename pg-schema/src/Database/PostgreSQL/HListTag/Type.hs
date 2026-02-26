@@ -9,7 +9,6 @@ import Data.Kind
 import Data.Text as T
 import Data.Typeable
 import Database.Schema.Def
-import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
@@ -25,7 +24,7 @@ infixr 5 :*
 -- | Heterogeneous list with Symbol tags (field names)
 data HListTag (ts :: [(SymNat, Type)]) where
   HNil :: HListTag '[]
-  (:*) :: PgTagged s t -> HListTag ts -> HListTag ('(s, t) ': ts)
+  (:*) :: t -> HListTag ts -> HListTag ('(s, t) ': ts)
 
 instance Show (HListTag '[]) where
   show HNil = "HNil"
@@ -49,14 +48,13 @@ instance Semigroup (HListTag '[]) where
   _ <> _ = HNil
 
 instance (Semigroup t, Semigroup (HListTag ts)) => Semigroup (HListTag ('(s, t) ': ts)) where
-  (PgTag x1 :* xs1) <> (PgTag x2 :* xs2) =
-    PgTag (x1 <> x2) :* (xs1 <> xs2)
+  (x1 :* xs1) <> (x2 :* xs2) = (x1 <> x2) :* (xs1 <> xs2)
 
 instance Monoid (HListTag '[]) where
   mempty = HNil
 
 instance (Monoid t, Monoid (HListTag ts)) => Monoid (HListTag ('(s, t) ': ts)) where
-  mempty = PgTag mempty :* mempty
+  mempty = mempty :* mempty
 
 --------------------------------------------------------------------------------
 -- 2.2. Database instances
@@ -65,13 +63,13 @@ instance ToRow (HListTag '[]) where
   toRow _ = []
 
 instance (ToField t, ToRow (HListTag ts)) => ToRow (HListTag ('(s, t) ': ts)) where
-  toRow (PgTag val :* xs) = toField val : toRow xs
+  toRow (val :* xs) = toField val : toRow xs
 
 instance FromRow (HListTag '[]) where
   fromRow = pure HNil
 
 instance (FromField t, FromRow (HListTag ts)) => FromRow (HListTag ('(s, t) ': ts)) where
-  fromRow = ((:*) . PgTag <$> field) <*> fromRow
+  fromRow = (:*) <$> field <*> fromRow
 
 instance (FromJSON (HListTag xs), Typeable (HListTag xs)) => FromField (HListTag xs) where
   fromField = fromJSONField
@@ -118,10 +116,10 @@ instance HListToJSON '[] where
 instance (KnownSymNat sn, ToJSON t, FromJSON t, HListToJSON ts)
       => HListToJSON ('(sn, t) ': ts) where
 
-  toSeriesFields (PgTagged val :* rest) =
+  toSeriesFields (val :* rest) =
     Key.fromString (T.unpack $ nameSymNat sn) .= val <> toSeriesFields rest
 
-  toMapFields (PgTagged val :* rest) =
+  toMapFields (val :* rest) =
     KM.insert (Key.fromString (T.unpack $ nameSymNat sn)) (toJSON val) (toMapFields rest)
 
   parseFields km = do
@@ -131,7 +129,7 @@ instance (KnownSymNat sn, ToJSON t, FromJSON t, HListToJSON ts)
         -- Парсим значение и, если падает, добавляем контекст с именем поля
         val  <- parseJSON v <?> Key key
         rest <- parseFields km
-        pure (PgTagged val :* rest)
+        pure (val :* rest)
     where
       keyString = T.unpack $ nameSymNat sn
       key = Key.fromString keyString

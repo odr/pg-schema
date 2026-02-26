@@ -13,7 +13,6 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Text as T
 import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Utils
-import Database.PostgreSQL.PgTagged
 import Database.Schema.Def
 import Database.Types.SchList (SchList (..))
 import Prelude as P
@@ -56,13 +55,13 @@ instance
   , Applicative f
   , HUpdateByKey ts f
   ) => HUpdateByKey ('(sn, t) ': ts) f where
-  hUpdateByKey key v (PgTag ft :* rest)
+  hUpdateByKey key v (ft :* rest)
     | key == expectedKey = do
         x <- firstPrefix "HListTag field parse error: " (parseEither parseJSON v)
-        pure (PgTag (pure x) :* rest)
+        pure (pure x :* rest)
     | otherwise = do
         rest' <- hUpdateByKey @ts @f key v rest
-        pure (PgTag ft :* rest')
+        pure (ft :* rest')
     where
       expectedKey = Key.fromString (T.unpack $ nameSymNat sn)
 
@@ -138,13 +137,13 @@ instance
   , Applicative f
   , HUpdateByKeyStream ts f
   ) => HUpdateByKeyStream ('(sn, t) ': ts) f where
-  hUpdateByKeyStream key toks (PgTag ft :* rest)
+  hUpdateByKeyStream key toks (ft :* rest)
     | key == expectedKey = do
         (x, rec') <- parseFromTokens @t toks
-        pure (PgTag (pure x) :* rest, rec')
+        pure (pure x :* rest, rec')
     | otherwise = do
         (rest', rec'') <- hUpdateByKeyStream @ts @f key toks rest
-        pure (PgTag ft :* rest', rec'')
+        pure (ft :* rest', rec'')
    where
     expectedKey = Key.fromString (T.unpack $ nameSymNat sn)
 
