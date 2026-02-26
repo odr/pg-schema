@@ -60,7 +60,7 @@ data Country = MkCountry
   { code :: Maybe Text
   , name :: Text }
   -- TODO: cycle references lead to halt! Should check to avoid it
-  -- , city_country :: SchList City }
+  -- , city_country :: [City A2 B1] }
   deriving (Eq, Ord, Show, Generic)
 
 instance Arbitrary Country where
@@ -82,7 +82,7 @@ deriving instance Show (Address A2 B1)
 deriving instance Show (Address A1 B1)
 
 data City a b = MkCity
-  { name         :: Maybe Text
+  { name        :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
   , address_city :: [Address a b] }
   deriving Generic
@@ -95,7 +95,7 @@ data AddressRev a b = MkAddressRev
   , home         :: Maybe Text
   , app          :: If (a == A1) (Maybe Text) EmptyField
   , zipcode      :: Maybe Text
-  , address_city :: Maybe (City a b) }
+  , address_city :: City a b }
   deriving Generic
 
 deriving instance Show (AddressRev A2 B1)
@@ -269,8 +269,11 @@ main = do
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
   (_::[Article], _) <- selSch "articles" conn qpEmpty
+  -- upsJSON_ "addresses" @(AddressRev A2 B1) conn [MkAddressRev
+  --   { street = "str1", home = Nothing, app = emptyField, zipcode = Nothing
+  --   , address_city = Nothing }]
   ar <- selSch "addresses" @(AddressRev A2 B1) conn qp
-  print ar
+  mapM_ print ar
   T.putStrLn "\n====== 8 ========\n"
   (cids,t) <- insSch "countries" conn countries
   T.putStrLn t

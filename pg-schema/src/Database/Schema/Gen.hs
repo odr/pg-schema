@@ -67,35 +67,90 @@ textRef fromDef toDef fromName toName =
   "'Ref " <> showType fromName <> " (" <> showType fromDef <> ") "
   <> showType toName <> " (" <> showType toDef <> ")"
 
-textFieldInfoPlain :: Text -> NameNS -> Text -> FldDef -> Text
-textFieldInfoPlain sch tab fldName fd =
-  "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
-  <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = \n"
-  <> "    'RFPlain (" <> showType fd <> ")\n\n"
+-- RHS only (for closed type family equations)
+rhsPlain :: FldDef -> Text
+rhsPlain fd = "'RFPlain (" <> showType fd <> ")"
 
-textFieldInfoToHere :: Text -> NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
-textFieldInfoToHere sch tab relName rel mfld =
-  let fldName = nnsName relName
-      fromTab = rdFrom rel
-      refsText = T.intercalate " " $
+rhsToHere :: NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
+rhsToHere tab fromTab rel mfld =
+  let refsText = T.intercalate " " $
         [ textRef (mfld M.! (fromTab, fromName)) (mfld M.! (tab, toName)) fromName toName
         | (fromName, toName) <- rdCols rel
         ]
-  in "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
-  <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = \n"
-  <> "    'RFToHere " <> showType fromTab <> "\n      '[ " <> refsText <> " ]\n\n"
+  in "'RFToHere " <> showType fromTab <> "\n      '[ " <> refsText <> " ]"
 
-textFieldInfoFromHere :: Text -> NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
-textFieldInfoFromHere sch tab relName rel mfld =
-  let fldName = nnsName relName
-      toTab = rdTo rel
-      refsText = T.intercalate " " $
+rhsFromHere :: NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
+rhsFromHere tab toTab rel mfld =
+  let refsText = T.intercalate " " $
         [ textRef (mfld M.! (tab, fromName)) (mfld M.! (toTab, toName)) fromName toName
         | (fromName, toName) <- rdCols rel
         ]
-  in "instance CFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" where\n"
-  <> "  type TFieldInfo " <> sch <> " " <> showType tab <> " \"" <> fldName <> "\" = \n"
-  <> "    'RFFromHere " <> showType toTab <> "\n      '[ " <> refsText <> " ]\n\n"
+  in "'RFFromHere " <> showType toTab <> "\n      '[ " <> refsText <> " ]"
+
+-- Closed type family TFieldInfo<Sch> and single CFieldInfo instance
+typeFamilyName :: Text -> Text
+typeFamilyName sch = "TFieldInfo" <> sch
+
+typeErrorMsg
+  :: Text -> Text -> [Text] -> [Text] -> Text
+typeErrorMsg sch tabStr fields rels =
+  "TE.TypeError (TE.Text \"In schema \" TE.:<>: TE.ShowType " <> sch
+  <> "\n    TE.:$$: TE.Text \"for table \" TE.:<>: TE.ShowType " <> tabStr
+  <> "\n    TE.:$$: TE.Text \"name \" TE.:<>: TE.ShowType f TE.:<>: TE.Text \" is not defined.\""
+  <> "\n    TE.:$$: TE.Text \"\""
+  <> "\n    TE.:$$: TE.Text \"Valid values are:\""
+  <> "\n    TE.:$$: TE.Text \"  Fields: " <> T.intercalate ", " fields <> ".\""
+  <> "\n    TE.:$$: TE.Text \"  Foreign key constraints: " <> T.intercalate ", " rels <> ".\""
+  <> "\n    TE.:$$: TE.Text \"\""
+  <> "\n    TE.:$$: TE.Text \"Your source or target type or renaimer is probably invalid.\""
+  <> "\n    TE.:$$: TE.Text \"\""
+  <> ")"
+
+textClosedFieldInfoTF
+  :: Text
+  -> (M.Map (NameNS, Text) FldDef
+    , M.Map NameNS (TabDef, [NameNS]
+    , [NameNS]), M.Map NameNS RelDef)
+  -> Text
+textClosedFieldInfoTF schName (mfld, mtab, mrel) =
+  "type family " <> tfName
+  <> " (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where\n" <> equations <> "\n"
+  <> "instance CFieldInfo " <> schName <> " t f where\n"
+  <> "  type TFieldInfo " <> schName <> " t f = " <> tfName <> " t f\n\n"
+  where
+    tfName = typeFamilyName schName
+      -- All (tab, fldName, rhs) in deterministic order: by table, then plain fields, then toHere, then fromHere
+    plainEntries =
+      [ (tab, fldName, rhsPlain fd)
+      | ((tab, fldName), fd) <- toList mfld
+      ]
+    toHereEntries =
+      [ (tab, nnsName relName, rhsToHere tab (rdFrom rel) rel mfld)
+      | (tab, (_, _froms, tos)) <- toList mtab, relName <- tos
+      , let rel = mrel M.! relName
+      ]
+    fromHereEntries =
+      [ (tab, nnsName relName, rhsFromHere tab (rdTo rel) rel mfld)
+      | (tab, (_, froms, _tos)) <- toList mtab, relName <- froms
+      , let rel = mrel M.! relName
+      ]
+    allEntries = plainEntries <> toHereEntries <> fromHereEntries
+    eqnLine tab fldName rhs =
+      "  " <> tfName <> " " <> showType tab <> " \"" <> fldName <> "\" = " <> rhs <> "\n"
+    perTableDefault _ tabStr fieldNames relNames =
+      "  " <> tfName <> " " <> tabStr <> " f = " <> typeErrorMsg schName tabStr fieldNames relNames <> "\n"
+    tableBlocks =
+      [ mconcat [ eqnLine tab fld rhs | (t, fld, rhs) <- allEntries, t == tab ]
+        <> perTableDefault tab (showType tab) (tdFlds td) ((nnsName <$> froms) <> (nnsName <$> tos))
+      | (tab, (td, froms, tos)) <- toList mtab ]
+    equations = mconcat tableBlocks <> "  " <> tfName <> " t f = "
+      <> typeErrorMsgFinal <> "\n"
+    typeErrorMsgFinal =
+      "TE.TypeError (TE.Text \"In schema \" TE.:<>: TE.ShowType " <> schName
+      <> " TE.:<>: TE.Text \" the table \" TE.:<>: TE.ShowType t TE.:<>: TE.Text \" is not defined.\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> ")"
+
 
 genModuleText
   :: Text -- ^ module name
@@ -107,6 +162,7 @@ genModuleText
   -> Text
 genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   =  "{- HLINT ignore -}\n"
+  <> "{-# LANGUAGE TypeFamilies #-}\n"
   <> "{-# LANGUAGE UndecidableInstances #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-imports #-}\n"
@@ -118,6 +174,8 @@ genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   <> "import Data.Hashable\n" -- for PGEnum if exist
 #endif
   <> "import GHC.Generics\n" -- for PGEnum if exists
+  <> "import GHC.TypeError qualified as TE\n"
+  <> "import GHC.TypeLits qualified as TL\n"
   <> "import PgSchema\n\n\n"
   <> "data " <> schName <> "\n\n"
   <> mconcat (uncurry (textTypDef schName) <$> toList mtyp)
@@ -125,19 +183,7 @@ genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   <> mconcat ([ textRelDef schName relName rel | (relName, rel) <- toList mrel ])
   <> mconcat ((\(tab,(_,froms,tos)) -> textTabRel schName tab froms tos)
     <$> toList mtab)
-  <> mconcat
-      ((\((tab, fldName), fd) -> textFieldInfoPlain schName tab fldName fd)
-        <$> toList mfld)
-  <> mconcat
-      ([ textFieldInfoToHere schName tab relName (mrel M.! relName) mfld
-       | (tab, (_, _froms, tos)) <- toList mtab
-       , relName <- tos
-       ])
-  <> mconcat
-      ([ textFieldInfoFromHere schName tab relName (mrel M.! relName) mfld
-       | (tab, (_, froms, _tos)) <- toList mtab
-       , relName <- froms
-       ])
+  <> textClosedFieldInfoTF schName (mfld, mtab, mrel)
   <> "instance CSchema " <> schName <> " where\n"
   <> "  type TTabs " <> schName <> " = " <> showSplit 4 70 (keys mtab) <> "\n"
   <> "  type TTypes " <> schName <> " = " <> showSplit 4 70 (keys mtyp) <> "\n"
