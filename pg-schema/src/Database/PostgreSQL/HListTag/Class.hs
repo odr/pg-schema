@@ -4,11 +4,12 @@ module Database.PostgreSQL.HListTag.Class
   where
 
 import Data.Kind
-import Database.PostgreSQL.Simple
+import Database.PostgreSQL.Convert
 import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Utils
 import Database.PostgreSQL.PgTagged
+import Database.PostgreSQL.Simple
 import Database.Types.Aggr
 import Database.Types.EmptyField (EmptyField, emptyField)
 import Database.Types.SchList (SchList (..))
@@ -152,10 +153,12 @@ class CHListTagRepFi ren sch tab (fld :: Symbol) fi t where
   toHListTagFi :: t -> HListTag (GHListTagRepFi ren sch tab fld fi t)
   fromHListTagFi :: HListTag (GHListTagRepFi ren sch tab fld fi t) -> t
 
-instance CHListTagRepFi ren sch tab fld (RFPlain fd) t where
-  type GHListTagRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), t)]
-  toHListTagFi t = PgTag t :* HNil
-  fromHListTagFi (PgTag t :* HNil) = t
+instance CanConvert sch (FdType fd) (FdNullable fd) t
+  => CHListTagRepFi ren sch tab fld (RFPlain fd) t
+  where
+    type GHListTagRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), t)]
+    toHListTagFi t = PgTag t :* HNil
+    fromHListTagFi (PgTag t :* HNil) = t
 
 instance (CHListTagRepFromMaybe ren sch fld toTab t b, b ~ IsMaybe t)
   => CHListTagRepFi ren sch tab fld (RFFromHere toTab refs) t where

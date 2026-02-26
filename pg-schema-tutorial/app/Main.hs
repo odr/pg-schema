@@ -253,6 +253,7 @@ main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
     [ selSchText "countries" @Country qpEmpty
+    , selSchText "articles" @Article qpEmpty
     , selSchText "cities" @(City A1 B1) qpEmpty
     , selSchText "cities" @(City A2 B1) qpEmpty
     , selSchText "addresses" @(Address A1 B1) qpEmpty
@@ -269,6 +270,7 @@ main = do
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
+  (_::[Article], _) <- selSch "articles" conn qpEmpty
   ar <- selSch "addresses" @(AddressRev A2 B1) conn qp
   print ar
   T.putStrLn "\n====== 8 ========\n"
