@@ -6,6 +6,8 @@ optimization: False
 
 with-compiler: ghc-9.12.2
 
+-- allow-newer: all
+
 packages:
   pg-schema
   pg-schema-tutorial

@@ -6,11 +6,10 @@ module Database.PostgreSQL.HListTag.HListInfo
   where
 
 import Data.Kind
-import Data.Singletons.TH
-import Data.String.Singletons
 import Data.Text as T ( Text )
 import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
+import Database.PostgreSQL.HListTag.Rec
 import Database.Schema.Def
 import Database.Types.Aggr
 import Database.Types.SchList
@@ -18,26 +17,7 @@ import GHC.TypeLits as TL
 import GHC.TypeError
 import PgSchema.Util
 import Prelude.Singletons
-import Text.Show.Singletons
 
-
-singletons [d|
-  data FieldInfo' s = FieldInfo -- p == (NameNS' s)
-    { fieldName   :: s -- ~ uniq in Rec - for JSON
-    , fieldDbName :: s -- for db
-    , fieldKind   :: RecField' s (RecordInfo' s) }
-    deriving Show
-
-  data RecordInfo' s = RecordInfo
-    { tabName :: NameNS' s
-    , fields :: [FieldInfo' s] }
-    deriving Show
-  |]
-
-promote [d|
-  allPlainB :: [FieldInfo' s] -> Bool
-  allPlainB = all (\fi -> case fieldKind fi of RFPlain _ -> True; _ -> False)
-  |]
 
 type RecordInfo = RecordInfo' Text
 type RecordInfoK = RecordInfo' Symbol
