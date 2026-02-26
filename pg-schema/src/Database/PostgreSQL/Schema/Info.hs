@@ -4,7 +4,6 @@ module Database.PostgreSQL.Schema.Info where
 
 import Data.Text as T
 import Database.PostgreSQL.Convert
-import Database.Types.SchList
 import GHC.Generics
 import GHC.Int
 import PgSchema.Tagged
@@ -15,8 +14,8 @@ data PgClass = PgClass
   { class__namespace  :: "nspname" := Text
   , relname           :: Text
   , relkind           :: PgChar
-  , attribute__class  :: SchList PgAttribute
-  , constraint__class :: SchList PgConstraint }
+  , attribute__class  :: [PgAttribute]
+  , constraint__class :: [PgConstraint] }
   deriving (Show,Eq,Generic)
 
 data PgClassShort = PgClassShort
@@ -46,7 +45,7 @@ data PgType = PgType
   , typname         :: Text
   , typcategory     :: PgChar
   , typelem         :: PgOid
-  , enum__type      :: SchList PgEnum }
+  , enum__type      :: [PgEnum] }
   deriving (Show,Eq,Generic)
 
 --

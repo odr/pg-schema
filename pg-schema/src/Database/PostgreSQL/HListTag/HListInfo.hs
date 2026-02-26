@@ -12,7 +12,6 @@ import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Rec
 import Database.Schema.Def
 import Database.Types.Aggr
-import Database.Types.SchList
 import GHC.TypeLits as TL
 import GHC.TypeError
 import PgSchema.Util
@@ -84,9 +83,9 @@ type family PlainField fd t where
   PlainField fd (Aggr' fun t) = RFAggr fd fun False
   PlainField fd t = RFPlain fd
 
-instance (ToStar (TTagFieldInfo sch (RFToHere fromTab refs) (SchList t)), CHListInfo sch fromTab t)
-  => CTagFieldInfo sch (RFToHere fromTab refs) (SchList t) where
-    type TTagFieldInfo sch (RFToHere fromTab refs) (SchList t) = RFToHere
+instance (ToStar (TTagFieldInfo sch (RFToHere fromTab refs) [t]), CHListInfo sch fromTab t)
+  => CTagFieldInfo sch (RFToHere fromTab refs) [t] where
+    type TTagFieldInfo sch (RFToHere fromTab refs) [t] = RFToHere
       ('RecordInfo fromTab (TRecordInfo sch fromTab t)) refs
 
 instance (ToStar (TTagFieldInfo sch (RFFromHere toTab refs) t), CHListInfo sch toTab (UnMaybe t))

@@ -12,7 +12,7 @@ import Database.PostgreSQL.HListTag.Utils
 import Database.PostgreSQL.Simple
 import Database.Types.Aggr
 import Database.Types.EmptyField (EmptyField, emptyField)
-import Database.Types.SchList (SchList (..))
+-- import Database.Types.SchList (SchList (..))
 import Database.Schema.Def
 import GHC.Generics
 import GHC.TypeLits
@@ -190,8 +190,9 @@ instance IsoHListTag ren sch toTab t
     fromHListTagFromMaybe (t :* HNil) = fromHListTag @ren @sch @toTab t
 
 instance IsoHListTag ren sch fromTab t
-  => CHListTagRepFi ren sch tab fld (RFToHere (fromTab :: NameNSK) refs) (SchList t) where
-  type GHListTagRepFi ren sch tab fld (RFToHere fromTab refs) (SchList t) = '[ '( '(fld, 0), SchList (HListTag (HListTagRep ren sch fromTab t))) ]
+  => CHListTagRepFi ren sch tab fld (RFToHere (fromTab :: NameNSK) refs) [t] where
+  type GHListTagRepFi ren sch tab fld (RFToHere fromTab refs) [t] =
+    '[ '( '(fld, 0), [HListTag (HListTagRep ren sch fromTab t)]) ]
   toHListTagFi xs = (toHListTag @ren @sch @fromTab <$> xs) :* HNil
   fromHListTagFi (xs :* HNil) = fromHListTag @ren @sch @fromTab <$> xs
 

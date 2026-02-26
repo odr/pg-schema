@@ -14,7 +14,6 @@ import Data.Text as T
 import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Utils
 import Database.Schema.Def
-import Database.Types.SchList (SchList (..))
 import Prelude as P
 
 --------------------------------------------------------------------------------
@@ -84,19 +83,19 @@ parseArray
   :: forall ts k.
      (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
   => TkArray k String
-  -> Either String (SchList (HListTag ts), k)
+  -> Either String ([HListTag ts], k)
 parseArray = go []
   where
     go _ (TkArrayErr e) = Left e
-    go acc (TkArrayEnd k) = Right (SchList (P.reverse acc), k)
+    go acc (TkArrayEnd k) = Right (P.reverse acc, k)
     go acc (TkItem toks) = do
       (h, arr') <- parseFromTokens @(HListTag ts) toks
       go (h : acc) arr'
 
 instance (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
-      => ParseFromTokens (SchList (HListTag ts)) where
+      => ParseFromTokens [HListTag ts] where
   parseFromTokens (TkArrayOpen arr) = parseArray @ts arr
-  parseFromTokens _ = Left "SchList HListTag: expected JSON array"
+  parseFromTokens _ = Left "[HListTag]: expected JSON array"
 
 instance (HEmpty ts Maybe, HUpdateByKeyStream ts Maybe, HUnLift ts Maybe)
       => ParseFromTokens (Maybe (HListTag ts)) where

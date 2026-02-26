@@ -21,7 +21,6 @@ import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.ShowType
-import Database.Types.SchList
 import Data.String
 import GHC.Int
 import PgSchema.Util
@@ -48,14 +47,16 @@ upsertJSON_
   => Connection -> [r] -> IO Text
 upsertJSON_ ren sch t = insertJSONImpl_ ren sch t
 
-insertJSONImpl :: forall ren sch t -> forall r r' h h'.
-  (SrcJSON ren sch t r h, TgtJSON ren sch t r' h') => Connection -> [r] -> IO ([r'], Text)
+insertJSONImpl
+  :: forall ren sch t -> forall r r' h h'
+  . (SrcJSON ren sch t r h, TgtJSON ren sch t r' h')
+  => Connection -> [r] -> IO ([r'], Text)
 insertJSONImpl ren sch t @r @r' @h @h' conn rs = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
-  [Only (SchList res)] <- let q = "select pg_temp.__ins(?)" in
+  [Only res] <- let q = "select pg_temp.__ins(?)" in
     traceShow' q
-      $ trace' (BSL.unpack $ A.encode (SchList $ toHListTag @ren @sch @t <$> rs))
-      $ query conn q $ Only $ SchList $ toHListTag @ren @sch @t <$> rs
+      $ trace' (BSL.unpack $ A.encode (toHListTag @ren @sch @t <$> rs))
+      $ query conn q $ Only $ toHListTag @ren @sch @t <$> rs
   void $ execute_ conn "drop function pg_temp.__ins"
   pure (fromHListTag @ren @sch @t <$> res, sql)
   where
@@ -72,7 +73,7 @@ insertJSONImpl_
   => Connection -> [r] -> IO Text
 insertJSONImpl_ ren sch t @r @h conn rs = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
-  void $ execute conn "call pg_temp.__ins(?)" $ Only $ SchList $ toHListTag @ren @sch @t <$> rs
+  void $ execute conn "call pg_temp.__ins(?)" $ Only $ toHListTag @ren @sch @t <$> rs
   sql <$ execute_ conn "drop procedure pg_temp.__ins"
   where
     sql = insertJSONText_ ren sch t @r @h

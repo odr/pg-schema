@@ -14,5 +14,4 @@ import Database.PostgreSQL.DML.Update as PGS
 import Database.PostgreSQL.Schema.Schema as PGS
 import Database.Schema.Def as PGS
 import Database.Types.Aggr as PGS
-import Database.Types.SchList as PGS
 import PgSchema.Util as PGS (ToStar)

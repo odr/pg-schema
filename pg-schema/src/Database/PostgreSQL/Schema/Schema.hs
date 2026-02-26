@@ -27,7 +27,6 @@ import Database.PostgreSQL.Schema.Info
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.Gen
-import Database.Types.SchList
 import GHC.Int
 import GHC.Records
 import GHC.TypeLits ( Symbol )
@@ -96,7 +95,7 @@ getSchema conn GenNames {..} = do
           pgcl <- L.find (\c -> c.class__namespace == "nspname" =: nns.nnsNamespace
             && c.relname == nns.nnsName) classes
           inds <- for fields \fld ->
-            L.findIndex ((==fld) . (.attname)) pgcl.attribute__class.getSchList
+            L.findIndex ((==fld) . (.attname)) pgcl.attribute__class
           pure $ PgArr $ fromIntegral . (+1) <$> inds
 
 -- all data are ordered to provide stable `hashSchema`
@@ -151,7 +150,7 @@ getDefs (types,classes,relations) =
   , M.fromList $ ptabDef <$> classes
   , M.fromList relDefs )
   where
-    classAttrs = ((,) <$> tabKey <*> getSchList . attribute__class) <$> classes
+    classAttrs = ((,) <$> tabKey <*> attribute__class) <$> classes
     mClassAttrs =
       M.fromList [((c, attnum a), attname a)| (c,as) <- classAttrs, a <- as]
     attrs :: [(NameNS, PgAttribute)] =
@@ -190,7 +189,7 @@ getDefs (types,classes,relations) =
           $ L.filter (f . coerce . contype) (coerce constraint__class)
           where
             numToName a =
-              attname <$> L.find ((==a) . attnum) (getSchList attribute__class)
+              attname <$> L.find ((==a) . attnum) attribute__class
         (froms, tos) = bimap getNames getNames (rdFrom, rdTo)
           where
             getNames f = fst <$> L.filter ((==tabName) . f . snd) relDefs

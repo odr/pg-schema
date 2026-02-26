@@ -84,7 +84,7 @@ deriving instance Show (Address A1 B1)
 data City a b = MkCity
   { name         :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
-  , address_city :: SchList (Address a b) }
+  , address_city :: [Address a b] }
   deriving Generic
 
 deriving instance Show (City A2 B1)
@@ -133,7 +133,7 @@ data Order = MkOrder
   { day        :: Day
   , num        :: Text
   , ord_seller :: Company
-  , opos_order :: SchList OrdPos
+  , opos_order :: [OrdPos]
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state")) }
   deriving Generic
 
@@ -149,12 +149,12 @@ data OrderI = MkOrderI
   , num        :: Text
   , seller_id  :: Int32
   , state      :: Maybe (PGEnum Sch ("sch" ->> "order_state"))
-  , opos_order :: SchList OrdPosI }
+  , opos_order :: [OrdPosI] }
   deriving Generic
 
 data CustomerI = MkCustomerI
   { name :: Text
-  , ord_cust :: SchList OrderI
+  , ord_cust :: [OrderI]
   }
   deriving Generic
 
@@ -167,8 +167,8 @@ data AddressI = MkAddressI
   , zipcode :: Maybe Text
   , phones :: Maybe (PgArr Text)
   , numbers :: Maybe (PgArr Int32)
-  , cust_addr :: SchList CustomerI
-  , comp_addr :: SchList CompanyI }
+  , cust_addr :: [CustomerI]
+  , comp_addr :: [CompanyI] }
   deriving Generic
 
 instance HasResolution a => FromField (Fixed a) where
@@ -182,7 +182,7 @@ newtype CustId = CustId { id :: Int32 }
 
 data AddressRet = AddressRet
   { id :: Int32
-  , cust_addr :: SchList ("id" := Int32)}
+  , cust_addr :: ["id" := Int32]}
   deriving Generic
 
 type HSch s r = HListTag (HListTagRep RenamerSch Sch (NSC s) r)
@@ -281,22 +281,22 @@ main = do
   T.putStrLn "\n====== 11 ========\n"
   let
     insData =
-      [ MkAddressI "street" Nothing (Just $ PgArr ["s","S12"]) (Just $ PgArr [1,2]) (SchList
-        [ MkCustomerI "Ivan" $ SchList
-          [ MkOrderI d "1" 1 (Just Order_state_paid) $ SchList
+      [ MkAddressI "street" Nothing (Just $ PgArr ["s","S12"]) (Just $ PgArr [1,2])
+        [ MkCustomerI "Ivan"
+          [ MkOrderI d "1" 1 (Just Order_state_paid)
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
-          , MkOrderI d "2a" 3 (Just Order_state_booked) $ SchList
+          , MkOrderI d "2a" 3 (Just Order_state_booked)
             [ MkOrdPosI 3 2 3 4, MkOrdPosI 1 3 4 5.1 ] ]
-        , MkCustomerI "Petr" $ SchList
-          [ MkOrderI d "1v" 4 (Just Order_state_paid) $ SchList
+        , MkCustomerI "Petr"
+          [ MkOrderI d "1v" 4 (Just Order_state_paid)
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
-          , MkOrderI d "xx" 5 (Just Order_state_delivered) $ SchList
-            [ MkOrdPosI 5 6 3 4, MkOrdPosI 1 3 3 5.1 ] ] ]) mempty
-      , MkAddressI "str" (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty $ SchList [MkCompanyI "Typeable"]
-      , MkAddressI "street2" (Just "zip2") mempty Nothing (SchList [MkCustomerI "Dima" mempty])
-        $ SchList [MkCompanyI "WellTyped"] ]
+          , MkOrderI d "xx" 5 (Just Order_state_delivered)
+            [ MkOrdPosI 5 6 3 4, MkOrdPosI 1 3 3 5.1 ] ] ] mempty
+      , MkAddressI "str" (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty  [MkCompanyI "Typeable"]
+      , MkAddressI "street2" (Just "zip2") mempty Nothing [MkCustomerI "Dima" mempty]
+        [MkCompanyI "WellTyped"] ]
   void $ insJSON_ "addresses" @AddressI conn insData
-  (as1 :: ["id" := Int32 :. "cust_addr" := SchList ("id" := Int32 :. "name" := Text)], _insTxt)
+  (as1 :: ["id" := Int32 :. "cust_addr" := ["id" := Int32 :. "name" := Text]], _insTxt)
     <- insJSON "addresses" @AddressI conn insData
   curTime <- T.show <$> getCurrentTime
   upsJSON_ "addresses" conn $ as1 <&> \(a :. Tagged xs) ->
@@ -308,8 +308,8 @@ main = do
   mapM_ print upsVals
   upsJSON_ "addresses" conn upsVals
   T.putStrLn "\n====== 13 ========\n"
-  (as2 :: ["id" := Int32 :. "cust_addr" := SchList
-    ("id" := Int32 :. "updated_at" := Maybe ZonedTime)], _upsTxt)
+  (as2 :: ["id" := Int32 :. "cust_addr" :=
+    ["id" := Int32 :. "updated_at" := Maybe ZonedTime]], _upsTxt)
     <- upsJSON "addresses" conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"

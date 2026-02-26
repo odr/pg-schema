@@ -76,6 +76,13 @@ instance (FromJSON (HListTag xs), Typeable (HListTag xs)) => FromField (HListTag
 
 instance (ToJSON (HListTag xs), Typeable (HListTag xs)) => ToField (HListTag xs) where
   toField = toJSONField
+
+instance (FromJSON (HListTag xs), Typeable (HListTag xs)) => FromField [HListTag xs] where
+  fromField = fromJSONField
+
+instance (ToJSON (HListTag xs), Typeable (HListTag xs)) => ToField [HListTag xs] where
+  toField = toJSONField
+
 --------------------------------------------------------------------------------
 -- 2.3. JSON instances
 --------------------------------------------------------------------------------

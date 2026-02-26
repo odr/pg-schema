@@ -5,7 +5,6 @@ import Data.Aeson
 import Data.Kind
 import Data.Typeable
 import Database.Schema.Def
-import Database.Types.SchList
 import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
@@ -15,7 +14,7 @@ import Prelude.Singletons as SP
 
 
 type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
-  AllMandatory sch t (SchList r) rFlds = AllMandatory sch t r rFlds
+  AllMandatory sch t [r] rFlds = AllMandatory sch t r rFlds -- ???
   AllMandatory sch t r rFlds = Assert
     (SP.Null (RestMand sch t r rFlds))
     (TL.TypeError
@@ -42,7 +41,7 @@ type InsertNonReturning' ren sch t r h =
 -- For insertJSON
 type SrcJSON ren sch t r h =
   ( IsoHListTag ren sch t r, h ~ HListTag (HListTagRep ren sch t r)
-  , CHListInfo sch t h, ToJSON h, CSchema sch )
+  , CHListInfo sch t h, ToJSON h, CSchema sch, Typeable (HListTagRep ren sch t r))
 
 type TgtJSON ren sch t r' h' =
   ( h' ~ HRep ren sch t r', HListInfo ren sch t r' h', FromJSON h', Typeable h')
@@ -58,7 +57,7 @@ type TgtJSON ren sch t r' h' =
 -- i.e. HasPK || AllMandatory
 
 type family AllMandatoryOrHasPK (sch::Type) (tab::NameNSK) (r::Type) rFlds where
-  AllMandatoryOrHasPK sch t (SchList r) rFlds = AllMandatoryOrHasPK sch t r rFlds
+  AllMandatoryOrHasPK sch t [r] rFlds = AllMandatoryOrHasPK sch t r rFlds
   AllMandatoryOrHasPK sch t r rFlds = Assert
     (SP.Null (RestMand sch t r rFlds) || SP.Null (RestPKFlds sch t r rFlds))
     (TL.TypeError
