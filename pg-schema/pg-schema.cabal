@@ -49,7 +49,6 @@ library
     Database.PostgreSQL.DML.Select
     Database.PostgreSQL.DML.Select.Types
     Database.PostgreSQL.DML.Update
-    Database.PostgreSQL.PgTagged
     Database.PostgreSQL.Schema.Catalog
     Database.PostgreSQL.Schema.Info
     Database.PostgreSQL.Schema.Schema
@@ -69,6 +68,7 @@ library
     Database.Types.EmptyField
     Database.Types.SchList
     PgSchema.Gen
+    PgSchema.Tagged
     PgSchema.Util
   -- other-modules:
   --   Paths_pg_schema

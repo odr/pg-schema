@@ -10,7 +10,7 @@ import Data.Aeson.Key (fromString)
 import Data.ByteString.Lazy qualified as BL
 import Data.ByteString.Lazy.Char8 (pack)
 import Database.PostgreSQL.HListTag
-import Database.PostgreSQL.PgTagged
+
 
 type SimpleRec = HListTag '[ '( '("b", 0), Bool), '( '("a", 0), Int) ]
 
@@ -23,7 +23,7 @@ type OuterRec  = HListTag
 runTests :: IO ()
 runTests = do
   -- JSON round-trip (doctest $json)
-  let val = PgTag False :* PgTag 1 :* HNil :: SimpleRec
+  let val = False :* 1 :* HNil :: SimpleRec
   let enc = encode val
   unless (enc == pack "{\"b\":false,\"a\":1}")
     $ error $ "encode: got " ++ show enc
@@ -31,7 +31,7 @@ runTests = do
   case decode (pack "{\"a\":10,\"b\":true}") of
     Nothing -> error "decode: expected Just"
     Just (v :: SimpleRec) ->
-      unless (v == (PgTag True :* PgTag 10 :* HNil))
+      unless (v == (True :* 10 :* HNil))
         $ error $ "decode: got " ++ show v
 
   case decode (pack "{\"a\":10}") of
@@ -57,18 +57,14 @@ runTests = do
       unless (h' == val) $ error $ "streamDecodeHListTag': got " ++ show h'
       unless (BL.null rest) $ error "streamDecodeHListTag': expected null rest"
 
-  let innerVal = PgTag (42 :: Int) :* PgTag True :* HNil :: InnerRec
-  let outerVal = PgTag False :* PgTag innerVal :* HNil :: OuterRec
+  let innerVal = (42 :: Int) :* True :* HNil :: InnerRec
+  let outerVal = False :* innerVal :* HNil :: OuterRec
   let outerJson = pack "{\"outer___1\":{\"y\":true,\"x\":42},\"outer\":false}"
 
   case decode outerJson of
     Nothing -> error "nested decode: expected Just"
     Just (r :: OuterRec) ->
-      unless (r ==
-        (("outer",0) =: False)
-        :* (("outer",1) =:
-          (("x",0) =: 42) :* (("y",0) =: True) :* HNil)
-        :* HNil)
+      unless (r == False :* (42 :* True :* HNil) :* HNil)
         $ error $ "nested decode: got " ++ show r
 
   case streamDecodeHListTag @'[ '( '("outer", 0), Bool), '( '("outer", 1), InnerRec) ] outerJson of

@@ -4,15 +4,15 @@ module Database.PostgreSQL.Schema.Info where
 
 import Data.Text as T
 import Database.PostgreSQL.Convert
-import Database.PostgreSQL.PgTagged
 import Database.Types.SchList
 import GHC.Generics
 import GHC.Int
+import PgSchema.Tagged
 
 
 -- | Tables and views info
 data PgClass = PgClass
-  { class__namespace  :: PgTagged "nspname" Text
+  { class__namespace  :: "nspname" := Text
   , relname           :: Text
   , relkind           :: PgChar
   , attribute__class  :: SchList PgAttribute
@@ -20,7 +20,7 @@ data PgClass = PgClass
   deriving (Show,Eq,Generic)
 
 data PgClassShort = PgClassShort
-  { class__namespace :: PgTagged "nspname" Text
+  { class__namespace :: "nspname" := Text
   , relname          :: Text }
   deriving (Show,Eq,Generic)
 
@@ -33,7 +33,7 @@ data PgAttribute = PgAttribute
   deriving (Show,Eq,Generic)
 
 data PgConstraint = PgConstraint
-  { constraint__namespace :: PgTagged "nspname" Text
+  { constraint__namespace :: "nspname" := Text
   , conname               :: Text
   , contype               :: PgChar
   , conkey                :: PgArr Int16 }
@@ -42,7 +42,7 @@ data PgConstraint = PgConstraint
 -- | Types info
 data PgType = PgType
   { oid             :: PgOid
-  , type__namespace :: PgTagged "nspname" Text
+  , type__namespace :: "nspname" := Text
   , typname         :: Text
   , typcategory     :: PgChar
   , typelem         :: PgOid
@@ -57,7 +57,7 @@ data PgEnum = PgEnum
 
 -- | Foreign key info
 data PgRelation = PgRelation
-  { constraint__namespace :: PgTagged "nspname" Text
+  { constraint__namespace :: "nspname" := Text
   , conname               :: Text
   , constraint__class     :: PgClassShort
   , constraint__fclass    :: PgClassShort

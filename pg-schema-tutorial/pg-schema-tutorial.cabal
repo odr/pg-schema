@@ -38,12 +38,13 @@ executable pgs-tutorial
   build-depends:
       aeson
     , base >=4.7 && <5
+    , deepseq
     , generic-random
     , hashable
     , pg-schema
     , postgresql-simple
     , template-haskell
-    , deepseq
+    , tagged
     , text
     , time
     , QuickCheck

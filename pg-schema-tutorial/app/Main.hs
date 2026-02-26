@@ -19,6 +19,7 @@ import Data.Fixed
 import Data.Functor
 import Data.List as L
 import Data.Singletons
+import Data.Tagged
 import Data.Text as T
 import Data.Text.IO as T
 import Data.Time
@@ -153,9 +154,6 @@ data OrderI = MkOrderI
 
 data CustomerI = MkCustomerI
   { name :: Text
-  -- , ord_cust :: SchList (PgTagged
-  --   '["num", "opos_order", "day", "seller_id"]
-  --   (Text, (SchList OrdPosI, (Day, Int32))))
   , ord_cust :: SchList OrderI
   }
   deriving Generic
@@ -184,7 +182,7 @@ newtype CustId = CustId { id :: Int32 }
 
 data AddressRet = AddressRet
   { id :: Int32
-  , cust_addr :: SchList (PgTagged "id" Int32)}
+  , cust_addr :: SchList ("id" := Int32)}
   deriving Generic
 
 type HSch s r = HListTag (HListTagRep RenamerSch Sch (NSC s) r)
@@ -261,10 +259,10 @@ main = do
     , selSchText "addresses" @(AddressRev A1 B1) qp
     , selSchText "addresses" @(AddressRev A2 B1) qp
     , selSchText "order_positions" @PosCnt qpEmpty
-    , selSchText "order_positions" @(PgTagged "_cnt" (Aggr "count" Int64)) qpEmpty
-    , selSchText "order_positions" @(PgTagged "_cnt" (Aggr' "count" Int64)) qpEmpty
-    , selSchText "order_positions" @(PgTagged "cnt" (Aggr "count" Int64)) qpEmpty
-    , selSchText "order_positions" @(PgTagged "cnt" (Aggr' "count" Int64)) qpEmpty
+    , selSchText "order_positions" @("_cnt" := Aggr "count" Int64) qpEmpty
+    , selSchText "order_positions" @("_cnt" := Aggr' "count" Int64) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr "count" Int64) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr' "count" Int64) qpEmpty
     , selSchText "order_positions" @("cnt" := Aggr' "max" Int32 :. "cnt" := Aggr' "count" Int64) qpEmpty
     , selSchText "order_positions" @("cnt" := Aggr "max" (Maybe Int32)) qpEmpty
     ]
@@ -276,10 +274,10 @@ main = do
   T.putStrLn "\n====== 8 ========\n"
   (cids,t) <- insSch "countries" conn countries
   T.putStrLn t
-  mapM_ (print @(PgTagged "id" Int32)) cids
+  mapM_ (print @("id" := Int32)) cids
   d <- utctDay <$> getCurrentTime
   T.putStrLn "\n====== 10 ========\n"
-  T.putStrLn $ insJSONText "addresses" @AddressI @(PgTagged "id" Int32)
+  T.putStrLn $ insJSONText "addresses" @AddressI @("id" := Int32)
   T.putStrLn "\n====== 11 ========\n"
   let
     insData =
@@ -301,11 +299,11 @@ main = do
   (as1 :: ["id" := Int32 :. "cust_addr" := SchList ("id" := Int32 :. "name" := Text)], _insTxt)
     <- insJSON "addresses" @AddressI conn insData
   curTime <- T.show <$> getCurrentTime
-  upsJSON_ "addresses" conn $ as1 <&> \(a :. PgTag xs) ->
+  upsJSON_ "addresses" conn $ as1 <&> \(a :. Tagged xs) ->
     a :. "cust_addr" =: (xs <&> \(cid :. cname) ->
       cid :. fmap (<> ": " <> curTime <> " updated") cname)
   let
-    upsVals = as1 <&> \(a :. PgTag xs) -> a :. "cust_addr" =:
+    upsVals = as1 <&> \(a :. Tagged xs) -> a :. "cust_addr" =:
       (xs <&> \(cid :. _) -> cid :. "note" =: Just curTime)
   mapM_ print upsVals
   upsJSON_ "addresses" conn upsVals

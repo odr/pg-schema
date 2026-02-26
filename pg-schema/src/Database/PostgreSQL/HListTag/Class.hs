@@ -4,11 +4,11 @@ module Database.PostgreSQL.HListTag.Class
   where
 
 import Data.Kind
+import Data.Tagged
 import Database.PostgreSQL.Convert
 import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Utils
-import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Simple
 import Database.Types.Aggr
 import Database.Types.EmptyField (EmptyField, emptyField)
@@ -16,6 +16,7 @@ import Database.Types.SchList (SchList (..))
 import Database.Schema.Def
 import GHC.Generics
 import GHC.TypeLits
+import PgSchema.Tagged
 import Prelude.Singletons qualified as SP
 
 
@@ -213,9 +214,9 @@ instance (IsoHListTag ren sch tab a, IsoHListTag ren sch tab b
           $ denormalizeHListTag ab
 
 instance CHListTagRepTypeCase ren sch tab fld t (GetTypeCase t)
-  => IsoHListTagIsoCase ren sch tab (PgTagged fld t) 'TaggedCase where
-    type HListTagRepIsoCase ren sch tab (PgTagged fld t) 'TaggedCase =
+  => IsoHListTagIsoCase ren sch tab (fld := t) 'TaggedCase where
+    type HListTagRepIsoCase ren sch tab (fld := t) 'TaggedCase =
       HListTagRepTypeCase ren sch tab fld t (GetTypeCase t)
-    toHListTagIsoCase (PgTag t) =
+    toHListTagIsoCase (Tagged t) =
       toHListTagTypeCase @ren @sch @tab @fld @t @(GetTypeCase t) t
-    fromHListTagIsoCase = PgTag . fromHListTagTypeCase @ren @sch @tab @fld @t @(GetTypeCase t)
+    fromHListTagIsoCase = Tagged . fromHListTagTypeCase @ren @sch @tab @fld @t @(GetTypeCase t)

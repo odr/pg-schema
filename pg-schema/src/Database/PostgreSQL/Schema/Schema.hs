@@ -22,7 +22,6 @@ import Database.PostgreSQL.Convert
 import Database.PostgreSQL.HListTag
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.DML.Select.Types
-import Database.PostgreSQL.PgTagged
 import Database.PostgreSQL.Schema.Catalog
 import Database.PostgreSQL.Schema.Info
 import Database.PostgreSQL.Simple
@@ -32,6 +31,7 @@ import Database.Types.SchList
 import GHC.Int
 import GHC.Records
 import GHC.TypeLits ( Symbol )
+import PgSchema.Tagged
 import Prelude as P
 import System.Directory
 import System.Environment
@@ -83,17 +83,17 @@ getSchema conn GenNames {..} = do
       conkey <- mkNums ar.from $ fst <$> ar.cols
       confkey <- mkNums ar.to $ snd <$> ar.cols
       pure PgRelation
-        { constraint__namespace = PgTag "_add"
+        { constraint__namespace = "nspname" =: "_add"
         , conname               = ar.name
         , constraint__class     = toPgClassShort ar.from
         , constraint__fclass    = toPgClassShort ar.to
         , .. }
       where
         toPgClassShort nns = PgClassShort
-          { class__namespace = PgTag nns.nnsNamespace
+          { class__namespace = "nspname" =: nns.nnsNamespace
           , relname          = nns.nnsName }
         mkNums nns fields = do
-          pgcl <- L.find (\c -> c.class__namespace == PgTag nns.nnsNamespace
+          pgcl <- L.find (\c -> c.class__namespace == "nspname" =: nns.nnsNamespace
             && c.relname == nns.nnsName) classes
           inds <- for fields \fld ->
             L.findIndex ((==fld) . (.attname)) pgcl.attribute__class.getSchList
@@ -174,7 +174,7 @@ getDefs (types,classes,relations) =
         fdHasDefault = atthasdef
     tabKey
       :: forall r .
-        ( HasField "class__namespace" r (PgTagged "nspname" Text)
+        ( HasField "class__namespace" r ("nspname" := Text)
         , HasField "relname" r Text )
       => r -> NameNS
     tabKey r = NameNS (coerce r.class__namespace) r.relname
