@@ -13,7 +13,8 @@ import Data.Hashable
 import GHC.Generics
 import GHC.TypeError qualified as TE
 import GHC.TypeLits qualified as TL
-import PgSchema
+import Database.Schema.Def
+import Database.PostgreSQL.Enum
 
 
 data Sch

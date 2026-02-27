@@ -176,7 +176,8 @@ genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   <> "import GHC.Generics\n" -- for PGEnum if exists
   <> "import GHC.TypeError qualified as TE\n"
   <> "import GHC.TypeLits qualified as TL\n"
-  <> "import PgSchema\n\n\n"
+  <> "import Database.Schema.Def\n"
+  <> "import Database.PostgreSQL.Enum\n\n\n"
   <> "data " <> schName <> "\n\n"
   <> mconcat (uncurry (textTypDef schName) <$> toList mtyp)
   <> mconcat ((\(tab,(td,_,_)) -> textTabDef schName tab td) <$> toList mtab)

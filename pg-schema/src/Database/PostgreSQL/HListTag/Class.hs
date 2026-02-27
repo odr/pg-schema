@@ -12,7 +12,6 @@ import Database.PostgreSQL.HListTag.Utils
 import Database.PostgreSQL.Simple
 import Database.Types.Aggr
 import Database.Types.EmptyField (EmptyField, emptyField)
--- import Database.Types.SchList (SchList (..))
 import Database.Schema.Def
 import GHC.Generics
 import GHC.TypeLits
@@ -154,7 +153,7 @@ class CHListTagRepFi ren sch tab (fld :: Symbol) fi t where
   toHListTagFi :: t -> HListTag (GHListTagRepFi ren sch tab fld fi t)
   fromHListTagFi :: HListTag (GHListTagRepFi ren sch tab fld fi t) -> t
 
-instance CanConvert sch (FdType fd) (FdNullable fd) t
+instance CanConvert sch tab fld t
   => CHListTagRepFi ren sch tab fld (RFPlain fd) t
   where
     type GHListTagRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), t)]

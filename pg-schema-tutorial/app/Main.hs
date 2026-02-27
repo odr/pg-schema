@@ -82,7 +82,7 @@ deriving instance Show (Address A2 B1)
 deriving instance Show (Address A1 B1)
 
 data City a b = MkCity
-  { name        :: Maybe Text
+  { name         :: Maybe Text
   , city_country :: If (a == A1) EmptyField (Maybe Country)
   , address_city :: [Address a b] }
   deriving Generic
@@ -284,7 +284,7 @@ main = do
   T.putStrLn "\n====== 11 ========\n"
   let
     insData =
-      [ MkAddressI "street" Nothing (Just $ PgArr ["s","S12"]) (Just $ PgArr [1,2])
+      [ MkAddressI "street" Nothing (Just $ pgArr' ["s","S12"]) (Just $ pgArr' [1,2])
         [ MkCustomerI "Ivan"
           [ MkOrderI d "1" 1 (Just Order_state_paid)
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
@@ -295,7 +295,7 @@ main = do
             [ MkOrdPosI 1 2 3 4, MkOrdPosI 2 3 4 5 ]
           , MkOrderI d "xx" 5 (Just Order_state_delivered)
             [ MkOrdPosI 5 6 3 4, MkOrdPosI 1 3 3 5.1 ] ] ] mempty
-      , MkAddressI "str" (Just "zipcode") mempty (Just $ PgArr [5,7]) mempty  [MkCompanyI "Typeable"]
+      , MkAddressI "str" (Just "zipcode") mempty (Just $ pgArr' [5,7]) mempty  [MkCompanyI "Typeable"]
       , MkAddressI "street2" (Just "zip2") mempty Nothing [MkCustomerI "Dima" mempty]
         [MkCompanyI "WellTyped"] ]
   void $ insJSON_ "addresses" @AddressI conn insData
@@ -320,7 +320,7 @@ main = do
     $ "street" =? ("street2"::Text)
   (xs :: ["zipcode" := Maybe Text :. "phones" := Maybe (PgArr Text)]) <-
     updByCond "addresses" conn
-      ("phones" =: Just (PgArr ["111" :: Text,"222"]))
+      ("phones" =: Just (pgArr' ["111" :: Text,"222"]))
       $ "street" =? ("street2"::Text)
   mapM_ print xs
   T.putStrLn "\n====== 20 ========\n"
@@ -350,7 +350,7 @@ main = do
       qWhere
         $ pparent (NSC "address_city")
         $ pparent (NSC "city_country")
-        $ "code" =? Just @Text "RU"
+        $ "code" `pinArr` [Just @Text "RU", Just "US"]
     qp' = qRoot do
       qpr
       qLimit 5

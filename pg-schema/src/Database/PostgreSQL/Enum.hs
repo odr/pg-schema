@@ -39,11 +39,10 @@ instance
   (Show (PGEnum sch n), ToStar n) => ToField (PGEnum sch n) where
   toField = toField . toText
 
-instance
-  ( TTypDef sch n ~ 'TypDef "E" 'Nothing es
-  , FromJSON (PGEnum sch n)
-  , ToJSON (PGEnum sch n) )
-  => CanConvert1 ('TypDef "E" 'Nothing es) sch n (PGEnum sch n)
+type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
+  = ( TTypDef sch n ~ 'TypDef "E" 'Nothing es
+    , FromJSON (PGEnum sch n)
+    , ToJSON (PGEnum sch n) )
 
 instance (Read (PGEnum sch t), ToStar t) => FromJSON (PGEnum sch t) where
     parseJSON = parseJSON >=> maybe mzero pure . fromText

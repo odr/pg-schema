@@ -148,20 +148,17 @@ data Cond (sch::Type) (tab::NameNSK) where
   EmptyCond :: Cond sch tab
   Cmp :: forall fld v sch tab.
     ( CFieldInfo sch tab fld, KnownSymbol fld, ToField v, Show v
-    , CanConvert sch (FdType (GetFldDef sch tab fld))
-      (FdNullable (GetFldDef sch tab fld)) v)
+    , CanConvert sch tab fld v)
     => Cmp -> v -> Cond sch tab
   In :: forall fld v sch tab.
     ( CFieldInfo sch tab fld, KnownSymbol fld, SingI (TFieldInfo sch tab fld)
     , CPlainFldDef (TFieldInfo sch tab fld), ToField v, Show v
-    , CanConvert sch (FdType (GetFldDef sch tab fld))
-      (FdNullable (GetFldDef sch tab fld)) v )
+    , CanConvert sch tab fld v )
     => NonEmpty v -> Cond sch tab
   InArr :: forall fld v sch tab.
     ( CFieldInfo sch tab fld, KnownSymbol fld, SingI (TFieldInfo sch tab fld)
     , CPlainFldDef (TFieldInfo sch tab fld), ToField v, Show v
-    , CanConvert sch (FdType (GetFldDef sch tab fld))
-      (FdNullable (GetFldDef sch tab fld)) v )
+    , CanConvert sch tab fld v )
     => [v] -> Cond sch tab
   Null :: forall fld sch tab.
     (CFieldInfo sch tab fld, KnownSymbol fld
@@ -228,8 +225,7 @@ pUnsafeCond = UnsafeCond
 pin :: forall name -> forall sch tab v.
   ( CFieldInfo sch tab name, CPlainFldDef (TFieldInfo sch tab name)
   , Show v, ToField v, KnownSymbol name, SingI (TFieldInfo sch tab name)
-  , CanConvert sch (FdType (GetFldDef sch tab name))
-    (FdNullable (GetFldDef sch tab name)) v ) =>
+  , CanConvert sch tab name v ) =>
   NonEmpty v -> Cond sch tab
 pin name = In @name
 
@@ -237,8 +233,7 @@ pin name = In @name
 pinArr :: forall name -> forall sch tab v.
   ( CFieldInfo sch tab name, CPlainFldDef (TFieldInfo sch tab name)
   , Show v, ToField v, KnownSymbol name, SingI (TFieldInfo sch tab name)
-  , CanConvert sch (FdType (GetFldDef sch tab name))
-    (FdNullable (GetFldDef sch tab name)) v ) =>
+  , CanConvert sch tab name v ) =>
   [v] -> Cond sch tab
 pinArr name = InArr @name
 
@@ -261,8 +256,7 @@ infixl 3 &&&
 {-# INLINE (~~?) #-}
 (<?),(>?),(<=?),(>=?),(=?),(~=?),(~~?) :: forall fld -> forall sch tab v.
   ( CFieldInfo sch tab fld, KnownSymbol fld, ToField v, Show v
-  , CanConvert sch (FdType (GetFldDef sch tab fld))
-    (FdNullable (GetFldDef sch tab fld)) v) =>
+  , CanConvert sch tab fld v) =>
   v -> Cond sch tab
 x <? b  = Cmp @x (:<)  b
 x >? b  = Cmp @x (:>)  b

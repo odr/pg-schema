@@ -6,7 +6,7 @@ module Database.PostgreSQL.HListTag.HListInfo
   where
 
 import Data.Kind
-import Data.Text as T ( Text )
+import Data.Text ( Text )
 import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Rec

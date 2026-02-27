@@ -277,10 +277,10 @@ convCond = \case
     tell [SomeToField v]
     qual @n <&> (<> " " <> showCmp cmp <> " ?")
   In @n (NE.toList -> vs) -> do
-    tell [SomeToField $ PgArr vs]
+    tell [SomeToField $ pgArr' vs]
     qual @n <&> (<> " = any(?::" <> qualName (getFldDef @sch @t @n).fdType <> "[])")
   InArr @n vs -> do
-    tell [SomeToField $ PgArr vs]
+    tell [SomeToField $ pgArr' vs]
     qual @n <&> (<> " = any(?::" <> qualName (getFldDef @sch @t @n).fdType <> "[])")
   Null @n -> qual @n <&> (<> " is null")
   Not c -> getNot <$> convCond c

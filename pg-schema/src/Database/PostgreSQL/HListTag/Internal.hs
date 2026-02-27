@@ -32,6 +32,12 @@ type family NormalizeGo (prefix :: [SymNat]) (xs :: [(SymNat, Type)]) :: [(SymNa
 type family Normalize (xs :: [(SymNat, Type)]) :: [(SymNat, Type)] where
   Normalize xs = NormalizeGo '[] xs
 
+-- | Count occurrences of symbol @s@ in HListTag list (for unique Nat in SymNat).
+type family CountName (s :: Symbol) (xs :: [(SymNat, Type)]) :: Nat where
+  CountName s '[] = 0
+  CountName s ('( '(s, _), _) ': xs) = 1 + CountName s xs
+  CountName s (_ ': xs) = CountName s xs
+
 type family IsMaybe (x :: Type) :: Bool where
   IsMaybe (Maybe a) = 'True
   IsMaybe a = 'False
@@ -39,9 +45,3 @@ type family IsMaybe (x :: Type) :: Bool where
 type family UnMaybe (x :: Type) :: Type where
   UnMaybe (Maybe a) = a
   UnMaybe a = a
-
--- | Count occurrences of symbol @s@ in HListTag list (for unique Nat in SymNat).
-type family CountName (s :: Symbol) (xs :: [(SymNat, Type)]) :: Nat where
-  CountName s '[] = 0
-  CountName s ('( '(s, _), _) ': xs) = 1 + CountName s xs
-  CountName s (_ ': xs) = CountName s xs

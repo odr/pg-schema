@@ -3,7 +3,6 @@ module Database.PostgreSQL.Schema.Schema where
 
 import Control.Monad
 import Control.Monad.Catch
-import Control.Monad.Zip
 import Data.Bifunctor
 import Data.ByteString as BS hiding (readFile, writeFile)
 import Data.Coerce
@@ -96,7 +95,7 @@ getSchema conn GenNames {..} = do
             && c.relname == nns.nnsName) classes
           inds <- for fields \fld ->
             L.findIndex ((==fld) . (.attname)) pgcl.attribute__class
-          pure $ PgArr $ fromIntegral . (+1) <$> inds
+          pure $ pgArr' $ fromIntegral . (+1) <$> inds
 
 -- all data are ordered to provide stable `hashSchema`
     qpTyp = qRoot @PgCatalog @(PGC "pg_type") do
@@ -185,7 +184,7 @@ getDefs (types,classes,relations) =
         tdUniq = keysBy (=='u')
         keysBy f
           = Mb.mapMaybe -- if something is wrong exclude such constraint
-          (traverse numToName . coerce . (\PgConstraint {..} -> conkey))
+          (traverse numToName . unPgArr' . (.conkey))
           $ L.filter (f . coerce . contype) (coerce constraint__class)
           where
             numToName a =
@@ -196,7 +195,7 @@ getDefs (types,classes,relations) =
     relDefs = Mb.mapMaybe mbRelDef relations
     mbRelDef PgRelation {..} = sequenceA
       ( rdName
-      , sequenceA (coerce $ mzipWith getName2 conkey confkey)
+      , zipWithM getName2 (unPgArr' conkey) (unPgArr' confkey)
         <&> \rdCols -> RelDef{..})
       where
         rdName = NameNS (coerce constraint__namespace) conname
