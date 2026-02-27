@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE MultilineStrings #-}
 module Main where
 
 import Control.Exception
@@ -21,6 +22,7 @@ import Data.Time
 import Data.UUID.Types
 import qualified Data.Vector as Vec
 import Database.PostgreSQL.Simple
+import Database.PostgreSQL.Simple.Types (PGArray(..))
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -39,10 +41,10 @@ main = do
   connStr <- maybe "dbname=schema_test" BS.pack <$> lookupEnv "PG_CONN"
   pool <- newPool $ defaultPoolConfig (connectPostgreSQL connStr) close 10 10
   defaultMain $ testGroup "DB Tests"
-    [ testProperty "We can insert base types, select, update and get their returnings" $ prop_base_converts pool
-    , testProperty "We can insert array of base types (excluding dates), select and get their returnings" $ prop_base_arr_converts pool
-    , testProperty "We can insert extra types (bytea, jsonb, enums, uuid), select and get their returnings" $ prop_ext_converts pool
-    , testProperty "We can't insert array of extra types. Only citext[] can be inserted :-(" $ prop_ext_arr_converts pool
+    [ testProperty "We can work with base types" $ prop_base_converts pool
+    , testProperty "We can work with array of base types" $ prop_base_arr_converts pool
+    , testProperty "We can work with extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
+    , testProperty "We can work with array of extra types" $ prop_ext_arr_converts pool
     ]
 
 type BaseConverts = "cboolean" := Maybe Bool
@@ -59,7 +61,7 @@ type BaseArrConverts = "cboolean" := Maybe (PgArr Bool)
   :. "cint4" := Maybe (PgArr Int32)
   :. "cfloat8" := Maybe (PgArr Double)
   :. "ctext" := Maybe (PgArr Text)
-  -- :. "ctimestamptz" := Maybe (PgArr UTCTime)
+  :. "ctimestamptz" := Maybe (PgArr UTCTime)
 
 type ExtConverts = "ccitext" := Maybe (CI Text)
   :. "ccolor" := Maybe (PGEnum Sch ( "test_schema" ->> "color" ))
@@ -69,10 +71,10 @@ type ExtConverts = "ccitext" := Maybe (CI Text)
   :. "cuuid" := Maybe UUID
 
 type ExtArrConverts = "ccitext" := Maybe (PgArr (CI Text))
-  -- :. "ccolor" := Maybe (PgArr (PGEnum Sch ( "test_schema" ->> "color" )))
-  -- :. "cbytea" := Maybe (PgArr (Binary BS.ByteString))
-  -- :. "cjsonb" := Maybe (PgArr Value)
-  -- :. "cuuid" := Maybe (PgArr UUID)
+  :. "ccolor" := Maybe (PgArr (PGEnum Sch ( "test_schema" ->> "color" )))
+  :. "cbytea" := Maybe (PgArr (Binary BS.ByteString))
+  :. "cjsonb" := Maybe (PgArr Value)
+  :. "cuuid" := Maybe (PgArr UUID)
 
 genDay :: Gen Day
 -- genDay = ModifiedJulianDay . fromIntegral <$> Gen.int (Range.linear (-100000) 200000)
@@ -221,20 +223,19 @@ prop_base_converts pool = withTests 30 $ property do
 
 prop_base_arr_converts :: Pool Connection -> Property
 prop_base_arr_converts pool = withTests 30 $ property do
-  (recs, ds) <- forAll
-    $ (,) <$> genBaseArrConvertsList <*> Gen.list (Range.linear 0 20) genUTCTime
-  (resSel, resIns, resUpd) <- evalIO $ Pool.withResource pool \conn ->
+  recs <- forAll genBaseArrConvertsList
+  ds <- forAll $ Gen.list (Range.linear 0 20) genUTCTime
+  (resSel, resIns, resUpd::[BaseArrConverts]) <- evalIO $ Pool.withResource pool \conn ->
     withRollback conn do
       void $ insSch_ "base_arr_converts" conn recs
       (res, _) <- selSch "base_arr_converts" conn qpEmpty
-      (resu :: ["ctimestamptz" := Maybe (PgArr UTCTime) :. BaseArrConverts])
-        <- updByCond "base_arr_converts" conn
-          ("ctimestamptz" =: Just (pgArr' ds)) mempty
+      res'' <- updByCond "base_arr_converts" conn
+        ("ctimestamptz" =: Just (pgArr' ds)) mempty
       (res', _) <- insSch "base_arr_converts" conn recs
-      pure (res, res',resu)
-  L.length resSel === L.length resUpd
+      pure (res, res', res'')
   L.sort resSel === L.sort recs
-  fmap (\(Tagged @"ctimestamptz" (Nothing @(PgArr UTCTime)) :. r) -> r) resIns === recs -- add sort when fail
+  resIns === recs -- add sort when fail
+  L.length resUpd === L.length recs
 
 prop_ext_converts :: Pool Connection -> Property
 prop_ext_converts pool = withTests 30 $ property do

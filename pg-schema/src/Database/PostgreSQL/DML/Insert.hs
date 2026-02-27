@@ -23,11 +23,11 @@ insertSch ren sch t @r @r' @h @h' conn = let sql = insertText sch t @h @h' in
 
 insertSch_ :: forall ren sch t -> forall r h. (InsertNonReturning' ren sch t r h) =>
   Connection -> [r] -> IO (Int64, Text)
-insertSch_ ren sch t @r @h conn = let sql = insertText_ sch t @h in
+insertSch_ ren sch t @r @h conn recs = let sql = insertText_ sch t @h in do
   trace' (T.unpack sql)
     $ fmap (, sql)
     . executeMany conn (fromString $ T.unpack sql)
-    . fmap (toHListTag @ren @sch @t @r)
+    . fmap (toHListTag @ren @sch @t @r) $ recs
 
 insertText
   :: forall sch t -> forall r r' s

@@ -13,7 +13,10 @@ import Data.Fixed
 import Data.Kind
 import Data.List as L
 import Data.Maybe as M
+import Data.Singletons
+import Data.Tagged
 import Data.Text as T
+import Data.Text.Encoding as T
 import Data.Time
 import Data.UUID.Types
 import Database.PostgreSQL.Schema.Catalog (PGC)
@@ -21,8 +24,10 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import Database.Schema.Def
+import Database.Schema.ShowType
 import GHC.Int
 import GHC.TypeLits as TL
+import PgSchema.Util
 import Prelude as P
 import Type.Reflection
 #ifdef MK_ARBITRARY
@@ -131,11 +136,23 @@ newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
   deriving newtype Flat
 #endif
 
+instance (FromField a, Typeable a) => FromField (Tagged s (PgArr a)) where
+  fromField = (fmap (coerce @(PGArray (Maybe a))) .) . fromField
+
 instance (FromField a, Typeable a) => FromField (PgArr a) where
   fromField = (fmap (coerce @(PGArray (Maybe a))) .) . fromField
 
 instance ToField a => ToField (PgArr a) where
   toField = toField . coerce @_ @(PGArray (Maybe a))
+
+instance (ToField a, ToStar s) => ToField (Tagged (s :: Maybe NameNSK) (PgArr a)) where
+  toField (Tagged (PgArr xs)) =
+    case toField (PGArray xs) of
+      Plain b -> Plain (b <> typ)
+      Many zs -> Many (zs <> [Plain typ])
+      x -> x
+    where
+      typ = encodeUtf8Builder $ maybe mempty (("::" <>) . (<> "[]") . qualName) $ demote @s
 
 pgArr' :: [a] -> PgArr a
 pgArr' = PgArr . fmap Just

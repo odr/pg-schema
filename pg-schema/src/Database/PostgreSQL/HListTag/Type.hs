@@ -61,7 +61,6 @@ instance (Monoid t, Monoid (HListTag ts)) => Monoid (HListTag ('(s, t) ': ts)) w
 --------------------------------------------------------------------------------
 instance ToRow (HListTag '[]) where
   toRow _ = []
-
 instance (ToField t, ToRow (HListTag ts)) => ToRow (HListTag ('(s, t) ': ts)) where
   toRow (val :* xs) = toField val : toRow xs
 

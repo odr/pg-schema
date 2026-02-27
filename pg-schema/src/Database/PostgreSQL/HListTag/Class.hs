@@ -3,6 +3,7 @@ module Database.PostgreSQL.HListTag.Class
   (IsoHListTag(..), Renamer(..), RenamerId)
   where
 
+import Data.Coerce
 import Data.Kind
 import Data.Tagged
 import Database.PostgreSQL.Convert
@@ -153,12 +154,19 @@ class CHListTagRepFi ren sch tab (fld :: Symbol) fi t where
   toHListTagFi :: t -> HListTag (GHListTagRepFi ren sch tab fld fi t)
   fromHListTagFi :: HListTag (GHListTagRepFi ren sch tab fld fi t) -> t
 
-instance CanConvert sch tab fld t
-  => CHListTagRepFi ren sch tab fld (RFPlain fd) t
+instance (CanConvert sch tab fld t, Coercible (PlainType sch tab fld t fd) t)
+  => CHListTagRepFi ren sch tab fld (RFPlain (fd :: FldDefK)) t
   where
-    type GHListTagRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), t)]
-    toHListTagFi t = t :* HNil
-    fromHListTagFi (t :* HNil) = t
+    type GHListTagRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), PlainType sch tab fld t fd)]
+    toHListTagFi t = coerce t :* HNil
+    fromHListTagFi (t :* HNil) = coerce t
+
+type family PlainType sch tab fld t fd :: Type where
+  PlainType sch tab fld (PgArr t) ('FldDef tn False def) = -- TypeError (Text "PgArr")
+    Tagged (TypElem (TTypDef sch tn)) (PgArr t)
+  PlainType sch tab fld (Maybe (PgArr t)) ('FldDef tn True def) = --TypeError (Text "PgArr")
+    Maybe (Tagged (TypElem (TTypDef sch tn)) (PgArr t))
+  PlainType sch tab fld t fd = t
 
 instance (CHListTagRepFromMaybe ren sch fld toTab t b, b ~ IsMaybe t)
   => CHListTagRepFi ren sch tab fld (RFFromHere toTab refs) t where
