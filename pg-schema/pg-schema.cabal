@@ -1,6 +1,6 @@
-cabal-version:  2.4
+cabal-version:  3.12
 name:           pg-schema
-version:        0.4.0.0
+version:        0.5.0.0
 description:    Please see the README on GitHub at <https://github.com/odr/pg-schema#readme>
 homepage:       https://github.com/odr/pg-schema#readme
 bug-reports:    https://github.com/odr/pg-schema/issues
@@ -152,7 +152,13 @@ test-suite test-pgs
   type:             exitcode-stdio-1.0
   main-is:          Main.hs
   other-modules:
+    Dml
     Sch
+    Tests.Aggregates
+    Tests.BaseConverts
+    Tests.Conditions
+    Tests.Hierarchy
+    Tests.Path
   hs-source-dirs:   test-pgs
   default-extensions:
     AllowAmbiguousTypes

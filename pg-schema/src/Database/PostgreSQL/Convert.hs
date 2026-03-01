@@ -121,6 +121,7 @@ instance ToField PgChar where
 -- | PGArray has no JSON instances. [] has JSON, but no PG.
 -- This one has both.
 -- All elements are Maybe because PostgreSql doesn't guarantee that all elements are present.
+-- Tagged PgArr is safe converted to ToField with type information
 newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
   deriving stock (Show, Read)
   deriving newtype (Eq, Ord, FromJSON, ToJSON, Semigroup, Monoid

@@ -35,6 +35,76 @@ main = do
         );
       create table ext_arr_converts 
         (ccitext citext[], cbytea bytea[], cjsonb jsonb[], cuuid uuid[], ccolor color[]);
+
+      -- Test schema for hierarchy, conditions, distinct/order/group by path, and aggregates.
+      -- Isolated from tutorial; created and dropped by test-gen.
+      drop schema if exists test_dml cascade;
+      create schema test_dml;
+
+      -- Lookup table for dimensions (used by root via dim_a_id, dim_b_id for "two child lists by same FK" tests).
+      create table test_dml.dim (
+        id        serial primary key,
+        code      text not null,
+        name      text not null,
+        constraint dim_code_uq unique (code)
+      );
+
+      -- Root of hierarchy; two FKs to dim for distinct roles (dim_a, dim_b).
+      create table test_dml.root (
+        id         serial primary key,
+        code       text not null,
+        grp        integer not null,
+        name       text not null,
+        created_at timestamptz not null default now(),
+        dim_a_id   integer,
+        dim_b_id   integer,
+        constraint root_code_grp_uq unique (code, grp),
+        constraint root_dim_a_fk foreign key (dim_a_id) references test_dml.dim (id) on delete restrict,
+        constraint root_dim_b_fk foreign key (dim_b_id) references test_dml.dim (id) on delete restrict
+      );
+
+      -- Simple child (single-column PK/FK).
+      create table test_dml.mid1 (
+        id       serial primary key,
+        root_id  integer not null,
+        pos      integer not null,
+        flag     boolean not null default false,
+        sort_key integer not null,
+        payload  text,
+        constraint mid1_root_fk foreign key (root_id) references test_dml.root (id) on delete cascade
+      );
+
+      -- Child with composite PK and single-column FK to root.
+      create table test_dml.mid2 (
+        root_id   integer not null,
+        seq       integer not null,
+        kind      text not null,
+        priority  integer not null,
+        payload   jsonb,
+        constraint mid2_pk primary key (root_id, seq),
+        constraint mid2_root_fk foreign key (root_id) references test_dml.root (id) on delete cascade
+      );
+
+      -- Leaf with composite PK and composite FK to mid2.
+      create table test_dml.leaf (
+        root_id    integer not null,
+        seq        integer not null,
+        leaf_no    integer not null,
+        value      numeric not null,
+        category   text,
+        created_at timestamptz not null default now(),
+        constraint leaf_pk primary key (root_id, seq, leaf_no),
+        constraint leaf_mid2_fk foreign key (root_id, seq) references test_dml.mid2 (root_id, seq) on delete cascade
+      );
+
+      -- Table for array types (nullable elements, no 2D arrays).
+      create table test_dml.arrays (
+        id             serial primary key,
+        root_id        integer,
+        dates_nullable date[],
+        jsons          jsonb[],
+        constraint arrays_root_fk foreign key (root_id) references test_dml.root (id) on delete cascade
+      );
       """
 
     putStrLn "Running generator..."
@@ -44,3 +114,9 @@ main = do
       "Sch" -- ^ haskell module name to generate
       "Sch" -- ^ name of generated haskell type for schema
       (GenNames ["test_schema"] [] []) -- ^ name of schemas in database
+    void $ updateSchemaFile' False
+      "pg-schema/test-pgs/Dml.hs"
+      connStr
+      "Dml" -- ^ haskell module name to generate
+      "Dml" -- ^ name of generated haskell type for schema
+      (GenNames ["test_dml"] [] []) -- ^ name of schemas in database

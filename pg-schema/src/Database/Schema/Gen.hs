@@ -73,7 +73,7 @@ rhsPlain fd = "'RFPlain (" <> showType fd <> ")"
 
 rhsToHere :: NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
 rhsToHere tab fromTab rel mfld =
-  let refsText = T.intercalate " " $
+  let refsText = T.intercalate "\n      , " $
         [ textRef (mfld M.! (fromTab, fromName)) (mfld M.! (tab, toName)) fromName toName
         | (fromName, toName) <- rdCols rel
         ]
@@ -81,7 +81,7 @@ rhsToHere tab fromTab rel mfld =
 
 rhsFromHere :: NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
 rhsFromHere tab toTab rel mfld =
-  let refsText = T.intercalate " " $
+  let refsText = T.intercalate "\n      , " $
         [ textRef (mfld M.! (tab, fromName)) (mfld M.! (toTab, toName)) fromName toName
         | (fromName, toName) <- rdCols rel
         ]

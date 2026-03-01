@@ -1,264 +1,50 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE MultilineStrings #-}
 module Main where
 
-import Control.Exception
-import Data.Aeson as A (Value(..))
-import qualified Data.Aeson.Key as Key
-import qualified Data.Aeson.KeyMap as KeyMap
 import Data.ByteString.Char8 qualified as BS
-import Data.ByteString.Lazy qualified as BSL
-import Data.CaseInsensitive
-import Data.Functor
-import qualified Data.HashMap.Strict as Map
-import Data.Int
-import Data.List qualified as L
 import Data.Pool as Pool
-import Data.Scientific
-import Data.String as S
-import Data.Tagged
-import Data.Text as T
-import Data.Time
-import Data.UUID.Types
-import qualified Data.Vector as Vec
 import Database.PostgreSQL.Simple
-import Database.PostgreSQL.Simple.Types (PGArray(..))
 import Hedgehog
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
-import Prelude as P
 import System.Environment
 import Test.Tasty
 import Test.Tasty.Hedgehog
 
+import Tests.BaseConverts
 
-import PgSchema
-import PgSchema.Util
-import Sch
+prop_not_implemented :: Property
+prop_not_implemented = property $ fail "not implemented"
 
 main :: IO ()
 main = do
   connStr <- maybe "dbname=schema_test" BS.pack <$> lookupEnv "PG_CONN"
   pool <- newPool $ defaultPoolConfig (connectPostgreSQL connStr) close 10 10
   defaultMain $ testGroup "DB Tests"
-    [ testProperty "We can work with base types" $ prop_base_converts pool
-    , testProperty "We can work with array of base types" $ prop_base_arr_converts pool
-    , testProperty "We can work with extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
-    , testProperty "We can work with array of extra types" $ prop_ext_arr_converts pool
+    [ testGroup "Base converts (test_schema)"
+      [ testProperty "Work with base types" $ prop_base_converts pool
+      , testProperty "Work with array of base types" $ prop_base_arr_converts pool
+      , testProperty "Work with extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
+      , testProperty "Work with array of extra types" $ prop_ext_arr_converts pool
+      ]
+    , testGroup "Hierarchy (test_dml)"
+      [ testProperty "Insert root then children (simple FK)" prop_not_implemented
+      , testProperty "Insert root then children (composite FK)" prop_not_implemented
+      , testProperty "Select root with one child list (RFToHere)" prop_not_implemented
+      , testProperty "Select root with two child lists by same FK target (dim_a, dim_b)" prop_not_implemented
+      , testProperty "Select child with parent (RFFromHere)" prop_not_implemented
+      , testProperty "Duplicate field names in root and nested structure" prop_not_implemented
+      ]
+    , testGroup "Conditions (test_dml)"
+      [ testProperty "Cond: Cmp, Null, In, BoolOp (and/or)" prop_not_implemented
+      , testProperty "Cond: Child / Parent exists" prop_not_implemented
+      , testProperty "Conditions by path (root vs nested path)" prop_not_implemented
+      ]
+    , testGroup "Distinct / Order / Group by path (test_dml)"
+      [ testProperty "Distinct on root fields" prop_not_implemented
+      , testProperty "Distinct on parent path fields (join order vs qPath order)" prop_not_implemented
+      , testProperty "Order by root; order by path" prop_not_implemented
+      , testProperty "Group by path fields" prop_not_implemented
+      ]
+    , testGroup "Aggregates and duplicate names (test_dml)"
+      [ testProperty "Multiple aggregate fields (max, min) in one select" prop_not_implemented
+      , testProperty "Duplicate names: several group/agg fields in nested structure" prop_not_implemented
+      ]
     ]
-
-type BaseConverts = "cboolean" := Maybe Bool
-  :. "cint4" := Maybe Int32
-  :. "cdate" := Maybe Day
-  :. "ctime" := Maybe TimeOfDay
-  :. "ctimestamp" := Maybe LocalTime
-  :. "ctimestamptz" := Maybe UTCTime
-  :. "ctext" := Maybe Text
-  :. "cfloat8" := Maybe Double
-
--- We can't insert arrays of dates (workaround: insertJSON)
-type BaseArrConverts = "cboolean" := Maybe (PgArr Bool)
-  :. "cint4" := Maybe (PgArr Int32)
-  :. "cfloat8" := Maybe (PgArr Double)
-  :. "ctext" := Maybe (PgArr Text)
-  :. "ctimestamptz" := Maybe (PgArr UTCTime)
-
-type ExtConverts = "ccitext" := Maybe (CI Text)
-  :. "ccolor" := Maybe (PGEnum Sch ( "test_schema" ->> "color" ))
-  :. "cbytea" := Maybe (Binary BS.ByteString)
-  :. "cjsonb" := Maybe Value
-  :. "cjson" := Maybe Value
-  :. "cuuid" := Maybe UUID
-
-type ExtArrConverts = "ccitext" := Maybe (PgArr (CI Text))
-  :. "ccolor" := Maybe (PgArr (PGEnum Sch ( "test_schema" ->> "color" )))
-  :. "cbytea" := Maybe (PgArr (Binary BS.ByteString))
-  :. "cjsonb" := Maybe (PgArr Value)
-  :. "cuuid" := Maybe (PgArr UUID)
-
-genDay :: Gen Day
--- genDay = ModifiedJulianDay . fromIntegral <$> Gen.int (Range.linear (-100000) 200000)
--- genDay = ModifiedJulianDay . fromIntegral <$> Gen.int (Range.linear 10000 100000)
-genDay = ModifiedJulianDay . fromIntegral <$> Gen.int (Range.linear 50000 80000)
-
-genTime :: Gen TimeOfDay
-genTime = timeToTimeOfDay . fromIntegral <$> Gen.int (Range.linear 0 86399)
-
-genLocalTime :: Gen LocalTime
-genLocalTime = LocalTime <$> genDay <*> genTime
-
-genUTCTime :: Gen UTCTime
-genUTCTime = do
-  day <- genDay
-  diff <- fromIntegral <$> Gen.int (Range.linear 0 86399)
-  pure $ UTCTime day diff
-
-class GenDefault a where
-  defGen :: Gen a
-
-instance GenDefault Int32 where defGen = Gen.int32 (Range.linear 0 1000000)
-instance GenDefault Text where defGen = Gen.text (Range.linear 0 50) Gen.alpha
-instance GenDefault Bool where defGen = Gen.bool
-instance GenDefault Double where defGen = Gen.double $ Range.linearFrac 0 1000000
-instance GenDefault Day where defGen = genDay
-instance GenDefault TimeOfDay where defGen = genTime
-instance GenDefault LocalTime where defGen = genLocalTime
-instance GenDefault UTCTime where defGen = genUTCTime
-instance GenDefault a => GenDefault (Maybe a) where defGen = Gen.maybe defGen
-
-instance GenDefault a => GenDefault (PgArr a) where
-  defGen = PgArr <$> Gen.list (Range.linear 0 5) defGen
-
-instance GenDefault val => GenDefault (tag := val) where
-  defGen = (tag =:) <$> defGen
-
-instance (GenDefault h, GenDefault t) => GenDefault (h :. t) where
-  defGen = (:.) <$> defGen <*> defGen
-
-instance GenDefault (PGEnum Sch (TS "color")) where defGen = Gen.enumBounded
-
-instance GenDefault Value where defGen = genValue
-
-instance GenDefault (CI Text) where defGen = S.fromString . T.unpack <$> defGen
-
-instance GenDefault (Binary BS.ByteString) where defGen = Binary <$> Gen.bytes (Range.linear 0 512)
-
-instance GenDefault UUID where defGen = genUUID
-
-genBaseConvertsList :: Gen [BaseConverts]
-genBaseConvertsList = Gen.list (Range.linear 1 10000) defGen
-
-genBaseArrConvertsList :: Gen [BaseArrConverts]
-genBaseArrConvertsList = Gen.list (Range.linear 1 10000) defGen
-
-genExtConvertsList :: Gen [ExtConverts]
-genExtConvertsList = Gen.list (Range.linear 1 10000) defGen
-
-genExtArrConvertsList :: Gen [ExtArrConverts]
-genExtArrConvertsList = Gen.list (Range.linear 1 10000) defGen
-
-genScientific :: Gen Scientific
-genScientific =
-  scientific
-    <$> Gen.integral (Range.linear (-10000) 10000) -- коэффициент
-    <*> Gen.int (Range.linear (-10) 10)           -- экспонента
-
-genUUID :: Gen UUID
-genUUID = do
-  -- UUID состоит из 16 байт
-  bytes <- Gen.bytes (Range.singleton 16)
-  case fromByteString (BSL.fromStrict bytes) of
-    Nothing -> error "Should never happen: 16 bytes is correct for UUID"
-    Just u  -> pure u
-
-genValue :: Gen Value
-genValue = Gen.recursive Gen.choice
-  -- Базовые типы (листья дерева)
-  [ pure A.Null
-  , Bool   <$> Gen.bool
-  , Number <$> genScientific
-  , String <$> Gen.text (Range.linear 0 20) Gen.unicode
-  ]
-  -- Рекурсивные типы (узлы дерева)
-  [ -- Генерация массива
-    Array . Vec.fromList <$> Gen.list (Range.linear 0 5) genValue
-    -- Генерация объекта (ключ-значение)
-  , Object . KeyMap.fromList <$> Gen.list (Range.linear 0 5) genPair
-  ]
-  where
-    genPair = (,) . Key.fromText
-      <$> Gen.text (Range.linear 1 15) Gen.alpha
-      <*> genValue
-
-type TS tab = "test_schema" ->> tab
-
-insSch
-  :: forall tn -> forall r r' h h'
-  . InsertReturning' RenamerId Sch (TS tn) r r' h h'
-  => Connection -> [r] -> IO ([r'], Text)
-insSch tn = insertSch RenamerId Sch (TS tn)
-
-insSch_
-  :: forall tn -> forall r h
-  . InsertNonReturning' RenamerId Sch (TS tn) r h
-  => Connection -> [r] -> IO (Int64, Text)
-insSch_ tn = insertSch_ RenamerId Sch (TS tn)
-
-type HSch s r = HListTag (HListTagRep RenamerId Sch (TS s) r)
-
-selSch :: forall tn -> forall r h.
-  ( IsoHListTag RenamerId Sch (TS tn) r, h ~ HSch tn r
-  , CHListInfo Sch (TS tn) h, FromRow h )
-  => Connection -> QueryParam Sch (TS tn) -> IO ([r], (Text,[SomeToField]))
-selSch tn = selectSch RenamerId Sch (TS tn)
-
-updByCond_
-  :: forall tn -> forall r h.
-  ( h ~ HRep RenamerId Sch (TS tn) r, HListInfo RenamerId Sch (TS tn) r h
-  , ToRow h, AllPlain Sch (TS tn) h )
-  => Connection -> r -> Cond Sch (TS tn) -> IO Int64
-updByCond_ tn = updateByCond_ RenamerId Sch (TS tn)
-
-updByCond :: forall tn -> forall r r' h h'.
-  ( UpdateReturning RenamerId Sch (TS tn) r r' h h'
-  , AllPlain Sch (TS tn) h, ToRow h, FromRow h' )
-  => Connection -> r -> Cond Sch (TS tn) -> IO [r']
-updByCond tn = updateByCond RenamerId Sch (TS tn)
-
-prop_base_converts :: Pool Connection -> Property
-prop_base_converts pool = withTests 30 $ property do
-  recs <- forAll genBaseConvertsList
-  (resSel, resIns, resUpd) <- evalIO $ Pool.withResource pool \conn ->
-    withRollback conn do
-      void $ insSch_ "base_converts" conn recs
-      (res, _) <- selSch "base_converts" conn qpEmpty
-      res'' <- updByCond "base_converts" conn
-        ("cint4" =: Just (10 :: Int32)) ("cboolean" =? Just False)
-      (res', _) <- insSch "base_converts" conn recs
-      pure (res, res', res'')
-  L.sort resSel === L.sort recs
-  resIns === recs -- add sort when fail
-  L.sort resUpd === L.sort ((\(a:.b:.c) -> a:. "cint4" =: Just (10::Int32) :.c)
-    <$> L.filter (\(Tagged a:._) -> a == Just False) recs)
-
-prop_base_arr_converts :: Pool Connection -> Property
-prop_base_arr_converts pool = withTests 30 $ property do
-  recs <- forAll genBaseArrConvertsList
-  ds <- forAll $ Gen.list (Range.linear 0 20) genUTCTime
-  (resSel, resIns, resUpd::[BaseArrConverts]) <- evalIO $ Pool.withResource pool \conn ->
-    withRollback conn do
-      void $ insSch_ "base_arr_converts" conn recs
-      (res, _) <- selSch "base_arr_converts" conn qpEmpty
-      res'' <- updByCond "base_arr_converts" conn
-        ("ctimestamptz" =: Just (pgArr' ds)) mempty
-      (res', _) <- insSch "base_arr_converts" conn recs
-      pure (res, res', res'')
-  L.sort resSel === L.sort recs
-  resIns === recs -- add sort when fail
-  L.length resUpd === L.length recs
-
-prop_ext_converts :: Pool Connection -> Property
-prop_ext_converts pool = withTests 30 $ property do
-  recs <- forAll genExtConvertsList
-  (resSel, resIns, resUpd) <- evalIO $ Pool.withResource pool \conn ->
-    withRollback conn do
-      void $ insSch_ "ext_converts" conn recs
-      (res, _) <- selSch "ext_converts" conn qpEmpty
-      res'' <- updByCond "ext_converts" conn
-        ("ccitext" =: Just ("CaSes" :: CI Text)) ("ccolor" =? Just Color_red)
-      (res', _) <- insSch "ext_converts" conn recs
-      pure (res, res', res'')
-  L.sort resSel === L.sort recs
-  resIns === recs -- add sort when fail
-  L.sort resUpd === L.sort ((\(a:.b) -> "ccitext" =: Just ("cAses" :: CI Text) :.b)
-    <$> L.filter (\(_ :. Tagged a :. _) -> a == Just Color_red) recs)
-
-prop_ext_arr_converts :: Pool Connection -> Property
-prop_ext_arr_converts pool = withTests 30 $ property do
-  recs <- forAll genExtArrConvertsList
-  evalIO $ Pool.withResource pool \conn ->
-    withRollback conn do
-      void $ insSch_ "ext_arr_converts" conn recs
-
-withRollback :: Connection -> IO a -> IO a
-withRollback conn act = execute_ conn "BEGIN" >> act `finally` rollback conn
