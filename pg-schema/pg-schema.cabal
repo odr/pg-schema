@@ -152,13 +152,13 @@ test-suite test-pgs
   type:             exitcode-stdio-1.0
   main-is:          Main.hs
   other-modules:
-    Dml
     Sch
     Tests.Aggregates
     Tests.BaseConverts
     Tests.Conditions
     Tests.Hierarchy
     Tests.Path
+    Utils
   hs-source-dirs:   test-pgs
   default-extensions:
     AllowAmbiguousTypes
@@ -185,6 +185,8 @@ test-suite test-pgs
     aeson,
     pg-schema,
     bytestring,
+    singletons,
+    singletons-base,
     case-insensitive,
     hedgehog >= 1.1,
     postgresql-simple,

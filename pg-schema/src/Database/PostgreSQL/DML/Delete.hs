@@ -14,9 +14,9 @@ import Data.Singletons
 -- TODO (?):
 -- deleteByKey Connection -> [r] -> IO [r']
 
-deleteByCond :: forall sch t. SingI t =>
+deleteByCond :: forall sch t -> SingI t =>
   Connection -> Cond sch t -> IO (Int64, (Text,[SomeToField]))
-deleteByCond conn cond = traceShow' (q,ps)
+deleteByCond sch t conn cond = traceShow' (q,ps)
   $ (,(q,ps)) <$> execute conn (fromString $ T.unpack q) ps
   where
     (q, ps) = deleteText @sch @t cond

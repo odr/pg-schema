@@ -1,3 +1,4 @@
+{-# LANGUAGE KindSignatures #-}
 module Database.PostgreSQL.DML.Insert where
 
 import Data.Bifunctor
@@ -10,7 +11,6 @@ import Database.PostgreSQL.DML.Insert.Types
 import Database.Schema.ShowType
 import PgSchema.Util
 import Database.PostgreSQL.HListTag
-
 
 insertSch
   :: forall ren sch t -> forall r r' h h'. InsertReturning' ren sch t r r' h h'
