@@ -20,10 +20,10 @@ main = do
   pool <- newPool $ defaultPoolConfig (connectPostgreSQL connStr) close 10 10
   defaultMain $ testGroup "DB Tests"
     [ testGroup "Base converts (test_schema)"
-      [ testProperty "Work with base types" $ prop_base_converts pool
-      , testProperty "Work with array of base types" $ prop_base_arr_converts pool
-      , testProperty "Work with extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
-      , testProperty "Work with array of extra types" $ prop_ext_arr_converts pool
+      [ testProperty "Base types" $ prop_base_converts pool
+      , testProperty "Array of base types" $ prop_base_arr_converts pool
+      , testProperty "Extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
+      , testProperty "Array of extra types" $ prop_ext_arr_converts pool
       ]
     , testGroup "Hierarchy (test_dml)"
       [ testProperty "Insert/Upsert/Select root with children (simple FK)" $ prop_hier_insert_simple_fk pool
