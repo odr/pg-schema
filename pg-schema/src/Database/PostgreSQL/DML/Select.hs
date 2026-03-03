@@ -174,13 +174,13 @@ fieldM fi = case fi.fieldKind of
   RFPlain {} -> do
     n <- asks qrCurrTabNum
     let val = "t" <> show' n <> "." <> fi.fieldDbName
-    pure (val, fi.fieldDbName, val <> " is null")
+    pure (val, fi.fieldName, val <> " is null")
   RFAggr _ fname _ -> do
     n <- asks qrCurrTabNum
     let val = fname <> "(" <> "t" <> show' n <> "." <> fi.fieldDbName <> ")"
     pure case fname of
-      "count" -> ("count(*)", fi.fieldDbName, " false")
-      _ -> (val, fi.fieldDbName, val <> " is null")
+      "count" -> ("count(*)", fi.fieldName, " false")
+      _ -> (val, fi.fieldName, val <> " is null")
   RFFromHere ri refs -> do
     QueryRead {..} <- ask
     modify \QueryState{qsLastTabNum = (+1) -> n2, qsParents} -> QueryState
@@ -203,7 +203,7 @@ fieldM fi = case fi.fieldKind of
         pure $ "case when " <> T.intercalate " and " (third <$> flds)
           <> " then null else " <> jsonPairing (two <$> flds) <> " end"
       else pure $ jsonPairing $ two <$> flds
-    pure (val, fi.fieldDbName, val <> " is null")
+    pure (val, fi.fieldName, val <> " is null")
   RFToHere ri refs -> do
     QueryRead{..} <- ask
     QueryState {qsLastTabNum = (+1) -> tabNum, qsParents} <- get
@@ -214,7 +214,7 @@ fieldM fi = case fi.fieldKind of
     modify (\qs -> qs { qsParents = qsParents })
     let
       val = "array(" <> selText <> ")"
-    pure ("array_to_json(" <> val <> ")", fi.fieldDbName, val <> " = '{}'")
+    pure ("array_to_json(" <> val <> ")", fi.fieldName, val <> " = '{}'")
 
 joinText :: ParentInfo -> Text
 joinText ParentInfo{..} =

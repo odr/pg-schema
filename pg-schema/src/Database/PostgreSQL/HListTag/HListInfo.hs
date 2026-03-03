@@ -10,6 +10,7 @@ import Data.Text ( Text )
 import Database.PostgreSQL.HListTag.Internal
 import Database.PostgreSQL.HListTag.Type
 import Database.PostgreSQL.HListTag.Rec
+  (RecordInfo'(..), FieldInfo'(..), allPlainB, FieldDbNameSym0, AllPlainB)
 import Database.Schema.Def
 import Database.Types.Aggr
 import GHC.TypeLits as TL

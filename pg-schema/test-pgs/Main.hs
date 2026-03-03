@@ -21,17 +21,15 @@ main = do
   defaultMain $ testGroup "DB Tests"
     [ testGroup "Base converts (test_schema)"
       [ testProperty "Work with base types" $ prop_base_converts pool
-      -- , testProperty "Work with array of base types" $ prop_base_arr_converts pool
-      -- , testProperty "Work with extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
-      -- , testProperty "Work with array of extra types" $ prop_ext_arr_converts pool
+      , testProperty "Work with array of base types" $ prop_base_arr_converts pool
+      , testProperty "Work with extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
+      , testProperty "Work with array of extra types" $ prop_ext_arr_converts pool
       ]
     , testGroup "Hierarchy (test_dml)"
-      [ testProperty "Insert root then children (simple FK)" $ prop_hier_insert_simple_fk pool
-      , testProperty "Insert root then children (composite FK)" $ prop_hier_insert_composite_fk pool
-      -- , testProperty "Select root with one child list (RFToHere)" prop_not_implemented
-      -- , testProperty "Select root with two child lists by same FK target (dim_a, dim_b)" prop_not_implemented
-      -- , testProperty "Select child with parent (RFFromHere)" prop_not_implemented
-      -- , testProperty "Duplicate field names in root and nested structure" prop_not_implemented
+      [ testProperty "Insert/Upsert/Select root with children (simple FK)" $ prop_hier_insert_simple_fk pool
+      , testProperty "Insert/Upsert/Select root with children (composite FK)" $ prop_hier_insert_composite_fk pool
+      , testProperty "Select child with parent (RFFromHere)" $ prop_hier_select_child_with_parent pool
+      , testProperty "Duplicate field names in root and nested structure" $ prop_hier_duplicate_names_root_nested pool
       ]
     -- , testGroup "Conditions (test_dml)"
     --   [ testProperty "Cond: Cmp, Null, In, BoolOp (and/or)" prop_not_implemented

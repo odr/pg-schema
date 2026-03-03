@@ -13,7 +13,7 @@ packages:
   pg-schema-tutorial
 
 constraints:
-  pg-schema +arbitrary -debug +flat +hashable
+  pg-schema +arbitrary +flat +hashable
 
 package *
   ghc-options: -fwrite-ide-info -fprint-potential-instances

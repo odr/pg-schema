@@ -32,11 +32,19 @@ import GHC.TypeLits (KnownSymbol)
 
 type TS tab = "test_pgs" ->> tab
 
-type HSch s r = HListTag (HListTagRep RenamerId Sch (TS s) r)
+type HSch s r = HListTag (HListTagRep RenamerSch Sch (TS s) r)
 
 type EnumPGS s = PGEnum Sch ("test_pgs" ->> s)
 
-type RenamerSch = RenamerId
+data RenamerSch
+
+instance Renamer RenamerSch where
+  type Apply RenamerSch s = RenamerSchImpl s
+
+type family RenamerSchImpl s where
+  RenamerSchImpl "leaf_mid2_rev_fk" = "leaf_mid2_fk"
+  RenamerSchImpl "mid1_root_fk2" = "mid1_root_fk"
+  RenamerSchImpl s = s
 
 withRollback :: Connection -> IO a -> IO a
 withRollback conn act = execute_ conn "BEGIN" >> act `finally` rollback conn
@@ -116,7 +124,6 @@ genUTCTime = do
 class GenDefault a where
   defGen :: Gen a
 
-
 instance GenDefault Int32 where defGen = Gen.int32 (Range.linear 0 1000000)
 instance GenDefault Text where defGen = Gen.text (Range.linear 0 50) Gen.alpha
 instance GenDefault Bool where defGen = Gen.bool
@@ -145,6 +152,13 @@ instance GenDefault (CI Text) where defGen = S.fromString . T.unpack <$> defGen
 instance GenDefault (Binary BS.ByteString) where defGen = Binary <$> Gen.bytes (Range.linear 0 512)
 
 instance GenDefault UUID where defGen = genUUID
+
+instance GenDefault (HListTag '[]) where
+  defGen = pure HNil
+
+instance (GenDefault t, GenDefault (HListTag ts))
+      => GenDefault (HListTag ('(sn, t) ': ts)) where
+  defGen = (:*) <$> defGen <*> defGen
 
 genScientific :: Gen Scientific
 genScientific =
@@ -182,3 +196,20 @@ genData' a n1 n2 = Gen.list (Range.linear n1 n2) defGen
 
 -- genIsoHL :: forall tn -> IsoHListTag RenamerSch Sch (TS tn) r => Gen r
 -- genIsoHL tn =
+
+genIsoHList
+  :: forall tn r -> forall h.
+    ( IsoHListTag RenamerSch Sch (TS tn) r
+    , h ~ HListTag (HListTagRep RenamerSch Sch (TS tn) r)
+    , GenDefault h )
+  => Gen r
+genIsoHList tn r @h =
+  fromHListTag @RenamerSch @Sch @(TS tn) @r <$> (defGen :: Gen h)
+
+genDataH
+  :: forall tn r -> forall h
+  . ( IsoHListTag RenamerSch Sch (TS tn) r
+    , h ~ HListTag (HListTagRep RenamerSch Sch (TS tn) r)
+    , GenDefault h )
+  => Int -> Int -> Gen [r]
+genDataH tn r n1 n2 = Gen.list (Range.linear n1 n2) $ genIsoHList tn r

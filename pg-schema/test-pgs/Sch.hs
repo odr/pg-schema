@@ -67,6 +67,10 @@ instance CTypDef Sch ( "pg_catalog" ->> "date" ) where
   type TTypDef Sch ( "pg_catalog" ->> "date" ) = 
     'TypDef "D" 'Nothing '[  ]
 
+instance CTypDef Sch ( "pg_catalog" ->> "float4" ) where
+  type TTypDef Sch ( "pg_catalog" ->> "float4" ) = 
+    'TypDef "N" 'Nothing '[  ]
+
 instance CTypDef Sch ( "pg_catalog" ->> "float8" ) where
   type TTypDef Sch ( "pg_catalog" ->> "float8" ) = 
     'TypDef "N" 'Nothing '[  ]
@@ -86,10 +90,6 @@ instance CTypDef Sch ( "pg_catalog" ->> "json" ) where
 instance CTypDef Sch ( "pg_catalog" ->> "jsonb" ) where
   type TTypDef Sch ( "pg_catalog" ->> "jsonb" ) = 
     'TypDef "U" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "numeric" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "numeric" ) = 
-    'TypDef "N" 'Nothing '[  ]
 
 instance CTypDef Sch ( "pg_catalog" ->> "text" ) where
   type TTypDef Sch ( "pg_catalog" ->> "text" ) = 
@@ -175,7 +175,7 @@ instance CTabDef Sch ( "test_pgs" ->> "mid1" ) where
 instance CTabDef Sch ( "test_pgs" ->> "mid2" ) where
   type TTabDef Sch ( "test_pgs" ->> "mid2" ) = 
     'TabDef '[ "root_id"
-      ,"seq","kind","priority","payload" ] '[ "root_id","seq" ] '[  ]
+      ,"seq","kind","flag","priority","payload" ] '[ "root_id","seq" ] '[  ]
 
 instance CTabDef Sch ( "test_pgs" ->> "root" ) where
   type TTabDef Sch ( "test_pgs" ->> "root" ) = 
@@ -376,7 +376,7 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
   TFieldInfoSch ( "test_pgs" ->> "leaf" ) "leaf_no" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
   TFieldInfoSch ( "test_pgs" ->> "leaf" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
   TFieldInfoSch ( "test_pgs" ->> "leaf" ) "seq" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "value" = 'RFPlain ('FldDef ( "pg_catalog" ->> "numeric" ) 'False 'False)
+  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "value" = 'RFPlain ('FldDef ( "pg_catalog" ->> "float4" ) 'False 'False)
   TFieldInfoSch ( "test_pgs" ->> "leaf" ) "leaf_mid2_fk" = 'RFFromHere ( "test_pgs" ->> "mid2" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
       , 'Ref "seq" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "seq" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) ]
@@ -390,7 +390,7 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'True)
+  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'False)
   TFieldInfoSch ( "test_pgs" ->> "mid1" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
   TFieldInfoSch ( "test_pgs" ->> "mid1" ) "payload" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
   TFieldInfoSch ( "test_pgs" ->> "mid1" ) "pos" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
@@ -408,6 +408,7 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
+  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'False)
   TFieldInfoSch ( "test_pgs" ->> "mid2" ) "kind" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
   TFieldInfoSch ( "test_pgs" ->> "mid2" ) "payload" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
   TFieldInfoSch ( "test_pgs" ->> "mid2" ) "priority" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
@@ -423,7 +424,7 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: root_id, seq, kind, priority, payload."
+    TE.:$$: TE.Text "  Fields: root_id, seq, kind, flag, priority, payload."
     TE.:$$: TE.Text "  Foreign key constraints: mid2_root_fk, leaf_mid2_fk."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
@@ -474,10 +475,10 @@ instance CSchema Sch where
     ,( "pg_catalog" ->> "_jsonb" ),( "pg_catalog" ->> "_text" )
     ,( "pg_catalog" ->> "_timestamptz" ),( "pg_catalog" ->> "_uuid" )
     ,( "pg_catalog" ->> "bool" ),( "pg_catalog" ->> "bytea" )
-    ,( "pg_catalog" ->> "date" ),( "pg_catalog" ->> "float8" )
-    ,( "pg_catalog" ->> "int4" ),( "pg_catalog" ->> "int8" )
-    ,( "pg_catalog" ->> "json" ),( "pg_catalog" ->> "jsonb" )
-    ,( "pg_catalog" ->> "numeric" ),( "pg_catalog" ->> "text" )
+    ,( "pg_catalog" ->> "date" ),( "pg_catalog" ->> "float4" )
+    ,( "pg_catalog" ->> "float8" ),( "pg_catalog" ->> "int4" )
+    ,( "pg_catalog" ->> "int8" ),( "pg_catalog" ->> "json" )
+    ,( "pg_catalog" ->> "jsonb" ),( "pg_catalog" ->> "text" )
     ,( "pg_catalog" ->> "time" ),( "pg_catalog" ->> "timestamp" )
     ,( "pg_catalog" ->> "timestamptz" ),( "pg_catalog" ->> "uuid" )
     ,( "public" ->> "_citext" ),( "public" ->> "citext" )
