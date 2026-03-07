@@ -154,9 +154,7 @@ prop_hier_duplicate_names_root_nested pool = withTests 30 $ property do
     delByCond "leaf" conn mempty
     delByCond "mid2" conn mempty
     delByCond "root" conn mempty
-    -- (fst -> (outIns' :: ["mid2_root_fk" := [Mid2Rec] :. RootRec])) <-
     void $ insJSON_ "root" conn inIns
     (fst -> (outSel' :: [Leaf])) <- selSch "leaf" conn qpEmpty
     pure outSel'
   L.length outSel === L.length (inIns >>= \(Tagged xs :. _) -> xs >>= \(Tagged ys :. _) -> ys )
-    -- L.sort (outIns >>= \(Tagged m2rs :. rr) -> m2rs <&> (:. rr))

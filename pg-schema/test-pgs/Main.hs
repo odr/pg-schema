@@ -10,6 +10,7 @@ import Test.Tasty.Hedgehog
 
 import Tests.BaseConverts
 import Tests.Hierarchy
+import Tests.Conditions
 
 prop_not_implemented :: Property
 prop_not_implemented = property $ fail "not implemented"
@@ -31,8 +32,10 @@ main = do
       , testProperty "Select child with parent (RFFromHere)" $ prop_hier_select_child_with_parent pool
       , testProperty "Duplicate field names in root and nested structure" $ prop_hier_duplicate_names_root_nested pool
       ]
-    -- , testGroup "Conditions (test_dml)"
-    --   [ testProperty "Cond: Cmp, Null, In, BoolOp (and/or)" prop_not_implemented
+    , testGroup "Query (test_dml)"
+      [ testProperty "'Simple' queries" $ prop_cond_query pool
+      , testProperty "Conditions by duplicated path" $ prop_cond_by_dup_path pool
+      ]
     --   , testProperty "Cond: Child / Parent exists" prop_not_implemented
     --   , testProperty "Conditions by path (root vs nested path)" prop_not_implemented
     --   ]

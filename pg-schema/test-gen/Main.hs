@@ -39,9 +39,7 @@ main = do
       -- Lookup table for dimensions (used by root via dim_a_id, dim_b_id for "two child lists by same FK" tests).
       create table dim (
         id        serial primary key,
-        code      text not null,
         name      text not null,
-        constraint dim_code_uq unique (code)
       );
 
       -- Root of hierarchy; two FKs to dim for distinct roles (dim_a, dim_b).

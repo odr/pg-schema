@@ -194,9 +194,6 @@ genData a = genData' a 1 1000
 genData' :: forall a -> Int -> Int -> GenDefault a => Gen [a]
 genData' a n1 n2 = Gen.list (Range.linear n1 n2) defGen
 
--- genIsoHL :: forall tn -> IsoHListTag RenamerSch Sch (TS tn) r => Gen r
--- genIsoHL tn =
-
 genIsoHList
   :: forall tn r -> forall h.
     ( IsoHListTag RenamerSch Sch (TS tn) r
