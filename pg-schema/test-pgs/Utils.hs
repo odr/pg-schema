@@ -32,7 +32,7 @@ import GHC.TypeLits (KnownSymbol)
 
 type TS tab = "test_pgs" ->> tab
 
-type HSch s r = HListTag (HListTagRep RenamerSch Sch (TS s) r)
+type HSch s r = HList (HListRep RenamerSch Sch (TS s) r)
 
 type EnumPGS s = PGEnum Sch ("test_pgs" ->> s)
 
@@ -65,7 +65,7 @@ insSch_
 insSch_ tn = insertSch_ RenamerSch Sch (TS tn)
 
 selSch :: forall tn -> forall r h.
-  ( IsoHListTag RenamerSch Sch (TS tn) r, h ~ HSch tn r
+  ( IsoHList RenamerSch Sch (TS tn) r, h ~ HSch tn r
   , CHListInfo Sch (TS tn) h, FromRow h )
   => Connection -> QueryParam Sch (TS tn) -> IO ([r], (Text,[SomeToField]))
 selSch tn = selectSch RenamerSch Sch (TS tn)
@@ -153,11 +153,11 @@ instance GenDefault (Binary BS.ByteString) where defGen = Binary <$> Gen.bytes (
 
 instance GenDefault UUID where defGen = genUUID
 
-instance GenDefault (HListTag '[]) where
+instance GenDefault (HList '[]) where
   defGen = pure HNil
 
-instance (GenDefault t, GenDefault (HListTag ts))
-      => GenDefault (HListTag ('(sn, t) ': ts)) where
+instance (GenDefault t, GenDefault (HList ts))
+      => GenDefault (HList ('(sn, t) ': ts)) where
   defGen = (:*) <$> defGen <*> defGen
 
 genScientific :: Gen Scientific
@@ -196,17 +196,17 @@ genData' a n1 n2 = Gen.list (Range.linear n1 n2) defGen
 
 genIsoHList
   :: forall tn r -> forall h.
-    ( IsoHListTag RenamerSch Sch (TS tn) r
-    , h ~ HListTag (HListTagRep RenamerSch Sch (TS tn) r)
+    ( IsoHList RenamerSch Sch (TS tn) r
+    , h ~ HList (HListRep RenamerSch Sch (TS tn) r)
     , GenDefault h )
   => Gen r
 genIsoHList tn r @h =
-  fromHListTag @RenamerSch @Sch @(TS tn) @r <$> (defGen :: Gen h)
+  fromHList @RenamerSch @Sch @(TS tn) @r <$> (defGen :: Gen h)
 
 genDataH
   :: forall tn r -> forall h
-  . ( IsoHListTag RenamerSch Sch (TS tn) r
-    , h ~ HListTag (HListTagRep RenamerSch Sch (TS tn) r)
+  . ( IsoHList RenamerSch Sch (TS tn) r
+    , h ~ HList (HListRep RenamerSch Sch (TS tn) r)
     , GenDefault h )
   => Int -> Int -> Gen [r]
 genDataH tn r n1 n2 = Gen.list (Range.linear n1 n2) $ genIsoHList tn r

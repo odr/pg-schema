@@ -39,7 +39,6 @@ import Database.PostgreSQL.DML.Update
 import Sch
 import Test.QuickCheck hiding (Fixed)
 import Test.QuickCheck.Instances ()
-import Database.Types.EmptyField (EmptyField)
 import Prelude as P
 
 type NSC name = "sch" ->> name
@@ -71,7 +70,7 @@ data B = B1 | B2
 
 data Address (a::A) (b::B) = MkAddress
   { street  :: Text
-  , home    :: If (a == A1) (Maybe Text) EmptyField
+  , home    :: If (a == A1) (Maybe Text) ()
   , app     :: Maybe Text
   , zipcode :: Maybe Text
   , phones  :: Maybe (PgArr Text)
@@ -83,7 +82,7 @@ deriving instance Show (Address A1 B1)
 
 data City a b = MkCity
   { name         :: Maybe Text
-  , city_country :: If (a == A1) EmptyField (Maybe Country)
+  , city_country :: If (a == A1) () (Maybe Country)
   , address_city :: [Address a b] }
   deriving Generic
 
@@ -93,7 +92,7 @@ deriving instance Show (City A1 B1)
 data AddressRev a b = MkAddressRev
   { street       :: Text
   , home         :: Maybe Text
-  , app          :: If (a == A1) (Maybe Text) EmptyField
+  , app          :: If (a == A1) (Maybe Text) ()
   , zipcode      :: Maybe Text
   , address_city :: City a b }
   deriving Generic
@@ -185,10 +184,10 @@ data AddressRet = AddressRet
   , cust_addr :: ["id" := Int32]}
   deriving Generic
 
-type HSch s r = HListTag (HListTagRep RenamerSch Sch (NSC s) r)
+type HSch s r = HList (HListRep RenamerSch Sch (NSC s) r)
 
 selSch :: forall (tn :: Symbol) -> forall r h.
-  ( IsoHListTag RenamerSch Sch (NSC tn) r, h ~ HSch tn r
+  ( IsoHList RenamerSch Sch (NSC tn) r, h ~ HSch tn r
   , CHListInfo Sch (NSC tn) h, FromRow h )
   => Connection -> QueryParam Sch (NSC tn) -> IO ([r], (Text,[SomeToField]))
 selSch tn = selectSch RenamerSch Sch (NSC tn)
@@ -270,7 +269,7 @@ main = do
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
   (_::[Article], _) <- selSch "articles" conn qpEmpty
   -- upsJSON_ "addresses" @(AddressRev A2 B1) conn [MkAddressRev
-  --   { street = "str1", home = Nothing, app = emptyField, zipcode = Nothing
+  --   { street = "str1", home = Nothing, app = (), zipcode = Nothing
   --   , address_city = Nothing }]
   ar <- selSch "addresses" @(AddressRev A2 B1) conn qp
   mapM_ print ar

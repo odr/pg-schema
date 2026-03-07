@@ -10,16 +10,16 @@ import GHC.Int
 import Database.PostgreSQL.DML.Insert.Types
 import Database.Schema.ShowType
 import PgSchema.Util
-import Database.PostgreSQL.HListTag
+import Database.PostgreSQL.HList
 
 insertSch
   :: forall ren sch t -> forall r r' h h'. InsertReturning' ren sch t r r' h h'
   => Connection -> [r] -> IO ([r'], Text)
 insertSch ren sch t @r @r' @h @h' conn = let sql = insertText sch t @h @h' in
   trace' (T.unpack sql)
-    $ fmap ((, sql) . fmap (fromHListTag @ren @sch @t @r'))
+    $ fmap ((, sql) . fmap (fromHList @ren @sch @t @r'))
     . returning conn (fromString $ T.unpack sql)
-    . fmap (toHListTag @ren @sch @t @r)
+    . fmap (toHList @ren @sch @t @r)
 
 insertSch_ :: forall ren sch t -> forall r h. (InsertNonReturning' ren sch t r h) =>
   Connection -> [r] -> IO (Int64, Text)
@@ -27,7 +27,7 @@ insertSch_ ren sch t @r @h conn recs = let sql = insertText_ sch t @h in do
   trace' (T.unpack sql)
     $ fmap (, sql)
     . executeMany conn (fromString $ T.unpack sql)
-    . fmap (toHListTag @ren @sch @t @r) $ recs
+    . fmap (toHList @ren @sch @t @r) $ recs
 
 insertText
   :: forall sch t -> forall r r' s

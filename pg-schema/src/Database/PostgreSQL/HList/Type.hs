@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Database.PostgreSQL.HListTag.Type(HListTag(..), HListToJSON(..)) where
+module Database.PostgreSQL.HList.Type(HList(..), HListToJSON(..)) where
 
 import Data.Aeson
 import Data.Aeson.Key qualified as Key
@@ -22,20 +22,20 @@ import Prelude as P
 infixr 5 :*
 
 -- | Heterogeneous list with Symbol tags (field names)
-data HListTag (ts :: [(SymNat, Type)]) where
-  HNil :: HListTag '[]
-  (:*) :: t -> HListTag ts -> HListTag ('(s, t) ': ts)
+data HList (ts :: [(SymNat, Type)]) where
+  HNil :: HList '[]
+  (:*) :: t -> HList ts -> HList ('(s, t) ': ts)
 
-instance Show (HListTag '[]) where
+instance Show (HList '[]) where
   show HNil = "HNil"
 
-instance (Show t, KnownSymNat sn, Show (HListTag ts)) => Show (HListTag ('(sn, t) ': ts)) where
+instance (Show t, KnownSymNat sn, Show (HList ts)) => Show (HList ('(sn, t) ': ts)) where
   show (x :* xs) = "(" <> P.show x <> ") :* " <> P.show xs
 
-instance Eq (HListTag '[]) where
+instance Eq (HList '[]) where
   _ == _ = True
 
-instance (Eq t, KnownSymNat sn, Eq (HListTag ts)) => Eq (HListTag ('(sn, t) ': ts)) where
+instance (Eq t, KnownSymNat sn, Eq (HList ts)) => Eq (HList ('(sn, t) ': ts)) where
   (x :* xs) == (y :* ys) = x == y && xs == ys
 
 --------------------------------------------------------------------------------
@@ -44,42 +44,42 @@ instance (Eq t, KnownSymNat sn, Eq (HListTag ts)) => Eq (HListTag ('(sn, t) ': t
 -- 2.1. Algebraic structures and transformations
 --------------------------------------------------------------------------------
 
-instance Semigroup (HListTag '[]) where
+instance Semigroup (HList '[]) where
   _ <> _ = HNil
 
-instance (Semigroup t, Semigroup (HListTag ts)) => Semigroup (HListTag ('(s, t) ': ts)) where
+instance (Semigroup t, Semigroup (HList ts)) => Semigroup (HList ('(s, t) ': ts)) where
   (x1 :* xs1) <> (x2 :* xs2) = (x1 <> x2) :* (xs1 <> xs2)
 
-instance Monoid (HListTag '[]) where
+instance Monoid (HList '[]) where
   mempty = HNil
 
-instance (Monoid t, Monoid (HListTag ts)) => Monoid (HListTag ('(s, t) ': ts)) where
+instance (Monoid t, Monoid (HList ts)) => Monoid (HList ('(s, t) ': ts)) where
   mempty = mempty :* mempty
 
 --------------------------------------------------------------------------------
 -- 2.2. Database instances
 --------------------------------------------------------------------------------
-instance ToRow (HListTag '[]) where
+instance ToRow (HList '[]) where
   toRow _ = []
-instance (ToField t, ToRow (HListTag ts)) => ToRow (HListTag ('(s, t) ': ts)) where
+instance (ToField t, ToRow (HList ts)) => ToRow (HList ('(s, t) ': ts)) where
   toRow (val :* xs) = toField val : toRow xs
 
-instance FromRow (HListTag '[]) where
+instance FromRow (HList '[]) where
   fromRow = pure HNil
 
-instance (FromField t, FromRow (HListTag ts)) => FromRow (HListTag ('(s, t) ': ts)) where
+instance (FromField t, FromRow (HList ts)) => FromRow (HList ('(s, t) ': ts)) where
   fromRow = (:*) <$> field <*> fromRow
 
-instance (FromJSON (HListTag xs), Typeable (HListTag xs)) => FromField (HListTag xs) where
+instance (FromJSON (HList xs), Typeable (HList xs)) => FromField (HList xs) where
   fromField = fromJSONField
 
-instance (ToJSON (HListTag xs), Typeable (HListTag xs)) => ToField (HListTag xs) where
+instance (ToJSON (HList xs), Typeable (HList xs)) => ToField (HList xs) where
   toField = toJSONField
 
-instance (FromJSON (HListTag xs), Typeable (HListTag xs)) => FromField [HListTag xs] where
+instance (FromJSON (HList xs), Typeable (HList xs)) => FromField [HList xs] where
   fromField = fromJSONField
 
-instance (ToJSON (HListTag xs), Typeable (HListTag xs)) => ToField [HListTag xs] where
+instance (ToJSON (HList xs), Typeable (HList xs)) => ToField [HList xs] where
   toField = toJSONField
 
 --------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ instance (ToJSON (HListTag xs), Typeable (HListTag xs)) => ToField [HListTag xs]
 --
 -- Round-trip and decode examples:
 --
--- >>> type SimpleRec = HListTag '[ '( '("b", 0), Bool), '( '("a", 0), Int) ]
+-- >>> type SimpleRec = HList '[ '( '("b", 0), Bool), '( '("a", 0), Int) ]
 -- >>> let val = PgTag False :* PgTag (1::Int) :* HNil :: SimpleRec
 -- >>> encode val
 -- "{\"b\":false,\"a\":1}"
@@ -110,9 +110,9 @@ instance (ToJSON (HListTag xs), Typeable (HListTag xs)) => ToField [HListTag xs]
 --
 -- Класс-помощник для сериализации и десериализации полей
 class HListToJSON ts where
-  toSeriesFields :: HListTag ts -> Series
-  toMapFields    :: HListTag ts -> KM.KeyMap Value
-  parseFields    :: KM.KeyMap Value -> Parser (HListTag ts)
+  toSeriesFields :: HList ts -> Series
+  toMapFields    :: HList ts -> KM.KeyMap Value
+  parseFields    :: KM.KeyMap Value -> Parser (HList ts)
 
 instance HListToJSON '[] where
   toSeriesFields HNil = mempty
@@ -130,7 +130,7 @@ instance (KnownSymNat sn, ToJSON t, FromJSON t, HListToJSON ts)
 
   parseFields km = do
     case KM.lookup key km of
-      Nothing -> fail $ "HListTag: missing key " ++ P.show keyString
+      Nothing -> fail $ "HList: missing key " ++ P.show keyString
       Just v  -> do
         -- Парсим значение и, если падает, добавляем контекст с именем поля
         val  <- parseJSON v <?> Key key
@@ -141,9 +141,9 @@ instance (KnownSymNat sn, ToJSON t, FromJSON t, HListToJSON ts)
       key = Key.fromString keyString
 
 -- Финальные инстансы
-instance HListToJSON ts => ToJSON (HListTag ts) where
+instance HListToJSON ts => ToJSON (HList ts) where
   toEncoding hlist = pairs (toSeriesFields hlist)
   toJSON     hlist = Object (toMapFields hlist)
 
-instance HListToJSON ts => FromJSON (HListTag ts) where
-  parseJSON = withObject "HListTag" $ \obj -> parseFields obj
+instance HListToJSON ts => FromJSON (HList ts) where
+  parseJSON = withObject "HList" $ \obj -> parseFields obj

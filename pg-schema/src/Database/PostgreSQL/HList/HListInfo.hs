@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Database.PostgreSQL.HListTag.HListInfo
+module Database.PostgreSQL.HList.HListInfo
   ( CHListInfo(..), RecordInfo'(..), FieldInfo'(..)
   , RecordInfo, FieldInfo, RecordInfoK, FieldInfoK
   , RestMand, AllPlain, RestPKFlds, allPlainB )
@@ -7,9 +7,9 @@ module Database.PostgreSQL.HListTag.HListInfo
 
 import Data.Kind
 import Data.Text ( Text )
-import Database.PostgreSQL.HListTag.Internal
-import Database.PostgreSQL.HListTag.Type
-import Database.PostgreSQL.HListTag.Rec
+import Database.PostgreSQL.HList.Internal
+import Database.PostgreSQL.HList.Type
+import Database.PostgreSQL.HList.Rec
   (RecordInfo'(..), FieldInfo'(..), allPlainB, FieldDbNameSym0, AllPlainB)
 import Database.Schema.Def
 import Database.Types.Aggr
@@ -28,8 +28,8 @@ class CHListInfo sch (tab :: NameNSK) r where
   type TRecordInfo sch tab r :: [FieldInfoK]
   getRecordInfo :: RecordInfo
 
-instance (SingI tab) => CHListInfo sch tab (HListTag '[]) where
-  type TRecordInfo sch tab (HListTag '[]) = '[]
+instance (SingI tab) => CHListInfo sch tab (HList '[]) where
+  type TRecordInfo sch tab (HList '[]) = '[]
   getRecordInfo = RecordInfo (demote @tab) []
 
 data RecTypeCase = RTCAggrCount | RTCCommon
@@ -53,15 +53,15 @@ instance (KnownSymNat '(s,n), KnownSymbol s)
       , fieldDbName = demote @s
       , fieldKind = RFAggr (FldDef ("pg_catalog" ->> "int8") False False) "count" True }
 
-instance (CHListInfo sch tab (HListTag xs), CFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t) )
-  => CHListInfo sch tab (HListTag ('(sn,t) ': xs)) where
-    type TRecordInfo sch tab (HListTag ('(sn,t) ': xs)) =
+instance (CHListInfo sch tab (HList xs), CFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t) )
+  => CHListInfo sch tab (HList ('(sn,t) ': xs)) where
+    type TRecordInfo sch tab (HList ('(sn,t) ': xs)) =
       TFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t)
-        ': TRecordInfo sch tab (HListTag xs)
+        ': TRecordInfo sch tab (HList xs)
     getRecordInfo = ri
       { fields = getFieldInfo @sch @tab @'(sn,t) @(GetFldTypeCase t) : fields ri}
       where
-        ri = getRecordInfo @sch @tab @(HListTag xs)
+        ri = getRecordInfo @sch @tab @(HList xs)
 
 instance (KnownSymNat '(s,n), KnownSymbol s
   , CTagFieldInfo sch (TFieldInfo sch tab s) t, CFieldInfo sch tab s)

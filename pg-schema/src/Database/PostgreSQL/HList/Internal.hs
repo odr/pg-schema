@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Database.PostgreSQL.HListTag.Internal where
+module Database.PostgreSQL.HList.Internal where
 
 import Data.Kind
 import GHC.TypeLits
@@ -32,7 +32,7 @@ type family NormalizeGo (prefix :: [SymNat]) (xs :: [(SymNat, Type)]) :: [(SymNa
 type family Normalize (xs :: [(SymNat, Type)]) :: [(SymNat, Type)] where
   Normalize xs = NormalizeGo '[] xs
 
--- | Count occurrences of symbol @s@ in HListTag list (for unique Nat in SymNat).
+-- | Count occurrences of symbol @s@ in HList list (for unique Nat in SymNat).
 type family CountName (s :: Symbol) (xs :: [(SymNat, Type)]) :: Nat where
   CountName s '[] = 0
   CountName s ('( '(s, _), _) ': xs) = 1 + CountName s xs

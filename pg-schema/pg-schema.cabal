@@ -53,19 +53,18 @@ library
     Database.PostgreSQL.Schema.Info
     Database.PostgreSQL.Schema.Schema
     Database.PostgreSQL.Enum
-    Database.PostgreSQL.HListTag
-    Database.PostgreSQL.HListTag.Class
-    Database.PostgreSQL.HListTag.Rec
-    Database.PostgreSQL.HListTag.HListInfo
-    Database.PostgreSQL.HListTag.Internal
-    Database.PostgreSQL.HListTag.JsonStream
-    Database.PostgreSQL.HListTag.Type
-    Database.PostgreSQL.HListTag.Utils
+    Database.PostgreSQL.HList
+    Database.PostgreSQL.HList.Class
+    Database.PostgreSQL.HList.Rec
+    Database.PostgreSQL.HList.HListInfo
+    Database.PostgreSQL.HList.Internal
+    -- Database.PostgreSQL.HList.JsonStream
+    Database.PostgreSQL.HList.Type
+    Database.PostgreSQL.HList.Utils
     Database.Schema.Gen
     Database.Schema.Def
     Database.Schema.ShowType
     Database.Types.Aggr
-    Database.Types.EmptyField
     PgSchema.Gen
     PgSchema.Tagged
     PgSchema.Util
@@ -131,7 +130,7 @@ library
 test-suite doctest
   type: exitcode-stdio-1.0
   main-is: doctest.hs
-  other-modules: HListTagDoctest
+  other-modules: HListDoctest
   hs-source-dirs: test
   build-depends:
       base

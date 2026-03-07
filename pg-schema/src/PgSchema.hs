@@ -2,7 +2,7 @@ module PgSchema (module PGS) where
 
 import Database.PostgreSQL.Convert as PGS
 import Database.PostgreSQL.Enum as PGS
-import Database.PostgreSQL.HListTag as PGS
+import Database.PostgreSQL.HList as PGS
 import PgSchema.Tagged as PGS
 import Database.PostgreSQL.DML.Delete as PGS
 import Database.PostgreSQL.DML.Insert as PGS
@@ -14,5 +14,4 @@ import Database.PostgreSQL.DML.Update as PGS
 import Database.PostgreSQL.Schema.Schema as PGS
 import Database.Schema.Def as PGS
 import Database.Types.Aggr as PGS
-import Database.Types.EmptyField as PGS
 import PgSchema.Util as PGS (ToStar)

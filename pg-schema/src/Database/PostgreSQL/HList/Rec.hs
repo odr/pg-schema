@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Database.PostgreSQL.HListTag.Rec where
+module Database.PostgreSQL.HList.Rec where
 
 import Database.Schema.Def
 

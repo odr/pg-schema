@@ -17,7 +17,7 @@ import Data.Maybe
 import Data.Text as T hiding (any)
 import Data.Traversable
 import Database.PostgreSQL.DML.Insert.Types
-import Database.PostgreSQL.HListTag
+import Database.PostgreSQL.HList
 import Database.PostgreSQL.Simple
 import Database.Schema.Def
 import Database.Schema.ShowType
@@ -55,10 +55,10 @@ insertJSONImpl ren sch t @r @r' @h @h' conn rs = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
   [Only res] <- let q = "select pg_temp.__ins(?)" in
     traceShow' q
-      $ trace' (BSL.unpack $ A.encode (toHListTag @ren @sch @t <$> rs))
-      $ query conn q $ Only $ toHListTag @ren @sch @t <$> rs
+      $ trace' (BSL.unpack $ A.encode (toHList @ren @sch @t <$> rs))
+      $ query conn q $ Only $ toHList @ren @sch @t <$> rs
   void $ execute_ conn "drop function pg_temp.__ins"
-  pure (fromHListTag @ren @sch @t <$> res, sql)
+  pure (fromHList @ren @sch @t <$> res, sql)
   where
     sql = insertJSONText ren sch t @r @r' @h @h'
 
@@ -73,7 +73,7 @@ insertJSONImpl_
   => Connection -> [r] -> IO Text
 insertJSONImpl_ ren sch t @r @h conn rs = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
-  void $ execute conn "call pg_temp.__ins(?)" $ Only $ toHListTag @ren @sch @t <$> rs
+  void $ execute conn "call pg_temp.__ins(?)" $ Only $ toHList @ren @sch @t <$> rs
   sql <$ execute_ conn "drop procedure pg_temp.__ins"
   where
     sql = insertJSONText_ ren sch t @r @h

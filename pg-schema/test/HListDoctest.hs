@@ -2,20 +2,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-module HListTagDoctest (runTests) where
+module HListDoctest (runTests) where
 
 import Control.Monad
 import Data.Aeson (decode, encode, object, (.=))
 import Data.Aeson.Key (fromString)
 import Data.ByteString.Lazy qualified as BL
 import Data.ByteString.Lazy.Char8 (pack)
-import Database.PostgreSQL.HListTag
+import Database.PostgreSQL.HList
 
 
-type SimpleRec = HListTag '[ '( '("b", 0), Bool), '( '("a", 0), Int) ]
+type SimpleRec = HList '[ '( '("b", 0), Bool), '( '("a", 0), Int) ]
 
-type InnerRec  = HListTag '[ '( '("x", 0), Int),  '( '("y", 0), Bool) ]
-type OuterRec  = HListTag
+type InnerRec  = HList '[ '( '("x", 0), Int),  '( '("y", 0), Bool) ]
+type OuterRec  = HList
   '[ '( '("outer", 0), Bool)
    , '( '("outer", 1), InnerRec)
    ]
@@ -46,16 +46,16 @@ runTests = do
 
   -- Streaming (doctest $streaming)
   let bs = encode (object [fromString "a" .= (1 :: Int), fromString "b" .= False])
-  case streamDecodeHListTag @'[ '( '("b", 0), Bool), '( '("a", 0), Int) ] bs of
-    Left e -> error $ "streamDecodeHListTag: " ++ e
+  case streamDecodeHList @'[ '( '("b", 0), Bool), '( '("a", 0), Int) ] bs of
+    Left e -> error $ "streamDecodeHList: " ++ e
     Right h ->
-      unless (h == val) $ error $ "streamDecodeHListTag: got " ++ show h
+      unless (h == val) $ error $ "streamDecodeHList: got " ++ show h
 
-  case streamDecodeHListTag' @'[ '( '("b", 0), Bool), '( '("a", 0), Int) ] bs of
-    Left e -> error $ "streamDecodeHListTag': " ++ e
+  case streamDecodeHList' @'[ '( '("b", 0), Bool), '( '("a", 0), Int) ] bs of
+    Left e -> error $ "streamDecodeHList': " ++ e
     Right (h', rest) -> do
-      unless (h' == val) $ error $ "streamDecodeHListTag': got " ++ show h'
-      unless (BL.null rest) $ error "streamDecodeHListTag': expected null rest"
+      unless (h' == val) $ error $ "streamDecodeHList': got " ++ show h'
+      unless (BL.null rest) $ error "streamDecodeHList': expected null rest"
 
   let innerVal = (42 :: Int) :* True :* HNil :: InnerRec
   let outerVal = False :* innerVal :* HNil :: OuterRec
@@ -67,18 +67,18 @@ runTests = do
       unless (r == False :* (42 :* True :* HNil) :* HNil)
         $ error $ "nested decode: got " ++ show r
 
-  case streamDecodeHListTag @'[ '( '("outer", 0), Bool), '( '("outer", 1), InnerRec) ] outerJson of
-    Left e  -> error $ "nested streamDecodeHListTag: " ++ e
+  case streamDecodeHList @'[ '( '("outer", 0), Bool), '( '("outer", 1), InnerRec) ] outerJson of
+    Left e  -> error $ "nested streamDecodeHList: " ++ e
     Right r ->
       unless (r == outerVal)
-        $ error $ "nested streamDecodeHListTag: got " ++ show r
+        $ error $ "nested streamDecodeHList: got " ++ show r
 
-  case streamDecodeHListTag' @'[ '( '("outer", 0), Bool), '( '("outer", 1), InnerRec) ] outerJson of
-    Left e -> error $ "nested streamDecodeHListTag': " ++ e
+  case streamDecodeHList' @'[ '( '("outer", 0), Bool), '( '("outer", 1), InnerRec) ] outerJson of
+    Left e -> error $ "nested streamDecodeHList': " ++ e
     Right (r', rest) -> do
       unless (r' == outerVal)
-        $ error $ "nested streamDecodeHListTag': got " ++ show r'
+        $ error $ "nested streamDecodeHList': got " ++ show r'
       unless (BL.null rest)
-        $ error "nested streamDecodeHListTag': expected null rest"
+        $ error "nested streamDecodeHList': expected null rest"
 
-  putStrLn "HListTag doctest-style checks passed."
+  putStrLn "HList doctest-style checks passed."

@@ -5,7 +5,7 @@ import Data.Aeson
 import Data.Kind
 import Data.Typeable
 import Database.Schema.Def
-import Database.PostgreSQL.HListTag
+import Database.PostgreSQL.HList
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
 import GHC.TypeError
@@ -26,8 +26,8 @@ type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
         :<>: TL.ShowType (RestMand sch t r rFlds))
       ))
 
-type HListInfo ren sch t r h = ( IsoHListTag ren sch t r, CHListInfo sch t h )
-type HRep ren sch t r = HListTag (HListTagRep ren sch t r)
+type HListInfo ren sch t r h = ( IsoHList ren sch t r, CHListInfo sch t h )
+type HRep ren sch t r = HList (HListRep ren sch t r)
 
 -- For "plain" insert
 type InsertReturning' ren sch t r r' h h' =
@@ -40,8 +40,8 @@ type InsertNonReturning' ren sch t r h =
 
 -- For insertJSON
 type SrcJSON ren sch t r h =
-  ( IsoHListTag ren sch t r, h ~ HListTag (HListTagRep ren sch t r)
-  , CHListInfo sch t h, ToJSON h, CSchema sch, Typeable (HListTagRep ren sch t r))
+  ( IsoHList ren sch t r, h ~ HList (HListRep ren sch t r)
+  , CHListInfo sch t h, ToJSON h, CSchema sch, Typeable (HListRep ren sch t r))
 
 type TgtJSON ren sch t r' h' =
   ( h' ~ HRep ren sch t r', HListInfo ren sch t r' h', FromJSON h', Typeable h')

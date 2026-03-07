@@ -18,7 +18,7 @@ import Data.Text as T
 import Data.Text.IO as T
 import Data.Traversable
 import Database.PostgreSQL.Convert
-import Database.PostgreSQL.HListTag
+import Database.PostgreSQL.HList
 import Database.PostgreSQL.DML.Select
 import Database.PostgreSQL.DML.Select.Types
 import Database.PostgreSQL.Schema.Catalog
@@ -56,12 +56,12 @@ data GenNames = GenNames
   }
 
 selCat :: forall (tn :: Symbol) -> forall r h.
-  ( IsoHListTag RenamerId PgCatalog (PGC tn) r, h ~ HLT tn r
+  ( IsoHList RenamerId PgCatalog (PGC tn) r, h ~ HLT tn r
   , CHListInfo PgCatalog (PGC tn) h, FromRow h )
   => Connection -> QueryParam PgCatalog (PGC tn) -> IO ([r], (Text,[SomeToField]))
 selCat tn = selectSch RenamerId PgCatalog (PGC tn)
 
-type HLT s r = HListTag (HListTagRep RenamerId PgCatalog (PGC s) r)
+type HLT s r = HList (HListRep RenamerId PgCatalog (PGC s) r)
 
 getSchema
   :: Connection -- ^ connection to PostgreSQL database
