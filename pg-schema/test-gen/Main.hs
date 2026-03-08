@@ -101,9 +101,7 @@ main = do
       """
 
     putStrLn "Running generator..."
-    void $ updateSchemaFile' False
-      "pg-schema/test-pgs/Sch.hs"
-      connStr
+    void $ updateSchemaFile False "pg-schema/test-pgs/Sch.hs" (Right connStr)
       "Sch" -- ^ haskell module name to generate
       "Sch" -- ^ name of generated haskell type for schema
       (GenNames ["test_pgs"] [] []) -- ^ name of schemas in database

@@ -1,9 +1,9 @@
-module PgSchema.Schema.ShowType where
+module PgSchema.Utils.ShowType where
 
 import Data.List as L
 import Data.String
 import Data.Text as T
-import PgSchema.Schema.Def
+import PgSchema.Schema
 import Prelude as P
 
 
@@ -58,8 +58,3 @@ instance ShowType (RecField NameNS) where
     RFAggr fd fn b -> "'RFAggr " <> T.intercalate " " [showType fd, showType fn, showType b]
     RFToHere t rr -> "'RFToHere " <> showType t <> " " <> showType rr
     RFFromHere t rr -> "'RFFromHere " <> showType t <> " " <> showType rr
-
-qualName :: NameNS -> Text
-qualName NameNS {..}
-  | nnsNamespace == "pg_catalog" = nnsName
-  | otherwise = nnsNamespace <> "." <> nnsName

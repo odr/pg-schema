@@ -1,6 +1,6 @@
 -- {-# OPTIONS_HADDOCK hide, not-home #-}
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.HList.Type(HList(..)) where
+module PgSchema.HList.Type(HList(..)) where
 
 import Data.Aeson
 import Data.Aeson.Key qualified as Key
@@ -9,7 +9,7 @@ import Data.Aeson.Types
 import Data.Kind
 import Data.Text as T
 import Data.Typeable
-import PgSchema.Schema.Def
+import PgSchema.Schema
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToField
@@ -25,7 +25,7 @@ infixr 5 :*
 -- | Heterogeneous list with Symbol tags (field names)
 --
 -- All needed instances (JSON | Field | Row) are there
--- so no need of them for user's types if they have t'PgSchema.PostgreSQL.HList.IsoHList' instance
+-- so no need of them for user's types if they have t'PgSchema.HList.IsoHList' instance
 data HList (ts :: [(SymNat, Type)]) where
   HNil :: HList '[]
   (:*) :: t -> HList ts -> HList ('(s, t) ': ts)

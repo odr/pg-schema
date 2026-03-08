@@ -1,14 +1,14 @@
-module PgSchema.PostgreSQL.DML.Delete where
+module PgSchema.DML.Delete where
 
 import Data.String
 import Data.Text as T
-import PgSchema.PostgreSQL.DML.Select
-import PgSchema.PostgreSQL.DML.Select.Types
+import PgSchema.DML.Select
+import PgSchema.DML.Select.Types
 import Database.PostgreSQL.Simple
 import GHC.Int
 
-import PgSchema.Schema.ShowType
-import PgSchema.Utils
+import PgSchema.Schema
+import PgSchema.Utils.Internal
 import Data.Singletons
 
 -- TODO (?):

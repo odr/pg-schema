@@ -1,5 +1,5 @@
 {- HLINT ignore "Eta reduce" -}
-module PgSchema.PostgreSQL.DML.InsertJSON
+module PgSchema.DML.InsertJSON
   ( insertJSON, insertJSON_, upsertJSON, upsertJSON_
   , insertJSONText, insertJSONText_ ) where
 
@@ -16,14 +16,13 @@ import Data.Map as M hiding (mapMaybe)
 import Data.Maybe
 import Data.Text as T hiding (any)
 import Data.Traversable
-import PgSchema.PostgreSQL.DML.Insert.Types
-import PgSchema.PostgreSQL.HList
+import PgSchema.DML.Insert.Types
+import PgSchema.HList
 import Database.PostgreSQL.Simple
-import PgSchema.Schema.Def
-import PgSchema.Schema.ShowType
+import PgSchema.Schema
 import Data.String
 import GHC.Int
-import PgSchema.Utils
+import PgSchema.Utils.Internal
 import Prelude as P
 
 

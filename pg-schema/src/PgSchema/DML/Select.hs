@@ -3,7 +3,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE DerivingVia #-}
-module PgSchema.PostgreSQL.DML.Select where
+module PgSchema.DML.Select where
 
 import Control.Monad.RWS
 import Control.Monad
@@ -18,15 +18,14 @@ import Data.Singletons
 import Data.String
 import Data.Text as T
 import Data.Tuple
-import PgSchema.PostgreSQL.Convert
-import PgSchema.PostgreSQL.DML.Select.Types
-import PgSchema.PostgreSQL.HList
+import PgSchema.DML.Select.Types
+import PgSchema.HList
 import Database.PostgreSQL.Simple hiding(In(..))
-import PgSchema.Schema.Def
-import PgSchema.Schema.ShowType
+import PgSchema.Schema
+import PgSchema.Types
 import GHC.Generics
 import GHC.TypeLits
-import PgSchema.Utils
+import PgSchema.Utils.Internal
 import Prelude as P
 import Prelude.Singletons as SP hiding (Any)
 

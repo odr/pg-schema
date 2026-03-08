@@ -13,8 +13,8 @@ import Data.Hashable
 import GHC.Generics
 import GHC.TypeError qualified as TE
 import GHC.TypeLits qualified as TL
-import PgSchema.Schema.Def
-import PgSchema.PostgreSQL.Enum
+import PgSchema.Schema
+import PgSchema.Types
 
 
 data Sch
@@ -367,3 +367,4 @@ instance CSchema Sch where
     ,( "pg_catalog" ->> "int4" ),( "pg_catalog" ->> "int8" )
     ,( "pg_catalog" ->> "numeric" ),( "pg_catalog" ->> "text" )
     ,( "pg_catalog" ->> "timestamptz" ),( "sch" ->> "order_state" ) ]
+

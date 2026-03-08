@@ -1,16 +1,15 @@
 {-# LANGUAGE KindSignatures #-}
-module PgSchema.PostgreSQL.DML.Insert where
+module PgSchema.DML.Insert where
 
 import Data.Bifunctor
 import Data.String
 import Data.Text as T
 import Database.PostgreSQL.Simple
 import GHC.Int
-
-import PgSchema.PostgreSQL.DML.Insert.Types
-import PgSchema.Schema.ShowType
-import PgSchema.Utils
-import PgSchema.PostgreSQL.HList
+import PgSchema.DML.Insert.Types
+import PgSchema.Schema
+import PgSchema.Utils.Internal
+import PgSchema.HList
 
 insertSch
   :: forall ren sch t -> forall r r' h h'. InsertReturning' ren sch t r r' h h'

@@ -3,17 +3,20 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE ParallelListComp #-}
-module PgSchema.Schema.Def where
+module PgSchema.Schema where
 
+import Data.Coerce
 import Data.Kind
 import Data.List as L
 import Data.List.Singletons as SP
 import Data.Map as M
 import Data.Ord.Singletons
 import Data.Singletons.TH
+import Data.String
+import Data.Tagged
 import Data.Text as T
 import GHC.TypeLits
-import PgSchema.Utils
+import PgSchema.Utils.Internal
 import Prelude.Singletons as SP
 import Text.Show.Singletons
 
@@ -328,3 +331,15 @@ type Ref = Ref' Text
 -- Companion to type-level 'HasNullableRefs'.
 hasNullableRefs :: [Ref] -> Bool
 hasNullableRefs = L.any (fdNullable . fromDef)
+
+type s := t = Tagged s t
+infixr 5 :=
+
+(=:) :: forall b. forall a -> b -> a := b
+(=:) _ = coerce
+infixr 5 =:
+
+qualName :: NameNS -> Text
+qualName NameNS {..}
+  | nnsNamespace == fromString "pg_catalog" = nnsName
+  | otherwise = nnsNamespace <> fromString "." <> nnsName

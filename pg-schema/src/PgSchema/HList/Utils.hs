@@ -1,11 +1,11 @@
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.HList.Utils where
+module PgSchema.HList.Utils where
 
 import Control.Applicative
 import Data.Kind (Type)
-import PgSchema.PostgreSQL.HList.Internal
-import PgSchema.PostgreSQL.HList.Type
-import PgSchema.Schema.Def
+import PgSchema.HList.Internal
+import PgSchema.HList.Type
+import PgSchema.Schema
 import GHC.TypeLits
 import Prelude.Singletons
 

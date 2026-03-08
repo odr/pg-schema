@@ -1,11 +1,11 @@
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.DML.Insert.Types where
+module PgSchema.DML.Insert.Types where
 
 import Data.Aeson
 import Data.Kind
 import Data.Typeable
-import PgSchema.Schema.Def
-import PgSchema.PostgreSQL.HList
+import PgSchema.Schema
+import PgSchema.HList
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
 import GHC.TypeError

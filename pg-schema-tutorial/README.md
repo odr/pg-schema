@@ -66,7 +66,7 @@ Many GHC-extensions should be enabled. I use the following
 
 ### TL;DR
 
-Schema types (e.g. `Tutorial`/`Sch`) are generated as a plain Haskell module; run `cabal run pgs-tutorial-generator` (or use `updateSchemaFile'` from your Setup). The old TH-based generation (`mkSchema`) has been removed.
+Schema types (e.g. `Tutorial`/`Sch`) are generated as a plain Haskell module; run `cabal run pgs-tutorial-generator` (or use `updateSchemaFile`).
 
 ```haskell
 ghci> import PgSchema
@@ -182,7 +182,7 @@ You will see many class instances for the schema type. The "root" instance is fo
 
 Note that our "Schema" can include many PG-schemas (namespaces). The generator is configured for a list of PG-schemas (e.g. `["sch"]`) and optionally a list of tables (namespace->>tablename).
 
-There is predefined type `PgCatalog` in module `PgSchema.PostgreSQL.Schema.Catalog`.
+There is predefined type `PgCatalog` in module `PgSchema.Schema.Catalog`.
 It is a type like `Tutorial` but defined "manually". It describes PostgreSQL system schema.
 
 Type `Sch` and instances for it are generated and used in this tutorial application.
@@ -276,7 +276,7 @@ type instance TTabs PgCatalog
 
 We can now generate dot-description of our schema:
 ```haskell
-ghci> import PgSchema.Gen
+ghci> import PgSchema.Utils.GenDot
 ghci> mapM_ T.putStrLn $ T.lines $ genDot @Tutorial False []
 
 digraph G {

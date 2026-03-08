@@ -1,16 +1,15 @@
-module PgSchema.PostgreSQL.DML.Update where
+module PgSchema.DML.Update where
 
 import Data.String
 import Data.Text as T
-import PgSchema.PostgreSQL.DML.Select
-import PgSchema.PostgreSQL.DML.Select.Types
-import PgSchema.PostgreSQL.DML.Insert.Types
-import PgSchema.PostgreSQL.HList
 import Database.PostgreSQL.Simple
 import GHC.Int
-
-import PgSchema.Schema.ShowType
-import PgSchema.Utils
+import PgSchema.DML.Select
+import PgSchema.DML.Select.Types
+import PgSchema.DML.Insert.Types
+import PgSchema.HList
+import PgSchema.Schema
+import PgSchema.Utils.Internal
 import Prelude as P
 
 -- TODO:

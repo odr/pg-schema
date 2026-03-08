@@ -1,12 +1,12 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.Schema.Info where
+module PgSchema.Schema.Info where
 
 import Data.Text as T
-import PgSchema.PostgreSQL.Convert
 import GHC.Generics
 import GHC.Int
-import PgSchema.Tagged
+import PgSchema.Schema((:=))
+import PgSchema.Types
 
 
 -- | Tables and views info

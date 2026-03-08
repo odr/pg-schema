@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
-module PgSchema.PostgreSQL.Schema.Catalog where
+module PgSchema.Schema.Catalog where
 
 import Data.Text as T
-import PgSchema.Schema.Def
+import PgSchema.Schema
 import GHC.TypeLits (Symbol)
 import GHC.TypeError qualified as TE
 

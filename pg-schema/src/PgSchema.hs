@@ -1,17 +1,14 @@
 module PgSchema (module PGS) where
 
-import PgSchema.PostgreSQL.Convert as PGS
-import PgSchema.PostgreSQL.Enum as PGS
-import PgSchema.PostgreSQL.HList as PGS
-import PgSchema.Tagged as PGS
-import PgSchema.PostgreSQL.DML.Delete as PGS
-import PgSchema.PostgreSQL.DML.Insert as PGS
-import PgSchema.PostgreSQL.DML.Insert.Types as PGS
-import PgSchema.PostgreSQL.DML.InsertJSON as PGS
-import PgSchema.PostgreSQL.DML.Select as PGS
-import PgSchema.PostgreSQL.DML.Select.Types as PGS
-import PgSchema.PostgreSQL.DML.Update as PGS
-import PgSchema.PostgreSQL.Schema.Schema as PGS
-import PgSchema.Schema.Def as PGS
-import PgSchema.Types.Aggr as PGS
-import PgSchema.Utils as PGS (ToStar)
+import PgSchema.DML.Delete as PGS
+import PgSchema.DML.Insert as PGS
+import PgSchema.DML.Insert.Types as PGS
+import PgSchema.DML.InsertJSON as PGS
+import PgSchema.DML.Select as PGS
+import PgSchema.DML.Select.Types as PGS
+import PgSchema.DML.Update as PGS
+import PgSchema.GenDef as PGS
+import PgSchema.HList as PGS
+import PgSchema.Schema as PGS
+import PgSchema.Types as PGS
+import PgSchema.Utils.Internal as PGS (ToStar)

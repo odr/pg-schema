@@ -1,9 +1,9 @@
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.HList.Internal where
+module PgSchema.HList.Internal where
 
 import Data.Kind
 import GHC.TypeLits
-import PgSchema.Schema.Def
+import PgSchema.Schema
 
 
 -- | Add 1 to n when symbols equal (for renumbering).

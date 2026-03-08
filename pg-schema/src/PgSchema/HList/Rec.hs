@@ -1,8 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.HList.Rec
+module PgSchema.HList.Rec
   (AllPlainB, RecordInfo'(..), FieldInfo'(..), FieldDbNameSym0, ) where
 
-import PgSchema.Schema.Def
+import PgSchema.Schema
 
 import Data.Singletons.TH
 import Data.String.Singletons

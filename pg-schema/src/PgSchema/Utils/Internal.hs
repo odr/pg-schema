@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-module PgSchema.Utils where
+module PgSchema.Utils.Internal where
 
 import Data.List as L
 import Data.Singletons

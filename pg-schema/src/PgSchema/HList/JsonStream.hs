@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.HList.JsonStream
+module PgSchema.HList.JsonStream
   (streamDecodeHList, streamDecodeHList')
   where
 
@@ -11,9 +11,9 @@ import Data.Aeson.Key qualified as Key
 import Data.Aeson.Types
 import Data.ByteString.Lazy qualified as BL
 import Data.Text as T
-import PgSchema.PostgreSQL.HList.Type
-import PgSchema.PostgreSQL.HList.Utils
-import PgSchema.Schema.Def
+import PgSchema.HList.Type
+import PgSchema.HList.Utils
+import PgSchema.Schema
 import Prelude as P
 
 --------------------------------------------------------------------------------

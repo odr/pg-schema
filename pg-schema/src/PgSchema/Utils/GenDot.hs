@@ -1,4 +1,4 @@
-module PgSchema.Gen where
+module PgSchema.Utils.GenDot where
 
 import Data.Foldable as F
 import Data.List as L
@@ -6,7 +6,6 @@ import Data.Map as M
 import Data.Singletons
 import Data.Text as T
 
-import PgSchema.Schema.ShowType
 import PgSchema
 
 

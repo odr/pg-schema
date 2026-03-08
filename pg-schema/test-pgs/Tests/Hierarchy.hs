@@ -20,7 +20,6 @@ import Database.PostgreSQL.Simple
 import GHC.Generics
 import Hedgehog
 import PgSchema
-import PgSchema.Utils
 import Sch
 import Utils
 

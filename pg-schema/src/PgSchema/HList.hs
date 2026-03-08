@@ -1,4 +1,4 @@
-module PgSchema.PostgreSQL.HList
+module PgSchema.HList
   (
   -- * Base transport type
     T.HList(..)
@@ -26,6 +26,6 @@ module PgSchema.PostgreSQL.HList
   , I.RestPKFlds
   ) where
 
-import PgSchema.PostgreSQL.HList.Class qualified as C
-import PgSchema.PostgreSQL.HList.Type qualified as T
-import PgSchema.PostgreSQL.HList.HListInfo qualified as I
+import PgSchema.HList.Class qualified as C
+import PgSchema.HList.Type qualified as T
+import PgSchema.HList.HListInfo qualified as I

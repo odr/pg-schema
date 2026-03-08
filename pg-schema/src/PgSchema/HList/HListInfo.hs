@@ -1,7 +1,7 @@
 -- {-# OPTIONS_HADDOCK hide #-}
 -- {-# OPTIONS_HADDOCK not-home #-}
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.HList.HListInfo
+module PgSchema.HList.HListInfo
   ( CHListInfo(..), RecordInfo'(..), FieldInfo'(..)
   , RecordInfo, FieldInfo, RecordInfoK, FieldInfoK
   , RestMand, AllPlain, RestPKFlds )
@@ -9,15 +9,15 @@ module PgSchema.PostgreSQL.HList.HListInfo
 
 import Data.Kind
 import Data.Text ( Text )
-import PgSchema.PostgreSQL.HList.Internal
-import PgSchema.PostgreSQL.HList.Type
-import PgSchema.PostgreSQL.HList.Rec
+import PgSchema.HList.Internal
+import PgSchema.HList.Type
+import PgSchema.HList.Rec
   (RecordInfo'(..), FieldInfo'(..), FieldDbNameSym0, AllPlainB)
-import PgSchema.Schema.Def
-import PgSchema.Types.Aggr
+import PgSchema.Schema
+import PgSchema.Types
 import GHC.TypeLits as TL
 import GHC.TypeError
-import PgSchema.Utils
+import PgSchema.Utils.Internal
 import Prelude.Singletons
 
 

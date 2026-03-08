@@ -34,8 +34,6 @@ import GHC.Generics
 import GHC.Int
 import GHC.TypeLits
 import PgSchema
-import PgSchema.PostgreSQL.DML.InsertJSON qualified as I2
-import PgSchema.PostgreSQL.DML.Update
 import Sch
 import Test.QuickCheck hiding (Fixed)
 import Test.QuickCheck.Instances ()

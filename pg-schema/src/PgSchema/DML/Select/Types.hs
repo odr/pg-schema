@@ -1,7 +1,7 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE LiberalTypeSynonyms #-}
 {-# LANGUAGE ImpredicativeTypes #-}
-module PgSchema.PostgreSQL.DML.Select.Types where
+module PgSchema.DML.Select.Types where
 
 import Control.Monad.RWS
 import Data.Aeson (FromJSON(..), ToJSON(..))
@@ -11,14 +11,14 @@ import Data.List.NonEmpty as NE
 import Data.String
 import Data.Text(Text)
 import Data.Type.Bool
-import PgSchema.PostgreSQL.Convert
 import Database.PostgreSQL.Simple.ToField
-import PgSchema.Schema.Def
+import PgSchema.Schema
+import PgSchema.Types
 import GHC.Generics
 import GHC.Natural
 import GHC.TypeLits
 import GHC.TypeError qualified as TE
-import PgSchema.Utils
+import PgSchema.Utils.Internal
 
 import Prelude.Singletons
 

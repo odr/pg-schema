@@ -1,23 +1,21 @@
 -- {-# OPTIONS_HADDOCK hide #-}
 -- {-# OPTIONS_HADDOCK not-home #-}
 {-# LANGUAGE UndecidableInstances #-}
-module PgSchema.PostgreSQL.HList.Class
+module PgSchema.HList.Class
   (IsoHList(..), Renamer(..), RenamerId)
   where
 
 import Data.Coerce
 import Data.Kind
 import Data.Tagged
-import PgSchema.PostgreSQL.Convert
-import PgSchema.PostgreSQL.HList.Internal
-import PgSchema.PostgreSQL.HList.Type
-import PgSchema.PostgreSQL.HList.Utils
+import PgSchema.HList.Internal
+import PgSchema.HList.Type
+import PgSchema.HList.Utils
 import Database.PostgreSQL.Simple
-import PgSchema.Types.Aggr
-import PgSchema.Schema.Def
+import PgSchema.Types
+import PgSchema.Schema
 import GHC.Generics
 import GHC.TypeLits
-import PgSchema.Tagged
 import Prelude.Singletons qualified as SP
 
 
