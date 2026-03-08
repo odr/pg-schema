@@ -125,8 +125,8 @@ data TypeCase
 
 type family GetTypeCase t :: TypeCase where
   GetTypeCase () = 'EmptyCase
-  GetTypeCase (Aggr "count" t) = 'AggrCountCase
-  GetTypeCase (Aggr' "count" t) = 'AggrCountCase
+  GetTypeCase (Aggr ACount t) = 'AggrCountCase
+  GetTypeCase (Aggr' ACount t) = 'AggrCountCase
   GetTypeCase t = 'CommonCase
 
 class CHListRepTypeCase ren sch tab fld t typeCase where

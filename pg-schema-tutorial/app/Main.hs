@@ -117,11 +117,11 @@ data OrdPos = MkOrdPos
 
 data PosCnt = MkPosCnt
   { order_id  :: Int32
-  , cnt       :: Aggr "count" Int64
-  , minPrice  :: Aggr "min" (Maybe Centi)
-  , maxPrice  :: Aggr "max" (Maybe Centi)
-  , sumPrice  :: Aggr "sum" (Maybe Double)
-  , avgPrice  :: Aggr "avg" (Maybe Double) }
+  , cnt       :: Aggr ACount Int64
+  , minPrice  :: Aggr AMin (Maybe Centi)
+  , maxPrice  :: Aggr AMax (Maybe Centi)
+  , sumPrice  :: Aggr ASum (Maybe Double)
+  , avgPrice  :: Aggr AAvg (Maybe Double) }
   deriving Generic
 
 -- data Customer = Customer
@@ -256,12 +256,12 @@ main = do
     , selSchText "addresses" @(AddressRev A1 B1) qp
     , selSchText "addresses" @(AddressRev A2 B1) qp
     , selSchText "order_positions" @PosCnt qpEmpty
-    , selSchText "order_positions" @("_cnt" := Aggr "count" Int64) qpEmpty
-    , selSchText "order_positions" @("_cnt" := Aggr' "count" Int64) qpEmpty
-    , selSchText "order_positions" @("cnt" := Aggr "count" Int64) qpEmpty
-    , selSchText "order_positions" @("cnt" := Aggr' "count" Int64) qpEmpty
-    , selSchText "order_positions" @("cnt" := Aggr' "max" Int32 :. "cnt" := Aggr' "count" Int64) qpEmpty
-    , selSchText "order_positions" @("cnt" := Aggr "max" (Maybe Int32)) qpEmpty
+    , selSchText "order_positions" @("_cnt" := Aggr ACount Int64) qpEmpty
+    , selSchText "order_positions" @("_cnt" := Aggr' ACount Int64) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr ACount Int64) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr' ACount Int64) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr' AMax Int32 :. "cnt" := Aggr' ACount Int64) qpEmpty
+    , selSchText "order_positions" @("cnt" := Aggr AMax (Maybe Int32)) qpEmpty
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"

@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE CPP #-}
-module PgSchema.Types -- (PGEnum)
+module PgSchema.Types(PGEnum, Aggr(..), Aggr'(..), PgArr(..), pgArr', unPgArr'
+  , PgChar(..), PgOid(..), CanConvert, CanConvert1, AggrFun(..))
   where
 
 import Control.Monad
@@ -45,6 +46,8 @@ import Data.Hashable
 #endif
 
 
+-- | Introduce `enum` database types.
+-- Data instances are produced by schema generations
 data family PGEnum sch (name :: NameNSK) :: Type
 
 instance
@@ -87,22 +90,29 @@ instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
   size = F.size . P.show
 #endif
 
-newtype Aggr (fname :: Symbol) t = Aggr { unAggr :: t }
+-- | Introduce aggregate functions.
+--
+-- I.e. `"fld" := Aggr AMin (Maybe Int32)` means "minimum value of the field `fld`"
+--
+-- 'Aggr' require 'Maybe' argument for all functions except "count"
+--
+-- Only small set of aggregations are supported currently: count, min, max, sum, avg
+newtype Aggr (f :: AggrFun) t = Aggr { unAggr :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
--- Using enumeration for `fname` leads to extra complexity in TH (schemaRec)
 
--- All aggregate functions except count can return NULL.
+-- | All aggregate functions except count can return NULL.
 -- But if field under aggregate is mandatory they return NULL only on empty set
--- if there is no group by clause. E.g. 'select min(a) from t where false`
+-- if there is no group by clause. E.g. `select min(a) from t where false`
 -- So we require Nullable for Aggr.
--- Aggr' is like Aggr but can't be used in select's without 'group by'.
+--
+-- 'Aggr'' is like 'Aggr' but can't be used in select's without 'group by'.
 -- So it is mandatory if field is mandatory.
-newtype Aggr' (fname :: Symbol) t = Aggr' { unAggr' :: t }
+newtype Aggr' (f :: AggrFun) t = Aggr' { unAggr' :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
 
-promote [d|
+promoteOnly [d|
   aggrFldDef'
     :: (Ord s, IsString s)
     => (NameNS' s -> Maybe (TypDef' s)) -> s -> Maybe (FldDef' s) -> Maybe (FldDef' s)
@@ -157,10 +167,10 @@ instance ToField PgChar where
   toField = toField . (:[]) . unPgChar
 
 --
--- | PGArray has no JSON instances. [] has JSON, but no PG.
+-- | 'PGArray' has no JSON instances. '[]' has JSON, but no PG.
 -- This one has both.
--- All elements are Maybe because PostgreSql doesn't guarantee that all elements are present.
--- Tagged PgArr is safe converted to ToField with type information
+-- All elements are 'Maybe' because PostgreSql doesn't guarantee that all elements are present.
+-- 'Tagged' 'PgArr' is safely converted to 'ToField' with type information (ala <val>::int[])
 newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
   deriving stock (Show, Read)
   deriving newtype (Eq, Ord, FromJSON, ToJSON, Semigroup, Monoid
@@ -194,12 +204,15 @@ instance (ToField a, ToStar s) => ToField (Tagged (s :: Maybe NameNSK) (PgArr a)
     where
       typ = encodeUtf8Builder $ maybe mempty (("::" <>) . (<> "[]") . qualName) $ demote @s
 
+-- | Make 'PgArr' from list. All elements are lifted to 'Maybe'
 pgArr' :: [a] -> PgArr a
 pgArr' = PgArr . fmap Just
 
+-- | Make list from 'PgArr'. All empty ('Nothing') elements are omitted.
 unPgArr' :: PgArr a -> [a]
 unPgArr' = catMaybes . unPgArr
---
+
+-- | 'Oid' but with JSON instances
 newtype PgOid = PgOid { fromPgOid :: Oid }
   deriving stock (Show, Read)
   deriving newtype (FromField, ToField)
@@ -214,6 +227,8 @@ instance FromJSON PgOid where
 instance ToJSON PgOid where
   toJSON = toJSON . L.drop 4 . P.show . fromPgOid
 
+-- | Closed type family to check that field can be converted to or from Haskell type.
+-- To make your types convertible to some database type use open type family 'CanConvert1'.
 type family CanConvert sch (tab :: NameNSK) (fld::Symbol) (t :: Type) :: Constraint where
   CanConvert sch tab fld t = CanConvertMaybe sch tab fld (FdType (GetFldDef sch tab fld))
     (FdNullable (GetFldDef sch tab fld)) t
@@ -240,7 +255,7 @@ type family CanConvertMaybe sch (tab::NameNSK) (fld::Symbol) (tn::NameNSK)
       :$$: ErrDesc tab fld tn t)
 
 -- | Many to many relation between db-type and Haskell type (not nullable)
--- Param `sch` is needed to describe complex types (e.g. arrays)
+-- You can add your own instances to this family
 type family CanConvert1 sch (tab::NameNSK) (fld::Symbol) (tn::NameNSK) (td::TypDefK) t :: Constraint
 
 type instance CanConvert1 sch tab fld tn ('TypDef "A" ('Just n) y) (PgArr t) =

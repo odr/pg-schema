@@ -43,8 +43,8 @@ instance (SingI tab) => CHListInfo sch tab (HList '[]) where
 data RecTypeCase = RTCAggrCount | RTCCommon
 
 type family GetFldTypeCase t where
-  GetFldTypeCase (Aggr "count" s) = RTCAggrCount
-  GetFldTypeCase (Aggr' "count" s) = RTCAggrCount
+  GetFldTypeCase (Aggr ACount s) = RTCAggrCount
+  GetFldTypeCase (Aggr' ACount s) = RTCAggrCount
   GetFldTypeCase t = RTCCommon
 
 class CDBFieldInfoTypeCase sch (tab :: NameNSK) (fld :: (SymNat, Type)) rtc where
@@ -55,11 +55,12 @@ instance (KnownSymNat '(s,n), KnownSymbol s)
   => CDBFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCAggrCount where
     type TDBFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCAggrCount =
       'FieldInfo (NameSymNat '(s,n)) s
-        ('RFAggr ('FldDef ("pg_catalog" ->> "int8") False False) "count" 'True)
+        ('RFAggr ('FldDef ("pg_catalog" ->> "int8") False False) ACount 'True)
     geTDBFieldInfo = FieldInfo
       { fieldName = nameSymNat (s,n)
       , fieldDbName = demote @s
-      , fieldKind = RFAggr (FldDef ("pg_catalog" ->> "int8") False False) "count" True }
+      , fieldKind = RFAggr
+        (FldDef ("pg_catalog" ->> "int8") False False) ACount True }
 
 instance (CHListInfo sch tab (HList xs), CDBFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t) )
   => CHListInfo sch tab (HList ('(sn,t) ': xs)) where

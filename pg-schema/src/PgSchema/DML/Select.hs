@@ -173,7 +173,7 @@ fieldM fi = case fi.fieldKind of
     n <- asks qrCurrTabNum
     let val = "t" <> show' n <> "." <> fi.fieldDbName
     pure (val, fi.fieldName, val <> " is null")
-  RFAggr _ fname _ -> do
+  RFAggr _ (T.drop 1 . T.toLower . T.show -> fname) _ -> do
     n <- asks qrCurrTabNum
     let val = fname <> "(" <> "t" <> show' n <> "." <> fi.fieldDbName <> ")"
     pure case fname of

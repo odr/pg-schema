@@ -21,7 +21,11 @@ import Prelude.Singletons as SP
 import Text.Show.Singletons
 
 
+
+
 singletons [d|
+  data AggrFun = ACount | AMin | AMax | ASum | AAvg
+    deriving (Show, Eq, Ord)
 
   data NameNS' s = NameNS
     { nnsNamespace  :: s
@@ -57,7 +61,7 @@ singletons [d|
   data RecField' s p
     = RFEmpty s
     | RFPlain (FldDef' s)
-    | RFAggr (FldDef' s) s Bool
+    | RFAggr (FldDef' s) AggrFun Bool
     -- True in RFAggr means: "Can be used in any selects",
     -- False means: "Can be used only in selects with GROUP BY"
     | RFToHere p [Ref' s]
