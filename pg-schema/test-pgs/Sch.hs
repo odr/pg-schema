@@ -13,8 +13,8 @@ import Data.Hashable
 import GHC.Generics
 import GHC.TypeError qualified as TE
 import GHC.TypeLits qualified as TL
-import Database.Schema.Def
-import Database.PostgreSQL.Enum
+import PgSchema.Schema.Def
+import PgSchema.PostgreSQL.Enum
 
 
 data Sch
@@ -151,7 +151,7 @@ instance CTabDef Sch ( "test_pgs" ->> "base_converts" ) where
 
 instance CTabDef Sch ( "test_pgs" ->> "dim" ) where
   type TTabDef Sch ( "test_pgs" ->> "dim" ) = 
-    'TabDef '[ "id","code","name" ] '[ "id" ] '[ '[ "code" ] ]
+    'TabDef '[ "id","name" ] '[ "id" ] '[  ]
 
 instance CTabDef Sch ( "test_pgs" ->> "ext_arr_converts" ) where
   type TTabDef Sch ( "test_pgs" ->> "ext_arr_converts" ) = 
@@ -273,14 +273,14 @@ instance CTabRels Sch ( "test_pgs" ->> "root" ) where
     '[ ( "test_pgs" ->> "arrays_root_fk" )
       ,( "test_pgs" ->> "mid1_root_fk" ),( "test_pgs" ->> "mid2_root_fk" ) ]
 
-type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
-  TFieldInfoSch ( "test_pgs" ->> "arrays" ) "dates_nullable" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_date" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "arrays" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "test_pgs" ->> "arrays" ) "jsons" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_jsonb" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "arrays" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "arrays" ) "arrays_root_fk" = 'RFFromHere ( "test_pgs" ->> "root" )
+type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
+  TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "dates_nullable" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_date" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "jsons" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_jsonb" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "arrays_root_fk" = 'RFFromHere ( "test_pgs" ->> "root" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "arrays" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "arrays" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -290,12 +290,12 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "cboolean" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_bool" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "cfloat8" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_float8" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "cint4" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_int4" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "ctext" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_text" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "ctimestamptz" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_timestamptz" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "cboolean" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_bool" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "cfloat8" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_float8" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "cint4" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_int4" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "ctext" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_text" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "ctimestamptz" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_timestamptz" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "base_arr_converts" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -305,15 +305,15 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cboolean" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cdate" = 'RFPlain ('FldDef ( "pg_catalog" ->> "date" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cfloat8" = 'RFPlain ('FldDef ( "pg_catalog" ->> "float8" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cint4" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) "ctext" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) "ctime" = 'RFPlain ('FldDef ( "pg_catalog" ->> "time" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) "ctimestamp" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamp" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) "ctimestamptz" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "base_converts" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cboolean" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cdate" = 'RFPlain ('FldDef ( "pg_catalog" ->> "date" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cfloat8" = 'RFPlain ('FldDef ( "pg_catalog" ->> "float8" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cint4" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "ctext" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "ctime" = 'RFPlain ('FldDef ( "pg_catalog" ->> "time" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "ctimestamp" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamp" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "ctimestamptz" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "base_converts" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -323,29 +323,28 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "dim" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "dim" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "test_pgs" ->> "dim" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "dim" ) "root_dim_a_fk" = 'RFToHere ( "test_pgs" ->> "root" )
+  TDBFieldInfoSch ( "test_pgs" ->> "dim" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "test_pgs" ->> "dim" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "dim" ) "root_dim_a_fk" = 'RFToHere ( "test_pgs" ->> "root" )
       '[ 'Ref "dim_a_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "dim" ) "root_dim_b_fk" = 'RFToHere ( "test_pgs" ->> "root" )
+  TDBFieldInfoSch ( "test_pgs" ->> "dim" ) "root_dim_b_fk" = 'RFToHere ( "test_pgs" ->> "root" )
       '[ 'Ref "dim_b_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "dim" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "dim" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "dim" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, code, name."
+    TE.:$$: TE.Text "  Fields: id, name."
     TE.:$$: TE.Text "  Foreign key constraints: root_dim_a_fk, root_dim_b_fk."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "cbytea" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_bytea" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "ccitext" = 'RFPlain ('FldDef ( "public" ->> "_citext" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "ccolor" = 'RFPlain ('FldDef ( "test_pgs" ->> "_color" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "cjsonb" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_jsonb" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "cuuid" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_uuid" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "cbytea" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_bytea" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "ccitext" = 'RFPlain ('FldDef ( "public" ->> "_citext" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "ccolor" = 'RFPlain ('FldDef ( "test_pgs" ->> "_color" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "cjsonb" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_jsonb" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "cuuid" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_uuid" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "ext_arr_converts" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -355,13 +354,13 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cbytea" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bytea" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "ccitext" = 'RFPlain ('FldDef ( "public" ->> "citext" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "ccolor" = 'RFPlain ('FldDef ( "test_pgs" ->> "color" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cjson" = 'RFPlain ('FldDef ( "pg_catalog" ->> "json" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cjsonb" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cuuid" = 'RFPlain ('FldDef ( "pg_catalog" ->> "uuid" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "ext_converts" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cbytea" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bytea" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "ccitext" = 'RFPlain ('FldDef ( "public" ->> "citext" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "ccolor" = 'RFPlain ('FldDef ( "test_pgs" ->> "color" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cjson" = 'RFPlain ('FldDef ( "pg_catalog" ->> "json" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cjsonb" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cuuid" = 'RFPlain ('FldDef ( "pg_catalog" ->> "uuid" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "ext_converts" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -371,16 +370,16 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "category" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "leaf_no" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "seq" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "value" = 'RFPlain ('FldDef ( "pg_catalog" ->> "float4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) "leaf_mid2_fk" = 'RFFromHere ( "test_pgs" ->> "mid2" )
+  TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "category" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
+  TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "leaf_no" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "seq" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "value" = 'RFPlain ('FldDef ( "pg_catalog" ->> "float4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "leaf_mid2_fk" = 'RFFromHere ( "test_pgs" ->> "mid2" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
       , 'Ref "seq" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "seq" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) ]
-  TFieldInfoSch ( "test_pgs" ->> "leaf" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "leaf" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -390,15 +389,15 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "payload" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "pos" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "sort_key" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) "mid1_root_fk" = 'RFFromHere ( "test_pgs" ->> "root" )
+  TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "payload" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "pos" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "sort_key" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "mid1_root_fk" = 'RFFromHere ( "test_pgs" ->> "root" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "mid1" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "mid1" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -408,18 +407,18 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "kind" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "payload" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "priority" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "seq" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "leaf_mid2_fk" = 'RFToHere ( "test_pgs" ->> "leaf" )
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "kind" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "payload" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "priority" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "root_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "seq" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "leaf_mid2_fk" = 'RFToHere ( "test_pgs" ->> "leaf" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
       , 'Ref "seq" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "seq" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) ]
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) "mid2_root_fk" = 'RFFromHere ( "test_pgs" ->> "root" )
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "mid2_root_fk" = 'RFFromHere ( "test_pgs" ->> "root" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "mid2" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "mid2" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -429,24 +428,24 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "dim_a_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "dim_b_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "grp" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "arrays_root_fk" = 'RFToHere ( "test_pgs" ->> "arrays" )
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "dim_a_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "dim_b_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "grp" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "arrays_root_fk" = 'RFToHere ( "test_pgs" ->> "arrays" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "mid1_root_fk" = 'RFToHere ( "test_pgs" ->> "mid1" )
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "mid1_root_fk" = 'RFToHere ( "test_pgs" ->> "mid1" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "mid2_root_fk" = 'RFToHere ( "test_pgs" ->> "mid2" )
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "mid2_root_fk" = 'RFToHere ( "test_pgs" ->> "mid2" )
       '[ 'Ref "root_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "root_dim_a_fk" = 'RFFromHere ( "test_pgs" ->> "dim" )
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "root_dim_a_fk" = 'RFFromHere ( "test_pgs" ->> "dim" )
       '[ 'Ref "dim_a_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "root" ) "root_dim_b_fk" = 'RFFromHere ( "test_pgs" ->> "dim" )
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) "root_dim_b_fk" = 'RFFromHere ( "test_pgs" ->> "dim" )
       '[ 'Ref "dim_b_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "test_pgs" ->> "root" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "test_pgs" ->> "root" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "root" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -456,11 +455,11 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
+  TDBFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text "")
 
-instance CFieldInfo Sch t f where
-  type TFieldInfo Sch t f = TFieldInfoSch t f
+instance CDBFieldInfo Sch t f where
+  type TDBFieldInfo Sch t f = TDBFieldInfoSch t f
 
 instance CSchema Sch where
   type TTabs Sch = '[ ( "test_pgs" ->> "arrays" ),( "test_pgs" ->> "base_arr_converts" )

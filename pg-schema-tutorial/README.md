@@ -70,7 +70,7 @@ Schema types (e.g. `Tutorial`/`Sch`) are generated as a plain Haskell module; ru
 
 ```haskell
 ghci> import PgSchema
-ghci> import Sch  -- generated module with data Sch, CSchema, CFieldInfo, etc.
+ghci> import Sch  -- generated module with data Sch, CSchema, CDBFieldInfo, etc.
 
 ghci> { data Company = Company { name :: Text, address_id :: Maybe Int32 } deriving (Eq, Show, Generic); schemaRec id ''Company }
 
@@ -182,7 +182,7 @@ You will see many class instances for the schema type. The "root" instance is fo
 
 Note that our "Schema" can include many PG-schemas (namespaces). The generator is configured for a list of PG-schemas (e.g. `["sch"]`) and optionally a list of tables (namespace->>tablename).
 
-There is predefined type `PgCatalog` in module `Database.PostgreSQL.Schema.Catalog`.
+There is predefined type `PgCatalog` in module `PgSchema.PostgreSQL.Schema.Catalog`.
 It is a type like `Tutorial` but defined "manually". It describes PostgreSQL system schema.
 
 Type `Sch` and instances for it are generated and used in this tutorial application.
@@ -425,7 +425,7 @@ TRecordInfo Ord1 :: [FieldInfo' Symbol]
 = '[ 'FieldInfo "day" "day", 'FieldInfo "num" "num",
      'FieldInfo "seller_id" "seller_id"]
 
-ghci> -- CFieldInfo
+ghci> -- CDBFieldInfo
 
 ghci> :kind! TFieldType Ord1 "seller_id"
 TFieldType Ord1 "seller_id" :: *
@@ -585,6 +585,6 @@ ghci> :{
 
 ### Generation of schema
 
-Schema (data type + CSchema, CFieldInfo, CTabDef, etc.) is generated as a plain Haskell module; see `pg-schema-tutorial/Setup.hs` (`build-type: Custom`, `custom-setup` in `pg-schema-tutorial.cabal`). Run `cabal run pgs-tutorial-generator` to regenerate.
+Schema (data type + CSchema, CDBFieldInfo, CTabDef, etc.) is generated as a plain Haskell module; see `pg-schema-tutorial/Setup.hs` (`build-type: Custom`, `custom-setup` in `pg-schema-tutorial.cabal`). Run `cabal run pgs-tutorial-generator` to regenerate.
 
 For instances of `CQueryRecord` TH remains the generation method (`schemaRec` / `deriveQueryRecord`) because we need more flexibility there.

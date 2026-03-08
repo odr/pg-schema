@@ -41,37 +41,35 @@ flag hashable
 library
   exposed-modules:
     PgSchema
-    Database.PostgreSQL.Convert
-    Database.PostgreSQL.DML.Delete
-    Database.PostgreSQL.DML.Insert
-    Database.PostgreSQL.DML.InsertJSON
-    Database.PostgreSQL.DML.Insert.Types
-    Database.PostgreSQL.DML.Select
-    Database.PostgreSQL.DML.Select.Types
-    Database.PostgreSQL.DML.Update
-    Database.PostgreSQL.Schema.Catalog
-    Database.PostgreSQL.Schema.Info
-    Database.PostgreSQL.Schema.Schema
-    Database.PostgreSQL.Enum
-    Database.PostgreSQL.HList
-    Database.PostgreSQL.HList.Class
-    Database.PostgreSQL.HList.Rec
-    Database.PostgreSQL.HList.HListInfo
-    Database.PostgreSQL.HList.Internal
-    -- Database.PostgreSQL.HList.JsonStream
-    Database.PostgreSQL.HList.Type
-    Database.PostgreSQL.HList.Utils
-    Database.Schema.Gen
-    Database.Schema.Def
-    Database.Schema.ShowType
-    Database.Types.Aggr
+    PgSchema.PostgreSQL.Convert
+    PgSchema.PostgreSQL.DML.Delete
+    PgSchema.PostgreSQL.DML.Insert
+    PgSchema.PostgreSQL.DML.InsertJSON
+    PgSchema.PostgreSQL.DML.Insert.Types
+    PgSchema.PostgreSQL.DML.Select
+    PgSchema.PostgreSQL.DML.Select.Types
+    PgSchema.PostgreSQL.DML.Update
+    PgSchema.PostgreSQL.Schema.Catalog
+    PgSchema.PostgreSQL.Schema.Info
+    PgSchema.PostgreSQL.Schema.Schema
+    PgSchema.PostgreSQL.Enum
+    PgSchema.PostgreSQL.HList
+    PgSchema.Schema.Gen
+    PgSchema.Schema.Def
+    PgSchema.Schema.ShowType
+    PgSchema.Types.Aggr
     PgSchema.Gen
     PgSchema.Tagged
-    PgSchema.Util
-  -- other-modules:
+    PgSchema.Utils
+  other-modules:
+    PgSchema.PostgreSQL.HList.Internal
+    PgSchema.PostgreSQL.HList.Rec
+    PgSchema.PostgreSQL.HList.Utils
+    PgSchema.PostgreSQL.HList.Class
+    PgSchema.PostgreSQL.HList.HListInfo
+    PgSchema.PostgreSQL.HList.Type
   --   Paths_pg_schema
-  hs-source-dirs:
-    src
+  hs-source-dirs: src
   build-depends:
       base >= 4.20
     , aeson

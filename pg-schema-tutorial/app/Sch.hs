@@ -13,8 +13,8 @@ import Data.Hashable
 import GHC.Generics
 import GHC.TypeError qualified as TE
 import GHC.TypeLits qualified as TL
-import Database.Schema.Def
-import Database.PostgreSQL.Enum
+import PgSchema.Schema.Def
+import PgSchema.PostgreSQL.Enum
 
 
 data Sch
@@ -189,22 +189,22 @@ instance CTabRels Sch ( "sch" ->> "orders" ) where
   type TTo Sch ( "sch" ->> "orders" ) = 
     '[ ( "sch" ->> "opos_order" ) ]
 
-type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
-  TFieldInfoSch ( "sch" ->> "addresses" ) "app" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "addresses" ) "city_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "addresses" ) "home" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "addresses" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "addresses" ) "numbers" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_int4" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "addresses" ) "phones" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_text" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "addresses" ) "street" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "addresses" ) "zipcode" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "addresses" ) "comp_addr" = 'RFToHere ( "sch" ->> "companies" )
+type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "app" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "city_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "home" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "numbers" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_int4" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "phones" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_text" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "street" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "zipcode" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "comp_addr" = 'RFToHere ( "sch" ->> "companies" )
       '[ 'Ref "address_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "addresses" ) "cust_addr" = 'RFToHere ( "sch" ->> "customers" )
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "cust_addr" = 'RFToHere ( "sch" ->> "customers" )
       '[ 'Ref "address_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "addresses" ) "address_city" = 'RFFromHere ( "sch" ->> "cities" )
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) "address_city" = 'RFFromHere ( "sch" ->> "cities" )
       '[ 'Ref "city_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "addresses" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "sch" ->> "addresses" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "sch" ->> "addresses" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -214,14 +214,14 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "sch" ->> "articles" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "articles" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "articles" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "articles" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "articles" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "articles" ) "opos_article" = 'RFToHere ( "sch" ->> "order_positions" )
+  TDBFieldInfoSch ( "sch" ->> "articles" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "articles" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "articles" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "articles" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "articles" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "articles" ) "opos_article" = 'RFToHere ( "sch" ->> "order_positions" )
       '[ 'Ref "article_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "articles" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "sch" ->> "articles" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "sch" ->> "articles" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -231,14 +231,14 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "sch" ->> "cities" ) "country_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "cities" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "cities" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "cities" ) "address_city" = 'RFToHere ( "sch" ->> "addresses" )
+  TDBFieldInfoSch ( "sch" ->> "cities" ) "country_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "cities" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "cities" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "cities" ) "address_city" = 'RFToHere ( "sch" ->> "addresses" )
       '[ 'Ref "city_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "cities" ) "city_country" = 'RFFromHere ( "sch" ->> "countries" )
+  TDBFieldInfoSch ( "sch" ->> "cities" ) "city_country" = 'RFFromHere ( "sch" ->> "countries" )
       '[ 'Ref "country_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "cities" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "sch" ->> "cities" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "sch" ->> "cities" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -248,18 +248,18 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "sch" ->> "companies" ) "address_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "companies" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "companies" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "companies" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "companies" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "companies" ) "ord_seller" = 'RFToHere ( "sch" ->> "orders" )
+  TDBFieldInfoSch ( "sch" ->> "companies" ) "address_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "companies" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "companies" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "companies" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "companies" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "companies" ) "ord_seller" = 'RFToHere ( "sch" ->> "orders" )
       '[ 'Ref "seller_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "companies" ) "ord_trader" = 'RFToHere ( "sch" ->> "orders" )
+  TDBFieldInfoSch ( "sch" ->> "companies" ) "ord_trader" = 'RFToHere ( "sch" ->> "orders" )
       '[ 'Ref "trader_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "companies" ) "comp_addr" = 'RFFromHere ( "sch" ->> "addresses" )
+  TDBFieldInfoSch ( "sch" ->> "companies" ) "comp_addr" = 'RFFromHere ( "sch" ->> "addresses" )
       '[ 'Ref "address_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "companies" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "sch" ->> "companies" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "sch" ->> "companies" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -269,12 +269,12 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "sch" ->> "countries" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "countries" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "countries" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "countries" ) "city_country" = 'RFToHere ( "sch" ->> "cities" )
+  TDBFieldInfoSch ( "sch" ->> "countries" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "countries" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "countries" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "countries" ) "city_country" = 'RFToHere ( "sch" ->> "cities" )
       '[ 'Ref "country_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "countries" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "sch" ->> "countries" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "sch" ->> "countries" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -284,17 +284,17 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "sch" ->> "customers" ) "address_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "customers" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "customers" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "customers" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "customers" ) "note" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "customers" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "customers" ) "ord_cust" = 'RFToHere ( "sch" ->> "orders" )
+  TDBFieldInfoSch ( "sch" ->> "customers" ) "address_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "customers" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "customers" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "customers" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "customers" ) "note" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "customers" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "customers" ) "ord_cust" = 'RFToHere ( "sch" ->> "orders" )
       '[ 'Ref "customer_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "customers" ) "cust_addr" = 'RFFromHere ( "sch" ->> "addresses" )
+  TDBFieldInfoSch ( "sch" ->> "customers" ) "cust_addr" = 'RFFromHere ( "sch" ->> "addresses" )
       '[ 'Ref "address_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "customers" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "sch" ->> "customers" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "sch" ->> "customers" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -304,16 +304,16 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "sch" ->> "order_positions" ) "article_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "order_positions" ) "cnt" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "order_positions" ) "num" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "order_positions" ) "order_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "order_positions" ) "price" = 'RFPlain ('FldDef ( "pg_catalog" ->> "numeric" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "order_positions" ) "opos_article" = 'RFFromHere ( "sch" ->> "articles" )
+  TDBFieldInfoSch ( "sch" ->> "order_positions" ) "article_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "order_positions" ) "cnt" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "order_positions" ) "num" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "order_positions" ) "order_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "order_positions" ) "price" = 'RFPlain ('FldDef ( "pg_catalog" ->> "numeric" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "order_positions" ) "opos_article" = 'RFFromHere ( "sch" ->> "articles" )
       '[ 'Ref "article_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "order_positions" ) "opos_order" = 'RFFromHere ( "sch" ->> "orders" )
+  TDBFieldInfoSch ( "sch" ->> "order_positions" ) "opos_order" = 'RFFromHere ( "sch" ->> "orders" )
       '[ 'Ref "order_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "order_positions" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "sch" ->> "order_positions" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "sch" ->> "order_positions" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -323,24 +323,24 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch ( "sch" ->> "orders" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "orders" ) "customer_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "orders" ) "day" = 'RFPlain ('FldDef ( "pg_catalog" ->> "date" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "orders" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
-  TFieldInfoSch ( "sch" ->> "orders" ) "num" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "orders" ) "seller_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TFieldInfoSch ( "sch" ->> "orders" ) "state" = 'RFPlain ('FldDef ( "sch" ->> "order_state" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "orders" ) "trader_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "orders" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
-  TFieldInfoSch ( "sch" ->> "orders" ) "opos_order" = 'RFToHere ( "sch" ->> "order_positions" )
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "customer_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "day" = 'RFPlain ('FldDef ( "pg_catalog" ->> "date" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "num" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "seller_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "state" = 'RFPlain ('FldDef ( "sch" ->> "order_state" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "trader_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "updated_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'True 'False)
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "opos_order" = 'RFToHere ( "sch" ->> "order_positions" )
       '[ 'Ref "order_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "orders" ) "ord_cust" = 'RFFromHere ( "sch" ->> "customers" )
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "ord_cust" = 'RFFromHere ( "sch" ->> "customers" )
       '[ 'Ref "customer_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "orders" ) "ord_seller" = 'RFFromHere ( "sch" ->> "companies" )
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "ord_seller" = 'RFFromHere ( "sch" ->> "companies" )
       '[ 'Ref "seller_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "orders" ) "ord_trader" = 'RFFromHere ( "sch" ->> "companies" )
+  TDBFieldInfoSch ( "sch" ->> "orders" ) "ord_trader" = 'RFFromHere ( "sch" ->> "companies" )
       '[ 'Ref "trader_id" ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True) ]
-  TFieldInfoSch ( "sch" ->> "orders" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+  TDBFieldInfoSch ( "sch" ->> "orders" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "sch" ->> "orders" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -350,11 +350,11 @@ type family TFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK w
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")
-  TFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
+  TDBFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text "")
 
-instance CFieldInfo Sch t f where
-  type TFieldInfo Sch t f = TFieldInfoSch t f
+instance CDBFieldInfo Sch t f where
+  type TDBFieldInfo Sch t f = TDBFieldInfoSch t f
 
 instance CSchema Sch where
   type TTabs Sch = '[ ( "sch" ->> "addresses" ),( "sch" ->> "articles" )
@@ -367,4 +367,3 @@ instance CSchema Sch where
     ,( "pg_catalog" ->> "int4" ),( "pg_catalog" ->> "int8" )
     ,( "pg_catalog" ->> "numeric" ),( "pg_catalog" ->> "text" )
     ,( "pg_catalog" ->> "timestamptz" ),( "sch" ->> "order_state" ) ]
-

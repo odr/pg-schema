@@ -9,7 +9,7 @@ import Data.Aeson (decode, encode, object, (.=))
 import Data.Aeson.Key (fromString)
 import Data.ByteString.Lazy qualified as BL
 import Data.ByteString.Lazy.Char8 (pack)
-import Database.PostgreSQL.HList
+import PgSchema.PostgreSQL.HList
 
 
 type SimpleRec = HList '[ '( '("b", 0), Bool), '( '("a", 0), Int) ]

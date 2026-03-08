@@ -36,10 +36,9 @@ main = do
       create table ext_arr_converts 
         (ccitext citext[], cbytea bytea[], cjsonb jsonb[], cuuid uuid[], ccolor color[]);
 
-      -- Lookup table for dimensions (used by root via dim_a_id, dim_b_id for "two child lists by same FK" tests).
       create table dim (
         id        serial primary key,
-        name      text not null,
+        name      text not null
       );
 
       -- Root of hierarchy; two FKs to dim for distinct roles (dim_a, dim_b).
