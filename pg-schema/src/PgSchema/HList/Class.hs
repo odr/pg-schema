@@ -8,12 +8,14 @@ module PgSchema.HList.Class
 import Data.Coerce
 import Data.Kind
 import Data.Tagged
+import GHC.Int
 import PgSchema.HList.Internal
 import PgSchema.HList.Type
 import PgSchema.HList.Utils
 import Database.PostgreSQL.Simple
 import PgSchema.Types
 import PgSchema.Schema
+import PgSchema.Utils.Internal
 import GHC.Generics
 import GHC.TypeLits
 import Prelude.Singletons qualified as SP
@@ -119,14 +121,16 @@ instance (CHListRepTypeCase ren sch tab fld t tc, tc ~ GetTypeCase t)
   gFromHList h = M1 $ K1 $ fromHListTypeCase @ren @sch @tab @fld @t @(GetTypeCase t) h
 
 data TypeCase
-  = EmptyCase -- ^ drop field in HList
-  | AggrCountCase -- ^ No FieldInfo
+  = EmptyCase       -- ^ drop field in HList
+  | AggrCountCase   -- ^ No FieldInfo
   | CommonCase
 
 type family GetTypeCase t :: TypeCase where
   GetTypeCase () = 'EmptyCase
-  GetTypeCase (Aggr ACount t) = 'AggrCountCase
-  GetTypeCase (Aggr' ACount t) = 'AggrCountCase
+  GetTypeCase (Aggr ACount Int64) = 'AggrCountCase
+  GetTypeCase (Aggr' ACount Int64) = 'AggrCountCase
+  GetTypeCase (Aggr ACount t) = TypeError (Text "You have to use Int64 for Aggr ACount field")
+  GetTypeCase (Aggr' ACount t) = TypeError (Text "You have to use Int64 for Aggr' ACount field")
   GetTypeCase t = 'CommonCase
 
 class CHListRepTypeCase ren sch tab fld t typeCase where
@@ -168,32 +172,32 @@ instance (CDBFieldInfo sch tab fld, TDBFieldInfo sch tab fld ~ fi
   , CHListRepFi ren sch tab fld fi t) => CHListRepRen ren sch tab fld t
   where
     type HListRepRen ren sch tab fld t =
-      GHListRepFi ren sch tab fld (TDBFieldInfo sch tab fld) t
+      HListRepFi ren sch tab fld (TDBFieldInfo sch tab fld) t
     toHListRen = toHListFi @ren @sch @tab @fld @fi @t
     fromHListRen = fromHListFi @ren @sch @tab @fld @fi @t
 
 class CHListRepFi ren sch tab (fld :: Symbol) fi t where
-  type GHListRepFi ren sch tab fld fi t :: [(SymNat, Type)]
-  toHListFi :: t -> HList (GHListRepFi ren sch tab fld fi t)
-  fromHListFi :: HList (GHListRepFi ren sch tab fld fi t) -> t
+  type HListRepFi ren sch tab fld fi t :: [(SymNat, Type)]
+  toHListFi :: t -> HList (HListRepFi ren sch tab fld fi t)
+  fromHListFi :: HList (HListRepFi ren sch tab fld fi t) -> t
 
 instance (CanConvert sch tab fld t, Coercible (PlainType sch tab fld t fd) t)
   => CHListRepFi ren sch tab fld (RFPlain (fd :: FldDefK)) t
   where
-    type GHListRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), PlainType sch tab fld t fd)]
+    type HListRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), PlainType sch tab fld t fd)]
     toHListFi t = coerce t :* HNil
     fromHListFi (t :* HNil) = coerce t
 
 type family PlainType sch tab fld t fd :: Type where
-  PlainType sch tab fld (PgArr t) ('FldDef tn False def) = -- TypeError (Text "PgArr")
+  PlainType sch tab fld (PgArr t) ('FldDef tn False def) =
     Tagged (TypElem (TTypDef sch tn)) (PgArr t)
-  PlainType sch tab fld (Maybe (PgArr t)) ('FldDef tn True def) = --TypeError (Text "PgArr")
+  PlainType sch tab fld (Maybe (PgArr t)) ('FldDef tn True def) =
     Maybe (Tagged (TypElem (TTypDef sch tn)) (PgArr t))
   PlainType sch tab fld t fd = t
 
 instance (CHListRepFromMaybe ren sch fld toTab t b, b ~ IsMaybe t)
   => CHListRepFi ren sch tab fld (RFFromHere toTab refs) t where
-  type GHListRepFi ren sch tab fld (RFFromHere toTab refs) t =
+  type HListRepFi ren sch tab fld (RFFromHere toTab refs) t =
     HListRepFromMaybe ren sch fld toTab t (IsMaybe t)
   toHListFi = toHListFromMaybe @ren @sch @fld @toTab @t @b
   fromHListFi = fromHListFromMaybe @ren @sch @fld @toTab @t @b
@@ -221,7 +225,7 @@ instance IsoHList ren sch toTab t
 
 instance IsoHList ren sch fromTab t
   => CHListRepFi ren sch tab fld (RFToHere (fromTab :: NameNSK) refs) [t] where
-  type GHListRepFi ren sch tab fld (RFToHere fromTab refs) [t] =
+  type HListRepFi ren sch tab fld (RFToHere fromTab refs) [t] =
     '[ '( '(fld, 0), [HList (HListRep ren sch fromTab t)]) ]
   toHListFi xs = (toHList @ren @sch @fromTab <$> xs) :* HNil
   fromHListFi (xs :* HNil) = fromHList @ren @sch @fromTab <$> xs

@@ -21,11 +21,9 @@ import Prelude.Singletons as SP
 import Text.Show.Singletons
 
 
-
-
 singletons [d|
   data AggrFun = ACount | AMin | AMax | ASum | AAvg
-    deriving (Show, Eq, Ord)
+    deriving Show
 
   data NameNS' s = NameNS
     { nnsNamespace  :: s
@@ -36,25 +34,25 @@ singletons [d|
     { typCategory :: s
     , typElem     :: Maybe (NameNS' s)
     , typEnum     :: [s] }
-    deriving (Show, Eq)
+    deriving Show
 
   data FldDef' s = FldDef
     { fdType        :: NameNS' s
     , fdNullable    :: Bool
     , fdHasDefault  :: Bool }
-    deriving (Show, Eq)
+    deriving Show
 
   data TabDef' s = TabDef
     { tdFlds       :: [s]
     , tdKey        :: [s]
     , tdUniq       :: [[s]] }
-    deriving (Show, Eq)
+    deriving Show
 
   data RelDef' s = RelDef
     { rdFrom    :: NameNS' s
     , rdTo      :: NameNS' s
     , rdCols    :: [(s,s)] }
-    deriving (Show, Eq)
+    deriving Show
 
   data RelType = RelOne | RelMany
 
@@ -73,8 +71,7 @@ singletons [d|
     , fromDef  :: FldDef' s
     , toName   :: s
     , toDef    :: FldDef' s }
-    deriving (Eq, Show)
-
+    deriving Show
   |]
 
 promote [d|
@@ -290,7 +287,7 @@ data TabInfo = TabInfo
   , tiFlds :: M.Map Text FldDef
   , tiFrom :: M.Map NameNS RelDef
   , tiTo   :: M.Map NameNS RelDef }
-  deriving (Show, Eq)
+  deriving Show
 
 tabInfoMap :: forall sch. CSchema sch => M.Map NameNS TabInfo
 tabInfoMap = M.fromList

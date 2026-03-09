@@ -1,11 +1,10 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE CPP #-}
 module PgSchema.Types(PGEnum, Aggr(..), Aggr'(..), PgArr(..), pgArr', unPgArr'
-  , PgChar(..), PgOid(..), CanConvert, CanConvert1, AggrFun(..))
+  , PgChar(..), PgOid(..), CanConvert, CanConvert1)
   where
 
 import Control.Monad
-import Control.Monad.Singletons
 import Data.Aeson
 import Data.ByteString as BS
 import Data.ByteString.Lazy as BSL
@@ -15,9 +14,8 @@ import Data.Fixed
 import Data.Kind
 import Data.List qualified as L
 import Data.Maybe
+import Data.Scientific
 import Data.Singletons.TH
-import Data.String
-import Data.String.Singletons
 import Data.Tagged
 import Data.Text as T
 import Data.Text.Encoding as T
@@ -27,6 +25,7 @@ import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import GHC.TypeLits as TL
+import GHC.TypeError as TE
 import GHC.Int
 import Prelude as P
 import Type.Reflection
@@ -112,48 +111,7 @@ newtype Aggr' (f :: AggrFun) t = Aggr' { unAggr' :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
 
-promoteOnly [d|
-  aggrFldDef'
-    :: (Ord s, IsString s)
-    => (NameNS' s -> Maybe (TypDef' s)) -> s -> Maybe (FldDef' s) -> Maybe (FldDef' s)
-  aggrFldDef' fTypDef fname mbFD = case fname of
-    "count" -> pure $ FldDef (NameNS "pg_catalog" "int8") False False
-    "avg" -> (\fd -> fd { fdType = NameNS "pg_catalog" "float8"}) <$> fdCheckCat ["N"]
-    "sum" -> do
-      fd <- fdCheckCat ["N"]
-      let t0 = nnsName $ fdType fd
-      if t0 >= "int" && t0 < "inu"
-        then Just fd { fdType = NameNS "pg_catalog" "int8" }
-        else Just fd { fdType = NameNS "pg_catalog" "float8" }
-    "min" -> fdCheckCat ["N","S","B","D"]
-    "max" -> fdCheckCat ["N","S","B","D"]
-    _ -> Nothing
-    where
-      fdCheckCat cs = do
-        fd <- mbFD
-        td <- fTypDef $ fdType fd
-        guard $ typCategory td `L.elem` cs
-        pure fd
-
-  aggrFldDef
-    :: (Ord s, IsString s)
-    => (NameNS' s -> Maybe (TypDef' s)) -> s -> Maybe (FldDef' s) -> Maybe (FldDef' s)
-  aggrFldDef fTypDef fname mbFD = case fname of
-    "count" -> aggrFldDef' fTypDef fname mbFD
-    _ -> (\fd -> fd { fdNullable = True }) <$> aggrFldDef' fTypDef fname mbFD
-
-  aggrFldDefJ
-    :: (Ord s, IsString s)
-    => (NameNS' s -> TypDef' s) -> s -> Maybe (FldDef' s) -> Maybe (FldDef' s)
-  aggrFldDefJ f = aggrFldDef (Just . f)
-
-  aggrFldDefJ'
-    :: (Ord s, IsString s)
-    => (NameNS' s -> TypDef' s) -> s -> Maybe (FldDef' s) -> Maybe (FldDef' s)
-  aggrFldDefJ' f = aggrFldDef' (Just . f)
-  |]
-
--- Char has no ToField instance so make own char
+-- | Char has no ToField instance so make own char
 newtype PgChar = PgChar { unPgChar :: Char }
   deriving stock (Show, Read)
   deriving newtype (Eq, Ord, FromField, Enum, Bounded, FromJSON, ToJSON
@@ -231,7 +189,7 @@ instance ToJSON PgOid where
 -- To make your types convertible to some database type use open type family 'CanConvert1'.
 type family CanConvert sch (tab :: NameNSK) (fld::Symbol) (t :: Type) :: Constraint where
   CanConvert sch tab fld t = CanConvertMaybe sch tab fld (FdType (GetFldDef sch tab fld))
-    (FdNullable (GetFldDef sch tab fld)) t
+    (FdNullable (GetFldDef sch tab fld)) (TTypDef sch (FdType (GetFldDef sch tab fld))) t
 
 type ErrDesc tab fld tn t =
   ( TL.Text ""
@@ -241,18 +199,96 @@ type ErrDesc tab fld tn t =
   :$$: TL.Text "Haskell Field type: " :<>: TL.ShowType t
   :$$: TL.Text "")
 
+type ErrWithHead s tab fld tn t = TL.TypeError (TL.Text s :$$: ErrDesc tab fld tn t)
+
+type family GuardConvert (ok :: Bool) sch tab fld tn td t t' err :: Constraint where
+  GuardConvert 'True  sch tab fld tn td t t' err = CanConvert1 sch tab fld tn td t'
+  GuardConvert 'False sch tab fld tn td t t' err = ErrWithHead err tab fld tn t
+
 type family CanConvertMaybe sch (tab::NameNSK) (fld::Symbol) (tn::NameNSK)
-  (nullable :: Bool) (t :: Type) :: Constraint where
-  CanConvertMaybe sch tab fld tn 'False (Maybe t) =
-    TL.TypeError (TL.Text "You can't use Maybe for mandatory fields"
-      :$$: ErrDesc tab fld tn t)
-  CanConvertMaybe sch tab fld tn 'True (Maybe t) =
-    CanConvert1 sch tab fld tn (TTypDef sch tn) t
-  CanConvertMaybe sch tab fld tn 'False t =
-    CanConvert1 sch tab fld tn (TTypDef sch tn) t
-  CanConvertMaybe sch tab fld tn 'True t =
-    TL.TypeError (TL.Text "You have to use Maybe for nullable fields"
-      :$$: ErrDesc tab fld tn t)
+  (nullable :: Bool) (td :: TypDefK) (t :: Type) :: Constraint where
+  CanConvertMaybe sch tab fld tn nullable td (Maybe (Aggr fn t)) =
+    ErrWithHead "You can't use Maybe for aggregates. Use Maybe inside Aggr"
+      tab fld tn (Aggr fn t)
+  CanConvertMaybe sch tab fld tn nullable td (Maybe (Aggr' fn t)) =
+    ErrWithHead "You can't use Maybe for aggregates. Use Maybe inside Aggr'"
+      tab fld tn (Aggr' fn t)
+  CanConvertMaybe sch tab fld tn nullable td (Maybe t) = GuardConvert
+    nullable sch tab fld tn td (Maybe t) t "You can't use Maybe for mandatory fields"
+  -- aggregates --
+  -- ACount<=>int64; AMin/AMax<=>N,S,B,D; ASum<=>N+int*->Int64|Double; AAvg<=>N+float8
+  CanConvertMaybe sch tab fld tn nullable td (Aggr ACount Int64) = ()
+  CanConvertMaybe sch tab fld tn nullable td (Aggr ACount t) =
+    ErrWithHead "You have to use Int64 for Aggr ACount fields" tab fld tn t
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' ACount Int64) = ()
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' ACount t) =
+    ErrWithHead "You have to use Int64 for Aggr' ACount fields" tab fld tn t
+  CanConvertMaybe sch tab fld tn nullable td (Aggr AMin t) = GuardConvert
+    (IsMaybe t && Elem (TypCategory td) '["N","S","B","D"])
+    sch tab fld tn td (Aggr AMin t) (UnMaybe t)
+    "'Aggr AMin' is possible only for 'Maybe' values and numeric, text, bool or date fields"
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' AMin t) = GuardConvert
+    (Elem (TypCategory td) '["N","S","B","D"]) sch tab fld tn td (Aggr' AMin t) t
+      "'Aggr' AMin' is possible only for numeric, text, bool or date fields"
+  CanConvertMaybe sch tab fld tn nullable td (Aggr AMax t) = GuardConvert
+    (IsMaybe t && Elem (TypCategory td) '["N","S","B","D"])
+    sch tab fld tn td (Aggr AMax t) (UnMaybe t)
+    "'Aggr AMax' is possible only for 'Maybe' values and numeric, text, bool or date fields"
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' AMax t) = GuardConvert
+    (Elem (TypCategory td) '["N","S","B","D"])
+    sch tab fld tn td (Aggr' AMax t) t
+    "'Aggr' AMax' is possible only for numeric, text, bool or date fields"
+  CanConvertMaybe sch tab fld tn nullable td (Aggr AAvg (Maybe Scientific)) =
+    Assert (TypCategory td == "N") (ErrWithHead
+      "'Aggr AAvg' is possible only for numeric fields"
+      tab fld tn (Aggr AAvg (Maybe Scientific)))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr AAvg t) = ErrWithHead
+    "You have to use `Maybe Scientific` for `Aggr AAvg` fields"
+    tab fld tn (Aggr AAvg t)
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' AAvg (Maybe Scientific)) =
+    Assert (TypCategory td == "N" && nullable) (ErrWithHead
+      "'Aggr' AAvg (Maybe Scientific)' is possible only for nullable numeric fields"
+      tab fld tn (Aggr' AAvg (Maybe Scientific)))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' AAvg Scientific) =
+    Assert (TypCategory td == "N" && Not nullable) (ErrWithHead
+      "'Aggr' AAvg Scientific' is possible only for mandatory numeric fields"
+      tab fld tn (Aggr' AAvg Scientific))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' AAvg t) = ErrWithHead
+    "You have to use `Scientific` (or `Maybe Scientific`) for `Aggr' AAvg` fields"
+    tab fld tn (Aggr' AAvg t)
+  CanConvertMaybe sch tab fld tn nullable td (Aggr ASum (Maybe Int64)) =
+    ( Assert (TypCategory td == "N" && (NnsName tn == "int2" || NnsName tn == "int4"))
+      (ErrWithHead "'Aggr ASum (Maybe Int64)' is possible only for 'int2/int4' fields"
+        tab fld tn (Aggr ASum (Maybe Int64))))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr ASum (Maybe Scientific)) =
+    ( Assert (TypCategory td == "N")
+      (ErrWithHead "'Aggr ASum (Maybe Scientific)' is possible only for numeric fields"
+        tab fld tn (Aggr ASum (Maybe Scientific))))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr ASum t) = ErrWithHead
+    "You have to use `Maybe Int64` (or `Maybe Scientific`) for `Aggr ASum` fields"
+    tab fld tn (Aggr ASum t)
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum (Maybe Int64)) =
+    ( Assert (nullable && TypCategory td == "N" && (NnsName tn == "int2" || NnsName tn == "int4"))
+      (ErrWithHead "'Aggr' ASum (Maybe Int64)' is possible only for nullable 'int2/int4' fields"
+        tab fld tn (Aggr' ASum (Maybe Int64))))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum (Maybe Scientific)) =
+    ( Assert (nullable && TypCategory td == "N")
+      (ErrWithHead "'Aggr' ASum (Maybe Scientific)' is possible only for nullable numeric fields"
+        tab fld tn (Aggr' ASum (Maybe Scientific))))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum Int64) =
+    ( Assert (Not nullable && TypCategory td == "N" && (NnsName tn == "int2" || NnsName tn == "int4"))
+      (ErrWithHead "'Aggr' ASum Int64' is possible only for mandatory 'int2/int4' fields"
+        tab fld tn (Aggr' ASum Int64)))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum Scientific) =
+    ( Assert (Not nullable && TypCategory td == "N")
+      (ErrWithHead "'Aggr' ASum (Scientific)' is possible only for mandatory numeric fields"
+        tab fld tn (Aggr' ASum Scientific)))
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum t) = ErrWithHead
+    "You have to use `[Maybe] Int64` (or `[Maybe] Scientific`) for `Aggr' ASum` fields"
+    tab fld tn (Aggr' ASum t)
+  -- end aggregates --
+  CanConvertMaybe sch tab fld tn nullable td t = GuardConvert (Not nullable)
+    sch tab fld tn td t t "You have to use Maybe for nullable fields"
 
 -- | Many to many relation between db-type and Haskell type (not nullable)
 -- You can add your own instances to this family
@@ -270,6 +306,12 @@ type instance CanConvert1 sch tab fld (PGC "float8") ('TypDef "N" x y) Double = 
 -- type instance CanConvert1 sch tab fld (PGC "numeric") ('TypDef "N" x y) Double = ()
 type instance CanConvert1 sch tab fld (PGC "oid") ('TypDef "N" x y) Int = ()
 type instance CanConvert1 sch tab fld (PGC "numeric") ('TypDef "N" x y) (Fixed k) = () -- unsafe!
+type instance CanConvert1 sch tab fld (PGC "int2") ('TypDef "N" x y) Scientific = ()
+type instance CanConvert1 sch tab fld (PGC "int4") ('TypDef "N" x y) Scientific = ()
+type instance CanConvert1 sch tab fld (PGC "int8") ('TypDef "N" x y) Scientific = ()
+type instance CanConvert1 sch tab fld (PGC "float4") ('TypDef "N" x y) Scientific = ()
+type instance CanConvert1 sch tab fld (PGC "float8") ('TypDef "N" x y) Scientific = ()
+type instance CanConvert1 sch tab fld (PGC "numeric") ('TypDef "N" x y) Scientific = ()
 type instance CanConvert1 sch tab fld (PGC "oid") ('TypDef "N" x y) PgOid = ()
 
 type instance CanConvert1 sch tab fld (PGC "date") ('TypDef "D" x y) Day = ()

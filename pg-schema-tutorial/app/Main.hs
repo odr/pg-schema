@@ -18,6 +18,7 @@ import Data.Bitraversable
 import Data.Fixed
 import Data.Functor
 import Data.List as L
+import Data.Scientific
 import Data.Singletons
 import Data.Tagged
 import Data.Text as T
@@ -48,6 +49,10 @@ type family TRenamerSch (s :: Symbol) :: Symbol where
   TRenamerSch "maxPrice" = "price"
   TRenamerSch "sumPrice" = "price"
   TRenamerSch "avgPrice" = "price"
+  TRenamerSch "minNum" = "num"
+  TRenamerSch "maxNum" = "num"
+  TRenamerSch "sumNum" = "num"
+  TRenamerSch "avgNum" = "num"
   TRenamerSch s = s
 
 instance Renamer RenamerSch where
@@ -120,9 +125,13 @@ data PosCnt = MkPosCnt
   , cnt       :: Aggr ACount Int64
   , minPrice  :: Aggr AMin (Maybe Centi)
   , maxPrice  :: Aggr AMax (Maybe Centi)
-  , sumPrice  :: Aggr ASum (Maybe Double)
-  , avgPrice  :: Aggr AAvg (Maybe Double) }
-  deriving Generic
+  , sumPrice  :: Aggr ASum (Maybe Scientific)
+  , avgPrice  :: Aggr AAvg (Maybe Scientific)
+  , minNum  :: Aggr AMin (Maybe Int32)
+  , maxNum  :: Aggr AMax (Maybe Int32)
+  , sumNum  :: Aggr ASum (Maybe Int64)
+  , avgNum  :: Aggr AAvg (Maybe Scientific)
+  } deriving Generic
 
 -- data Customer = Customer
 --   { }
@@ -265,6 +274,7 @@ main = do
     ]
   T.putStrLn "\n====== 5 ========\n"
   conn <- connectPostgreSQL "dbname=schema_test user=avia host=localhost"
+  (_::[PosCnt], _) <- selSch "order_positions" conn qpEmpty
   (_::[Article], _) <- selSch "articles" conn qpEmpty
   -- upsJSON_ "addresses" @(AddressRev A2 B1) conn [MkAddressRev
   --   { street = "str1", home = Nothing, app = (), zipcode = Nothing

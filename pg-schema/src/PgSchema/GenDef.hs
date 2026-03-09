@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
-module PgSchema.GenDef(updateSchemaFile, GenNames(..), AddRelation(..)) where
+-- | Generation of Type-level definition of database schema
+module PgSchema.GenDef
+  ( updateSchemaFile
+  , GenNames(..)
+  , AddRelation(..)) where
 
 import Control.Monad
 import Control.Monad.Catch

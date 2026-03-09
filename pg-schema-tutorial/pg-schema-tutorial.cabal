@@ -49,6 +49,7 @@ executable pgs-tutorial
     , time
     , QuickCheck
     , quickcheck-instances
+    , scientific
     , singletons
   default-language: Haskell2010
   default-extensions:

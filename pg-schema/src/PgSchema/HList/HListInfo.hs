@@ -9,7 +9,6 @@ module PgSchema.HList.HListInfo
 
 import Data.Kind
 import Data.Text ( Text )
-import PgSchema.HList.Internal
 import PgSchema.HList.Type
 import PgSchema.HList.Rec
   (RecordInfo'(..), FieldInfo'(..), FieldDbNameSym0, AllPlainB)
@@ -47,20 +46,15 @@ type family GetFldTypeCase t where
   GetFldTypeCase (Aggr' ACount s) = RTCAggrCount
   GetFldTypeCase t = RTCCommon
 
-class CDBFieldInfoTypeCase sch (tab :: NameNSK) (fld :: (SymNat, Type)) rtc where
-  type TDBFieldInfoTypeCase sch tab fld rtc :: FieldInfoK
-  geTDBFieldInfo :: FieldInfo
+class (SingI (TDBFieldInfoTypeCase sch tab fld rtc))
+  => CDBFieldInfoTypeCase sch (tab :: NameNSK) (fld :: (SymNat, Type)) rtc where
+    type TDBFieldInfoTypeCase sch tab fld rtc :: FieldInfoK
 
 instance (KnownSymNat '(s,n), KnownSymbol s)
   => CDBFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCAggrCount where
     type TDBFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCAggrCount =
       'FieldInfo (NameSymNat '(s,n)) s
         ('RFAggr ('FldDef ("pg_catalog" ->> "int8") False False) ACount 'True)
-    geTDBFieldInfo = FieldInfo
-      { fieldName = nameSymNat (s,n)
-      , fieldDbName = demote @s
-      , fieldKind = RFAggr
-        (FldDef ("pg_catalog" ->> "int8") False False) ACount True }
 
 instance (CHListInfo sch tab (HList xs), CDBFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t) )
   => CHListInfo sch tab (HList ('(sn,t) ': xs)) where
@@ -68,7 +62,7 @@ instance (CHListInfo sch tab (HList xs), CDBFieldInfoTypeCase sch tab '(sn,t) (G
       TDBFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t)
         ': TRecordInfo sch tab (HList xs)
     getRecordInfo = ri
-      { fields = geTDBFieldInfo @sch @tab @'(sn,t) @(GetFldTypeCase t) : fields ri}
+      { fields = demote @(TDBFieldInfoTypeCase sch tab '(sn,t) (GetFldTypeCase t)) : fields ri}
       where
         ri = getRecordInfo @sch @tab @(HList xs)
 
@@ -77,10 +71,6 @@ instance (KnownSymNat '(s,n), KnownSymbol s
   => CDBFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCCommon where
     type TDBFieldInfoTypeCase sch tab '( '(s,n),t) 'RTCCommon
       = 'FieldInfo (NameSymNat '(s,n)) s (TTagFieldInfo sch (TDBFieldInfo sch tab s) t)
-    geTDBFieldInfo = FieldInfo
-      { fieldName = nameSymNat (s,n)
-      , fieldDbName = demote @s
-      , fieldKind = demote @(TTagFieldInfo sch (TDBFieldInfo sch tab s) t) }
 
 class ToStar (TTagFieldInfo sch fi t) => CTagFieldInfo sch (fi :: RecFieldK NameNSK) (t :: Type) where
   type TTagFieldInfo sch fi t :: RecFieldK RecordInfoK

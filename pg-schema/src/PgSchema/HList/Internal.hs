@@ -37,11 +37,3 @@ type family CountName (s :: Symbol) (xs :: [(SymNat, Type)]) :: Nat where
   CountName s '[] = 0
   CountName s ('( '(s, _), _) ': xs) = 1 + CountName s xs
   CountName s (_ ': xs) = CountName s xs
-
-type family IsMaybe (x :: Type) :: Bool where
-  IsMaybe (Maybe a) = 'True
-  IsMaybe a = 'False
-
-type family UnMaybe (x :: Type) :: Type where
-  UnMaybe (Maybe a) = a
-  UnMaybe a = a

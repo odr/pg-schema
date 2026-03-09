@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 module PgSchema.Utils.Internal where
 
+import Data.Kind
 import Data.List as L
 import Data.Singletons
 import Data.String
@@ -41,3 +42,11 @@ traceShow' _ = id
 #endif
 {-# INLINE trace' #-}
 {-# INLINE traceShow' #-}
+
+type family IsMaybe (x :: Type) :: Bool where
+  IsMaybe (Maybe a) = 'True
+  IsMaybe a = 'False
+
+type family UnMaybe (x :: Type) :: Type where
+  UnMaybe (Maybe a) = a
+  UnMaybe a = a

@@ -76,6 +76,7 @@ library
     , exceptions
     , mtl
     , postgresql-simple
+    , scientific
     , singletons
     , singletons-base
     , singletons-th
