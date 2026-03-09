@@ -46,7 +46,7 @@ data ExceptionSch
 instance Exception ExceptionSch
 
 data AddRelation = AddRelation
-  { name  :: Text -- ^ name of addition relation. They will have namespase "_add"
+  { name  :: Text -- ^ name of an additional relation (these use namespace \"_add\")
   , from  :: NameNS
   , to    :: NameNS
   , cols  :: [(Text, Text)] }
@@ -54,7 +54,7 @@ data AddRelation = AddRelation
 data GenNames = GenNames
   { schemas :: [Text]   -- ^ generate data for all tables in these schemas
   , tables  :: [NameNS] -- ^ generate data for these tables
-  , addRelations :: [AddRelation] -- ^ additional relations. Be carefull!!
+  , addRelations :: [AddRelation] -- ^ additional relations. Be careful!
   }
 
 selCat :: forall (tn :: Symbol) -> forall r h.
@@ -67,7 +67,7 @@ type HLT s r = HList (HListRep RenamerId PgCatalog (PGC s) r)
 
 getSchema
   :: Connection -- ^ connection to PostgreSQL database
-  -> GenNames   -- ^ names of schemas in database or tables to generate
+  -> GenNames   -- ^ names of schemas and tables to generate from the database
   -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn GenNames {..} = do
   types <- selCat "pg_type" conn qpTyp `catch`
@@ -211,9 +211,9 @@ updateSchemaFile
   :: Bool       -- ^ verbose mode
   -> String     -- ^ file name
   -> Either String ByteString
-    -- ^ name of environment variable with connect string or
-    -- connect string as is.
-    -- When this environment variable is not set or connect string is empty,
+    -- ^ name of environment variable with connection string, or
+    -- the connection string itself.
+    -- When this environment variable is not set or the connection string is empty,
     -- we do nothing.
   -> Text     -- ^ haskell module name to generate
   -> Text     -- ^ name of generated haskell type for schema

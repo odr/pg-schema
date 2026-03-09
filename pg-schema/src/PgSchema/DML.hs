@@ -22,10 +22,10 @@
 --       qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
 -- @
 --
--- We get here all orders created after `someDay` having positions with articles like "%pencil%"
--- and return also only those orders items that relates to "pencil" with info about article.
+-- Here we get all orders created after `someDay` that have positions with articles like "%pencil%",
+-- and return only those order items that relate to "pencil", with article info.
 --
--- We can use both 'GHC.Generics.Generic'-based and 'Data.Tagged.Tagged'-base ('(PgSchema.Types.=:)') interface and mix them in any way
+-- We can use both 'GHC.Generics.Generic'-based and 'Data.Tagged.Tagged'-based ('(PgSchema.Types.=:)') interfaces and mix them in any way.
 --
 -- Note that all "strings" here are 'GHC.TypeLits.Symbol' due to @RequiredTypeArguments@ extension.
 -- And operations are safe if database schema is correct.

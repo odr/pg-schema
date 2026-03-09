@@ -57,7 +57,7 @@ import Data.Hashable
 
 
 -- | Introduce `enum` database types.
--- Data instances are produced by schema generations
+-- Data instances are produced by schema generation
 data family PGEnum sch (name :: NameNSK) :: Type
 
 instance
@@ -104,9 +104,9 @@ instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
 --
 -- I.e. @"fld" := Aggr AMin (Maybe Int32)@ means "minimum value of the field `fld`"
 --
--- 'Aggr' require 'Maybe' argument for all functions except "count"
+-- 'Aggr' requires a 'Maybe' argument for all functions except @count@.
 --
--- Only small set of aggregations are supported currently: `count`, `min`, `max`, `sum`, `avg`
+-- Only a small set of aggregations are supported currently: `count`, `min`, `max`, `sum`, `avg`.
 newtype Aggr (f :: AggrFun) t = Aggr { unAggr :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
@@ -116,13 +116,13 @@ newtype Aggr (f :: AggrFun) t = Aggr { unAggr :: t }
 -- if there is no group by clause. E.g. `select min(a) from t where false`
 -- So we require Nullable for Aggr.
 --
--- 'Aggr'' is like 'Aggr' but can't be used in select's without `group by`.
+-- 'Aggr'' is like 'Aggr' but cannot be used in SELECT without `group by`.
 -- So it is mandatory if field is mandatory.
 newtype Aggr' (f :: AggrFun) t = Aggr' { unAggr' :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
 
--- | Char has no ToField instance so make own char
+-- | 'Char' has no 'ToField' instance; this is a custom wrapper.
 newtype PgChar = PgChar { unPgChar :: Char }
   deriving stock (Show, Read)
   deriving newtype (Eq, Ord, FromField, Enum, Bounded, FromJSON, ToJSON
@@ -138,8 +138,8 @@ instance ToField PgChar where
 --
 -- | 'PGArray' has no JSON instances. '[]' has JSON, but no PG.
 -- This one has both.
--- All elements are 'Maybe' because PostgreSql doesn't guarantee that all elements are present.
--- 'Tagged' 'PgArr' is safely converted to 'ToField' with type information (ala <val>::int[])
+-- All elements are 'Maybe' because PostgreSQL does not guarantee that all elements are present.
+-- 'Tagged' 'PgArr' can be safely converted to 'ToField' with type information (e.g. @<val>::int[]@).
 newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
   deriving stock (Show, Read)
   deriving newtype (Eq, Ord, FromJSON, ToJSON, Semigroup, Monoid
@@ -187,7 +187,7 @@ newtype PgOid = PgOid { fromPgOid :: Oid }
   deriving newtype (FromField, ToField)
 
 instance Eq PgOid where _ == _ = True
-  -- we don't want to distinguish oids but names instead
+  -- we don't want to distinguish by OIDs but by names instead
   -- e.g. if we recreate some table or constraint
 
 instance FromJSON PgOid where
@@ -339,8 +339,8 @@ type instance CanConvert1 sch tab fld (PGC "citext") ('TypDef "S" Nothing '[]) (
 type instance CanConvert1 sch tab fld ("public" ->> "citext") ('TypDef "S" Nothing '[]) (CI Text) = ()
 type instance CanConvert1 sch tab fld (PGC "bytea") ('TypDef "U" x y) (Binary BS.ByteString) = ()
 type instance CanConvert1 sch tab fld (PGC "bytea") ('TypDef "U" x y) (Binary BSL.ByteString) = ()
--- ^ Binary ByteString has no instances for (FromJSON, ToJSON) so it can be
--- used only in the root table
+-- ^ Binary ByteString has no 'FromJSON'/'ToJSON' instances, so it can
+-- be used only in the root table.
 type instance CanConvert1 sch tab fld (PGC "jsonb") ('TypDef "U" x y) a = (FromJSON a, ToJSON a)
 type instance CanConvert1 sch tab fld (PGC "json") ('TypDef "U" x y) a = (FromJSON a, ToJSON a)
 type instance CanConvert1 sch tab fld (PGC "uuid") ('TypDef "U" x y) UUID = ()
