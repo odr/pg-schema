@@ -5,7 +5,6 @@ module PgSchema.Schema.Info where
 import Data.Text as T
 import GHC.Generics
 import GHC.Int
-import PgSchema.Schema((:=))
 import PgSchema.Types
 
 

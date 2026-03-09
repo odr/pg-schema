@@ -369,6 +369,7 @@ main = do
           qLimit 2
           qDistinctOn [descf "street"]
         qPath "city_country" do
+          -- qDistinct -- not work (reason: RelOne)
           qDistinctOn [descf "name"]
           -- qLimit 3 -- not work (reason: RelOne)
           qOrderBy [ascf "name"]

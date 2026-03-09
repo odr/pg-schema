@@ -1,7 +1,18 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE CPP #-}
-module PgSchema.Types(PGEnum, Aggr(..), Aggr'(..), PgArr(..), pgArr', unPgArr'
-  , PgChar(..), PgOid(..), CanConvert, CanConvert1)
+module PgSchema.Types(
+  -- * Tagged types
+  type (:=), (=:)
+  -- * Enum
+  , PGEnum
+  -- * Aggregates
+  , Aggr(..), Aggr'(..)
+  -- * Arrays
+  , PgArr(..), pgArr', unPgArr'
+  -- * Other types
+  , PgChar(..), PgOid(..)
+  -- * Conversion checks
+  , CanConvert, CanConvert1)
   where
 
 import Control.Monad
@@ -91,11 +102,11 @@ instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
 
 -- | Introduce aggregate functions.
 --
--- I.e. `"fld" := Aggr AMin (Maybe Int32)` means "minimum value of the field `fld`"
+-- I.e. @"fld" := Aggr AMin (Maybe Int32)@ means "minimum value of the field `fld`"
 --
 -- 'Aggr' require 'Maybe' argument for all functions except "count"
 --
--- Only small set of aggregations are supported currently: count, min, max, sum, avg
+-- Only small set of aggregations are supported currently: `count`, `min`, `max`, `sum`, `avg`
 newtype Aggr (f :: AggrFun) t = Aggr { unAggr :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
@@ -105,7 +116,7 @@ newtype Aggr (f :: AggrFun) t = Aggr { unAggr :: t }
 -- if there is no group by clause. E.g. `select min(a) from t where false`
 -- So we require Nullable for Aggr.
 --
--- 'Aggr'' is like 'Aggr' but can't be used in select's without 'group by'.
+-- 'Aggr'' is like 'Aggr' but can't be used in select's without `group by`.
 -- So it is mandatory if field is mandatory.
 newtype Aggr' (f :: AggrFun) t = Aggr' { unAggr' :: t }
   deriving stock Show
@@ -338,3 +349,11 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
   = ( TTypDef sch n ~ 'TypDef "E" 'Nothing es
     , FromJSON (PGEnum sch n)
     , ToJSON (PGEnum sch n) )
+
+
+type s := t = Tagged s t
+infixr 5 :=
+
+(=:) :: forall b. forall a -> b -> a := b
+(=:) _ = coerce
+infixr 5 =:

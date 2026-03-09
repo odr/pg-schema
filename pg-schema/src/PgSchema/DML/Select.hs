@@ -51,6 +51,11 @@ data QueryState = QueryState
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
+-- | With given 'Renamer' `ren`, 'CSchema' `sch` and table name `tab` get list of
+-- table records with related entities accordingly to the struture of `r` and 'QueryParam' `qp`.
+--
+-- To set `QueryParam` use `MonadQP`
+--
 selectSch :: forall ren sch tab -> forall r h.
   ( IsoHList ren sch tab r, h ~ HList (HListRep ren sch tab r)
   , CHListInfo sch tab h, FromRow h)
@@ -59,10 +64,7 @@ selectSch ren sch tab @r @h conn (selectText @sch @tab @h -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
   $ (,(sql,fs)) . fmap (fromHList @ren @sch @tab @r) <$> query conn (fromString $ unpack sql) fs
 
-selectQuery :: forall sch tab r. (CHListInfo sch tab r) =>
-  QueryParam sch tab -> (Query,[SomeToField])
-selectQuery = first (fromString . unpack) . selectText @sch @tab @r
-
+-- | Just get a text of select for debugging or something else.
 selectText :: forall sch t r. CHListInfo sch t r =>
   QueryParam sch t -> (Text,[SomeToField])
 selectText qp = evalRWS (selectM "" (getRecordInfo @sch @t @r)) (qr0 qp) qs0
@@ -283,10 +285,10 @@ convCond = \case
   Null @n -> qual @n <&> (<> " is null")
   Not c -> getNot <$> convCond c
   BoolOp bo c1 c2 -> getBoolOp bo <$> convCond c1 <*> convCond c2
-  Child @ref tabParam cond ->
+  Child @_ @ref tabParam cond ->
     getRef @(RdFrom (TRelDef sch ref)) True (demote @(RdCols (TRelDef sch ref)))
       tabParam cond
-  Parent @ref cond ->
+  Parent @_ @ref cond ->
     getRef @(RdTo (TRelDef sch ref)) False (demote @(RdCols (TRelDef sch ref)))
       defTabParam cond
   UnsafeCond m -> m

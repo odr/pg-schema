@@ -5,7 +5,6 @@
 {-# LANGUAGE ParallelListComp #-}
 module PgSchema.Schema where
 
-import Data.Coerce
 import Data.Kind
 import Data.List as L
 import Data.List.Singletons as SP
@@ -13,7 +12,6 @@ import Data.Map as M
 import Data.Ord.Singletons
 import Data.Singletons.TH
 import Data.String
-import Data.Tagged
 import Data.Text as T
 import GHC.TypeLits
 import PgSchema.Utils.Internal
@@ -223,8 +221,7 @@ type GetTypCategory sch tab fld = TypCategory (GetTypDef sch tab fld)
 
 getFldDef
   :: forall sch t n
-  . (CDBFieldInfo sch t n, ToStar (TDBFieldInfo sch t n)
-    , CPlainFldDef (TDBFieldInfo sch t n))
+  . (ToStar (TDBFieldInfo sch t n), CPlainFldDef (TDBFieldInfo sch t n))
   => FldDef
 getFldDef = case demote @(TDBFieldInfo sch t n) of
   RFPlain fd -> fd
@@ -332,13 +329,6 @@ type Ref = Ref' Text
 -- Companion to type-level 'HasNullableRefs'.
 hasNullableRefs :: [Ref] -> Bool
 hasNullableRefs = L.any (fdNullable . fromDef)
-
-type s := t = Tagged s t
-infixr 5 :=
-
-(=:) :: forall b. forall a -> b -> a := b
-(=:) _ = coerce
-infixr 5 =:
 
 qualName :: NameNS -> Text
 qualName NameNS {..}

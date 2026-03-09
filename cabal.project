@@ -17,3 +17,6 @@ constraints:
 
 package *
   ghc-options: -fwrite-ide-info -fprint-potential-instances
+
+package pg-schema
+  haddock-options: "--quickjump"

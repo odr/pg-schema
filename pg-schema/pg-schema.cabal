@@ -41,6 +41,13 @@ flag hashable
 library
   exposed-modules:
     PgSchema
+    PgSchema.DML
+    PgSchema.Types
+    PgSchema.HList
+    PgSchema.GenDef
+    PgSchema.Schema
+    PgSchema.Utils.GenDot
+  other-modules:
     PgSchema.DML.Delete
     PgSchema.DML.Insert
     PgSchema.DML.InsertJSON
@@ -48,12 +55,6 @@ library
     PgSchema.DML.Select
     PgSchema.DML.Select.Types
     PgSchema.DML.Update
-    PgSchema.Types
-    PgSchema.HList
-    PgSchema.GenDef
-    PgSchema.Schema
-    PgSchema.Utils.GenDot
-  other-modules:
     PgSchema.HList.Internal
     PgSchema.HList.Rec
     PgSchema.HList.Utils
