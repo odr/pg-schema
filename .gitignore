@@ -1,7 +1,8 @@
 .stack-work/
 *~
-dist-newstyle
-hie.yaml
 *.bak
 .hie/
 *.log
+dist-*
+hie.yaml
+trash

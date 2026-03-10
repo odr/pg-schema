@@ -66,10 +66,11 @@ Many GHC-extensions should be enabled. I use the following
 
 ### TL;DR
 
-```haskell
-ghci> import PgSchema
+Schema types (e.g. `Tutorial`/`Sch`) are generated as a plain Haskell module; run `cabal run pgs-tutorial-generator` (or use `updateSchemaFile`).
 
-ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" (GenNames ["sch"] [])}
+```haskell
+ghci> import PgSchema.DML
+ghci> import Sch  -- generated module with data Sch, CSchema, CDBFieldInfo, etc.
 
 ghci> { data Company = Company { name :: Text, address_id :: Maybe Int32 } deriving (Eq, Show, Generic); schemaRec id ''Company }
 
@@ -156,40 +157,39 @@ We will use ghci for tutorial. So in directory `pg-schema` run
 > stack ghci
 ```
 All necessary extensions are included in cabal file so they are activated by
-default. All modules from `pg-schema` are imported. So run
+default. Load the generated schema module (e.g. `Sch`) and use it:
 ```haskell
-ghci> {mkSchema "dbname=schema_test user=postgres" "Tutorial" (GenNames ["sch"] [])}
-ghci> :i Tutorial
+ghci> import Sch
+ghci> :i Sch
 
-data Tutorial 	-- Defined at <interactive>:7:2
-instance [safe] CSchema Tutorial -- Defined at <interactive>:7:2
-type instance TTypes Tutorial
+data Sch 	-- (or Tutorial if you named it so)
+instance [safe] CSchema Sch -- ...
+type instance TTypes Sch
   = '[ 'NameNS "pg_catalog" "date", 'NameNS "pg_catalog" "int4",
        'NameNS "pg_catalog" "numeric", 'NameNS "pg_catalog" "text",
        'NameNS "pg_catalog" "timestamptz", 'NameNS "sch" "order_state"]
   	-- Defined at <interactive>:7:2
-type instance TTabs Tutorial
+type instance TTabs Sch
   = '[ 'NameNS "sch" "addresses", 'NameNS "sch" "articles",
        'NameNS "sch" "cities", 'NameNS "sch" "companies",
        'NameNS "sch" "countries", 'NameNS "sch" "customers",
        'NameNS "sch" "order_positions", 'NameNS "sch" "orders"]
   	-- Defined at <interactive>:7:2
 
-ghci> :info! Tutorial
+ghci> :info! Sch
 ```
-You will see many class instances for Tutorial. The "root" instance is instance
-for class `CSchema`.
+You will see many class instances for the schema type. The "root" instance is for class `CSchema`.
 
-Note that our "Schema" can include many PG-schemas (namespaces). So we did `mkSchema` for the list of PG-schemas (`["sch"]`). We can also set up a list of tables (as namespace->>tablename) to generate.
+Note that our "Schema" can include many PG-schemas (namespaces). The generator is configured for a list of PG-schemas (e.g. `["sch"]`) and optionally a list of tables (namespace->>tablename).
 
-There is predefined type `PgCatalog` in module `Database.PostgreSQL.Schema.Catalog`.
+There is predefined type `PgCatalog` in module `PgSchema.Schema.Catalog`.
 It is a type like `Tutorial` but defined "manually". It describes PostgreSQL system schema.
 
-Type `Sch` and instances for it are predefined here in Tutorial application. It is the same as our `Tutorial` type.
+Type `Sch` and instances for it are generated and used in this tutorial application.
 
 With this instance we can get now:
 ```haskell
-ghci> tabInfoMap @Tutorial
+ghci> tabInfoMap @Sch
 
 -- return Map of all tables with flds and "from" and "to" references
 -- tabInfoMap :: forall sch. CSchema sch => M.Map NameNS TabInfo
@@ -276,7 +276,7 @@ type instance TTabs PgCatalog
 
 We can now generate dot-description of our schema:
 ```haskell
-ghci> import PgSchema.Gen
+ghci> import PgSchema.Utils.GenDot
 ghci> mapM_ T.putStrLn $ T.lines $ genDot @Tutorial False []
 
 digraph G {
@@ -425,7 +425,7 @@ TRecordInfo Ord1 :: [FieldInfo' Symbol]
 = '[ 'FieldInfo "day" "day", 'FieldInfo "num" "num",
      'FieldInfo "seller_id" "seller_id"]
 
-ghci> -- CFieldInfo
+ghci> -- CDBFieldInfo
 
 ghci> :kind! TFieldType Ord1 "seller_id"
 TFieldType Ord1 "seller_id" :: *
@@ -566,9 +566,7 @@ Isn't it's worth to say "Wow"?
 
 Notice that all these data are getting in one select from db.
 
-In fact this way to get data from database was used also on populating `PgCatalog`
-on processing TH-generation of schema. Function `mkSchema` make only three selects
-to get all information about tables, relations and types in database.
+The same approach is used when building schema info (e.g. for `PgCatalog` or when generating the schema module): a few queries load tables, relations and types from the database.
 
 ### Conditions
 
@@ -587,6 +585,6 @@ ghci> :{
 
 ### Generation of schema
 
-Although we use TH here for generation of schema, I recommend to use generation of plain Haskell text. You can see it in `pg-schema-tutorial/Setup.hs` (note about `build-type: Custom` and `custom-setup` in `pg-schema-tutorial.cabal`).
+Schema (data type + CSchema, CDBFieldInfo, CTabDef, etc.) is generated as a plain Haskell module; see `pg-schema-tutorial/Setup.hs` (`build-type: Custom`, `custom-setup` in `pg-schema-tutorial.cabal`). Run `cabal run pgs-tutorial-generator` to regenerate.
 
-For instances of `CQueryRecord` TH is a single generation method because we need more flexibility here.
+For instances of `CQueryRecord` TH remains the generation method (`schemaRec` / `deriveQueryRecord`) because we need more flexibility there.

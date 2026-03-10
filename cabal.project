@@ -6,12 +6,18 @@ optimization: False
 
 with-compiler: ghc-9.12.2
 
+-- allow-newer: all
+
 packages:
   pg-schema
   pg-schema-tutorial
 
 constraints:
-  pg-schema +arbitrary -debug +flat +hashable
+  pg-schema +arbitrary +flat +hashable
 
 package *
   ghc-options: -fwrite-ide-info -fprint-potential-instances
+
+package pg-schema
+  haddock-options: "--quickjump"
+  haddock-hyperlink-source: True
