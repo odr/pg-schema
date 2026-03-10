@@ -270,29 +270,43 @@ instance Semigroup (Cond sch tab) where
 instance Monoid (Cond sch tab) where
   mempty = EmptyCond
 
+-- | Parameters for child table.
+--
+-- It is used to limit child dataset (usually with @ORDER BY@ and @LIMIT@) before applying
+-- condition on child table
+--
 data TabParam sch tab = TabParam
   { cond :: Cond sch tab
   , order :: [OrdFld sch tab]
   , lo :: LO }
 
+-- | Default empty 'TabParam'.
 defTabParam :: TabParam sch tab
 defTabParam = TabParam mempty mempty defLO
 
+-- | Check that field value is @NULL@
 {-# INLINE pnull #-}
 pnull :: forall sch tab. forall name -> CDBFieldNullable sch tab name => Cond sch tab
 pnull name = Null @name
 
+-- | Check that exists related records in child table and the condition is satisfied there
+--
+-- 'TabParam' is used to limit child dataset (usually with @ORDER BY@ and @LIMIT@) before applying
+-- condition on child table
+--
 {-# INLINE pchild #-}
 pchild :: forall sch . forall ref -> CDBChild sch ref =>
   TabParam sch (RdFrom (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
   -> Cond sch (RdTo (TRelDef sch ref))
 pchild name = Child @sch @name
 
+-- | Check that condition is satisfied in parent table
 {-# INLINE pparent #-}
 pparent :: forall sch. forall ref -> CDBParent sch ref =>
   Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
 pparent name = Parent @sch @name
 
+-- | Boolean @NOT@
 {-# INLINE pnot #-}
 pnot :: Cond sch tab -> Cond sch tab
 pnot = Not
@@ -301,17 +315,23 @@ pnot = Not
 pUnsafeCond :: CondMonad Text -> Cond sch tab
 pUnsafeCond = UnsafeCond
 
+-- | Check that field value belongs to non-empty list of values
 {-# INLINE pin #-}
 pin :: forall name -> forall sch tab v. CDBValue sch tab name v
   => NonEmpty v -> Cond sch tab
 pin name = In @name
 
+-- | Check that field value belongs to the list of values.
+-- If list of values is empty it returns @false@
 {-# INLINE pinArr #-}
 pinArr :: forall name -> forall sch tab v. CDBValue sch tab name v
   => [v] -> Cond sch tab
 pinArr name = InArr @name
 
-(&&&), (|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
+-- | Conjunction
+(&&&) :: Cond sch tab -> Cond sch tab -> Cond sch tab
+-- | Disjunction
+(|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
 EmptyCond &&& cond = cond
 cond &&& EmptyCond = cond
 c1 &&& c2 = BoolOp And c1 c2
@@ -328,16 +348,18 @@ infixl 3 &&&
 {-# INLINE (=?) #-}
 {-# INLINE (~=?) #-}
 {-# INLINE (~~?) #-}
-(<?),(>?),(<=?),(>=?),(=?),(~=?),(~~?) :: forall fld -> forall sch tab v.
-  CDBValue sch tab fld v => v -> Cond sch tab
+(<?),(>?),(<=?),(>=?),(=?)
+   :: forall fld -> forall sch tab v. CDBValue sch tab fld v => v -> Cond sch tab
 x <? b  = Cmp @x (:<)  b
 x >? b  = Cmp @x (:>)  b
 x <=? b = Cmp @x (:<=) b
 x >=? b = Cmp @x (:>=) b
 x =? b = Cmp @x (:=) b
+(~=?),(~~?)
+  :: forall fld -> forall sch tab v. CDBValue sch tab fld v => v -> Cond sch tab
 x ~=? b  = Cmp @x Like b
 x ~~? b  = Cmp @x ILike b
-infix 4 <?, >?, <=?, >=?, =? --, ~=?, ~~?
+infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 
 data OrdDirection = Asc | Desc deriving Show
 

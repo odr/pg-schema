@@ -3,7 +3,14 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE ParallelListComp #-}
-module PgSchema.Schema where
+module PgSchema.Schema
+  -- ( SymNat, nameSymNat, KnownSymNat, AggrFun, type (->>), (->>), NameNS, NameNSK, CTabDef, TabDef
+  -- , FldDef'(..), TabDef'(..), RelDef'(..), RecField'(..), Ref'(..), RelType
+  -- , tabInfoMap, SimpleType, typDefMap, TRelTab, TabOnPath, TabOnPath2, RecField, Ref
+  -- , hasNullableRefs, qualName
+
+  -- )
+  where
 
 import Data.Kind
 import Data.List as L
@@ -210,7 +217,7 @@ instance CRelFldDef ('RFFromHere toTab refs) tab where
 type family GetRelDef (sch :: k) (tab :: NameNSK) (name :: Symbol) :: RelDefK where
   GetRelDef sch tab name = RelDefFromField (TDBFieldInfo sch tab name) tab
 
--- | Relation definition for relation name ref. Instances in codegen/Catalog.
+-- | Relation definition for relation name ref.
 type family TRelDef (sch :: k) (ref :: NameNSK) :: RelDefK
 
 genDefunSymbols [''TTabDef, ''TRelDef]

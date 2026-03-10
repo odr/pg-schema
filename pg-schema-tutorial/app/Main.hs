@@ -34,11 +34,11 @@ import Generic.Random
 import GHC.Generics
 import GHC.Int
 import GHC.TypeLits
-import PgSchema
+import PgSchema.DML
+import Prelude as P
 import Sch
 import Test.QuickCheck hiding (Fixed)
 import Test.QuickCheck.Instances ()
-import Prelude as P
 
 type NSC name = "sch" ->> name
 

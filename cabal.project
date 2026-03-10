@@ -20,3 +20,4 @@ package *
 
 package pg-schema
   haddock-options: "--quickjump"
+  haddock-hyperlink-source: True

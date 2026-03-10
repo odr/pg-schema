@@ -1,3 +1,7 @@
+-- | Module for generating DOT representation of schema.
+--
+-- It is just a separate utility module.
+--
 module PgSchema.Utils.GenDot where
 
 import Data.Foldable as F
@@ -6,14 +10,17 @@ import Data.Map as M
 import Data.Singletons
 import Data.Text as T
 
-import PgSchema
+import PgSchema.Schema
 
 
 data DotOper
   = ExcludeToTab NameNS Text
+  -- ^ Exclude relation to given table from DOT representation.
 
-
-genDot :: forall sch. CSchema sch => Bool -> [DotOper] -> Text
+genDot :: forall sch. CSchema sch
+  => Bool -- ^ Whether to use qualified names
+  -> [DotOper] -- ^ Operations to exclude relations from DOT representation
+  -> Text
 genDot isQual dos = F.fold
   [ "digraph G {\n"
   , "  penwidth=2\n\n"

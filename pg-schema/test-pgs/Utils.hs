@@ -24,7 +24,7 @@ import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Prelude as P
-import PgSchema
+import PgSchema.DML
 import Sch
 import GHC.TypeLits (KnownSymbol)
 

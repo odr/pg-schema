@@ -1,16 +1,49 @@
 cabal-version:  3.12
 name:           pg-schema
 version:        0.5.0.0
-description:    Please see the README on GitHub at <https://github.com/odr/pg-schema#readme>
-homepage:       https://github.com/odr/pg-schema#readme
-bug-reports:    https://github.com/odr/pg-schema/issues
+category:       Database
 author:         Dmitry Olshansky
 maintainer:     olshanskydr@gmail.com
 copyright:      Dmitry Olshansky
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
-extra-source-files:
+synopsis:       Type-level definition of database schema and safe DML for PostgreSQL.
+description:
+    Type-level definition of database schema and safe DML for PostgreSQL.
+    .
+    There is
+    - flexible generation of type-level definition of database schema
+    - safe generation of performant DML for PostgreSQL
+    .
+    TLDR; Examples:
+    TLDR;
+    .
+    > data Order = Order { num :: Text, created_at :: Day, items :: [OrdPos] } deriving Generic
+    > data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
+    > data Article = Article { id :: Int32, name :: Text } deriving Generic
+    >
+    > ...
+    > do
+    >   void $ insertJSON_ RenamerId Sch ("dbs" ->> "orders") conn
+    >     [ "num" =: "num1" :. "ord__ord_pos" =:
+    >       [ "num" =: 1 :. "article_id" =: 42 :. "price" =: 10
+    >       , "num" =: 2 :. "article_id" =: 41 :. "price" =: 15 ]
+    >     ]
+    >   (xs :: [Order]) <- selectSch RenamerId Sch ("dbs" ->> "orders") conn
+    >     $ qRoot do
+    >       qWhere $ "created_at" >? someDay
+    >         &&& pchild "ord__ord_pos" defTabParam
+    >           (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
+    >       qOrderBy [descf "created_at", descf "num"]
+    >       qPath "ord__ord_pos" do
+    >         qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
+    >         qOrderBy [ascf "num"]
+    >       qLimit 20
+    .
+homepage:       https://github.com/odr/pg-schema#readme
+bug-reports:    https://github.com/odr/pg-schema/issues
+extra-doc-files:
     ChangeLog.md
     README.md
 
@@ -40,12 +73,10 @@ flag hashable
 
 library
   exposed-modules:
-    PgSchema
+    -- PgSchema
     PgSchema.DML
-    PgSchema.Types
-    PgSchema.HList
-    PgSchema.GenDef
-    PgSchema.Schema
+    PgSchema.Generation
+    PgSchema.Import
     PgSchema.Utils.GenDot
   other-modules:
     PgSchema.DML.Delete
@@ -55,6 +86,8 @@ library
     PgSchema.DML.Select
     PgSchema.DML.Select.Types
     PgSchema.DML.Update
+    PgSchema.HList
+    PgSchema.Schema
     PgSchema.HList.Internal
     PgSchema.HList.Rec
     PgSchema.HList.Utils
@@ -63,6 +96,7 @@ library
     PgSchema.HList.Type
     PgSchema.Schema.Catalog
     PgSchema.Schema.Info
+    PgSchema.Types
     PgSchema.Utils.Internal
     PgSchema.Utils.ShowType
   --   Paths_pg_schema

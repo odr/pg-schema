@@ -7,7 +7,7 @@ import Data.Functor
 import Data.ByteString.Char8 qualified as BS
 import Database.PostgreSQL.Simple
 import System.Environment
-import PgSchema
+import PgSchema.Generation
 import Prelude as P
 
 

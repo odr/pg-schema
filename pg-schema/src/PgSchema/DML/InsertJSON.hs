@@ -25,22 +25,41 @@ import GHC.Int
 import PgSchema.Utils.Internal
 import Prelude as P
 
-
+-- | Insert records into table and its children using JSON data internally.
+--
+-- We can get any fields from inserted records and its children in returned result.
+--
+-- All mandatory fields having no defaults should be present.
+--
 insertJSON
   :: forall ren sch t -> forall r r' h h'. InsertReturning ren sch t r r' h h'
   => Connection -> [r] -> IO ([r'], Text)
 insertJSON ren sch t = insertJSONImpl ren sch t
 
+-- | Insert records into table and its children using JSON data internally without returnings.
+--
+-- All mandatory fields having no defaults should be present.
+--
 insertJSON_
   :: forall ren sch t -> forall r h. InsertNonReturning ren sch t r h
   => Connection -> [r] -> IO Text
 insertJSON_ ren sch t = insertJSONImpl_ ren sch t
 
+-- | Upsert records into table and its children using JSON data internally.
+--
+-- We can get any fields from upserted records and its children in returned result.
+--
+-- If we have PK in data we UPDATE record, otherwise we try to INSERT new record
+-- if all mandatory fields having no defaults are present.
+-- If we have conflict we try to UPDATE the existing record.
+--
 upsertJSON
   :: forall ren sch t -> forall r r' h h'. UpsertReturning ren sch t r r' h h'
   => Connection -> [r] -> IO ([r'], Text)
 upsertJSON ren sch t = insertJSONImpl ren sch t
 
+-- | Upsert records into table and its children using JSON data internally without returnings.
+--
 upsertJSON_
   :: forall ren sch t -> forall r h. UpsertNonReturning ren sch t r h
   => Connection -> [r] -> IO Text

@@ -18,7 +18,7 @@ import GHC.Generics
 import GHC.Int
 import GHC.Stack (HasCallStack)
 import Hedgehog
-import PgSchema
+import PgSchema.DML
 import Utils
 
 

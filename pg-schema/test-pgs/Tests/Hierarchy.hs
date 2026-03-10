@@ -19,7 +19,7 @@ import Data.Time (UTCTime, getCurrentTime)
 import Database.PostgreSQL.Simple
 import GHC.Generics
 import Hedgehog
-import PgSchema
+import PgSchema.DML
 import Sch
 import Utils
 

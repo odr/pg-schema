@@ -69,7 +69,7 @@ Many GHC-extensions should be enabled. I use the following
 Schema types (e.g. `Tutorial`/`Sch`) are generated as a plain Haskell module; run `cabal run pgs-tutorial-generator` (or use `updateSchemaFile`).
 
 ```haskell
-ghci> import PgSchema
+ghci> import PgSchema.DML
 ghci> import Sch  -- generated module with data Sch, CSchema, CDBFieldInfo, etc.
 
 ghci> { data Company = Company { name :: Text, address_id :: Maybe Int32 } deriving (Eq, Show, Generic); schemaRec id ''Company }

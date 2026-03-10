@@ -14,6 +14,8 @@ import Data.Singletons
 -- TODO (?):
 -- deleteByKey Connection -> [r] -> IO [r']
 
+-- | Delete records in tableby condition.
+--
 deleteByCond :: forall sch t -> SingI t =>
   Connection -> Cond sch t -> IO (Int64, (Text,[SomeToField]))
 deleteByCond sch t conn cond = traceShow' (q,ps)
@@ -21,6 +23,8 @@ deleteByCond sch t conn cond = traceShow' (q,ps)
   where
     (q, ps) = deleteText @sch @t cond
 
+-- | Construct SQL text for deleting records by condition.
+--
 deleteText :: forall sch t s. (IsString s, Monoid s, SingI t) =>
   Cond sch t -> (s, [SomeToField])
 deleteText cond =

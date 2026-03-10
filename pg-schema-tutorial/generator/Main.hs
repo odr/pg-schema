@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import PgSchema
+import PgSchema.Generation
 
 
 main :: IO Bool

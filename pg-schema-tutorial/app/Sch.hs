@@ -13,10 +13,7 @@ import Data.Hashable
 import GHC.Generics
 import GHC.TypeError qualified as TE
 import GHC.TypeLits qualified as TL
-import PgSchema.Schema
-import PgSchema.Types
-
-
+import PgSchema.Import
 data Sch
 
 instance CTypDef Sch ( "pg_catalog" ->> "_int4" ) where

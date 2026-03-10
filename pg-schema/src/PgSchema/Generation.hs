@@ -1,9 +1,18 @@
 {-# LANGUAGE CPP #-}
--- | Generation of Type-level definition of database schema
-module PgSchema.GenDef
-  ( updateSchemaFile
-  , GenNames(..)
-  , AddRelation(..)) where
+-- |
+-- Module: PgSchema.Generation
+-- Copyright: (c) Dmitry Olshansky
+-- License: BSD-3-Clause
+-- Maintainer: olshanskydr@gmail.com, dima@typeable.io
+-- Stability: experimental
+--
+-- === Generation of Type-level definition of database schema
+--
+-- Typically you create executable which imports this module
+-- and run it to generate schema definition.
+--
+module PgSchema.Generation(updateSchemaFile, GenNames(..), AddRelation(..)) where
+
 
 import Control.Monad
 import Control.Monad.Catch
@@ -400,8 +409,7 @@ genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   <> "import GHC.Generics\n" -- for PGEnum if exists
   <> "import GHC.TypeError qualified as TE\n"
   <> "import GHC.TypeLits qualified as TL\n"
-  <> "import PgSchema.Schema\n"
-  <> "import PgSchema.Types\n\n\n"
+  <> "import PgSchema.Import\n"
   <> "data " <> schName <> "\n\n"
   <> mconcat (uncurry (textTypDef schName) <$> M.toList mtyp)
   <> mconcat ((\(tab,(td,_,_)) -> textTabDef schName tab td) <$> M.toList mtab)
