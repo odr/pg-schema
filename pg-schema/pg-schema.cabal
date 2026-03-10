@@ -10,37 +10,38 @@ license-file:   LICENSE
 build-type:     Simple
 synopsis:       Type-level definition of database schema and safe DML for PostgreSQL.
 description:
-    Type-level definition of database schema and safe DML for PostgreSQL.
-    .
+    === Type-level definition of database schema and safe DML for PostgreSQL.
+
     There is
-    - flexible generation of type-level definition of database schema
-    - safe generation of performant DML for PostgreSQL
-    .
-    TLDR; Examples:
-    TLDR;
-    .
-    > data Order = Order { num :: Text, created_at :: Day, items :: [OrdPos] } deriving Generic
-    > data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
-    > data Article = Article { id :: Int32, name :: Text } deriving Generic
-    >
-    > ...
-    > do
-    >   void $ insertJSON_ RenamerId Sch ("dbs" ->> "orders") conn
-    >     [ "num" =: "num1" :. "ord__ord_pos" =:
-    >       [ "num" =: 1 :. "article_id" =: 42 :. "price" =: 10
-    >       , "num" =: 2 :. "article_id" =: 41 :. "price" =: 15 ]
-    >     ]
-    >   (xs :: [Order]) <- selectSch RenamerId Sch ("dbs" ->> "orders") conn
-    >     $ qRoot do
-    >       qWhere $ "created_at" >? someDay
-    >         &&& pchild "ord__ord_pos" defTabParam
-    >           (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
-    >       qOrderBy [descf "created_at", descf "num"]
-    >       qPath "ord__ord_pos" do
-    >         qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
-    >         qOrderBy [ascf "num"]
-    >       qLimit 20
-    .
+
+    * flexible generation of type-level definition of database schema
+
+    * safe generation of performant DML for PostgreSQL
+
+    === TLDR;
+
+    @
+    data Order = Order { num :: Text, created_at :: Day, items :: [OrdPos] } deriving Generic
+    data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
+    data Article = Article { id :: Int32, name :: Text } deriving Generic
+        ...
+    do
+      void $ insertJSON_ RenamerId Sch ("dbs" ->> "orders") conn
+        [ "num" =: "num1" :. "ord__ord_pos" =:
+          [ "num" =: 1 :. "article_id" =: 42 :. "price" =: 10
+          , "num" =: 2 :. "article_id" =: 41 :. "price" =: 15 ]
+        ]
+      (xs :: [Order]) <- selectSch RenamerId Sch ("dbs" ->> "orders") conn
+        $ qRoot do
+          qWhere $ "created_at" >? someDay
+            &&& pchild "ord__ord_pos" defTabParam
+              (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
+          qOrderBy [descf "created_at", descf "num"]
+          qPath "ord__ord_pos" do
+            qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
+            qOrderBy [ascf "num"]
+          qLimit 20
+    @
 homepage:       https://github.com/odr/pg-schema#readme
 bug-reports:    https://github.com/odr/pg-schema/issues
 extra-doc-files:
@@ -102,23 +103,23 @@ library
   --   Paths_pg_schema
   hs-source-dirs: src
   build-depends:
-      base >= 4.20
-    , aeson
-    , bytestring
-    , case-insensitive
-    , containers
-    , directory
-    , exceptions
-    , mtl
-    , postgresql-simple
-    , scientific
-    , singletons
-    , singletons-base
-    , singletons-th
-    , tagged
-    , text
-    , time
-    , uuid-types
+      base >= 4.20 && < 5
+    , aeson >= 2.0 && < 2.3
+    , bytestring >= 0.10 && < 0.13
+    , case-insensitive >= 1.0 && < 1.3
+    , containers >= 0.7 && < 0.9
+    , directory >= 1.3 && < 1.5
+    , exceptions >= 0.9 && < 0.11
+    , mtl >= 2.0 && < 2.4
+    , postgresql-simple >= 0.5 && < 0.8
+    , scientific >= 0.2 && < 0.4
+    , singletons >= 3.0.3 && < 3.1
+    , singletons-base >= 3.4 && < 3.6
+    , singletons-th >= 3.4 && < 3.6
+    , tagged >= 0.8.8 && < 0.9
+    , text >= 2.0 && < 2.2
+    , time >= 1.12 && < 2
+    , uuid-types >= 1.0 && < 1.1
   if flag(flat)
     build-depends: flat
     cpp-options: -DMK_FLAT
@@ -176,6 +177,7 @@ executable test-gen
   main-is:          Main.hs
   build-depends:    base, postgresql-simple, directory, pg-schema, bytestring
   hs-source-dirs:   test-gen
+  default-language: GHC2021
 
 test-suite test-pgs
   type:             exitcode-stdio-1.0
