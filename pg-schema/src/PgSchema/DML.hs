@@ -119,7 +119,7 @@ module PgSchema.DML
   -- ** Other types
   , PgChar(..), PgOid(..)
   , NameNS'(..), type (->>), NameNSK
-  , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable
+  , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable, CTabDef(..)
   ) where
 
 import PgSchema.DML.Select as S
