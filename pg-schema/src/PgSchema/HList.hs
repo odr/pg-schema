@@ -24,6 +24,7 @@ module PgSchema.HList
   , I.AllPlain
   , I.RestMand
   , I.RestPKFlds
+  , I.FieldDbNameSym0
   ) where
 
 import PgSchema.HList.Class qualified as C

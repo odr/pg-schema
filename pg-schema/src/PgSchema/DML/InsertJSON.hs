@@ -49,9 +49,10 @@ insertJSON_ ren sch t = insertJSONImpl_ ren sch t
 --
 -- We can get any fields from upserted records and its children in returned result.
 --
--- If we have PK in data we UPDATE record, otherwise we try to INSERT new record
--- if all mandatory fields having no defaults are present.
--- If we have conflict we try to UPDATE the existing record.
+-- Rules for upsert:
+-- AllMandatory && NoPK     => @INSERT@
+-- HasPK, not AllMandatory  => @UPDATE@
+-- HasPK, AllMandatory      => @UPSERT@
 --
 upsertJSON
   :: forall ren sch t -> forall r r' h h'. UpsertReturning ren sch t r r' h h'

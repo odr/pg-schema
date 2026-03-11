@@ -3,6 +3,7 @@ module PgSchema.DML.Insert.Types where
 
 import Data.Aeson
 import Data.Kind
+import Data.Singletons.TH
 import Data.Typeable
 import PgSchema.Schema
 import PgSchema.HList
@@ -13,18 +14,32 @@ import GHC.TypeLits qualified as TL
 import Prelude.Singletons as SP
 
 
-type family AllMandatory (sch::Type) (tab::NameNSK) (r::Type) rFlds where
-  AllMandatory sch t [r] rFlds = AllMandatory sch t r rFlds -- ???
-  AllMandatory sch t r rFlds = Assert
-    (SP.Null (RestMand sch t r rFlds))
-    (TL.TypeError
-      ( TL.Text "We can't insert data because not all mandatory fields in record."
-      :$$: (TL.Text "Table: " :<>: TL.ShowType t)
-      :$$: (TL.Text "Record Type: " :<>: TL.ShowType r)
-      :$$: (TL.Text "TRecordInfo: " :<>: TL.ShowType (TRecordInfo sch t r))
-      :$$: (TL.Text "To insert data you have to add fields: "
-        :<>: TL.ShowType (RestMand sch t r rFlds))
-      ))
+type family CheckNodeAllMandatory sch (tab :: NameNSK) (rs :: [Symbol]) :: Constraint where
+  CheckNodeAllMandatory sch tab rs = Assert
+    (SP.Null (RestMandatory sch tab rs))
+    ( TL.TypeError
+        ( TL.Text "We can't insert data because not all mandatory fields are present."
+        :$$: TL.Text "Table: " :<>: TL.ShowType tab
+        :$$: TL.Text "Missing mandatory fields: "
+          :<>: TL.ShowType (RestMandatory sch tab rs)
+        )
+    )
+
+type family CheckNodeAllMandOrPK (sch :: Type) (tab :: NameNSK) (rs :: [Symbol]) :: Constraint where
+  CheckNodeAllMandOrPK sch tab rs = Assert
+    (SP.Null (RestMandatory sch tab rs) || SP.Null (RestPK sch tab rs))
+    ( TL.TypeError
+        ( TL.Text "We can't upsert data because for table "
+        :<>: TL.ShowType tab
+        :$$: TL.Text "either not all mandatory fields or not all PK fields are present."
+        :$$: TL.Text "Missing mandatory fields: "
+          :<>: TL.ShowType (RestMandatory sch tab rs)
+        :$$: TL.Text "Missing PK fields: "
+          :<>: TL.ShowType (RestPK sch tab rs)
+        )
+    )
+
+genDefunSymbols [''CheckNodeAllMandatory, ''CheckNodeAllMandOrPK]
 
 type HListInfo ren sch t r h = ( IsoHList ren sch t r, CHListInfo sch t h )
 type HRep ren sch t r = HList (HListRep ren sch t r)
@@ -49,28 +64,6 @@ type TgtJSON ren sch t r' h' =
   -- Now it is not possible because we don't store
   -- recursive RecordInfo RecordInfo on the type level...
 
--- For Upsert:
--- AllMandatory && NoPK     => insert
--- HasPK, not AllMandatory  => update
--- HasPK, AllMandatory      => upsert
---
--- i.e. HasPK || AllMandatory
-
-type family AllMandatoryOrHasPK (sch::Type) (tab::NameNSK) (r::Type) rFlds where
-  AllMandatoryOrHasPK sch t [r] rFlds = AllMandatoryOrHasPK sch t r rFlds
-  AllMandatoryOrHasPK sch t r rFlds = Assert
-    (SP.Null (RestMand sch t r rFlds) || SP.Null (RestPKFlds sch t r rFlds))
-    (TL.TypeError
-      ( TL.Text "We can't insert data because not all mandatory fields in record."
-      :$$: TL.Text "We also can't update data because not all PK fields in record."
-      :$$: (TL.Text "Table: " :<>: TL.ShowType t)
-      :$$: (TL.Text "Record Type: " :<>: TL.ShowType r)
-      :$$: (TL.Text "To insert data you have to add fields: "
-        :<>: TL.ShowType (RestMand sch t r rFlds))
-      :$$: (TL.Text "To update data you have to add fields: "
-        :<>: TL.ShowType (RestPKFlds sch t r rFlds))
-      ))
-
 type InsertReturning ren sch t r r' h h' = (InsertNonReturning ren sch t r h, TgtJSON ren sch t r' h')
 
 type InsertNonReturning ren sch t r h = (SrcJSON ren sch t r h, AllMandatory sch t h '[])
@@ -82,3 +75,32 @@ type UpsertNonReturning ren sch t r h = (SrcJSON ren sch t r h, AllMandatoryOrHa
 type UpdateReturning ren sch t r r' h h' =
   ( h ~ HRep ren sch t r, HListInfo ren sch t r h
   , h' ~ HRep ren sch t r', HListInfo ren sch t r' h' )
+
+type family WalkLevel (check :: Type ~> NameNSK ~> [Symbol] ~> Constraint)
+  (sch :: Type) (tab :: NameNSK) (fis :: [FieldInfoK]) (rs :: [Symbol])
+  :: Constraint where
+  WalkLevel check sch tab '[] rs = SP.Apply (SP.Apply (SP.Apply check sch) tab) rs
+  WalkLevel check sch tab ('FieldInfo name db ('RFPlain fd) ': xs) rs =
+    WalkLevel check sch tab xs (name ': rs)
+  WalkLevel check sch tab
+    ('FieldInfo _ _ ('RFToHere ('RecordInfo childTab childFIs) refs) ': xs) rs =
+      ( WalkLevel check sch childTab childFIs (SP.Map FromNameSym0 refs)
+      , WalkLevel check sch tab xs rs
+      )
+  WalkLevel check sch tab (_ ': xs) rs = WalkLevel check sch tab xs rs
+
+type family AllMandatory (sch :: Type) (tab :: NameNSK) (r :: Type) (rFlds :: [Symbol]) :: Constraint where
+  AllMandatory sch t [r] rFlds = AllMandatory sch t r rFlds
+  AllMandatory sch t r  rFlds =
+    WalkLevel CheckNodeAllMandatorySym0 sch t (TRecordInfo sch t r) rFlds
+
+-- For Upsert:
+-- AllMandatory && NoPK     => insert
+-- HasPK, not AllMandatory  => update
+-- HasPK, AllMandatory      => upsert
+--
+-- i.e. Upsert condition: HasPK || AllMandatory
+type family AllMandatoryOrHasPK (sch :: Type) (tab :: NameNSK) (r :: Type) (rFlds :: [Symbol]) :: Constraint where
+  AllMandatoryOrHasPK sch t [r] rFlds = AllMandatoryOrHasPK sch t r rFlds
+  AllMandatoryOrHasPK sch t r  rFlds =
+    WalkLevel CheckNodeAllMandOrPKSym0 sch t (TRecordInfo sch t r) rFlds

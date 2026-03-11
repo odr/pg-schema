@@ -4,7 +4,7 @@
 module PgSchema.HList.HListInfo
   ( CHListInfo(..), RecordInfo'(..), FieldInfo'(..)
   , RecordInfo, FieldInfo, RecordInfoK, FieldInfoK
-  , RestMand, AllPlain, RestPKFlds )
+  , RestMand, AllPlain, RestPKFlds, FieldDbNameSym0 )
   where
 
 import Data.Kind

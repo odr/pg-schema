@@ -3,14 +3,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE ParallelListComp #-}
-module PgSchema.Schema
-  -- ( SymNat, nameSymNat, KnownSymNat, AggrFun, type (->>), (->>), NameNS, NameNSK, CTabDef, TabDef
-  -- , FldDef'(..), TabDef'(..), RelDef'(..), RecField'(..), Ref'(..), RelType
-  -- , tabInfoMap, SimpleType, typDefMap, TRelTab, TabOnPath, TabOnPath2, RecField, Ref
-  -- , hasNullableRefs, qualName
-
-  -- )
-  where
+module PgSchema.Schema where
 
 import Data.Kind
 import Data.List as L
@@ -18,8 +11,9 @@ import Data.List.Singletons as SP
 import Data.Map as M
 import Data.Ord.Singletons
 import Data.Singletons.TH
+-- import Data.Singletons.ShowSing
 import Data.String
-import Data.Text as T
+import Data.Text as T hiding (show)
 import GHC.TypeLits
 import PgSchema.Utils.Internal
 import Prelude.Singletons as SP
@@ -201,17 +195,16 @@ type family HasNullableRefs (refs :: [RefK]) :: Bool where
   HasNullableRefs '[] = 'False
   HasNullableRefs (r ': rs) = OrBool (FdNullable (RefFromDef r)) (HasNullableRefs rs)
 
-type family RefsToCols (refs :: [RefK]) :: [(Symbol, Symbol)] where
-  RefsToCols '[] = '[]
-  RefsToCols (r ': rs) = RefFromTo r ': RefsToCols rs
-
--- | Extract RelDef from a relation field (RFToHere / RFFromHere). Class avoids stuck TF on non-relation fields.
-class CRelFldDef (r :: RecFieldK NameNSK) (tab :: NameNSK) where
-  type RelDefFromField r tab :: RelDefK
-instance CRelFldDef ('RFToHere fromTab refs) tab where
-  type RelDefFromField ('RFToHere fromTab refs) tab = 'RelDef fromTab tab (RefsToCols refs)
-instance CRelFldDef ('RFFromHere toTab refs) tab where
-  type RelDefFromField ('RFFromHere toTab refs) tab = 'RelDef tab toTab (RefsToCols refs)
+promoteOnly [d|
+  relDefFromField :: Show s => RecField' s (NameNS' s) -> NameNS' s -> RelDef' s
+  relDefFromField (RFToHere fromTab refs) tab =
+    RelDef fromTab tab (L.map (\ref -> (fromName ref, toName ref)) refs)
+  relDefFromField (RFFromHere toTab refs) tab =
+    RelDef tab toTab (L.map (\ref -> (fromName ref, toName ref)) refs)
+  relDefFromField x tab = error
+    $ "Expect reference from to to field in RelDefFromField but got field "
+    <> show_ x <> " in table " <> show_ tab
+  |]
 
 -- | RelDef for (sch, tab, name) when the field is a relation (for value-level or when tab is known).
 type family GetRelDef (sch :: k) (tab :: NameNSK) (name :: Symbol) :: RelDefK where
