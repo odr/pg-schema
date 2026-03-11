@@ -74,7 +74,11 @@ type UpsertNonReturning ren sch t r h = (SrcJSON ren sch t r h, AllMandatoryOrHa
 
 type UpdateReturning ren sch t r r' h h' =
   ( h ~ HRep ren sch t r, HListInfo ren sch t r h
-  , h' ~ HRep ren sch t r', HListInfo ren sch t r' h' )
+  , h' ~ HRep ren sch t r', HListInfo ren sch t r' h'
+  , AllPlain sch t h, ToRow h, FromRow h')
+
+type UpdateNonReturning ren sch t r h =
+  (h ~ HRep ren sch t r, HListInfo ren sch t r h, ToRow h, AllPlain sch t h)
 
 type family WalkLevel (check :: Type ~> NameNSK ~> [Symbol] ~> Constraint)
   (sch :: Type) (tab :: NameNSK) (fis :: [FieldInfoK]) (rs :: [Symbol])

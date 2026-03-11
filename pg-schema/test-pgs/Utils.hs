@@ -71,14 +71,12 @@ selSch tn = selectSch RenamerSch Sch (TS tn)
 
 updByCond_
   :: forall tn -> forall r h.
-  ( h ~ HRep RenamerSch Sch (TS tn) r, HListInfo RenamerSch Sch (TS tn) r h
-  , ToRow h, AllPlain Sch (TS tn) h )
+  UpdateNonReturning RenamerSch Sch (TS tn) r h
   => Connection -> r -> Cond Sch (TS tn) -> IO Int64
 updByCond_ tn = updateByCond_ RenamerSch Sch (TS tn)
 
 updByCond :: forall tn -> forall r r' h h'.
-  ( UpdateReturning RenamerSch Sch (TS tn) r r' h h'
-  , AllPlain Sch (TS tn) h, ToRow h, FromRow h' )
+  UpdateReturning RenamerSch Sch (TS tn) r r' h h'
   => Connection -> r -> Cond Sch (TS tn) -> IO [r']
 updByCond tn = updateByCond RenamerSch Sch (TS tn)
 

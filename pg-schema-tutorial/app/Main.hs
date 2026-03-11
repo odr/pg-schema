@@ -247,8 +247,7 @@ updByCond_
 updByCond_ tn = updateByCond_ RenamerSch Sch (NSC tn)
 
 updByCond :: forall tn -> forall r r' h h'.
-  ( UpdateReturning RenamerSch Sch (NSC tn) r r' h h'
-  , AllPlain Sch (NSC tn) h, ToRow h, FromRow h' )
+  UpdateReturning RenamerSch Sch (NSC tn) r r' h h'
   => Connection -> r -> Cond Sch (NSC tn) -> IO [r']
 updByCond tn = updateByCond RenamerSch Sch (NSC tn)
 

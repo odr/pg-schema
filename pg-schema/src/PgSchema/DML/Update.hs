@@ -19,7 +19,7 @@ import Prelude as P
 
 -- | Update records by condition. We can get any fields from updated records in result.
 updateByCond :: forall ren sch t -> forall r r' h h'.
-  (UpdateReturning ren sch t r r' h h', AllPlain sch t h, ToRow h, FromRow h') =>
+  UpdateReturning ren sch t r r' h h' =>
   Connection -> r -> Cond sch t -> IO [r']
 updateByCond ren sch t @_r @_r' @h @h' conn r (updateText sch t @h @h' -> (q,ps)) =
   trace' (q <> "\n\n" <> P.show ps <> "\n\n")
@@ -29,7 +29,7 @@ updateByCond ren sch t @_r @_r' @h @h' conn r (updateText sch t @h @h' -> (q,ps)
 
 -- | Update records by condition without returnings.
 updateByCond_ :: forall ren sch t -> forall r h.
-  (h ~ HRep ren sch t r, HListInfo ren sch t r h, ToRow h, AllPlain sch t h) =>
+  UpdateNonReturning ren sch t r h =>
   Connection -> r -> Cond sch t -> IO Int64
 updateByCond_ ren sch t @_r @h conn r (updateText_ sch t @h -> (q, ps)) =
   trace' (q <> "\n\n" <> P.show ps <> "\n\n")

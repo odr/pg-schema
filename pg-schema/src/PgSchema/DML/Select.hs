@@ -51,14 +51,15 @@ data QueryState = QueryState
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
+type Selectable ren sch tab r h =
+  (IsoHList ren sch tab r, h ~ HList (HListRep ren sch tab r), CHListInfo sch tab h, FromRow h)
+
 -- | With given 'Renamer' `ren`, 'CSchema' `sch` and table name `tab` get list of
 -- table records with related entities accordingly to the struture of `r` and 'QueryParam' `qp`.
 --
 -- To set `QueryParam` use `MonadQP`
 --
-selectSch :: forall ren sch tab -> forall r h.
-  ( IsoHList ren sch tab r, h ~ HList (HListRep ren sch tab r)
-  , CHListInfo sch tab h, FromRow h)
+selectSch :: forall ren sch tab -> forall r h. Selectable ren sch tab r h
   => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
 selectSch ren sch tab @r @h conn (selectText @sch @tab @h -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")

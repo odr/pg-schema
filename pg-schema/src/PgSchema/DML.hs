@@ -47,7 +47,7 @@ module PgSchema.DML
   (
   -- * Select
   -- ** Execute SQL
-    selectSch, selectText
+    selectSch, selectText, Selectable
   -- ** Monad to set Query Params
   -- *** Base definitions
   , MonadQP, qpEmpty
@@ -91,7 +91,7 @@ module PgSchema.DML
   -- ** Execute SQL
   , updateByCond, updateByCond_, updateText, updateText_
   -- ** Constraints
-  , UpdateReturning, HListInfo, HRep
+  , UpdateReturning, UpdateNonReturning, HListInfo, HRep
   -- * Tree-base Insert/Upsert
   -- ** Execute SQL
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_, insertJSONText, insertJSONText_
