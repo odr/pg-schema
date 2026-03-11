@@ -133,7 +133,7 @@ library
     cpp-options: -DMK_FLAT
   if flag(arbitrary)
     build-depends:
-      QuickCheck >= 2.16.0 && < 2.17
+      QuickCheck >= 2.14.0 && < 2.18
     cpp-options: -DMK_ARBITRARY
   if flag(hashable)
     build-depends:
