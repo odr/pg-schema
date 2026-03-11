@@ -66,7 +66,16 @@ data IsoCase = TaggedCase | ProductCase | GenericCase
 
 type family TFIsoCase t :: IsoCase where
   TFIsoCase (a :. b) = ProductCase
-  TFIsoCase (a := b) = TaggedCase
+  TFIsoCase ((a :: Symbol) := b) = TaggedCase
+  TFIsoCase (a := b) =
+    TypeError
+      ( Text "Tagged fields in pg-schema must use a type-level Symbol as a tag."
+      :$$: Text ""
+      :$$: Text "You probably want something like " :<>: Text "'field_name' := Type"
+      :$$: Text ""
+      :$$: Text "But there is " :<>: ShowType (a := b)
+      :$$: Text ""
+      )
   TFIsoCase t = GenericCase
 
 class IsoHListIsoCase (ren :: Type) (sch :: Type) (tab :: NameNSK) t (ic :: IsoCase) where

@@ -89,8 +89,7 @@ type family WalkLevel (check :: Type ~> NameNSK ~> [Symbol] ~> Constraint)
   WalkLevel check sch tab
     ('FieldInfo _ _ ('RFToHere ('RecordInfo childTab childFIs) refs) ': xs) rs =
       ( WalkLevel check sch childTab childFIs (SP.Map FromNameSym0 refs)
-      , WalkLevel check sch tab xs rs
-      )
+      , WalkLevel check sch tab xs rs )
   WalkLevel check sch tab (_ ': xs) rs = WalkLevel check sch tab xs rs
 
 type family AllMandatory (sch :: Type) (tab :: NameNSK) (r :: Type) (rFlds :: [Symbol]) :: Constraint where
