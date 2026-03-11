@@ -11,7 +11,10 @@
 -- Typically you create executable which imports this module
 -- and run it to generate schema definition.
 --
-module PgSchema.Generation(updateSchemaFile, GenNames(..), AddRelation(..)) where
+module PgSchema.Generation
+  (updateSchemaFile, GenNames(..), AddRelation(..)
+  , NameNS'(..), NameNS, (->>)
+  ) where
 
 
 import Control.Monad
