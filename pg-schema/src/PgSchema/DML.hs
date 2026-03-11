@@ -108,6 +108,8 @@ module PgSchema.DML
   , ToStar
   -- ** Tagged types
   , type (:=), (=:)
+  -- *** Reexport
+  , Tagged(..), (:.)
   -- ** Enum
   , PGEnum
   -- ** Aggregates
@@ -122,6 +124,7 @@ module PgSchema.DML
   , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable, CTabDef(..)
   ) where
 
+import Data.Tagged ( Tagged(..) )
 import PgSchema.DML.Select as S
 import PgSchema.DML.Select.Types as S
 import PgSchema.DML.Insert as I
@@ -134,3 +137,4 @@ import PgSchema.Schema as S
 import PgSchema.Types as T
 import PgSchema.Utils.CamelToSnake
 import PgSchema.Utils.Internal as T (ToStar)
+import Database.PostgreSQL.Simple ( type (:.) )
