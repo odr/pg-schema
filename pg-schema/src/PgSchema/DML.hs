@@ -113,7 +113,7 @@ module PgSchema.DML
   -- ** Arrays
   , PgArr(..), pgArr', unPgArr'
   -- ** Conversion checks
-  , CanConvert, CanConvert1
+  , CanConvert, CanConvert1, TypDef'(..)
   -- ** Other types
   , PgChar(..), PgOid(..)
   , NameNS'(..), type (->>), NameNSK
