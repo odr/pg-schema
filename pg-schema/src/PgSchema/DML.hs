@@ -71,11 +71,11 @@ module PgSchema.DML
   -- **** Other conditions
   , pnull, pin, pinArr
   -- **** Unsafe condition
-  , pUnsafeCond
+  , pUnsafeCond, qual
   -- *** TabParam for child
   , TabParam(..), defTabParam
   -- *** Internals for 'UnsafeCond'
-  , CondMonad, SomeToField, showCmp
+  , CondMonad, SomeToField(..), showCmp
   -- *** Constrainrs for Cond
   , CDBField, CDBValue, CDBFieldNullable, CDBParent, CDBChild
   -- ** Order By and others
