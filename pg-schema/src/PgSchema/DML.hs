@@ -101,7 +101,9 @@ module PgSchema.DML
   -- * Delete
   , deleteByCond, deleteText
   -- * Transport HList
-  , HList(..), IsoHList(..), Renamer(..), RenamerId, CHListInfo(..)
+  , HList(..), IsoHList(..), CHListInfo(..)
+  -- ** Renamers
+  , Renamer(..), RenamerId, CamelToSnake
   -- * Types
   , ToStar
   -- ** Tagged types
@@ -126,7 +128,8 @@ import PgSchema.DML.Insert.Types as I
 import PgSchema.DML.InsertJSON as I
 import PgSchema.DML.Update as U
 import PgSchema.DML.Delete as D
+import PgSchema.HList as H
 import PgSchema.Schema as S
 import PgSchema.Types as T
+import PgSchema.Utils.CamelToSnake
 import PgSchema.Utils.Internal as T (ToStar)
-import PgSchema.HList as H

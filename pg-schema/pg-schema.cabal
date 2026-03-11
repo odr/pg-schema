@@ -106,6 +106,7 @@ library
     PgSchema.Schema.Catalog
     PgSchema.Schema.Info
     PgSchema.Types
+    PgSchema.Utils.CamelToSnake
     PgSchema.Utils.Internal
     PgSchema.Utils.ShowType
   --   Paths_pg_schema

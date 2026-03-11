@@ -1,5 +1,3 @@
--- {-# OPTIONS_HADDOCK hide #-}
--- {-# OPTIONS_HADDOCK not-home #-}
 {-# LANGUAGE UndecidableInstances #-}
 module PgSchema.HList.HListInfo
   ( CHListInfo(..), RecordInfo'(..), FieldInfo'(..)

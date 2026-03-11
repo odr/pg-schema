@@ -1,4 +1,3 @@
--- {-# OPTIONS_HADDOCK hide, not-home #-}
 {-# LANGUAGE UndecidableInstances #-}
 module PgSchema.HList.Type(HList(..)) where
 
