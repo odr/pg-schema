@@ -118,7 +118,7 @@ module PgSchema.DML
   , CanConvert, CanConvert1, TypDef'(..)
   -- ** Other types
   , PgChar(..), PgOid(..)
-  , NameNS'(..), type (->>), NameNSK
+  , NameNS'(..), type (->>), NameNSK, (->>)
   , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable, CTabDef(..)
   ) where
 
