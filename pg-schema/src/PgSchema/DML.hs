@@ -109,7 +109,7 @@ module PgSchema.DML
   -- ** Tagged types
   , type (:=), (=:)
   -- *** Reexport
-  , Tagged(..), (:.)
+  , Tagged(..), (:.)(..)
   -- ** Enum
   , PGEnum
   -- ** Aggregates
@@ -137,4 +137,4 @@ import PgSchema.Schema as S
 import PgSchema.Types as T
 import PgSchema.Utils.CamelToSnake
 import PgSchema.Utils.Internal as T (ToStar)
-import Database.PostgreSQL.Simple ( type (:.) )
+import Database.PostgreSQL.Simple ((:.)(..))
