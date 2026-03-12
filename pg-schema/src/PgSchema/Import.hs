@@ -27,7 +27,9 @@ module PgSchema.Import
   , PGEnum
   -- * NameNS type classes
   , NameNSK, type (->>)
+  , ToStar
   ) where
 
 import PgSchema.Schema
 import PgSchema.Types
+import PgSchema.Utils.Internal

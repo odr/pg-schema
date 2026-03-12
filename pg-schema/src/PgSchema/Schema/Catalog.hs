@@ -1,10 +1,12 @@
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
+{-# LANGUAGE UndecidableInstances #-}
 module PgSchema.Schema.Catalog where
 
 import Data.Text as T
 import PgSchema.Schema
 import GHC.TypeLits (Symbol)
 import GHC.TypeError qualified as TE
+import PgSchema.Utils.Internal
 
 data PgCatalog
 
@@ -328,5 +330,5 @@ type family TDBFieldInfoPgCatalog (t :: NameNSK) (f :: Symbol)
         TE.:<>: TE.ShowType f
         TE.:<>: TE.Text " is not defined")
 
-instance CDBFieldInfo PgCatalog t f where
+instance (ToStar (TDBFieldInfoPgCatalog t f), ToStar t, ToStar f) => CDBFieldInfo PgCatalog t f where
   type TDBFieldInfo PgCatalog t f = TDBFieldInfoPgCatalog t f

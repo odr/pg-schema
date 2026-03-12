@@ -198,9 +198,9 @@ instance ToJSON PgOid where
 
 -- | Closed type family to check that field can be converted to or from Haskell type.
 -- To make your types convertible to some database type use open type family 'CanConvert1'.
-type family CanConvert sch (tab :: NameNSK) (fld::Symbol) (t :: Type) :: Constraint where
-  CanConvert sch tab fld t = CanConvertMaybe sch tab fld (FdType (GetFldDef sch tab fld))
-    (FdNullable (GetFldDef sch tab fld)) (TTypDef sch (FdType (GetFldDef sch tab fld))) t
+type family CanConvert sch (tab :: NameNSK) (fld::Symbol) (fd :: FldDefK) (t :: Type) :: Constraint where
+  CanConvert sch tab fld fd t = CanConvertMaybe sch tab fld (FdType fd)
+    (FdNullable fd) (TTypDef sch (FdType fd)) t
 
 type ErrDesc tab fld tn t =
   ( TL.Text ""

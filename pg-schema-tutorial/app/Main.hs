@@ -133,8 +133,6 @@ data PosCnt = MkPosCnt
   , avgNum  :: Aggr AAvg (Maybe Scientific)
   } deriving Generic
 
--- data Customer = Customer
---   { }
 data Order = MkOrder
   { day        :: Day
   , num        :: Text

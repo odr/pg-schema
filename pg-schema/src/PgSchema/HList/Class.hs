@@ -188,7 +188,7 @@ class CHListRepFi ren sch tab (fld :: Symbol) fi t where
   toHListFi :: t -> HList (HListRepFi ren sch tab fld fi t)
   fromHListFi :: HList (HListRepFi ren sch tab fld fi t) -> t
 
-instance (CanConvert sch tab fld t, Coercible (PlainType sch tab fld t fd) t)
+instance (CanConvert sch tab fld fd t, Coercible (PlainType sch tab fld t fd) t)
   => CHListRepFi ren sch tab fld (RFPlain (fd :: FldDefK)) t
   where
     type HListRepFi ren sch tab fld (RFPlain fd) t = '[ '( '(fld, 0), PlainType sch tab fld t fd)]

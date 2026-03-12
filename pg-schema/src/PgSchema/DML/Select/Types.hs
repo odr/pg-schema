@@ -213,20 +213,14 @@ deriving instance Show SomeToField
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 
-type CDBField sch tab fld fd = (SingI (TDBFieldInfo sch tab fld), KnownSymbol fld
+type CDBField sch tab fld fd = (CDBFieldInfo sch tab fld
   , TDBFieldInfo sch tab fld ~ 'RFPlain fd )
 
 type CDBValue sch tab fld fd v =
-  (CDBField sch tab fld fd, ToField v, Show v, CanConvert sch tab fld v)
+  (CDBField sch tab fld fd, ToField v, Show v, CanConvert sch tab fld fd v)
 
 type CDBFieldNullable sch tab fld fd =
   ( CDBField sch tab fld fd, FdNullable fd ~ 'True)
-
-type CDBChild sch ref = ( CTabDef sch (RdFrom (TRelDef sch ref))
-  , ToStar (RdCols (TRelDef sch ref)) )
-
-type CDBParent sch ref = ( CTabDef sch (RdTo (TRelDef sch ref))
-  , ToStar (RdCols (TRelDef sch ref)) )
 
 -- | GADT to safely set `where` condition for table `tab` based on definition of schema `sch`
 --
@@ -248,13 +242,13 @@ data Cond (sch::Type) (tab::NameNSK) where
   -- ^ Boolean @NOT@
   BoolOp :: BoolOp -> Cond sch tab -> Cond sch tab -> Cond sch tab
   -- ^ Conjunction and disjunction
-  Child :: forall sch ref. CDBChild sch ref =>
+  Child :: forall sch ref. CRelDef sch ref =>
     TabParam sch (RdFrom (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
     -> Cond sch (RdTo (TRelDef sch ref))
   -- ^ condition @EXISTS@ in child table. 'TabParam' is used to limit
   -- child dataset (usually with @ORDER BY@ and @LIMIT@) before applying
   -- condition on child table
-  Parent :: forall sch ref . CDBParent sch ref =>
+  Parent :: forall sch ref . CRelDef sch ref =>
     Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
   -- ^ @JOIN@ with those parents who satisfied their conditions
   UnsafeCond :: CondMonad Text -> Cond sch tab
@@ -295,14 +289,14 @@ pnull name = Null @name
 -- condition on child table
 --
 {-# INLINE pchild #-}
-pchild :: forall sch . forall ref -> CDBChild sch ref =>
+pchild :: forall sch . forall ref -> CRelDef sch ref =>
   TabParam sch (RdFrom (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
   -> Cond sch (RdTo (TRelDef sch ref))
 pchild name = Child @sch @name
 
 -- | Check that condition is satisfied in parent table
 {-# INLINE pparent #-}
-pparent :: forall sch. forall ref -> CDBParent sch ref =>
+pparent :: forall sch. forall ref -> CRelDef sch ref =>
   Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
 pparent name = Parent @sch @name
 

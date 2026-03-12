@@ -77,7 +77,7 @@ module PgSchema.DML
   -- *** Internals for 'UnsafeCond'
   , CondMonad, SomeToField(..), showCmp, tabPref, qual
   -- *** Constrainrs for Cond
-  , CDBField, CDBValue, CDBFieldNullable, CDBParent, CDBChild
+  , CDBField, CDBValue, CDBFieldNullable, CRelDef
   -- ** Order By and others
   , OrdDirection(..), OrdFld(..), Dist(..), LO(..)
   -- *** Make OrdFld and LO

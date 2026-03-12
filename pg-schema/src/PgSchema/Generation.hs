@@ -356,7 +356,7 @@ textClosedFieldInfoTF
 textClosedFieldInfoTF schName (mfld, mtab, mrel) =
   "type family " <> tfName
   <> " (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where\n" <> equations <> "\n"
-  <> "instance CDBFieldInfo " <> schName <> " t f where\n"
+  <> "instance (ToStar (TDBFieldInfo " <> schName <> " t f), ToStar t, ToStar f) => CDBFieldInfo " <> schName <> " t f where\n"
   <> "  type TDBFieldInfo " <> schName <> " t f = " <> tfName <> " t f\n\n"
   where
     tfName = typeFamilyName schName
@@ -401,6 +401,7 @@ genModuleText
   -> Text
 genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   =  "{- HLINT ignore -}\n"
+  <> "{-# LANGUAGE FlexibleContexts #-}\n"
   <> "{-# LANGUAGE TypeFamilies #-}\n"
   <> "{-# LANGUAGE UndecidableInstances #-}\n"
   <> "{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}\n"

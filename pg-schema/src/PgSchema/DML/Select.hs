@@ -289,10 +289,10 @@ convCond = \case
   Not c -> getNot <$> convCond c
   BoolOp bo c1 c2 -> getBoolOp bo <$> convCond c1 <*> convCond c2
   Child @_ @ref tabParam cond ->
-    getRef @(RdFrom (TRelDef sch ref)) True (demote @(RdCols (TRelDef sch ref)))
+    getRef @(RdFrom (TRelDef sch ref)) True (demote @(TRelDef sch ref)).rdCols
       tabParam cond
   Parent @_ @ref cond ->
-    getRef @(RdTo (TRelDef sch ref)) False (demote @(RdCols (TRelDef sch ref)))
+    getRef @(RdTo (TRelDef sch ref)) False (demote @(TRelDef sch ref)).rdCols
       defTabParam cond
   UnsafeCond m -> m
   where
