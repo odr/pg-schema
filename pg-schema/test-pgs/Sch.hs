@@ -179,23 +179,23 @@ instance CTabDef Sch ( "test_pgs" ->> "root" ) where
     'TabDef '[ "id","code","grp","name"
       ,"created_at","dim_a_id","dim_b_id" ] '[ "id" ] '[ '[ "code","grp" ] ]
 
-type instance TRelDef Sch
-  ( "test_pgs" ->> "arrays_root_fk" ) = 'RelDef ( "test_pgs" ->> "arrays" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+instance CRelDef Sch ( "test_pgs" ->> "arrays_root_fk" ) where
+  type TRelDef Sch ( "test_pgs" ->> "arrays_root_fk" ) = 'RelDef ( "test_pgs" ->> "arrays" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
 
-type instance TRelDef Sch
-  ( "test_pgs" ->> "leaf_mid2_fk" ) = 'RelDef ( "test_pgs" ->> "leaf" ) ( "test_pgs" ->> "mid2" ) '[ '( "root_id","root_id" ),'( "seq","seq" ) ]
+instance CRelDef Sch ( "test_pgs" ->> "leaf_mid2_fk" ) where
+  type TRelDef Sch ( "test_pgs" ->> "leaf_mid2_fk" ) = 'RelDef ( "test_pgs" ->> "leaf" ) ( "test_pgs" ->> "mid2" ) '[ '( "root_id","root_id" ),'( "seq","seq" ) ]
 
-type instance TRelDef Sch
-  ( "test_pgs" ->> "mid1_root_fk" ) = 'RelDef ( "test_pgs" ->> "mid1" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+instance CRelDef Sch ( "test_pgs" ->> "mid1_root_fk" ) where
+  type TRelDef Sch ( "test_pgs" ->> "mid1_root_fk" ) = 'RelDef ( "test_pgs" ->> "mid1" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
 
-type instance TRelDef Sch
-  ( "test_pgs" ->> "mid2_root_fk" ) = 'RelDef ( "test_pgs" ->> "mid2" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+instance CRelDef Sch ( "test_pgs" ->> "mid2_root_fk" ) where
+  type TRelDef Sch ( "test_pgs" ->> "mid2_root_fk" ) = 'RelDef ( "test_pgs" ->> "mid2" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
 
-type instance TRelDef Sch
-  ( "test_pgs" ->> "root_dim_a_fk" ) = 'RelDef ( "test_pgs" ->> "root" ) ( "test_pgs" ->> "dim" ) '[ '( "dim_a_id","id" ) ]
+instance CRelDef Sch ( "test_pgs" ->> "root_dim_a_fk" ) where
+  type TRelDef Sch ( "test_pgs" ->> "root_dim_a_fk" ) = 'RelDef ( "test_pgs" ->> "root" ) ( "test_pgs" ->> "dim" ) '[ '( "dim_a_id","id" ) ]
 
-type instance TRelDef Sch
-  ( "test_pgs" ->> "root_dim_b_fk" ) = 'RelDef ( "test_pgs" ->> "root" ) ( "test_pgs" ->> "dim" ) '[ '( "dim_b_id","id" ) ]
+instance CRelDef Sch ( "test_pgs" ->> "root_dim_b_fk" ) where
+  type TRelDef Sch ( "test_pgs" ->> "root_dim_b_fk" ) = 'RelDef ( "test_pgs" ->> "root" ) ( "test_pgs" ->> "dim" ) '[ '( "dim_b_id","id" ) ]
 
 instance CTabRels Sch ( "test_pgs" ->> "arrays" ) where
   type TFrom Sch ( "test_pgs" ->> "arrays" ) = 

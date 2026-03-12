@@ -109,7 +109,12 @@ library
     PgSchema.Utils.CamelToSnake
     PgSchema.Utils.Internal
     PgSchema.Utils.ShowType
-  --   Paths_pg_schema
+    --
+    Paths_pg_schema
+    PackageInfo_pg_schema
+  autogen-modules:
+    Paths_pg_schema
+    PackageInfo_pg_schema
   hs-source-dirs: src
   build-depends:
       base >= 4.20 && < 5
@@ -170,7 +175,14 @@ library
 test-suite doctest
   type: exitcode-stdio-1.0
   main-is: doctest.hs
-  other-modules: HListDoctest
+  other-modules:
+    HListDoctest
+    -- Paths and PackageInfo
+    Paths_pg_schema
+    PackageInfo_pg_schema
+  autogen-modules:
+    Paths_pg_schema
+    PackageInfo_pg_schema
   hs-source-dirs: test
   build-depends:
       base
@@ -184,6 +196,13 @@ test-suite doctest
 
 executable test-gen
   main-is:          Main.hs
+  other-modules:
+    -- Paths and PackageInfo
+    Paths_pg_schema
+    PackageInfo_pg_schema
+  autogen-modules:
+    Paths_pg_schema
+    PackageInfo_pg_schema
   build-depends:
       base >= 4.21.0 && < 4.22
     , bytestring >= 0.12.2 && < 0.13
@@ -204,6 +223,12 @@ test-suite test-pgs
     Tests.Hierarchy
     Tests.Path
     Utils
+    -- Paths and PackageInfo
+    Paths_pg_schema
+    PackageInfo_pg_schema
+  autogen-modules:
+    Paths_pg_schema
+    PackageInfo_pg_schema
   hs-source-dirs:   test-pgs
   default-extensions:
     AllowAmbiguousTypes

@@ -19,7 +19,9 @@ import Data.String
 import Data.Text as T
 import Data.Tuple
 import PgSchema.DML.Select.Types
-import PgSchema.HList
+import PgSchema.HList.Class
+import PgSchema.HList.Type
+import PgSchema.HList.HListInfo
 import Database.PostgreSQL.Simple hiding(In(..))
 import PgSchema.Schema
 import PgSchema.Types

@@ -213,14 +213,14 @@ deriving instance Show SomeToField
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 
-type CDBField sch tab fld = (SingI (TDBFieldInfo sch tab fld), KnownSymbol fld
-  , CPlainFldDef (TDBFieldInfo sch tab fld))
+type CDBField sch tab fld fd = (SingI (TDBFieldInfo sch tab fld), KnownSymbol fld
+  , TDBFieldInfo sch tab fld ~ 'RFPlain fd )
 
-type CDBValue sch tab fld v =
-  (CDBField sch tab fld, ToField v, Show v, CanConvert sch tab fld v)
+type CDBValue sch tab fld fd v =
+  (CDBField sch tab fld fd, ToField v, Show v, CanConvert sch tab fld v)
 
-type CDBFieldNullable sch tab fld =
-  ( CDBField sch tab fld, FdNullable (GetFldDef sch tab fld) ~ 'True)
+type CDBFieldNullable sch tab fld fd =
+  ( CDBField sch tab fld fd, FdNullable fd ~ 'True)
 
 type CDBChild sch ref = ( CTabDef sch (RdFrom (TRelDef sch ref))
   , ToStar (RdCols (TRelDef sch ref)) )
@@ -235,14 +235,14 @@ type CDBParent sch ref = ( CTabDef sch (RdTo (TRelDef sch ref))
 data Cond (sch::Type) (tab::NameNSK) where
   EmptyCond :: Cond sch tab
   -- ^ Empty Condition. Neutral for conjunction '(&&&)' and disjunction '(|||)'.
-  Cmp :: forall fld v sch tab. CDBValue sch tab fld v => Cmp -> v -> Cond sch tab
+  Cmp :: forall fld v sch tab fd. CDBValue sch tab fld fd v => Cmp -> v -> Cond sch tab
   -- ^ Comparing field value with parameter
-  In :: forall fld v sch tab. CDBValue sch tab fld v => NonEmpty v -> Cond sch tab
+  In :: forall fld v sch tab fd. CDBValue sch tab fld fd v => NonEmpty v -> Cond sch tab
   -- ^ Check that field value belongs to non-empty list of values
-  InArr :: forall fld v sch tab. CDBValue sch tab fld v => [v] -> Cond sch tab
+  InArr :: forall fld v sch tab fd. CDBValue sch tab fld fd v => [v] -> Cond sch tab
   -- ^ Check that field value belongs to the list of values
   -- if list of values is empty it return @false@
-  Null :: forall fld sch tab. CDBFieldNullable sch tab fld => Cond sch tab
+  Null :: forall fld sch tab fd. CDBFieldNullable sch tab fld fd => Cond sch tab
   -- ^ Check that field value is @NULL@
   Not :: Cond sch tab -> Cond sch tab
   -- ^ Boolean @NOT@
@@ -286,7 +286,7 @@ defTabParam = TabParam mempty mempty defLO
 
 -- | Check that field value is @NULL@
 {-# INLINE pnull #-}
-pnull :: forall sch tab. forall name -> CDBFieldNullable sch tab name => Cond sch tab
+pnull :: forall sch tab fd. forall name -> CDBFieldNullable sch tab name fd => Cond sch tab
 pnull name = Null @name
 
 -- | Check that exists related records in child table and the condition is satisfied there
@@ -317,14 +317,14 @@ pUnsafeCond = UnsafeCond
 
 -- | Check that field value belongs to non-empty list of values
 {-# INLINE pin #-}
-pin :: forall name -> forall sch tab v. CDBValue sch tab name v
+pin :: forall name -> forall sch tab fd v. CDBValue sch tab name fd v
   => NonEmpty v -> Cond sch tab
 pin name = In @name
 
 -- | Check that field value belongs to the list of values.
 -- If list of values is empty it returns @false@
 {-# INLINE pinArr #-}
-pinArr :: forall name -> forall sch tab v. CDBValue sch tab name v
+pinArr :: forall name -> forall sch tab fd v. CDBValue sch tab name fd v
   => [v] -> Cond sch tab
 pinArr name = InArr @name
 
@@ -349,14 +349,14 @@ infixl 3 &&&
 {-# INLINE (~=?) #-}
 {-# INLINE (~~?) #-}
 (<?),(>?),(<=?),(>=?),(=?)
-   :: forall fld -> forall sch tab v. CDBValue sch tab fld v => v -> Cond sch tab
+   :: forall fld -> forall sch tab fd v. CDBValue sch tab fld fd v => v -> Cond sch tab
 x <? b  = Cmp @x (:<)  b
 x >? b  = Cmp @x (:>)  b
 x <=? b = Cmp @x (:<=) b
 x >=? b = Cmp @x (:>=) b
 x =? b = Cmp @x (:=) b
 (~=?),(~~?)
-  :: forall fld -> forall sch tab v. CDBValue sch tab fld v => v -> Cond sch tab
+  :: forall fld -> forall sch tab fd v. CDBValue sch tab fld fd v => v -> Cond sch tab
 x ~=? b  = Cmp @x Like b
 x ~~? b  = Cmp @x ILike b
 infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
@@ -364,7 +364,7 @@ infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 data OrdDirection = Asc | Desc deriving Show
 
 data OrdFld sch tab where
-  OrdFld :: forall fld sch tab. CDBField sch tab fld =>
+  OrdFld :: forall fld sch tab fd. CDBField sch tab fld fd =>
     OrdDirection -> OrdFld sch tab
   UnsafeOrd :: CondMonad (Text, OrdDirection) -> OrdFld sch tab
 
@@ -383,16 +383,16 @@ data Dist sch tab where
 
 {-# INLINE ordf #-}
 ordf
-  :: forall fld -> forall sch tab. CDBField sch tab fld
+  :: forall fld -> forall sch tab fd. CDBField sch tab fld fd
   => OrdDirection -> OrdFld sch tab
 ordf fld = OrdFld @fld
 
 {-# INLINE ascf #-}
-ascf :: forall fld -> forall sch tab. CDBField sch tab fld => OrdFld sch tab
+ascf :: forall fld -> forall sch tab fd. CDBField sch tab fld fd => OrdFld sch tab
 ascf fld = ordf fld Asc
 
 {-# INLINE descf #-}
-descf :: forall fld -> forall sch tab. CDBField sch tab fld => OrdFld sch tab
+descf :: forall fld -> forall sch tab fd. CDBField sch tab fld fd => OrdFld sch tab
 descf fld = ordf fld Desc
 
 data LO = LO

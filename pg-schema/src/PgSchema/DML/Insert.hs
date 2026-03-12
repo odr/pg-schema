@@ -9,7 +9,8 @@ import GHC.Int
 import PgSchema.DML.Insert.Types
 import PgSchema.Schema
 import PgSchema.Utils.Internal
-import PgSchema.HList
+import PgSchema.HList.Class
+import PgSchema.HList.HListInfo
 
 -- | Insert records into table.
 -- We can get any fields from inserted record in returned result.

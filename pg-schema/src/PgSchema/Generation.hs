@@ -37,7 +37,9 @@ import Database.PostgreSQL.Simple
 import GHC.Int
 import GHC.Records
 import GHC.TypeLits ( Symbol )
-import PgSchema.HList
+import PgSchema.HList.Class
+import PgSchema.HList.Type
+import PgSchema.HList.HListInfo
 import PgSchema.DML.Select
 import PgSchema.DML.Select.Types
 import PgSchema.Schema
@@ -287,7 +289,8 @@ textTabDef sch tab = mkInst "TabDef" [sch, showType tab]
 
 textRelDef :: Text -> NameNS -> RelDef -> Text
 textRelDef sch relName rel =
-  "type instance TRelDef " <> sch <> "\n  " <> showType relName <> " = " <> showType rel <> "\n\n"
+  "instance CRelDef " <> sch <> " " <> showType relName <> " where\n" <>
+  "  type TRelDef " <> sch <> " " <> showType relName <> " = " <> showType rel <> "\n\n"
 
 textTabRel :: Text -> NameNS -> [NameNS] -> [NameNS] -> Text
 textTabRel sch tab froms tos

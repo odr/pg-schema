@@ -7,7 +7,8 @@ import GHC.Int
 import PgSchema.DML.Select
 import PgSchema.DML.Select.Types
 import PgSchema.DML.Insert.Types
-import PgSchema.HList
+import PgSchema.HList.Class
+import PgSchema.HList.HListInfo
 import PgSchema.Schema
 import PgSchema.Utils.Internal
 import Prelude as P

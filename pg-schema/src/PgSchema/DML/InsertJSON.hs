@@ -17,7 +17,8 @@ import Data.Maybe
 import Data.Text as T hiding (any)
 import Data.Traversable
 import PgSchema.DML.Insert.Types
-import PgSchema.HList
+import PgSchema.HList.Class
+import PgSchema.HList.HListInfo
 import Database.PostgreSQL.Simple
 import PgSchema.Schema
 import Data.String

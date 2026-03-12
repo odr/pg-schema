@@ -83,22 +83,30 @@ instance CTabDef PgCatalog (PGC "pg_type") where
 
 ---------- relations ---------
 
-type instance TRelDef PgCatalog (PGC "attribute__class") =
-  'RelDef (PGC "pg_attribute") (PGC "pg_class") '[ '("attrelid","oid")]
-type instance TRelDef PgCatalog (PGC "attribute__type") =
-  'RelDef (PGC "pg_attribute") (PGC "pg_type") '[ '("atttypid","oid")]
-type instance TRelDef PgCatalog (PGC "class__namespace") =
-  'RelDef (PGC "pg_class") (PGC "pg_namespace") '[ '("relnamespace","oid")]
-type instance TRelDef PgCatalog (PGC "constraint__class") =
-  'RelDef (PGC "pg_constraint") (PGC "pg_class") '[ '("conrelid","oid")]
-type instance TRelDef PgCatalog (PGC "constraint__fclass") =
-  'RelDef (PGC "pg_constraint") (PGC "pg_class") '[ '("confrelid","oid")]
-type instance TRelDef PgCatalog (PGC "constraint__namespace") =
-  'RelDef (PGC "pg_constraint") (PGC "pg_namespace") '[ '("connamespace","oid")]
-type instance TRelDef PgCatalog (PGC "enum__type") =
-  'RelDef (PGC "pg_enum") (PGC "pg_type") '[ '("enumtypid","oid")]
-type instance TRelDef PgCatalog (PGC "type__namespace") =
-  'RelDef (PGC "pg_type") (PGC "pg_namespace") '[ '("typnamespace","oid")]
+instance CRelDef PgCatalog (PGC "attribute__class") where
+  type TRelDef PgCatalog (PGC "attribute__class") =
+    'RelDef (PGC "pg_attribute") (PGC "pg_class") '[ '("attrelid","oid")]
+instance CRelDef PgCatalog (PGC "attribute__type") where
+  type TRelDef PgCatalog (PGC "attribute__type") =
+    'RelDef (PGC "pg_attribute") (PGC "pg_type") '[ '("atttypid","oid")]
+instance CRelDef PgCatalog (PGC "class__namespace") where
+  type TRelDef PgCatalog (PGC "class__namespace") =
+    'RelDef (PGC "pg_class") (PGC "pg_namespace") '[ '("relnamespace","oid")]
+instance CRelDef PgCatalog (PGC "constraint__class") where
+  type TRelDef PgCatalog (PGC "constraint__class") =
+    'RelDef (PGC "pg_constraint") (PGC "pg_class") '[ '("conrelid","oid")]
+instance CRelDef PgCatalog (PGC "constraint__fclass") where
+  type TRelDef PgCatalog (PGC "constraint__fclass") =
+    'RelDef (PGC "pg_constraint") (PGC "pg_class") '[ '("confrelid","oid")]
+instance CRelDef PgCatalog (PGC "constraint__namespace") where
+  type TRelDef PgCatalog (PGC "constraint__namespace") =
+    'RelDef (PGC "pg_constraint") (PGC "pg_namespace") '[ '("connamespace","oid")]
+instance CRelDef PgCatalog (PGC "enum__type") where
+  type TRelDef PgCatalog (PGC "enum__type") =
+    'RelDef (PGC "pg_enum") (PGC "pg_type") '[ '("enumtypid","oid")]
+instance CRelDef PgCatalog (PGC "type__namespace") where
+  type TRelDef PgCatalog (PGC "type__namespace") =
+    'RelDef (PGC "pg_type") (PGC "pg_namespace") '[ '("typnamespace","oid")]
 
 ----------- CTabRels ---------
 instance CTabRels PgCatalog (PGC "pg_attribute") where

@@ -6,7 +6,9 @@ import Data.Kind
 import Data.Singletons.TH
 import Data.Typeable
 import PgSchema.Schema
-import PgSchema.HList
+import PgSchema.HList.Class
+import PgSchema.HList.HListInfo
+import PgSchema.HList.Type
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
 import GHC.TypeError
@@ -80,22 +82,22 @@ type UpdateReturning ren sch t r r' h h' =
 type UpdateNonReturning ren sch t r h =
   (h ~ HRep ren sch t r, HListInfo ren sch t r h, ToRow h, AllPlain sch t h)
 
-type family WalkLevel (check :: Type ~> NameNSK ~> [Symbol] ~> Constraint)
-  (sch :: Type) (tab :: NameNSK) (fis :: [FieldInfoK]) (rs :: [Symbol])
+type family WalkLevel (check :: NameNSK ~> [Symbol] ~> Constraint)
+  (tab :: NameNSK) (fis :: [FieldInfoK]) (rs :: [Symbol])
   :: Constraint where
-  WalkLevel check sch tab '[] rs = SP.Apply (SP.Apply (SP.Apply check sch) tab) rs
-  WalkLevel check sch tab ('FieldInfo name db ('RFPlain fd) ': xs) rs =
-    WalkLevel check sch tab xs (name ': rs)
-  WalkLevel check sch tab
+  WalkLevel check tab '[] rs = SP.Apply (SP.Apply check tab) rs
+  WalkLevel check tab ('FieldInfo name db ('RFPlain fd) ': xs) rs =
+    WalkLevel check tab xs (name ': rs)
+  WalkLevel check tab
     ('FieldInfo _ _ ('RFToHere ('RecordInfo childTab childFIs) refs) ': xs) rs =
-      ( WalkLevel check sch childTab childFIs (SP.Map FromNameSym0 refs)
-      , WalkLevel check sch tab xs rs )
-  WalkLevel check sch tab (_ ': xs) rs = WalkLevel check sch tab xs rs
+      ( WalkLevel check childTab childFIs (SP.Map FromNameSym0 refs)
+      , WalkLevel check tab xs rs )
+  WalkLevel check tab (_ ': xs) rs = WalkLevel check tab xs rs
 
 type family AllMandatory (sch :: Type) (tab :: NameNSK) (r :: Type) (rFlds :: [Symbol]) :: Constraint where
   AllMandatory sch t [r] rFlds = AllMandatory sch t r rFlds
   AllMandatory sch t r  rFlds =
-    WalkLevel CheckNodeAllMandatorySym0 sch t (TRecordInfo sch t r) rFlds
+    WalkLevel (CheckNodeAllMandatorySym1 sch) t (TRecordInfo sch t r) rFlds
 
 -- For Upsert:
 -- AllMandatory && NoPK     => insert
@@ -106,4 +108,4 @@ type family AllMandatory (sch :: Type) (tab :: NameNSK) (r :: Type) (rFlds :: [S
 type family AllMandatoryOrHasPK (sch :: Type) (tab :: NameNSK) (r :: Type) (rFlds :: [Symbol]) :: Constraint where
   AllMandatoryOrHasPK sch t [r] rFlds = AllMandatoryOrHasPK sch t r rFlds
   AllMandatoryOrHasPK sch t r  rFlds =
-    WalkLevel CheckNodeAllMandOrPKSym0 sch t (TRecordInfo sch t r) rFlds
+    WalkLevel (CheckNodeAllMandOrPKSym1 sch) t (TRecordInfo sch t r) rFlds
