@@ -6,7 +6,6 @@ import Data.Kind (Type)
 import PgSchema.HList.Internal
 import PgSchema.HList.Type
 import PgSchema.Schema
-import GHC.TypeLits
 import Prelude.Singletons
 
 
@@ -57,32 +56,12 @@ instance HListAppend '[] ys where
 instance HListAppend xs ys => HListAppend (x ': xs) ys where
   appendHList (x :* xs) ys = x :* appendHList xs ys
 
-class NormalizeGoHList (prefix :: [SymNat]) (xs :: [(SymNat, Type)]) where
-  normalizeGoHList :: HList xs -> HList (NormalizeGo prefix xs)
+type NormalizeHList xs = RetagHList xs (Normalize xs)
 
-instance NormalizeGoHList prefix '[] where
-  normalizeGoHList HNil = HNil
-
-instance
-  ( NormalizeGoHList (sn ': prefix) rest
-  , KnownSymNat sn
-  , '(s,n) ~ sn
-  , n' ~ CountSymInKeys prefix s
-  , KnownNat n'
-  )
-  => NormalizeGoHList prefix ('(sn, t) ': rest)
-  where
-  normalizeGoHList (x :* rest) =
-    x :* normalizeGoHList @(sn ': prefix) @rest rest
-
-class NormalizeHList (xs :: [(SymNat, Type)]) where
-  normalizeHList :: HList xs -> HList (Normalize xs)
-  denormalizeHList :: HList (Normalize xs) -> HList xs
-
-instance (out ~ NormalizeGo '[] xs, NormalizeGoHList '[] xs, RetagHList out xs)
-  => NormalizeHList xs where
-    normalizeHList = normalizeGoHList @'[] @xs
-    denormalizeHList = retagHList @(Normalize xs) @xs
+normalizeHList :: RetagHList xs (Normalize xs) => HList xs -> HList (Normalize xs)
+denormalizeHList :: RetagHList xs (Normalize xs) => HList (Normalize xs) -> HList xs
+normalizeHList = retagHList
+denormalizeHList = reretagHList
 
 class SplitAtHList (xs :: [(SymNat, Type)]) (ys :: [(SymNat, Type)]) where
   splitAtHList :: HList (xs ++ ys) -> (HList xs, HList ys)
@@ -96,9 +75,12 @@ instance SplitAtHList rest ys => SplitAtHList ('(sn, t) ': rest) ys where
 
 class RetagHList (a :: [(SymNat, Type)]) (b :: [(SymNat, Type)]) where
   retagHList :: HList a -> HList b
+  reretagHList :: HList b -> HList a
 
 instance RetagHList '[] '[] where
   retagHList HNil = HNil
+  reretagHList HNil = HNil
 
 instance (RetagHList as bs) => RetagHList ('(sa, t) ': as) ('(sb, t) ': bs) where
   retagHList (x :* xs) = x :* retagHList xs
+  reretagHList (x :* xs) = x :* reretagHList xs
