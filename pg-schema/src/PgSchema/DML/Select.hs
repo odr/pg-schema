@@ -19,14 +19,13 @@ import Data.String
 import Data.Text as T
 import Data.Tuple
 import PgSchema.DML.Select.Types
-import PgSchema.HList.Class
-import PgSchema.HList.Type
-import PgSchema.HList.HListInfo
+import PgSchema.Ann
 import Database.PostgreSQL.Simple hiding(In(..))
+import Database.PostgreSQL.Simple.Types(PGArray(..))
 import PgSchema.Schema
-import PgSchema.Types
 import GHC.Generics
 import GHC.TypeLits
+import PgSchema.Types
 import PgSchema.Utils.Internal
 import Prelude as P
 import Prelude.Singletons as SP hiding (Any)
@@ -53,26 +52,25 @@ data QueryState = QueryState
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
-type Selectable ren sch tab r h =
-  (IsoHList ren sch tab r, h ~ HList (HListRep ren sch tab r), CHListInfo sch tab h, FromRow h)
+type Selectable ann r = (CRecInfo ann r, FromRow (Tagged ann r))
 
 -- | With given 'Renamer' `ren`, 'CSchema' `sch` and table name `tab` get list of
 -- table records with related entities accordingly to the struture of `r` and 'QueryParam' `qp`.
 --
 -- To set `QueryParam` use `MonadQP`
 --
-selectSch :: forall ren sch tab -> forall r h. Selectable ren sch tab r h
+selectSch :: forall ann -> forall r. (Selectable ann r, ann ~ 'Ann ren sch tab)
   => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
-selectSch ren sch tab @r @h conn (selectText @sch @tab @h -> (sql,fs)) =
+selectSch ann @r conn (selectText ann @r -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
-  $ (,(sql,fs)) . fmap (fromHList @ren @sch @tab @r) <$> query conn (fromString $ unpack sql) fs
+  $ (,(sql,fs)) . fmap (unTagged @ann @r) <$> query conn (fromString $ T.unpack sql) fs
 
 -- | Just get a text of select for debugging or something else.
-selectText :: forall sch t r. CHListInfo sch t r =>
-  QueryParam sch t -> (Text,[SomeToField])
-selectText qp = evalRWS (selectM "" (getRecordInfo @sch @t @r)) (qr0 qp) qs0
+selectText :: forall ann -> forall r. (CRecInfo ann r, ann ~ 'Ann ren sch tab)
+  => QueryParam sch tab -> (Text,[SomeToField])
+selectText ann @r qp = evalRWS (selectM "" (getRecordInfo @ann @r)) (qr0 qp) qs0
 
-qr0 :: QueryParam sch t -> QueryRead sch t
+qr0 :: QueryParam sch tab -> QueryRead sch tab
 qr0 qrParam = QueryRead
   { qrCurrTabNum = 0 , qrPath = [] , qrParam }
 
@@ -98,7 +96,7 @@ instance KnownSymbol s => Semigroup (TextI s) where
 
 instance KnownSymbol s => Monoid (TextI s) where mempty = TextI mempty
 
-selectM :: MonadQuery sch t m => Text -> RecordInfo -> m Text
+selectM :: MonadQuery sch t m => Text -> RecordInfo Text -> m Text
 selectM refTxt ri = do
   QueryRead {..} <- ask
   (fmap two -> flds) <- traverse fieldM ri.fields
@@ -171,7 +169,7 @@ selectM refTxt ri = do
 
 -- | return text for field, alias and expression to check is empty
 -- (not obvious for FieldTo)
-fieldM :: MonadQuery sch tab m => FieldInfo -> m (Text, Text, Text)
+fieldM :: MonadQuery sch tab m => FieldInfo Text -> m (Text, Text, Text)
 fieldM fi = case fi.fieldKind of
   RFEmpty s -> pure ("null", s, "true")
   RFPlain {} -> do
@@ -280,10 +278,10 @@ convCond = \case
     tell [SomeToField v]
     qual @n <&> (<> " " <> showCmp cmp <> " ?")
   In @n (NE.toList -> vs) -> do
-    tell [SomeToField $ pgArr' vs]
+    tell [SomeToField $ PGArray vs]
     qual @n <&> (<> " = any(?::" <> qualName (getFldDef @sch @t @n).fdType <> "[])")
   InArr @n vs -> do
-    tell [SomeToField $ pgArr' vs]
+    tell [SomeToField $ PGArray vs]
     qual @n <&> (<> " = any(?::" <> qualName (getFldDef @sch @t @n).fdType <> "[])")
   Null @n -> qual @n <&> (<> " is null")
   Not c -> getNot <$> convCond c

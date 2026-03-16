@@ -88,6 +88,7 @@ library
     PgSchema.Import
     PgSchema.Utils.GenDot
   other-modules:
+    PgSchema.Ann
     PgSchema.DML.Delete
     PgSchema.DML.Insert
     PgSchema.DML.InsertJSON
@@ -95,14 +96,7 @@ library
     PgSchema.DML.Select
     PgSchema.DML.Select.Types
     PgSchema.DML.Update
-    PgSchema.HList
     PgSchema.Schema
-    PgSchema.HList.Internal
-    PgSchema.HList.Rec
-    PgSchema.HList.Utils
-    PgSchema.HList.Class
-    PgSchema.HList.HListInfo
-    PgSchema.HList.Type
     PgSchema.Schema.Catalog
     PgSchema.Schema.Info
     PgSchema.Types
@@ -130,7 +124,6 @@ library
     , singletons >= 3.0.3 && < 3.1
     , singletons-base >= 3.4 && < 3.6
     , singletons-th >= 3.4 && < 3.6
-    , tagged >= 0.8.8 && < 0.9
     , text >= 2.0 && < 2.2
     , time >= 1.12 && < 2
     , uuid-types >= 1.0 && < 1.1
@@ -262,7 +255,6 @@ test-suite test-pgs
     postgresql-simple,
     resource-pool,
     scientific,
-    tagged,
     tasty >= 1.4,
     tasty-hedgehog >= 1.2,
     text,

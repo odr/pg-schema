@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE NoFieldSelectors #-}
@@ -12,7 +13,6 @@ import Data.List qualified as L
 import Data.Maybe (fromMaybe)
 import Data.Pool as Pool
 import Data.Proxy (Proxy(..))
-import Data.Tagged (Tagged(..), unTagged)
 import Data.Text (Text)
 import Data.Text.IO as T
 import Data.Time (UTCTime, getCurrentTime)
@@ -35,6 +35,7 @@ data Mid2Rec = MkMid2Rec
   , flag :: Bool
   , priority :: Int32 }
   deriving (Generic, Eq, Ord, Show)
+  deriving anyclass GenDefault
 
 data Mid2RecRev = MkMid2RecRev
   { seq :: Int32
@@ -43,11 +44,13 @@ data Mid2RecRev = MkMid2RecRev
     :. "mid1_root_fk" := ["flag" := Bool]
     :. "mid1_root_fk2" := ["pos" := Int32]}
   deriving (Generic, Eq, Ord, Show)
+  deriving anyclass GenDefault
 
 data LeafI = MkLeafI
   { leaf_no :: Int32
   , value :: Double }
   deriving (Generic, Eq, Ord, Show)
+  deriving anyclass GenDefault
 
 data Leaf = MkLeaf
   { leaf_no :: Int32
@@ -56,6 +59,7 @@ data Leaf = MkLeaf
   , leaf_mid2_fk :: Mid2Rec
   , leaf_mid2_rev_fk :: Mid2RecRev }
   deriving (Generic, Eq, Ord, Show)
+  deriving anyclass GenDefault
 -- >>> getRecordInfo @Sch @(TS "leaf") @(HSch "leaf" Leaf)
 -- RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "leaf"}, fields = [FieldInfo {fieldName = "leaf_no", fieldDbName = "leaf_no", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "value", fieldDbName = "value", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "numeric"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "category", fieldDbName = "category", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = True, fdHasDefault = False})},FieldInfo {fieldName = "leaf_mid2_fk", fieldDbName = "leaf_mid2_fk", fieldKind = RFFromHere (RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "mid2"}, fields = [FieldInfo {fieldName = "seq", fieldDbName = "seq", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "kind", fieldDbName = "kind", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "flag", fieldDbName = "flag", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "bool"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "priority", fieldDbName = "priority", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})}]}) [Ref {fromName = "root_id", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "root_id", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}},Ref {fromName = "seq", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "seq", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}}]},FieldInfo {fieldName = "leaf_mid2_fk___1", fieldDbName = "leaf_mid2_fk", fieldKind = RFFromHere (RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "mid2"}, fields = [FieldInfo {fieldName = "seq", fieldDbName = "seq", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "kind", fieldDbName = "kind", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "mid2_root_fk", fieldDbName = "mid2_root_fk", fieldKind = RFFromHere (RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "root"}, fields = [FieldInfo {fieldName = "code", fieldDbName = "code", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "grp", fieldDbName = "grp", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "name", fieldDbName = "name", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = False, fdHasDefault = False})}]}) [Ref {fromName = "root_id", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "id", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = True}}]}]}) [Ref {fromName = "root_id", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "root_id", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}},Ref {fromName = "seq", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "seq", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}}]}]}
 
@@ -98,7 +102,7 @@ prop_hier_insert_simple_fk pool = withTests 30 $ property do
 prop_hier_insert_composite_fk :: Pool Connection -> Property
 prop_hier_insert_composite_fk pool = withTests 30 $ property do
   rootsIn <- forAll (L.nubBy eqRoot <$> genData' RootRec 1 200)
-  mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genDataH "mid2" Mid2Rec 0 20)
+  mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genData' Mid2Rec 0 20)
   let inIns = rootsIn <&> (("mid2_root_fk" =: mid2In) :.)
   (outIns, outSel1, outUps, outSel2) <- evalIO $ withPool pool \conn -> do
     delByCond "mid2" conn mempty
@@ -131,7 +135,7 @@ prop_hier_insert_composite_fk pool = withTests 30 $ property do
 prop_hier_select_child_with_parent :: Pool Connection -> Property
 prop_hier_select_child_with_parent pool = withTests 30 $ property do
   rootsIn <- forAll (L.nubBy eqRoot <$> genData' RootRec 1 200)
-  mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genDataH "mid2" Mid2Rec 0 20)
+  mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genData' Mid2Rec 0 20)
   (outIns, outSel) <- evalIO $ withPool pool \conn -> do
     delByCond "mid2" conn mempty
     delByCond "root" conn mempty
@@ -146,8 +150,8 @@ prop_hier_select_child_with_parent pool = withTests 30 $ property do
 prop_hier_duplicate_names_root_nested :: Pool Connection -> Property
 prop_hier_duplicate_names_root_nested pool = withTests 30 $ property do
   rootsIn <- forAll (L.nubBy eqRoot <$> genData' RootRec 1 100)
-  mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genDataH "mid2" Mid2Rec 0 10)
-  leafIn <- forAll (L.nubBy ((==) `on` (.leaf_no)) <$> genDataH "leaf" LeafI 0 10)
+  mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genData' Mid2Rec 0 10)
+  leafIn <- forAll (L.nubBy ((==) `on` (.leaf_no)) <$> genData' LeafI 0 10)
   let inIns = rootsIn <&> (("mid2_root_fk" =: (mid2In <&> (("leaf_mid2_fk" =: leafIn) :.))) :.)
   outSel <- evalIO $ withPool pool \conn -> do
     delByCond "leaf" conn mempty

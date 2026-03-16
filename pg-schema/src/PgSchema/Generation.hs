@@ -16,7 +16,6 @@ module PgSchema.Generation
   , NameNS'(..), NameNS, (->>)
   ) where
 
-
 import Control.Monad
 import Control.Monad.Catch
 import Data.Bifunctor
@@ -29,7 +28,6 @@ import Data.Map as M
 import Data.Maybe as Mb
 import Data.Set as S
 import Data.String
-import Data.Tagged
 import Data.Text as T
 import Data.Text.IO as T
 import Data.Traversable
@@ -37,9 +35,7 @@ import Database.PostgreSQL.Simple
 import GHC.Int
 import GHC.Records
 import GHC.TypeLits ( Symbol )
-import PgSchema.HList.Class
-import PgSchema.HList.Type
-import PgSchema.HList.HListInfo
+import PgSchema.Ann
 import PgSchema.DML.Select
 import PgSchema.DML.Select.Types
 import PgSchema.Schema
@@ -71,13 +67,15 @@ data GenNames = GenNames
   , addRelations :: [AddRelation] -- ^ additional relations. Be careful!
   }
 
-selCat :: forall (tn :: Symbol) -> forall r h.
-  ( IsoHList RenamerId PgCatalog (PGC tn) r, h ~ HLT tn r
-  , CHListInfo PgCatalog (PGC tn) h, FromRow h )
-  => Connection -> QueryParam PgCatalog (PGC tn) -> IO ([r], (Text,[SomeToField]))
-selCat tn = selectSch RenamerId PgCatalog (PGC tn)
+type AnnCat tn = 'Ann RenamerId PgCatalog (PGC tn)
 
-type HLT s r = HList (HListRep RenamerId PgCatalog (PGC s) r)
+selCat :: forall (tn :: Symbol) -> forall r. (Selectable (AnnCat tn) r)
+  => Connection -> QueryParam PgCatalog (PGC tn) -> IO ([r], (Text,[SomeToField]))
+selCat tn = selectSch (AnnCat tn)
+
+selTxt :: forall (tn :: Symbol) -> forall r. (Selectable (AnnCat tn) r)
+  => QueryParam PgCatalog (PGC tn) -> (Text,[SomeToField])
+selTxt tn @r = selectText (AnnCat tn) @r
 
 getSchema
   :: Connection -- ^ connection to PostgreSQL database
@@ -85,12 +83,12 @@ getSchema
   -> IO ([PgType], [PgClass], [PgRelation])
 getSchema conn GenNames {..} = do
   types <- selCat "pg_type" conn qpTyp `catch`
-    (throwM . GetDataException (selectText @_ @_ @(HLT "pg_type" PgType) qpTyp))
+    (throwM . GetDataException (selTxt "pg_type" @PgType qpTyp))
   classes <- L.filter checkClass . fst <$> selCat "pg_class" conn qpClass `catch`
-    (throwM . GetDataException (selectText @_ @_ @(HLT "pg_class" PgClass) qpClass))
+    (throwM . GetDataException (selTxt "pg_class" @PgClass qpClass))
   relations <- L.filter checkRels . (Mb.mapMaybe (mkRel classes) addRelations <>)
     . fst <$> selCat "pg_constraint" conn qpRel `catch`
-      (throwM . GetDataException (selectText @_ @_ @(HLT "pg_constraint" PgRelation) qpRel))
+      (throwM . GetDataException (selTxt "pg_constraint" @PgRelation qpRel))
   pure (fst types, classes, relations)
   where
     mkRel classes ar = do

@@ -2,110 +2,38 @@
 module PgSchema.DML.Insert.Types where
 
 import Data.Aeson
-import Data.Kind
-import Data.Singletons.TH
 import Data.Typeable
-import PgSchema.Schema
-import PgSchema.HList.Class
-import PgSchema.HList.HListInfo
-import PgSchema.HList.Type
 import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple.ToRow
-import GHC.TypeError
-import GHC.TypeLits qualified as TL
-import Prelude.Singletons as SP
+import PgSchema.Ann
+import PgSchema.Types
+import PgSchema.Schema
 
+--------------------------------------------------------------------------------
+-- Plain Insert / Upsert / Update (Ann-based, без HList)
+--------------------------------------------------------------------------------
 
-type family CheckNodeAllMandatory sch (tab :: NameNSK) (rs :: [Symbol]) :: Constraint where
-  CheckNodeAllMandatory sch tab rs = Assert
-    (SP.Null (RestMandatory sch tab rs))
-    ( TL.TypeError
-        ( TL.Text "We can't insert data because not all mandatory fields are present."
-        :$$: TL.Text "Table: " :<>: TL.ShowType tab
-        :$$: TL.Text "Missing mandatory fields: "
-          :<>: TL.ShowType (RestMandatory sch tab rs)
-        )
-    )
+type PlainIn ann r = (CRecInfo ann r, AllPlain ann r, ToRow (Tagged ann r))
 
-type family CheckNodeAllMandOrPK (sch :: Type) (tab :: NameNSK) (rs :: [Symbol]) :: Constraint where
-  CheckNodeAllMandOrPK sch tab rs = Assert
-    (SP.Null (RestMandatory sch tab rs) || SP.Null (RestPK sch tab rs))
-    ( TL.TypeError
-        ( TL.Text "We can't upsert data because for table "
-        :<>: TL.ShowType tab
-        :$$: TL.Text "either not all mandatory fields or not all PK fields are present."
-        :$$: TL.Text "Missing mandatory fields: "
-          :<>: TL.ShowType (RestMandatory sch tab rs)
-        :$$: TL.Text "Missing PK fields: "
-          :<>: TL.ShowType (RestPK sch tab rs)
-        )
-    )
+type PlainOut ann r' = (CRecInfo ann r', AllPlain ann r', FromRow (Tagged ann r'))
 
-genDefunSymbols [''CheckNodeAllMandatory, ''CheckNodeAllMandOrPK]
+-- | Plain insert without RETURNING.
+type InsertNonReturning ann r =
+  (PlainIn ann r, CheckAllMandatory ann (ColsDbNames (Cols ann r)))
 
-type HListInfo ren sch t r h = ( IsoHList ren sch t r, CHListInfo sch t h )
-type HRep ren sch t r = HList (HListRep ren sch t r)
+-- | Plain insert with RETURNING.
+type InsertReturning ann r r' = (InsertNonReturning ann r, PlainOut ann r')
 
--- For "plain" insert
-type InsertReturning' ren sch t r r' h h' =
-  ( InsertNonReturning' ren sch t r h, h' ~ HRep ren sch t r'
-  , HListInfo ren sch t r' h', Typeable h', FromRow h', AllPlain sch t h')
+-- | Plain update with RETURNING.
+-- Для update мы не требуем покрывать mandatory/PK, только "plain" поля.
+type UpdateReturning ann r r' = (UpdateNonReturning ann r, PlainOut ann r')
 
-type InsertNonReturning' ren sch t r h =
-  ( h ~ HRep ren sch t r, HListInfo ren sch t r h
-  , AllMandatory sch t h '[], CSchema sch, ToRow h, AllPlain sch t h)
+-- | Plain update without RETURNING.
+type UpdateNonReturning ann r = PlainIn ann r
 
--- For insertJSON
-type SrcJSON ren sch t r h =
-  ( IsoHList ren sch t r, h ~ HList (HListRep ren sch t r)
-  , CHListInfo sch t h, ToJSON h, CSchema sch, Typeable (HListRep ren sch t r))
+type TreeSch ann sch ren tab = (ann ~ 'Ann ren sch tab, CSchema sch)
 
-type TgtJSON ren sch t r' h' =
-  ( h' ~ HRep ren sch t r', HListInfo ren sch t r' h', FromJSON h', Typeable h')
-  -- We have to check that return data only from tables in which we insert
-  -- Now it is not possible because we don't store
-  -- recursive RecordInfo RecordInfo on the type level...
+type TreeIn ann r = (CRecInfo ann r, ToJSON (Tagged ann r))
 
-type InsertReturning ren sch t r r' h h' = (InsertNonReturning ren sch t r h, TgtJSON ren sch t r' h')
-
-type InsertNonReturning ren sch t r h = (SrcJSON ren sch t r h, AllMandatory sch t h '[])
-
-type UpsertReturning ren sch t r r' h h' = (UpsertNonReturning ren sch t r h, TgtJSON ren sch t r' h')
-
-type UpsertNonReturning ren sch t r h = (SrcJSON ren sch t r h, AllMandatoryOrHasPK sch t h '[])
-
-type UpdateReturning ren sch t r r' h h' =
-  ( h ~ HRep ren sch t r, HListInfo ren sch t r h
-  , h' ~ HRep ren sch t r', HListInfo ren sch t r' h'
-  , AllPlain sch t h, ToRow h, FromRow h')
-
-type UpdateNonReturning ren sch t r h =
-  (h ~ HRep ren sch t r, HListInfo ren sch t r h, ToRow h, AllPlain sch t h)
-
-type family WalkLevel (check :: NameNSK ~> [Symbol] ~> Constraint)
-  (tab :: NameNSK) (fis :: [FieldInfoK]) (rs :: [Symbol])
-  :: Constraint where
-  WalkLevel check tab '[] rs = SP.Apply (SP.Apply check tab) rs
-  WalkLevel check tab ('FieldInfo name db ('RFPlain fd) ': xs) rs =
-    WalkLevel check tab xs (name ': rs)
-  WalkLevel check tab
-    ('FieldInfo _ _ ('RFToHere ('RecordInfo childTab childFIs) refs) ': xs) rs =
-      ( WalkLevel check childTab childFIs (SP.Map FromNameSym0 refs)
-      , WalkLevel check tab xs rs )
-  WalkLevel check tab (_ ': xs) rs = WalkLevel check tab xs rs
-
-type family AllMandatory (sch :: Type) (tab :: NameNSK) (r :: Type) (rFlds :: [Symbol]) :: Constraint where
-  AllMandatory sch t [r] rFlds = AllMandatory sch t r rFlds
-  AllMandatory sch t r  rFlds =
-    WalkLevel (CheckNodeAllMandatorySym1 sch) t (TRecordInfo sch t r) rFlds
-
--- For Upsert:
--- AllMandatory && NoPK     => insert
--- HasPK, not AllMandatory  => update
--- HasPK, AllMandatory      => upsert
---
--- i.e. Upsert condition: HasPK || AllMandatory
-type family AllMandatoryOrHasPK (sch :: Type) (tab :: NameNSK) (r :: Type) (rFlds :: [Symbol]) :: Constraint where
-  AllMandatoryOrHasPK sch t [r] rFlds = AllMandatoryOrHasPK sch t r rFlds
-  AllMandatoryOrHasPK sch t r  rFlds =
-    WalkLevel (CheckNodeAllMandOrPKSym1 sch) t (TRecordInfo sch t r) rFlds
+type TreeOut ann r' = (CRecInfo ann r', FromJSON (Tagged ann r'),
+  Typeable ann, Typeable r')

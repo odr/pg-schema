@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE NoFieldSelectors #-}
@@ -11,7 +12,6 @@ import Data.Function
 import Data.List qualified as L
 import Data.Ord
 import Data.Pool as Pool
-import Data.Tagged
 import Data.Text as T
 import Database.PostgreSQL.Simple
 import GHC.Generics
@@ -27,6 +27,7 @@ data RootI = MkRootI
   , grp :: Int32
   , name :: Text }
   deriving (Show, Generic)
+  deriving anyclass GenDefault
 
 data Mid1I = MkMid1I
   { pos :: Int32
@@ -34,6 +35,7 @@ data Mid1I = MkMid1I
   , sort_key :: Int32
   , payload :: Maybe Text }
   deriving (Show, Generic)
+  deriving anyclass GenDefault
 
 data Mid2I = MkMid2I
   { seq :: Int32
@@ -41,11 +43,13 @@ data Mid2I = MkMid2I
   , flag :: Bool
   , priority :: Int32 }
   deriving (Show, Generic, Eq, Ord)
+  deriving anyclass GenDefault
 
 data LeafI = MkLeafI
   { leaf_no :: Int32
   , value :: Double }
   deriving (Generic, Eq, Ord, Show)
+  deriving anyclass GenDefault
 
 eqRoot :: RootI -> RootI -> Bool
 eqRoot r1 r2 = (r1.code, r1.grp) == (r2.code, r2.grp)
@@ -56,10 +60,10 @@ type InsData = "mid1_root_fk" := [Mid1I]
 
 insData :: MonadIO m => Pool Connection -> PropertyT m [InsData]
 insData pool = do
-  rootsIn <- forAll (L.nubBy eqRoot <$> genDataH "root" RootI 1 200)
-  mid1In <- forAll (genDataH "mid1" Mid1I 0 10)
-  mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genDataH "mid2" Mid2I 0 10)
-  leafIn <- forAll (L.nubBy ((==) `on` (.leaf_no)) <$> genDataH "leaf" LeafI 0 10)
+  rootsIn <- forAll (L.nubBy eqRoot <$> genData' RootI 1 200)
+  mid1In <- forAll (genData' Mid1I 0 10)
+  mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genData' Mid2I 0 10)
+  leafIn <- forAll (L.nubBy ((==) `on` (.leaf_no)) <$> genData' LeafI 0 10)
   let
     inIns = rootsIn <&> \r -> "mid1_root_fk" =: mid1In
       :. "mid2_root_fk" =: (mid2In <&> \m2 -> "leaf_mid2_fk" =: leafIn :. m2)

@@ -14,7 +14,6 @@ import Data.List qualified as L
 import Data.Pool as Pool
 import Data.Scientific
 import Data.String as S
-import Data.Tagged
 import Data.Text as T
 import Data.Time
 import Data.UUID.Types

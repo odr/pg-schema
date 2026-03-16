@@ -20,7 +20,6 @@ import Data.Functor
 import Data.List as L
 import Data.Scientific
 import Data.Singletons
-import Data.Tagged
 import Data.Text as T
 import Data.Text.IO as T
 import Data.Time
@@ -42,7 +41,7 @@ import Test.QuickCheck.Instances ()
 
 type NSC name = "sch" ->> name
 
-data RenamerSch
+data RenamerSch :: Renamer
 
 type family TRenamerSch (s :: Symbol) :: Symbol where
   TRenamerSch "minPrice" = "price"
@@ -55,8 +54,7 @@ type family TRenamerSch (s :: Symbol) :: Symbol where
   TRenamerSch "avgNum" = "num"
   TRenamerSch s = s
 
-instance Renamer RenamerSch where
-  type Apply RenamerSch s = TRenamerSch s
+type instance Apply RenamerSch s = TRenamerSch s
 
 data Country = MkCountry
   { code :: Maybe Text
@@ -189,65 +187,62 @@ data AddressRet = AddressRet
   , cust_addr :: ["id" := Int32]}
   deriving Generic
 
-type HSch s r = HList (HListRep RenamerSch Sch (NSC s) r)
+type AnnSch tn = 'Ann RenamerSch Sch (NSC tn)
 
-selSch :: forall (tn :: Symbol) -> forall r h.
-  ( IsoHList RenamerSch Sch (NSC tn) r, h ~ HSch tn r
-  , CHListInfo Sch (NSC tn) h, FromRow h )
+selSch :: forall (tn :: Symbol) -> forall r h. Selectable (AnnSch tn) r
   => Connection -> QueryParam Sch (NSC tn) -> IO ([r], (Text,[SomeToField]))
-selSch tn = selectSch RenamerSch Sch (NSC tn)
+selSch tn = selectSch (AnnSch tn)
 
 insSch
-  :: forall tn -> forall r r' h h'
-  . InsertReturning' RenamerSch Sch (NSC tn) r r' h h'
+  :: forall tn -> forall r r'. InsertReturning (AnnSch tn) r r'
   => Connection -> [r] -> IO ([r'], Text)
-insSch tn = insertSch RenamerSch Sch (NSC tn)
+insSch tn = insertSch (AnnSch tn)
 
 insSch_
-  :: forall tn -> forall r h
-  . InsertNonReturning' RenamerSch Sch (NSC tn) r h
+  :: forall tn -> forall r. InsertNonReturning (AnnSch tn) r
   => Connection -> [r] -> IO (Int64, Text)
-insSch_ tn = insertSch_ RenamerSch Sch (NSC tn)
+insSch_ tn = insertSch_ (AnnSch tn)
 
-selSchText :: forall tn -> forall r h. (CHListInfo Sch (NSC tn) h, h ~ HSch tn r) =>
+selSchText :: forall tn -> forall r. (Selectable (AnnSch tn) r) =>
   QueryParam Sch (NSC tn) -> (Text,[SomeToField])
-selSchText tn @r = selectText @Sch @(NSC tn) @(HSch tn r)
+selSchText tn @r = selectText (AnnSch tn) @r
 
-insJSONText :: forall tn -> forall r r' h h'.
-  ( SrcJSON RenamerSch Sch (NSC tn) r h, TgtJSON RenamerSch Sch (NSC tn) r' h') => Text
-insJSONText tn @r @r' @h @h' = insertJSONText RenamerSch Sch (NSC tn) @r @r' @h @h'
+insJSONText
+  :: forall tn -> forall r r'.(CRecInfo (AnnSch tn) r, CRecInfo (AnnSch tn) r')
+  => Text
+insJSONText tn @r @r' = insertJSONText (AnnSch tn) @r @r'
 
 insJSON_
-  :: forall tn -> forall r h. InsertNonReturning RenamerSch Sch (NSC tn) r h
+  :: forall tn -> forall r. (TreeIn (AnnSch tn) r, AllMandatoryTree (AnnSch tn) r '[])
   => Connection -> [r] -> IO Text
-insJSON_ tn = insertJSON_ RenamerSch Sch (NSC tn)
+insJSON_ tn = insertJSON_ (AnnSch tn)
 
 insJSON
-  :: forall tn -> forall r r' h h'. InsertReturning RenamerSch Sch (NSC tn) r r' h h'
+  :: forall tn -> forall r r'. (TreeIn (AnnSch tn) r, TreeOut (AnnSch tn) r'
+    , AllMandatoryTree (AnnSch tn) r '[])
   => Connection -> [r] -> IO ([r'], Text)
-insJSON tn = insertJSON RenamerSch Sch (NSC tn)
+insJSON tn = insertJSON (AnnSch tn)
 
 upsJSON_
-  :: forall tn -> forall r h. UpsertNonReturning RenamerSch Sch (NSC tn) r h
+  :: forall tn -> forall r. (TreeIn (AnnSch tn) r
+    , AllMandatoryOrHasPKTree (AnnSch tn) r '[])
   => Connection -> [r] -> IO Text
-upsJSON_ tn = upsertJSON_ RenamerSch Sch (NSC tn)
+upsJSON_ tn = upsertJSON_ (AnnSch tn)
 
 upsJSON
-  :: forall tn -> forall r r' h h'. UpsertReturning RenamerSch Sch (NSC tn) r r' h h'
+  :: forall tn -> forall r r' . (TreeIn (AnnSch tn) r, TreeOut (AnnSch tn) r'
+    , AllMandatoryOrHasPKTree (AnnSch tn) r '[])
   => Connection -> [r] -> IO ([r'], Text)
-upsJSON tn = upsertJSON RenamerSch Sch (NSC tn)
+upsJSON tn = upsertJSON (AnnSch tn)
 
 updByCond_
-  :: forall tn -> forall r h.
-  ( h ~ HRep RenamerSch Sch (NSC tn) r, HListInfo RenamerSch Sch (NSC tn) r h
-  , ToRow h, AllPlain Sch (NSC tn) h )
+  :: forall tn -> forall r. UpdateNonReturning (AnnSch tn) r
   => Connection -> r -> Cond Sch (NSC tn) -> IO Int64
-updByCond_ tn = updateByCond_ RenamerSch Sch (NSC tn)
+updByCond_ tn = updateByCond_ (AnnSch tn)
 
-updByCond :: forall tn -> forall r r' h h'.
-  UpdateReturning RenamerSch Sch (NSC tn) r r' h h'
+updByCond :: forall tn -> forall r r' . (UpdateReturning (AnnSch tn) r r')
   => Connection -> r -> Cond Sch (NSC tn) -> IO [r']
-updByCond tn = updateByCond RenamerSch Sch (NSC tn)
+updByCond tn = updateByCond (AnnSch tn)
 
 main :: IO ()
 main = do

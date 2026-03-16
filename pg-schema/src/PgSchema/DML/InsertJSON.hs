@@ -16,15 +16,16 @@ import Data.Map as M hiding (mapMaybe)
 import Data.Maybe
 import Data.Text as T hiding (any)
 import Data.Traversable
+import PgSchema.Ann
 import PgSchema.DML.Insert.Types
-import PgSchema.HList.Class
-import PgSchema.HList.HListInfo
 import Database.PostgreSQL.Simple
 import PgSchema.Schema
+import PgSchema.Types
 import Data.String
 import GHC.Int
 import PgSchema.Utils.Internal
 import Prelude as P
+
 
 -- | Insert records into table and its children using JSON data internally.
 --
@@ -33,18 +34,20 @@ import Prelude as P
 -- All mandatory fields having no defaults should be present.
 --
 insertJSON
-  :: forall ren sch t -> forall r r' h h'. InsertReturning ren sch t r r' h h'
+  :: forall ann -> forall r r'. (TreeSch ann sch ren tab, TreeIn ann r
+    , TreeOut ann r', AllMandatoryTree ann r '[])
   => Connection -> [r] -> IO ([r'], Text)
-insertJSON ren sch t = insertJSONImpl ren sch t
+insertJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs
 
 -- | Insert records into table and its children using JSON data internally without returnings.
 --
 -- All mandatory fields having no defaults should be present.
 --
 insertJSON_
-  :: forall ren sch t -> forall r h. InsertNonReturning ren sch t r h
+  :: forall ann -> forall r
+  . (TreeSch ann sch ren tab, TreeIn ann r, AllMandatoryTree ann r '[])
   => Connection -> [r] -> IO Text
-insertJSON_ ren sch t = insertJSONImpl_ ren sch t
+insertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs
 
 -- | Upsert records into table and its children using JSON data internally.
 --
@@ -56,31 +59,32 @@ insertJSON_ ren sch t = insertJSONImpl_ ren sch t
 -- HasPK, AllMandatory      => @UPSERT@
 --
 upsertJSON
-  :: forall ren sch t -> forall r r' h h'. UpsertReturning ren sch t r r' h h'
+  :: forall ann -> forall r r'. (TreeSch ann sch ren tab
+    , TreeIn ann r, TreeOut ann r', AllMandatoryOrHasPKTree ann r '[])
   => Connection -> [r] -> IO ([r'], Text)
-upsertJSON ren sch t = insertJSONImpl ren sch t
+upsertJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs
 
 -- | Upsert records into table and its children using JSON data internally without returnings.
 --
 upsertJSON_
-  :: forall ren sch t -> forall r h. UpsertNonReturning ren sch t r h
+  :: forall ann -> forall r. (TreeSch ann sch ren tab
+    , TreeIn ann r, AllMandatoryOrHasPKTree ann r '[])
   => Connection -> [r] -> IO Text
-upsertJSON_ ren sch t = insertJSONImpl_ ren sch t
+upsertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs
 
 insertJSONImpl
-  :: forall ren sch t -> forall r r' h h'
-  . (SrcJSON ren sch t r h, TgtJSON ren sch t r' h')
+  :: forall ann -> forall r r'. (TreeSch ann sch ren tab, TreeIn ann r, TreeOut ann r')
   => Connection -> [r] -> IO ([r'], Text)
-insertJSONImpl ren sch t @r @r' @h @h' conn rs = withTransactionIfNot conn do
+insertJSONImpl ann @r @r' conn rs = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
   [Only res] <- let q = "select pg_temp.__ins(?)" in
     traceShow' q
-      $ trace' (BSL.unpack $ A.encode (toHList @ren @sch @t <$> rs))
-      $ query conn q $ Only $ toHList @ren @sch @t <$> rs
+      $ trace' (BSL.unpack $ A.encode (Tagged @ann @r <$> rs))
+      $ query conn q $ Only $ Tagged @ann @r <$> rs
   void $ execute_ conn "drop function pg_temp.__ins"
-  pure (fromHList @ren @sch @t <$> res, sql)
+  pure (unTagged @ann @r' <$> res, sql)
   where
-    sql = insertJSONText ren sch t @r @r' @h @h'
+    sql = insertJSONText ann @r @r'
 
 withTransactionIfNot :: Connection -> IO a -> IO a
 withTransactionIfNot conn act = do
@@ -89,28 +93,30 @@ withTransactionIfNot conn act = do
   (if isInTrans then id else withTransaction conn) act
 
 insertJSONImpl_
-  :: forall ren sch t -> forall r h. SrcJSON ren sch t r h
+  :: forall ann -> forall r. (TreeSch ann sch ren tab, TreeIn ann r)
   => Connection -> [r] -> IO Text
-insertJSONImpl_ ren sch t @r @h conn rs = withTransactionIfNot conn do
+insertJSONImpl_ ann @r conn rs = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
-  void $ execute conn "call pg_temp.__ins(?)" $ Only $ toHList @ren @sch @t <$> rs
+  void $ execute conn "call pg_temp.__ins(?)" $ Only $ Tagged @ann @r <$> rs
   sql <$ execute_ conn "drop procedure pg_temp.__ins"
   where
-    sql = insertJSONText_ ren sch t @r @h
+    sql = insertJSONText_ ann @r
 
-insertJSONText_ :: forall ren sch t -> forall r h s.
-  (IsString s, Monoid s, SrcJSON ren sch t r h, Ord s) => s
-insertJSONText_ _ren sch t @_r @h = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
-  (getRecordInfo @sch @t @h) []
+insertJSONText_ :: forall ann -> forall r s.
+  (IsString s, Monoid s, Ord s, TreeSch ann sch ren tab, CRecInfo ann r) => s
+insertJSONText_ (Ann ren sch tab) @r = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
+  (getRecordInfo @('Ann ren sch tab) @r) []
 
-insertJSONText :: forall ren sch t -> forall r r' h h' s.
-  (SrcJSON ren sch t r h, TgtJSON ren sch t r' h', IsString s, Monoid s, Ord s) => s
-insertJSONText _ren sch t @_r @_r' @h @h' = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
-  (getRecordInfo @sch @t @h) (getRecordInfo @sch @t @h').fields
+insertJSONText :: forall ann -> forall r r'.
+  ( TreeSch ann sch ren tab, CRecInfo ann r, CRecInfo ann r'
+  , IsString s, Monoid s, Ord s ) => s
+insertJSONText (Ann ren sch tab) @r @r' =
+  insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
+    (getRecordInfo @('Ann ren sch tab) @r) (getRecordInfo @('Ann ren sch tab) @r').fields
 
 insertJSONText'
   :: forall s. (IsString s, Monoid s, Ord s)
-  => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo -> [FieldInfo] -> s
+  => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo Text -> [FieldInfo Text] -> s
 insertJSONText' mapTypes mapTabs ir qfs = unlines'
   [ maybe
     "create or replace procedure pg_temp.__ins(data_0 jsonb) as $$"
@@ -136,8 +142,8 @@ data OP = INS | UPD | UPS deriving (Eq, Show)
 
 insertJSONTextM
   :: forall s. (IsString s, Monoid s, Ord s)
-  => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo
-  -> [FieldInfo] -> [s] -> [s] -> MonadInsert s (Maybe s)
+  => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo Text
+  -> [FieldInfo Text] -> [s] -> [s] -> MonadInsert s (Maybe s)
 insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
   (spaces, n) <- ask
   let

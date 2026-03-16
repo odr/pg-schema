@@ -86,30 +86,27 @@ module PgSchema.DML
   -- ** Execute SQL
   , insertSch, insertSch_, insertText, insertText_, AllPlain
   -- ** Constraints
-  , InsertReturning', InsertNonReturning'
+  , PlainIn, PlainOut, InsertNonReturning, InsertReturning
   -- * Update
   -- ** Execute SQL
   , updateByCond, updateByCond_, updateText, updateText_
   -- ** Constraints
-  , UpdateReturning, UpdateNonReturning, HListInfo, HRep
+  , UpdateReturning, UpdateNonReturning, CRecInfo
   -- * Tree-base Insert/Upsert
   -- ** Execute SQL
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_, insertJSONText, insertJSONText_
   -- ** Constraints
-  , InsertReturning, InsertNonReturning, UpsertReturning, UpsertNonReturning
-  , SrcJSON, TgtJSON
+  , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasPKTree, TreeSch
   -- * Delete
   , deleteByCond, deleteText
-  -- * Transport HList
-  , HList(..), IsoHList(..), CHListInfo(..)
-  -- ** Renamers
-  , Renamer(..), RenamerId, CamelToSnake
   -- * Types
-  , ToStar
+  , Ann(..), ToStar
+  -- * Renamers
+  , RenamerId, CamelToSnake, Renamer
   -- ** Tagged types
   , type (:=), (=:)
   -- *** Reexport
-  , Tagged(..), (:.)(..)
+  , Tagged(..), (:.)(..), Apply
   -- ** Enum
   , PGEnum
   -- ** Aggregates
@@ -124,7 +121,9 @@ module PgSchema.DML
   , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable, CTabDef(..)
   ) where
 
-import Data.Tagged ( Tagged(..) )
+
+import Data.Singletons
+import PgSchema.Ann
 import PgSchema.DML.Select as S
 import PgSchema.DML.Select.Types as S
 import PgSchema.DML.Insert as I
@@ -132,9 +131,7 @@ import PgSchema.DML.Insert.Types as I
 import PgSchema.DML.InsertJSON as I
 import PgSchema.DML.Update as U
 import PgSchema.DML.Delete as D
-import PgSchema.HList as H
 import PgSchema.Schema as S
 import PgSchema.Types as T
 import PgSchema.Utils.CamelToSnake
 import PgSchema.Utils.Internal as T (ToStar)
-import Database.PostgreSQL.Simple ((:.)(..))

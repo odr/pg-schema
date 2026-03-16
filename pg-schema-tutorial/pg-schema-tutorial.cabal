@@ -54,7 +54,6 @@ executable pgs-tutorial
     , pg-schema
     , postgresql-simple
     , template-haskell
-    , tagged
     , text
     , time
     , QuickCheck

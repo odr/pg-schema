@@ -1,3 +1,7 @@
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Utils where
 
 import Control.Exception
@@ -13,13 +17,13 @@ import Data.List qualified as L
 import Data.Pool as Pool
 import Data.Scientific
 import Data.String as S
-import Data.Tagged
 import Data.Text as T
 import Data.Time
 import Data.UUID.Types
 import qualified Data.Vector as Vec
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.Types (PGArray(..))
+import GHC.Generics
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -31,14 +35,12 @@ import GHC.TypeLits (KnownSymbol)
 
 type TS tab = "test_pgs" ->> tab
 
-type HSch s r = HList (HListRep RenamerSch Sch (TS s) r)
 
 type EnumPGS s = PGEnum Sch ("test_pgs" ->> s)
 
-data RenamerSch
+data RenamerSch :: Renamer
 
-instance Renamer RenamerSch where
-  type Apply RenamerSch s = RenamerSchImpl s
+type instance Apply RenamerSch s = RenamerSchImpl s
 
 type family RenamerSchImpl s where
   RenamerSchImpl "leaf_mid2_rev_fk" = "leaf_mid2_fk"
@@ -51,57 +53,56 @@ withRollback conn act = execute_ conn "BEGIN" >> act `finally` rollback conn
 withPool :: Pool Connection -> (Connection -> IO a) -> IO a
 withPool pool a = Pool.withResource pool \conn -> withRollback conn (a conn)
 
+type AnnSch tn = 'Ann RenamerSch Sch (TS tn)
+
 insSch
-  :: forall tn -> forall r r' h h'
-  . InsertReturning' RenamerSch Sch (TS tn) r r' h h'
+  :: forall tn -> forall r r'. InsertReturning (AnnSch tn) r r'
   => Connection -> [r] -> IO ([r'], Text)
-insSch tn = insertSch RenamerSch Sch (TS tn)
+insSch tn = insertSch (AnnSch tn)
 
 insSch_
-  :: forall tn -> forall r h
-  . InsertNonReturning' RenamerSch Sch (TS tn) r h
+  :: forall tn -> forall r. InsertNonReturning (AnnSch tn) r
   => Connection -> [r] -> IO (Int64, Text)
-insSch_ tn = insertSch_ RenamerSch Sch (TS tn)
+insSch_ tn = insertSch_ (AnnSch tn)
 
-selSch :: forall tn -> forall r h.
-  ( IsoHList RenamerSch Sch (TS tn) r, h ~ HSch tn r
-  , CHListInfo Sch (TS tn) h, FromRow h )
+selSch :: forall tn -> forall r. Selectable (AnnSch tn) r
   => Connection -> QueryParam Sch (TS tn) -> IO ([r], (Text,[SomeToField]))
-selSch tn = selectSch RenamerSch Sch (TS tn)
+selSch tn = selectSch (AnnSch tn)
 
 updByCond_
-  :: forall tn -> forall r h.
-  UpdateNonReturning RenamerSch Sch (TS tn) r h
+  :: forall tn -> forall r. UpdateNonReturning (AnnSch tn) r
   => Connection -> r -> Cond Sch (TS tn) -> IO Int64
-updByCond_ tn = updateByCond_ RenamerSch Sch (TS tn)
+updByCond_ tn = updateByCond_ (AnnSch tn)
 
-updByCond :: forall tn -> forall r r' h h'.
-  UpdateReturning RenamerSch Sch (TS tn) r r' h h'
+updByCond :: forall tn -> forall r r'. UpdateReturning (AnnSch tn) r r'
   => Connection -> r -> Cond Sch (TS tn) -> IO [r']
-updByCond tn = updateByCond RenamerSch Sch (TS tn)
+updByCond tn = updateByCond (AnnSch tn)
 
-delByCond :: forall tn -> KnownSymbol tn => Connection -> Cond Sch (TS tn) -> IO ()
-delByCond tn conn = void . deleteByCond Sch (TS tn) conn
+delByCond :: forall tn -> ToStar tn
+  => Connection -> Cond Sch (TS tn) -> IO (Int64, (Text,[SomeToField]))
+delByCond tn = deleteByCond Sch (TS tn)
 
 insJSON_
-  :: forall tn -> forall r h. InsertNonReturning RenamerSch Sch (TS tn) r h
+  :: forall tn -> forall r. (TreeIn (AnnSch tn) r, AllMandatoryTree (AnnSch tn) r '[])
   => Connection -> [r] -> IO Text
-insJSON_ tn = insertJSON_ RenamerSch Sch (TS tn)
+insJSON_ tn = insertJSON_ (AnnSch tn)
 
 insJSON
-  :: forall tn -> forall r r' h h'. InsertReturning RenamerSch Sch (TS tn) r r' h h'
+  :: forall tn -> forall r r'. (TreeIn (AnnSch tn) r, TreeOut (AnnSch tn) r'
+    , AllMandatoryTree (AnnSch tn) r '[])
   => Connection -> [r] -> IO ([r'], Text)
-insJSON tn = insertJSON RenamerSch Sch (TS tn)
+insJSON tn = insertJSON (AnnSch tn)
 
 upsJSON_
-  :: forall tn -> forall r h. UpsertNonReturning RenamerSch Sch (TS tn) r h
+  :: forall tn -> forall r. (TreeIn (AnnSch tn) r, AllMandatoryOrHasPKTree (AnnSch tn) r '[])
   => Connection -> [r] -> IO Text
-upsJSON_ tn = upsertJSON_ RenamerSch Sch (TS tn)
+upsJSON_ tn = upsertJSON_ (AnnSch tn)
 
 upsJSON
-  :: forall tn -> forall r r' h h'. UpsertReturning RenamerSch Sch (TS tn) r r' h h'
+  :: forall tn -> forall r r'. (TreeIn (AnnSch tn) r, TreeOut (AnnSch tn) r'
+    , AllMandatoryOrHasPKTree (AnnSch tn) r '[])
   => Connection -> [r] -> IO ([r'], Text)
-upsJSON tn = upsertJSON RenamerSch Sch (TS tn)
+upsJSON tn = upsertJSON (AnnSch tn)
 
 genDay :: Gen Day
 genDay = ModifiedJulianDay . fromIntegral <$> Gen.int (Range.linear 50000 80000)
@@ -120,6 +121,19 @@ genUTCTime = do
 
 class GenDefault a where
   defGen :: Gen a
+  default defGen :: (Generic a, GProdDefault (Rep a)) => Gen a
+  defGen = to <$> gprodDefGen
+
+class GProdDefault f where
+  gprodDefGen :: Gen (f p)
+instance GProdDefault U1 where
+  gprodDefGen = pure U1
+instance (GProdDefault f, GProdDefault g) => GProdDefault (f :*: g) where
+  gprodDefGen = (:*:) <$> gprodDefGen <*> gprodDefGen
+instance (GProdDefault f) => GProdDefault (M1 i meta f) where
+  gprodDefGen = M1 <$> gprodDefGen
+instance (GenDefault c) => GProdDefault (K1 i c) where
+  gprodDefGen = K1 <$> defGen
 
 instance GenDefault Int32 where defGen = Gen.int32 (Range.linear 0 1000000)
 instance GenDefault Text where defGen = Gen.text (Range.linear 0 50) Gen.alpha
@@ -149,13 +163,6 @@ instance GenDefault (CI Text) where defGen = S.fromString . T.unpack <$> defGen
 instance GenDefault (Binary BS.ByteString) where defGen = Binary <$> Gen.bytes (Range.linear 0 512)
 
 instance GenDefault UUID where defGen = genUUID
-
-instance GenDefault (HList '[]) where
-  defGen = pure HNil
-
-instance (GenDefault t, GenDefault (HList ts))
-      => GenDefault (HList ('(sn, t) ': ts)) where
-  defGen = (:*) <$> defGen <*> defGen
 
 genScientific :: Gen Scientific
 genScientific =
@@ -188,22 +195,26 @@ genValue = Gen.recursive Gen.choice
 genData :: forall a -> GenDefault a => Gen [a]
 genData a = genData' a 1 1000
 
+instance GenDefault a => GenDefault [a] where
+  defGen = genData' a 0 10
+
 genData' :: forall a -> Int -> Int -> GenDefault a => Gen [a]
 genData' a n1 n2 = Gen.list (Range.linear n1 n2) defGen
 
-genIsoHList
-  :: forall tn r -> forall h.
-    ( IsoHList RenamerSch Sch (TS tn) r
-    , h ~ HList (HListRep RenamerSch Sch (TS tn) r)
-    , GenDefault h )
-  => Gen r
-genIsoHList tn r @h =
-  fromHList @RenamerSch @Sch @(TS tn) @r <$> (defGen :: Gen h)
 
-genDataH
-  :: forall tn r -> forall h
-  . ( IsoHList RenamerSch Sch (TS tn) r
-    , h ~ HList (HListRep RenamerSch Sch (TS tn) r)
-    , GenDefault h )
-  => Int -> Int -> Gen [r]
-genDataH tn r n1 n2 = Gen.list (Range.linear n1 n2) $ genIsoHList tn r
+--genIsoHList
+--  :: forall tn r -> forall h.
+--    ( IsoHList RenamerSch Sch (TS tn) r
+--    , h ~ HList (HListRep RenamerSch Sch (TS tn) r)
+--    , GenDefault h )
+--  => Gen r
+--genIsoHList tn r @h =
+--  fromHList @RenamerSch @Sch @(TS tn) @r <$> (defGen :: Gen h)
+--
+--genDataH
+--  :: forall tn r -> forall h
+--  . ( IsoHList RenamerSch Sch (TS tn) r
+--    , h ~ HList (HListRep RenamerSch Sch (TS tn) r)
+--    , GenDefault h )
+--  => Int -> Int -> Gen [r]
+--genDataH tn r n1 n2 = Gen.list (Range.linear n1 n2) $ genIsoHList tn r

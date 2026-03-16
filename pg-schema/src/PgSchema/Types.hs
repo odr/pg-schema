@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP #-}
 module PgSchema.Types(
   -- * Tagged types
-  type (:=), (=:)
+  type (:=), (=:), (:.)(..), Tagged(..)
   -- * Enum
   , PGEnum
   -- * Aggregates
@@ -27,11 +27,11 @@ import Data.List qualified as L
 import Data.Maybe
 import Data.Scientific
 import Data.Singletons.TH
-import Data.Tagged
 import Data.Text as T
 import Data.Text.Encoding as T
 import Data.Time
 import Data.UUID.Types
+import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
@@ -158,11 +158,14 @@ newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
 instance (FromField a, Typeable a) => FromField (Tagged s (PgArr a)) where
   fromField = (fmap (coerce @(PGArray (Maybe a))) .) . fromField
 
-instance (FromField a, Typeable a) => FromField (PgArr a) where
-  fromField = (fmap (coerce @(PGArray (Maybe a))) .) . fromField
+-- instance ToField a => ToField (Tagged s (PgArr a)) where
+--   toField = toField . coerce @_ @(PGArray (Maybe a))
 
-instance ToField a => ToField (PgArr a) where
-  toField = toField . coerce @_ @(PGArray (Maybe a))
+-- instance (FromField a, Typeable a) => FromField (PgArr a) where
+--   fromField = (fmap (coerce @(PGArray (Maybe a))) .) . fromField
+
+-- instance ToField a => ToField (PgArr a) where
+--   toField = toField . coerce @_ @(PGArray (Maybe a))
 
 instance (ToField a, ToStar s) => ToField (Tagged (s :: Maybe NameNSK) (PgArr a)) where
   toField (Tagged (PgArr xs)) =
@@ -172,6 +175,12 @@ instance (ToField a, ToStar s) => ToField (Tagged (s :: Maybe NameNSK) (PgArr a)
       x -> x
     where
       typ = encodeUtf8Builder $ maybe mempty (("::" <>) . (<> "[]") . qualName) $ demote @s
+
+instance ToJSON a => ToJSON (Tagged (s :: Maybe NameNSK) (PgArr a)) where
+  toJSON = toJSON . unTagged
+
+instance FromJSON a => FromJSON (Tagged (s :: Maybe NameNSK) (PgArr a)) where
+  parseJSON = fmap Tagged . parseJSON
 
 -- | Make 'PgArr' from list. All elements are lifted to 'Maybe'
 pgArr' :: [a] -> PgArr a
@@ -350,6 +359,8 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
     , FromJSON (PGEnum sch n)
     , ToJSON (PGEnum sch n) )
 
+newtype Tagged s t = Tagged { unTagged :: t }
+  deriving stock (Show, Read, Eq, Ord, Functor, Generic, Foldable, Traversable)
 
 type s := t = Tagged s t
 infixr 5 :=
