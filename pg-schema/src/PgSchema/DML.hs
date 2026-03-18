@@ -36,7 +36,7 @@
 -- Here we get all orders created after `someDay` that have positions with articles like "%pencil%",
 -- and return only those order items that relate to "pencil", with article info.
 --
--- We can use both 'GHC.Generics.Generic'-based and 'Data.Tagged.Tagged'-based ('(=:)') interfaces and mix them in any way.
+-- We can use both 'GHC.Generics.Generic'-based and 'Data.PgTag.PgTag'-based ('(=:)') interfaces and mix them in any way.
 --
 -- Note that all "strings" here are 'GHC.TypeLits.Symbol' due to @RequiredTypeArguments@ extension.
 -- And operations are safe if database schema is correct.
@@ -106,10 +106,10 @@ module PgSchema.DML
   , Ann(..), ToStar
   -- * Renamers
   , RenamerId, CamelToSnake, Renamer
-  -- ** Tagged types
+  -- ** PgTag types
   , type (:=), (=:)
   -- *** Reexport
-  , Tagged(..), (:.)(..), Apply
+  , PgTag(..), (:.)(..), Apply
   -- ** Enum
   , PGEnum
   -- ** Aggregates

@@ -1,8 +1,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE CPP #-}
 module PgSchema.Types(
-  -- * Tagged types
-  type (:=), (=:), (:.)(..), Tagged(..)
+  -- * PgTag types
+  type (:=), (=:), (:.)(..), PgTag(..)
   -- * Enum
   , PGEnum
   -- * Aggregates
@@ -139,7 +139,7 @@ instance ToField PgChar where
 -- | 'PGArray' has no JSON instances. '[]' has JSON, but no PG.
 -- This one has both.
 -- All elements are 'Maybe' because PostgreSQL does not guarantee that all elements are present.
--- 'Tagged' 'PgArr' can be safely converted to 'ToField' with type information (e.g. @<val>::int[]@).
+-- 'PgTag' 'PgArr' can be safely converted to 'ToField' with type information (e.g. @<val>::int[]@).
 newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
   deriving stock (Show, Read)
   deriving newtype (Eq, Ord, FromJSON, ToJSON, Semigroup, Monoid
@@ -155,10 +155,10 @@ newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
   deriving newtype Flat
 #endif
 
-instance (FromField a, Typeable a) => FromField (Tagged s (PgArr a)) where
+instance (FromField a, Typeable a) => FromField (PgTag s (PgArr a)) where
   fromField = (fmap (coerce @(PGArray (Maybe a))) .) . fromField
 
--- instance ToField a => ToField (Tagged s (PgArr a)) where
+-- instance ToField a => ToField (PgTag s (PgArr a)) where
 --   toField = toField . coerce @_ @(PGArray (Maybe a))
 
 -- instance (FromField a, Typeable a) => FromField (PgArr a) where
@@ -167,8 +167,8 @@ instance (FromField a, Typeable a) => FromField (Tagged s (PgArr a)) where
 -- instance ToField a => ToField (PgArr a) where
 --   toField = toField . coerce @_ @(PGArray (Maybe a))
 
-instance (ToField a, ToStar s) => ToField (Tagged (s :: Maybe NameNSK) (PgArr a)) where
-  toField (Tagged (PgArr xs)) =
+instance (ToField a, ToStar s) => ToField (PgTag (s :: Maybe NameNSK) (PgArr a)) where
+  toField (PgTag (PgArr xs)) =
     case toField (PGArray xs) of
       Plain b -> Plain (b <> typ)
       Many zs -> Many (zs <> [Plain typ])
@@ -176,11 +176,11 @@ instance (ToField a, ToStar s) => ToField (Tagged (s :: Maybe NameNSK) (PgArr a)
     where
       typ = encodeUtf8Builder $ maybe mempty (("::" <>) . (<> "[]") . qualName) $ demote @s
 
-instance ToJSON a => ToJSON (Tagged (s :: Maybe NameNSK) (PgArr a)) where
-  toJSON = toJSON . unTagged
+instance ToJSON a => ToJSON (PgTag (s :: Maybe NameNSK) (PgArr a)) where
+  toJSON = toJSON . unPgTag
 
-instance FromJSON a => FromJSON (Tagged (s :: Maybe NameNSK) (PgArr a)) where
-  parseJSON = fmap Tagged . parseJSON
+instance FromJSON a => FromJSON (PgTag (s :: Maybe NameNSK) (PgArr a)) where
+  parseJSON = fmap PgTag . parseJSON
 
 -- | Make 'PgArr' from list. All elements are lifted to 'Maybe'
 pgArr' :: [a] -> PgArr a
@@ -359,11 +359,11 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
     , FromJSON (PGEnum sch n)
     , ToJSON (PGEnum sch n) )
 
-newtype Tagged s t = Tagged { unTagged :: t }
+newtype PgTag s t = PgTag { unPgTag :: t }
   deriving stock (Show, Read, Eq, Ord, Functor, Foldable, Traversable)
   deriving newtype (Semigroup, Monoid)
 
-type s := t = Tagged s t
+type s := t = PgTag s t
 infixr 5 :=
 
 (=:) :: forall b. forall a -> b -> a := b

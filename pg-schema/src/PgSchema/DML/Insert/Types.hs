@@ -13,9 +13,9 @@ import PgSchema.Schema
 -- Plain Insert / Upsert / Update (Ann-based, без HList)
 --------------------------------------------------------------------------------
 
-type PlainIn ann r = (CRecInfo ann r, AllPlain ann r, ToRow (Tagged ann r))
+type PlainIn ann r = (CRecInfo ann r, AllPlain ann r, ToRow (PgTag ann r))
 
-type PlainOut ann r' = (CRecInfo ann r', AllPlain ann r', FromRow (Tagged ann r'))
+type PlainOut ann r' = (CRecInfo ann r', AllPlain ann r', FromRow (PgTag ann r'))
 
 -- | Plain insert without RETURNING.
 -- Check that all fields belong to the root table and all mandatory fields are present.
@@ -37,9 +37,9 @@ type UpdateNonReturning ann r = PlainIn ann r
 
 type TreeSch ann sch ren tab = (ann ~ 'Ann ren sch tab, CSchema sch)
 
-type TreeIn ann r = (CRecInfo ann r, ToJSON (Tagged ann r))
+type TreeIn ann r = (CRecInfo ann r, ToJSON (PgTag ann r))
 
-type TreeOut ann r' = (CRecInfo ann r', FromJSON (Tagged ann r'),
+type TreeOut ann r' = (CRecInfo ann r', FromJSON (PgTag ann r'),
   Typeable ann, Typeable r')
 
 -- | Insert tree without RETURNING.

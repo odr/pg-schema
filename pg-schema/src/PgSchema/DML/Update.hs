@@ -24,9 +24,9 @@ updateByCond :: forall ann -> forall r r'.
   Connection -> r -> Cond sch t -> IO [r']
 updateByCond ann @r @r' conn r (updateText ann @r @r' -> (q,ps)) =
   trace' (q <> "\n\n" <> P.show ps <> "\n\n")
-  $ fmap (fmap (unTagged @ann @r'))
+  $ fmap (fmap (unPgTag @ann @r'))
   $ query conn (fromString q)
-  $ Tagged @ann @r r :. ps
+  $ PgTag @ann @r r :. ps
 
 -- | Update records by condition without returnings.
 updateByCond_ :: forall ann -> forall r.
@@ -35,7 +35,7 @@ updateByCond_ :: forall ann -> forall r.
 updateByCond_ ann @r conn r (updateText_ ann @r -> (q, ps)) =
   trace' (q <> "\n\n" <> P.show ps <> "\n\n")
   $ execute conn (fromString q)
-  $ Tagged @ann @r r :. ps
+  $ PgTag @ann @r r :. ps
 
 -- | Construct SQL text for updating records by condition and returning some fields.
 updateText :: forall ann -> forall r r' s.

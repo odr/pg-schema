@@ -93,7 +93,7 @@ prop_cond_query pool = withTests 30 $ property do
           qWhere $ pparent (TS "leaf_mid2_fk")
             $ pparent (TS "mid2_root_fk") $ "grp" >? (0::Int32)
         qOrderBy [descf "kind"]
-  L.length (L.filter (\(Tagged m1s :. _ :. r) ->
+  L.length (L.filter (\(PgTag m1s :. _ :. r) ->
     (r.grp > 100 || r.grp `L.elem` [0..70])
     && L.any ((<100) . (.sort_key)) (L.take 2 $ L.sortBy (comparing (.pos)) m1s)
     )
@@ -112,8 +112,8 @@ prop_cond_by_dup_path pool = withTests 30 $ property do
         qWhere $ "flag" =? True
         qPath "leaf_mid2_fk" do
           qWhere $ "leaf_no" >? (100::Int32)
-  L.sort [m2 | (Tagged m2s :. _) <- sel, m2 <- m2s]
-    === L.sort [m2 | (_ :. Tagged m2s :. _) <- inIns, (_ :. m2) <- m2s, m2.flag]
-  L.sort [(m2, L.length ls) | (_ :. _ :. Tagged m2s :. _) <- sel, (Tagged ls :. m2) <- m2s]
+  L.sort [m2 | (PgTag m2s :. _) <- sel, m2 <- m2s]
+    === L.sort [m2 | (_ :. PgTag m2s :. _) <- inIns, (_ :. m2) <- m2s, m2.flag]
+  L.sort [(m2, L.length ls) | (_ :. _ :. PgTag m2s :. _) <- sel, (PgTag ls :. m2) <- m2s]
     === L.sort [(m2, L.length $ L.filter ((>100) . (.leaf_no)) ls)
-      | (_ :. Tagged m2s :. _) <- inIns, (Tagged ls :. m2) <- m2s, m2.flag]
+      | (_ :. PgTag m2s :. _) <- inIns, (PgTag ls :. m2) <- m2s, m2.flag]

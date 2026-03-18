@@ -52,7 +52,7 @@ data QueryState = QueryState
 
 type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m)
 
-type Selectable ann r = (CRecInfo ann r, FromRow (Tagged ann r))
+type Selectable ann r = (CRecInfo ann r, FromRow (PgTag ann r))
 
 -- | With given 'Renamer' `ren`, 'CSchema' `sch` and table name `tab` get list of
 -- table records with related entities accordingly to the struture of `r` and 'QueryParam' `qp`.
@@ -63,7 +63,7 @@ selectSch :: forall ann -> forall r. (Selectable ann r, ann ~ 'Ann ren sch tab)
   => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
 selectSch ann @r conn (selectText ann @r -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
-  $ (,(sql,fs)) . fmap (unTagged @ann @r) <$> query conn (fromString $ T.unpack sql) fs
+  $ (,(sql,fs)) . fmap (unPgTag @ann @r) <$> query conn (fromString $ T.unpack sql) fs
 
 -- | Just get a text of select for debugging or something else.
 selectText :: forall ann -> forall r. (CRecInfo ann r, ann ~ 'Ann ren sch tab)

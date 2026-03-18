@@ -23,9 +23,9 @@ insertSch
   => Connection -> [r] -> IO ([r'], Text)
 insertSch ann @r @r' conn = let sql = insertText ann @r @r' in
   trace' (T.unpack sql)
-    $ fmap ((, sql) . fmap (unTagged @ann @r'))
+    $ fmap ((, sql) . fmap (unPgTag @ann @r'))
     . returning conn (fromString $ T.unpack sql)
-    . fmap (Tagged @ann @r)
+    . fmap (PgTag @ann @r)
 
 -- | Insert records into table without returnings.
 insertSch_ :: forall ann -> forall r. (InsertNonReturning ann r) =>
@@ -34,7 +34,7 @@ insertSch_ ann @r conn recs = let sql = insertText_ ann @r in do
   trace' (T.unpack sql)
     $ fmap (, sql)
     . executeMany conn (fromString $ T.unpack sql)
-    . fmap (Tagged @ann @r) $ recs
+    . fmap (PgTag @ann @r) $ recs
 
 -- | Construct SQL text for inserting records into table and returning some fields.
 insertText

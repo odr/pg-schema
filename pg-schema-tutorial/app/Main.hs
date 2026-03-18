@@ -298,11 +298,11 @@ main = do
   (as1 :: ["id" := Int32 :. "cust_addr" := ["id" := Int32 :. "name" := Text]], _insTxt)
     <- insJSON "addresses" @AddressI conn insData
   curTime <- T.show <$> getCurrentTime
-  upsJSON_ "addresses" conn $ as1 <&> \(a :. Tagged xs) ->
+  upsJSON_ "addresses" conn $ as1 <&> \(a :. PgTag xs) ->
     a :. "cust_addr" =: (xs <&> \(cid :. cname) ->
       cid :. fmap (<> ": " <> curTime <> " updated") cname)
   let
-    upsVals = as1 <&> \(a :. Tagged xs) -> a :. "cust_addr" =:
+    upsVals = as1 <&> \(a :. PgTag xs) -> a :. "cust_addr" =:
       (xs <&> \(cid :. _) -> cid :. "note" =: Just curTime)
   mapM_ print upsVals
   upsJSON_ "addresses" conn upsVals

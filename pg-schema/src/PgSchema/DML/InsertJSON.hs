@@ -75,10 +75,10 @@ insertJSONImpl ann @r @r' conn rs = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
   [Only res] <- let q = "select pg_temp.__ins(?)" in
     traceShow' q
-      $ trace' (BSL.unpack $ A.encode (Tagged @ann @r <$> rs))
-      $ query conn q $ Only $ Tagged @ann @r <$> rs
+      $ trace' (BSL.unpack $ A.encode (PgTag @ann @r <$> rs))
+      $ query conn q $ Only $ PgTag @ann @r <$> rs
   void $ execute_ conn "drop function pg_temp.__ins"
-  pure (unTagged @ann @r' <$> res, sql)
+  pure (unPgTag @ann @r' <$> res, sql)
   where
     sql = insertJSONText ann @r @r'
 
@@ -93,7 +93,7 @@ insertJSONImpl_
   => Connection -> [r] -> IO Text
 insertJSONImpl_ ann @r conn rs = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
-  void $ execute conn "call pg_temp.__ins(?)" $ Only $ Tagged @ann @r <$> rs
+  void $ execute conn "call pg_temp.__ins(?)" $ Only $ PgTag @ann @r <$> rs
   sql <$ execute_ conn "drop procedure pg_temp.__ins"
   where
     sql = insertJSONText_ ann @r

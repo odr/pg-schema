@@ -79,7 +79,7 @@ prop_hier_insert_simple_fk pool = withTests 30 $ property do
     (fst -> (outSel1' :: ["id" := Int32 :. "mid1_root_fk" := [Mid1Rec] :. RootRec])) <-
       selSch "root" conn qpEmpty
     (outUps' :: ["id" := Int32 :. "mid1_root_fk" := [Mid1Rec] :. RootRec], _txt) <-
-      upsJSON "root" conn $ outIns' <&> \(ir :. Tagged ms) -> "mid1_root_fk" =:
+      upsJSON "root" conn $ outIns' <&> \(ir :. PgTag ms) -> "mid1_root_fk" =:
         (ms <&> \(i :. flag :. x) -> i :. (not <$> flag) :. x) :. ir
     -- T.putStrLn $ "\n\n" <> txt <> "\n\n"
     (fst -> (outSel2' :: ["id" := Int32 :. "mid1_root_fk" := [Mid1Rec] :. RootRec])) <-
@@ -94,10 +94,10 @@ prop_hier_insert_simple_fk pool = withTests 30 $ property do
     === (L.sort outSel2 <&> \(ir :. ms :. _) -> ir :. length ms)
   (L.sort outIns <&> \(ir :. ms) -> ir :. length ms)
     === (L.sort outUps <&> \(ir :. ms :. _) -> ir :. length ms)
-  (L.sort outIns <&> \(ir :. Tagged ms) -> ir :. length (filter (\(_ :. Tagged b :. _) -> b) ms))
-    === (L.sort outSel2 <&> \(ir :. Tagged ms :. _) -> ir :. length (filter (\(Tagged b :. _) -> not b) ms))
-  (L.sort outUps <&> \(ir :. Tagged ms :. _) -> ir :. length (filter (\(Tagged b :. _) -> b) ms))
-    === (L.sort outSel2 <&> \(ir :. Tagged ms :. _) -> ir :. length (filter (\(Tagged b :. _) -> b) ms))
+  (L.sort outIns <&> \(ir :. PgTag ms) -> ir :. length (filter (\(_ :. PgTag b :. _) -> b) ms))
+    === (L.sort outSel2 <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (\(PgTag b :. _) -> not b) ms))
+  (L.sort outUps <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (\(PgTag b :. _) -> b) ms))
+    === (L.sort outSel2 <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (\(PgTag b :. _) -> b) ms))
 
 prop_hier_insert_composite_fk :: Pool Connection -> Property
 prop_hier_insert_composite_fk pool = withTests 30 $ property do
@@ -112,7 +112,7 @@ prop_hier_insert_composite_fk pool = withTests 30 $ property do
     (fst -> (outSel1' :: ["id" := Int32 :. "mid2_root_fk" := [Mid2Rec] :. RootRec])) <-
       selSch "root" conn qpEmpty
     (outUps' :: ["id" := Int32 :. "mid2_root_fk" := [Mid2Rec] :. RootRec], _txt) <-
-      upsJSON "root" conn $ outIns' <&> \(ir :. Tagged ms) -> "mid2_root_fk" =:
+      upsJSON "root" conn $ outIns' <&> \(ir :. PgTag ms) -> "mid2_root_fk" =:
         (ms <&> \m -> m { flag = not m.flag }) :. ir
     -- T.putStrLn $ "\n\n" <> txt <> "\n\n"
     (fst -> (outSel2' :: ["id" := Int32 :. "mid2_root_fk" := [Mid2Rec] :. RootRec])) <-
@@ -127,10 +127,10 @@ prop_hier_insert_composite_fk pool = withTests 30 $ property do
     === (L.sort outSel2 <&> \(ir :. ms :. _) -> ir :. length ms)
   (L.sort outIns <&> \(ir :. ms) -> ir :. length ms)
     === (L.sort outUps <&> \(ir :. ms :. _) -> ir :. length ms)
-  (L.sort outIns <&> \(ir :. Tagged ms) -> ir :. length (filter (.flag) ms))
-    === (L.sort outSel2 <&> \(ir :. Tagged ms :. _) -> ir :. length (filter (not . (.flag)) ms))
-  (L.sort outUps <&> \(ir :. Tagged ms :. _) -> ir :. length (filter (.flag) ms))
-    === (L.sort outSel2 <&> \(ir :. Tagged ms :. _) -> ir :. length (filter (.flag) ms))
+  (L.sort outIns <&> \(ir :. PgTag ms) -> ir :. length (filter (.flag) ms))
+    === (L.sort outSel2 <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (not . (.flag)) ms))
+  (L.sort outUps <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (.flag) ms))
+    === (L.sort outSel2 <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (.flag) ms))
 
 prop_hier_select_child_with_parent :: Pool Connection -> Property
 prop_hier_select_child_with_parent pool = withTests 30 $ property do
@@ -144,8 +144,8 @@ prop_hier_select_child_with_parent pool = withTests 30 $ property do
     (fst -> (outSel' :: [Mid2Rec :. "mid2_root_fk" := RootRec])) <-
       selSch "mid2" conn qpEmpty
     pure (outIns', outSel')
-  L.sort (outSel <&> \(m2r :. Tagged rr) -> m2r :. rr) ===
-    L.sort (outIns >>= \(Tagged m2rs :. rr) -> m2rs <&> (:. rr))
+  L.sort (outSel <&> \(m2r :. PgTag rr) -> m2r :. rr) ===
+    L.sort (outIns >>= \(PgTag m2rs :. rr) -> m2rs <&> (:. rr))
 
 prop_hier_duplicate_names_root_nested :: Pool Connection -> Property
 prop_hier_duplicate_names_root_nested pool = withTests 30 $ property do
@@ -160,4 +160,4 @@ prop_hier_duplicate_names_root_nested pool = withTests 30 $ property do
     void $ insJSON_ "root" conn inIns
     (fst -> (outSel' :: [Leaf])) <- selSch "leaf" conn qpEmpty
     pure outSel'
-  L.length outSel === L.length (inIns >>= \(Tagged xs :. _) -> xs >>= \(Tagged ys :. _) -> ys )
+  L.length outSel === L.length (inIns >>= \(PgTag xs :. _) -> xs >>= \(PgTag ys :. _) -> ys )

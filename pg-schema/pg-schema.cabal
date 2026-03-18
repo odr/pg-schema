@@ -61,7 +61,7 @@ source-repository head
   location: https://github.com/odr/pg-schema
 
 flag arbitrary
-  description: Make Arbitrary instances for all types (Enums, PgTagged, SchList)
+  description: Make Arbitrary instances for all types (Enums, PgPgTag, SchList)
   manual:      True
   default:     False
 
@@ -71,12 +71,12 @@ flag debug
   default:     False
 
 flag flat
-  description: Make Flat instances for all types (Enums, PgTagged, SchList)
+  description: Make Flat instances for all types (Enums, PgPgTag, SchList)
   manual:      True
   default:     False
 
 flag hashable
-  description: Make Hashable instances for all types (Enums, PgTagged, SchList)
+  description: Make Hashable instances for all types (Enums, PgPgTag, SchList)
   manual:      True
   default:     False
 

@@ -101,21 +101,21 @@ type family Col (ann :: Ann) (fld :: Symbol) t :: [ColInfo NameNSK] where
 type family ColFI (ann :: Ann) (fld :: Symbol) (fi :: RecFieldK NameNSK) t
   :: [ColInfo NameNSK] where
     ColFI ('Ann ren sch _) fld ('RFPlain ('FldDef tn False def)) (PgArr t) =
-      '[ 'ColInfo '(fld, 0) (Tagged (TypElem (TTypDef sch tn)) (PgArr t))
+      '[ 'ColInfo '(fld, 0) (PgTag (TypElem (TTypDef sch tn)) (PgArr t))
         (Apply ren fld) (RFPlain ('FldDef tn False def))]
     ColFI ('Ann ren sch _) fld ('RFPlain ('FldDef tn True def)) (Maybe (PgArr t)) =
-      '[ 'ColInfo '(fld, 0) (Maybe (Tagged (TypElem (TTypDef sch tn)) (PgArr t)))
+      '[ 'ColInfo '(fld, 0) (Maybe (PgTag (TypElem (TTypDef sch tn)) (PgArr t)))
         (Apply ren fld) (RFPlain ('FldDef tn True def))]
     -- RFFromHere: Maybe r
     ColFI ('Ann ren sch _) fld ('RFFromHere (toTab :: NameNSK) refs) (Maybe r) =
-      '[ 'ColInfo '(fld, 0) (Maybe (Tagged ('Ann ren sch toTab) r))
+      '[ 'ColInfo '(fld, 0) (Maybe (PgTag ('Ann ren sch toTab) r))
         (Apply ren fld) ('RFFromHere toTab refs) ]
     -- RFFromHere: r (non-Maybe)
     ColFI ('Ann ren sch _) fld ('RFFromHere (toTab :: NameNSK) refs) r =
-      '[ 'ColInfo '(fld, 0) (Tagged ('Ann ren sch toTab) r)
+      '[ 'ColInfo '(fld, 0) (PgTag ('Ann ren sch toTab) r)
         (Apply ren fld) ('RFFromHere toTab refs) ]
     ColFI ('Ann ren sch _) fld ('RFToHere (fromTab :: NameNSK) refs) [t] =
-      '[ 'ColInfo '(fld, 0) [Tagged ('Ann ren sch fromTab) t]
+      '[ 'ColInfo '(fld, 0) [PgTag ('Ann ren sch fromTab) t]
         (Apply ren fld) ('RFToHere fromTab refs) ]
     ColFI ('Ann ren sch _) fld fd t = '[ 'ColInfo '(fld, 0) t (Apply ren fld) fd ]
 
@@ -151,25 +151,25 @@ type family AddNum (xs :: [ColInfo p]) (cnts :: [SymNat])
 type Normalize xs = AddNum xs '[] '[]
 
 --------------------------------------------------------------------------------
--- ToJSON for Tagged Ann r
+-- ToJSON for PgTag Ann r
 --------------------------------------------------------------------------------
 
 instance
   (cols ~ Cols ann r, colsCase ~ ColsCaseOf r, ToJSONCols ann colsCase cols r)
-  => ToJSON (Tagged ann r) where
-    toJSON (Tagged r) = Object (KM.fromList (toPairs @ann @colsCase @cols r))
-    toEncoding (Tagged r) = pairs (foldMap (uncurry (.=)) $ toPairs @ann @colsCase @cols r)
+  => ToJSON (PgTag ann r) where
+    toJSON (PgTag r) = Object (KM.fromList (toPairs @ann @colsCase @cols r))
+    toEncoding (PgTag r) = pairs (foldMap (uncurry (.=)) $ toPairs @ann @colsCase @cols r)
 
 instance
   (cols ~ Cols ann r, colsCase ~ ColsCaseOf r, FromJSONCols ann colsCase cols r)
-  => FromJSON (Tagged ann r) where
-   parseJSON v = Tagged <$> parseJSONCols @ann @colsCase @cols v
+  => FromJSON (PgTag ann r) where
+   parseJSON v = PgTag <$> parseJSONCols @ann @colsCase @cols v
 
 -- >>> type AnnRel = 'Ann RenamerId PgCatalog (PGC "pg_constraint")
--- >>> rel = PgRelation{ constraint__namespace = Tagged "a", conname = "b", constraint__class = PgClassShort (Tagged "c") "d", constraint__fclass = PgClassShort (Tagged "e") "f", conkey = pgArr' [1,2], confkey = pgArr' [] }
+-- >>> rel = PgRelation{ constraint__namespace = PgTag "a", conname = "b", constraint__class = PgClassShort (PgTag "c") "d", constraint__fclass = PgClassShort (PgTag "e") "f", conkey = pgArr' [1,2], confkey = pgArr' [] }
 -- >>> rec = "conname" =: ("x" :: T.Text) :. "conname" =: ("z" :: T.Text) :. rel :. "conname" =: ("y" :: T.Text)
--- >>> toJSON $ Tagged @AnnRel rec
--- >>> fromJSON (toJSON $ Tagged @AnnRel rec) == Success (Tagged @AnnRel rec)
+-- >>> toJSON $ PgTag @AnnRel rec
+-- >>> fromJSON (toJSON $ PgTag @AnnRel rec) == Success (PgTag @AnnRel rec)
 -- Object (fromList [("confkey",Array []),("conkey",Array [Number 1.0,Number 2.0]),("conname",String "x"),("conname___1",String "z"),("conname___2",String "b"),("conname___3",String "y"),("constraint__class",Object (fromList [("class__namespace",Object (fromList [("nspname",String "c")])),("relname",String "d")])),("constraint__fclass",Object (fromList [("class__namespace",Object (fromList [("nspname",String "e")])),("relname",String "f")])),("constraint__namespace",Object (fromList [("nspname",String "a")]))])
 -- True
 
@@ -186,16 +186,16 @@ class FromJSONCols (ann :: Ann) (colsCase :: ColsCase) (cols :: [ColInfo NameNSK
 --------------------------------------------------------------------------------
 
 -- Если в Ann поле имеет тип () — оно мапится в пустой набор колонок.
--- Тогда ToRow/FromRow должны просто не трогать БД и возвращать Tagged ().
+-- Тогда ToRow/FromRow должны просто не трогать БД и возвращать PgTag ().
 instance ToJSONCols ann 'NonGenericCase '[] (fld := ()) where
   toPairs _ = []
 
 instance FromJSONCols ann 'NonGenericCase '[] (fld := ()) where
-  parseJSONCols = pure $ pure (Tagged ())
+  parseJSONCols = pure $ pure (PgTag ())
 
 instance (KnownSymNat sn, ToJSON t, Coercible v t)
   => ToJSONCols ann 'NonGenericCase '[ 'ColInfo sn t db fi ] (fld := v) where
-    toPairs (Tagged v) = [Key.fromText (demote @(NameSymNat sn)) .= coerce @_ @t v]
+    toPairs (PgTag v) = [Key.fromText (demote @(NameSymNat sn)) .= coerce @_ @t v]
 
 instance
   (KnownSymNat sn, FromJSON tEff, Coercible t tEff)
@@ -272,43 +272,43 @@ instance (ToJSONCols ann 'NonGenericCase cols (fld := t))
 
 instance (FromJSONCols ann 'NonGenericCase cols (fld := t))
   => GFromJSONCols ann cols (S1 (MetaSel ('Just fld) u v w) (Rec0 t)) where
-    gParseJSONCols = fmap (M1 . K1 . unTagged)
+    gParseJSONCols = fmap (M1 . K1 . unPgTag)
       . parseJSONCols @ann @'NonGenericCase @cols @(fld := t)
 
 --------------------------------------------------------------------------------
--- ToRow / FromRow для Tagged ann r
+-- ToRow / FromRow для PgTag ann r
 --------------------------------------------------------------------------------
-instance ToJSON (Tagged ann r) => ToField (Tagged (ann :: Ann) r) where
+instance ToJSON (PgTag ann r) => ToField (PgTag (ann :: Ann) r) where
   toField = toJSONField
 
-instance ToJSON (Tagged ann r) => ToField [Tagged (ann :: Ann) r] where
+instance ToJSON (PgTag ann r) => ToField [PgTag (ann :: Ann) r] where
   toField = toJSONField
 
-instance (FromJSON (Tagged ann r), Typeable ann, Typeable r)
-  => FromField (Tagged (ann :: Ann) r) where
+instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
+  => FromField (PgTag (ann :: Ann) r) where
     fromField = fromJSONField
 
-instance (FromJSON (Tagged ann r), Typeable ann, Typeable r)
-  => FromField [Tagged (ann :: Ann) r] where
+instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
+  => FromField [PgTag (ann :: Ann) r] where
     fromField = fromJSONField
 
 --------------------------------------------------------------------------------
--- ToRow / FromRow для Tagged ann r
+-- ToRow / FromRow для PgTag ann r
 --------------------------------------------------------------------------------
 instance
   (cols ~ Cols ann r, colsCase ~ ColsCaseOf r, ToRowCols ann colsCase cols r)
-  => ToRow (Tagged ann r) where
-    toRow (Tagged r) = toRowCols @ann @colsCase @cols r
+  => ToRow (PgTag ann r) where
+    toRow (PgTag r) = toRowCols @ann @colsCase @cols r
 
 instance
   (cols ~ Cols ann r, colsCase ~ ColsCaseOf r, FromRowCols ann colsCase cols r)
-  => FromRow (Tagged ann r) where
-    fromRow = Tagged <$> fromRowCols @ann @colsCase @cols
+  => FromRow (PgTag ann r) where
+    fromRow = PgTag <$> fromRowCols @ann @colsCase @cols
 
 -- >>> type AnnRel = 'Ann RenamerId PgCatalog (PGC "pg_constraint")
--- >>> (r1 :: [Tagged AnnRel ( ("conkey" := Int16))]) <- query_ conn "select 1::int2"
+-- >>> (r1 :: [PgTag AnnRel ( ("conkey" := Int16))]) <- query_ conn "select 1::int2"
 -- >>> r1
--- [Tagged {unTagged = Tagged {unTagged = 1}}]
+-- [PgTag {unPgTag = PgTag {unPgTag = 1}}]
 
 class ToRowCols (ann :: Ann) (colsCase :: ColsCase) (cols :: [ColInfo NameNSK]) r
   where
@@ -325,11 +325,11 @@ instance ToRowCols ann 'NonGenericCase '[] (fld := ()) where
   toRowCols _ = []
 
 instance FromRowCols ann 'NonGenericCase '[] (fld := ()) where
-  fromRowCols = pure (Tagged ())
+  fromRowCols = pure (PgTag ())
 
 instance (KnownSymNat sn, ToField t, Coercible v t)
   => ToRowCols ann 'NonGenericCase '[ 'ColInfo sn t db fi ] (fld := v) where
-    toRowCols (Tagged v) = [toField (coerce @_ @t v)]
+    toRowCols (PgTag v) = [toField (coerce @_ @t v)]
 
 instance (FromField tEff, Coercible t tEff)
   => FromRowCols ann 'NonGenericCase '[ 'ColInfo sn tEff db fi ] (fld := t) where
@@ -394,7 +394,7 @@ instance ToRowCols ann 'NonGenericCase cols (fld := t)
 instance
   FromRowCols ann 'NonGenericCase cols (fld := t)
   => GFromRowCols ann cols (S1 (MetaSel ('Just fld) u v w) (Rec0 t)) where
-    gFromRowCols = M1 . K1 . unTagged
+    gFromRowCols = M1 . K1 . unPgTag
       <$> fromRowCols @ann @'NonGenericCase @cols @(fld := t)
 
 --------------------------------------------------------------------------------
@@ -453,19 +453,19 @@ instance (ToStar fd, ToStar af, ToStar b) =>
 
 instance (CRecInfo ('Ann ren sch fromTab) r, ToStar refs)
   => CFldInfo ('Ann ren sch tab) ('RFToHere fromTab refs)
-    [Tagged ('Ann ren sch fromTab) r] where
+    [PgTag ('Ann ren sch fromTab) r] where
   getFldInfo = RFToHere (getRecordInfo @('Ann ren sch fromTab) @r) (demote @refs)
 
 -- nullable ребёнок
 instance (CRecInfo ('Ann ren sch toTab) r, ToStar refs)
   => CFldInfo ('Ann ren sch tab) ('RFFromHere toTab refs)
-    (Maybe (Tagged ('Ann ren sch toTab) r)) where
+    (Maybe (PgTag ('Ann ren sch toTab) r)) where
   getFldInfo = RFFromHere (getRecordInfo @('Ann ren sch toTab) @r) (demote @refs)
 
 -- не‑nullable ребёнок
 instance (CRecInfo ('Ann ren sch toTab) r, ToStar refs)
   => CFldInfo ('Ann ren sch tab) ('RFFromHere toTab refs)
-    (Tagged ('Ann ren sch toTab) r) where
+    (PgTag ('Ann ren sch toTab) r) where
   getFldInfo = RFFromHere (getRecordInfo @('Ann ren sch toTab) @r) (demote @refs)
 
 --------------------------------------------------------------------------------
@@ -539,13 +539,13 @@ type family TFldInfo (ann :: Ann) (fi :: RecField' Symbol NameNSK) t
   TFldInfo ann ('RFAggr  fd af b) t = 'RFAggr fd af b
   TFldInfo ann ('RFEmpty s)    t    = 'RFEmpty s
   TFldInfo ('Ann ren sch tab) ('RFToHere (toTab :: NameNSK) refs)
-    [Tagged ('Ann ren sch toTab) rChild] =
+    [PgTag ('Ann ren sch toTab) rChild] =
     'RFToHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch toTab) rChild)) refs
   TFldInfo ('Ann ren sch tab) ('RFFromHere (toTab :: NameNSK) refs)
-    (Maybe (Tagged ('Ann ren sch toTab) rChild)) =
+    (Maybe (PgTag ('Ann ren sch toTab) rChild)) =
     'RFFromHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch toTab) rChild)) refs
   TFldInfo ('Ann ren sch tab) ('RFFromHere (toTab :: NameNSK) refs)
-    (Tagged ('Ann ren sch toTab) rChild) =
+    (PgTag ('Ann ren sch toTab) rChild) =
     'RFFromHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch toTab) rChild)) refs
   TFldInfo ann fi t = TypeError
     (  Text "TFldInfo: unsupported RecField for Ann."

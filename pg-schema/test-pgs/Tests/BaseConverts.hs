@@ -70,7 +70,7 @@ prop_base_converts pool = withTests 30 $ property do
   L.sort resSel === L.sort recs
   resIns === recs
   L.sort resUpd === L.sort ((\(a:.b:.c) -> a:. "cint4" =: Just (10::Int32) :.c)
-    <$> L.filter (\(Tagged a:._) -> a == Just False) recs)
+    <$> L.filter (\(PgTag a:._) -> a == Just False) recs)
 
 prop_base_arr_converts :: Pool Connection -> Property
 prop_base_arr_converts pool = withTests 30 $ property do
@@ -100,7 +100,7 @@ prop_ext_converts pool = withTests 30 $ property do
   L.sort resSel === L.sort recs
   resIns === recs
   L.sort resUpd === L.sort ((\(a:.b) -> "ccitext" =: Just ("cAses" :: CI Text) :.b)
-    <$> L.filter (\(_ :. Tagged a :. _) -> a == Just Color_red) recs)
+    <$> L.filter (\(_ :. PgTag a :. _) -> a == Just Color_red) recs)
 
 prop_ext_arr_converts :: Pool Connection -> Property
 prop_ext_arr_converts pool = withTests 30 $ property do
