@@ -87,8 +87,6 @@ module PgSchema.DML
   , insertSch, insertSch_, insertText, insertText_, AllPlain
   -- ** Constraints
   , InsertNonReturning, InsertReturning
-  , InsertTreeNonReturning, InsertTreeReturning
-  , UpsertTreeNonReturning, UpsertTreeReturning
   -- * Update
   -- ** Execute SQL
   , updateByCond, updateByCond_, updateText, updateText_
@@ -99,6 +97,9 @@ module PgSchema.DML
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_, insertJSONText, insertJSONText_
   -- ** Constraints
   , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasPKTree, TreeSch
+  , InsertTreeNonReturning, InsertTreeReturning
+  , UpsertTreeNonReturning, UpsertTreeReturning
+  , TRecordInfo
   -- * Delete
   , deleteByCond, deleteText
   -- * Types
