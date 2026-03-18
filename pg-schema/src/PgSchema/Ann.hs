@@ -590,3 +590,38 @@ type family AllMandatoryOrHasPKTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   AllMandatoryOrHasPKTree ann [r] rFlds = AllMandatoryOrHasPKTree ann r rFlds
   AllMandatoryOrHasPKTree ann r rFlds =
     WalkLevelAnn CheckAllMandatoryOrHasPKSym0 ann (TRecordInfo ann r) rFlds
+
+--------------------------------------------------------------------------------
+-- Returning tree must be subtree of input tree (with path)
+--------------------------------------------------------------------------------
+
+type family Snoc (p :: [k]) (x :: k) :: [k] where
+  Snoc '[] x = '[x]
+  Snoc (a ': as) x = a ': Snoc as x
+
+type family FindChildAt (path :: [Symbol]) (db :: Symbol)
+  (fisIn :: [FieldInfo Symbol]) :: [FieldInfo Symbol] where
+  FindChildAt path db '[] = TypeError
+    (  Text "Returning tree is not a subtree of input tree."
+    :$$: Text "At path: " :<>: ShowType path
+    :$$: Text "Missing branch (db name): " :<>: ShowType db )
+  FindChildAt _ db ('FieldInfo _ db ('RFToHere ('RecordInfo _ fis) _) ': xs) = fis
+  FindChildAt _ db ('FieldInfo _ db ('RFFromHere ('RecordInfo _ fis) _) ': xs) = fis
+  FindChildAt path db (_ ': xs) = FindChildAt path db xs
+
+type family CheckSubtreeAt (path :: [Symbol]) (fisIn :: [FieldInfo Symbol])
+  (fisOut :: [FieldInfo Symbol]) :: Constraint where
+  CheckSubtreeAt path fisIn '[] = ()
+  CheckSubtreeAt path fisIn
+    ('FieldInfo _ db ('RFToHere ('RecordInfo _ childFIsOut) _) ': xs) =
+      ( CheckSubtreeAt (Snoc path db) (FindChildAt path db fisIn) childFIsOut
+      , CheckSubtreeAt path fisIn xs )
+  CheckSubtreeAt path fisIn
+    ('FieldInfo _ db ('RFFromHere ('RecordInfo _ childFIsOut) _) ': xs) =
+      ( CheckSubtreeAt (Snoc path db) (FindChildAt path db fisIn) childFIsOut
+      , CheckSubtreeAt path fisIn xs )
+  CheckSubtreeAt path fisIn (_ ': xs) = CheckSubtreeAt path fisIn xs
+
+type family ReturningIsSubtree ann rIn rOut :: Constraint where
+  ReturningIsSubtree ann rIn rOut =
+    CheckSubtreeAt '[] (TRecordInfo ann rIn) (TRecordInfo ann rOut)

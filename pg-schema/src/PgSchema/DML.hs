@@ -86,7 +86,9 @@ module PgSchema.DML
   -- ** Execute SQL
   , insertSch, insertSch_, insertText, insertText_, AllPlain
   -- ** Constraints
-  , PlainIn, PlainOut, InsertNonReturning, InsertReturning
+  , InsertNonReturning, InsertReturning
+  , InsertTreeNonReturning, InsertTreeReturning
+  , UpsertTreeNonReturning, UpsertTreeReturning
   -- * Update
   -- ** Execute SQL
   , updateByCond, updateByCond_, updateText, updateText_

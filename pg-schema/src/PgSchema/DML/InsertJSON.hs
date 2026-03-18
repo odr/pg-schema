@@ -34,20 +34,18 @@ import Prelude as P
 -- All mandatory fields having no defaults should be present.
 --
 insertJSON
-  :: forall ann -> forall r r'. (TreeSch ann sch ren tab, TreeIn ann r
-    , TreeOut ann r', AllMandatoryTree ann r '[])
+  :: forall ren sch tab -> forall r r'. InsertTreeReturning ren sch tab r r'
   => Connection -> [r] -> IO ([r'], Text)
-insertJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs
+insertJSON ren sch tab @r @r' conn rs = insertJSONImpl (Ann ren sch tab) @r @r' conn rs
 
 -- | Insert records into table and its children using JSON data internally without returnings.
 --
 -- All mandatory fields having no defaults should be present.
 --
 insertJSON_
-  :: forall ann -> forall r
-  . (TreeSch ann sch ren tab, TreeIn ann r, AllMandatoryTree ann r '[])
+  :: forall ren sch tab -> forall r. InsertTreeNonReturning ren sch tab r
   => Connection -> [r] -> IO Text
-insertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs
+insertJSON_ ren sch tab @r conn rs = insertJSONImpl_ (Ann ren sch tab) @r conn rs
 
 -- | Upsert records into table and its children using JSON data internally.
 --
@@ -59,18 +57,16 @@ insertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs
 -- HasPK, AllMandatory      => @UPSERT@
 --
 upsertJSON
-  :: forall ann -> forall r r'. (TreeSch ann sch ren tab
-    , TreeIn ann r, TreeOut ann r', AllMandatoryOrHasPKTree ann r '[])
+  :: forall ren sch tab -> forall r r'. UpsertTreeReturning ren sch tab r r'
   => Connection -> [r] -> IO ([r'], Text)
-upsertJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs
+upsertJSON ren sch tab @r @r' conn rs = insertJSONImpl (Ann ren sch tab) @r @r' conn rs
 
 -- | Upsert records into table and its children using JSON data internally without returnings.
 --
 upsertJSON_
-  :: forall ann -> forall r. (TreeSch ann sch ren tab
-    , TreeIn ann r, AllMandatoryOrHasPKTree ann r '[])
+  :: forall ren sch tab -> forall r. UpsertTreeNonReturning ren sch tab r
   => Connection -> [r] -> IO Text
-upsertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs
+upsertJSON_ ren sch tab @r conn rs = insertJSONImpl_ (Ann ren sch tab) @r conn rs
 
 insertJSONImpl
   :: forall ann -> forall r r'. (TreeSch ann sch ren tab, TreeIn ann r, TreeOut ann r')
