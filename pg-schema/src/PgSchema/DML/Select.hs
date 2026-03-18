@@ -172,6 +172,7 @@ selectM refTxt ri = do
 fieldM :: MonadQuery sch tab m => FieldInfo Text -> m (Text, Text, Text)
 fieldM fi = case fi.fieldKind of
   RFEmpty s -> pure ("null", s, "true")
+  RFSelfRef{} -> error "Impossible: RFSelfRef should be changed to RFFromHere or RFToHere"
   RFPlain {} -> do
     n <- asks qrCurrTabNum
     let val = "t" <> show' n <> "." <> fi.fieldDbName

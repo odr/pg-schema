@@ -63,6 +63,7 @@ singletons [d|
     -- False means: "Can be used only in selects with GROUP BY"
     | RFToHere p [Ref' s]
     | RFFromHere p [Ref' s]
+    | RFSelfRef p [Ref' s]
     deriving Show
 
   data Ref' s = Ref

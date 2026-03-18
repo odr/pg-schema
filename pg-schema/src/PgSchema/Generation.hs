@@ -326,6 +326,14 @@ rhsFromHere tab toTab rel mfld =
         ]
   in "'RFFromHere " <> showType toTab <> "\n      '[ " <> refsText <> " ]"
 
+rhsSelfRef :: NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
+rhsSelfRef tab rel mfld =
+  let refsText = T.intercalate "\n      , " $
+        [ textRef (mfld M.! (tab, fromName)) (mfld M.! (tab, toName)) fromName toName
+        | (fromName, toName) <- rdCols rel
+        ]
+  in "'RFSelfRef " <> showType tab <> "\n      '[ " <> refsText <> " ]"
+
 -- Closed type family TDBFieldInfo<Sch> and single CDBFieldInfo instance
 typeFamilyName :: Text -> Text
 typeFamilyName sch = "TDBFieldInfo" <> sch
@@ -358,20 +366,30 @@ textClosedFieldInfoTF schName (mfld, mtab, mrel) =
   <> "  type TDBFieldInfo " <> schName <> " t f = " <> tfName <> " t f\n\n"
   where
     tfName = typeFamilyName schName
-      -- All (tab, fldName, rhs) in deterministic order: by table, then plain fields, then toHere, then fromHere
+      -- All (tab, fldName, rhs) in deterministic order: by table, then plain fields,
+      -- then toHere, then fromHere, then selfRef (for self-FK).
     plainEntries =
       [ (tab, fldName, rhsPlain fd) | ((tab, fldName), fd) <- M.toList mfld ]
     toHereEntries =
       [ (tab, nnsName relName, rhsToHere tab (rdFrom rel) rel mfld)
       | (tab, (_, _froms, tos)) <- M.toList mtab, relName <- tos
       , let rel = mrel M.! relName
+      , not (rdFrom rel == tab && rdTo rel == tab)
       ]
     fromHereEntries =
       [ (tab, nnsName relName, rhsFromHere tab (rdTo rel) rel mfld)
       | (tab, (_, froms, _tos)) <- M.toList mtab, relName <- froms
       , let rel = mrel M.! relName
+      , not (rdFrom rel == tab && rdTo rel == tab)
       ]
-    allEntries = plainEntries <> toHereEntries <> fromHereEntries
+    selfEntries =
+      [ (tab, nnsName relName, rhsSelfRef tab rel mfld)
+      | (tab, (_, froms, tos)) <- M.toList mtab
+      , relName <- L.nub (tos <> froms)
+      , let rel = mrel M.! relName
+      , rdFrom rel == tab && rdTo rel == tab
+      ]
+    allEntries = plainEntries <> toHereEntries <> fromHereEntries <> selfEntries
     eqnLine tab fldName rhs =
       "  " <> tfName <> " " <> showType tab <> " \"" <> fldName <> "\" = " <> rhs <> "\n"
     perTableDefault _ tabStr fieldNames relNames =

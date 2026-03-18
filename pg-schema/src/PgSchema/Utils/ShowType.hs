@@ -58,6 +58,7 @@ instance ShowType (RecField NameNS) where
     RFAggr fd fn b -> "'RFAggr " <> T.intercalate " " [showType fd, showType fn, showType b]
     RFToHere t rr -> "'RFToHere " <> showType t <> " " <> showType rr
     RFFromHere t rr -> "'RFFromHere " <> showType t <> " " <> showType rr
+    RFSelfRef t rr -> "'RFSelfRef " <> showType t <> " " <> showType rr
 
 instance ShowType AggrFun where
   showType = \case

@@ -118,7 +118,8 @@ type family ColFI (ann :: Ann) (fld :: Symbol) (fi :: RecFieldK NameNSK) t
       '[ 'ColInfo '(fld, 0) [PgTag ('Ann ren sch fromTab) t]
         (Apply ren fld) ('RFToHere fromTab refs) ]
     ColFI ('Ann ren sch _) fld fd t = '[ 'ColInfo '(fld, 0) t (Apply ren fld) fd ]
-
+    ColFI ann fld ('RFSelfRef tab refs) [t] = ColFI ann fld ('RFToHere tab refs) [t]
+    ColFI ann fld ('RFSelfRef tab refs) t = ColFI ann fld ('RFFromHere tab refs) t
 --------------------------------------------------------------------------------
 -- GCols (closed TF: Generic Rep)
 --------------------------------------------------------------------------------
@@ -488,6 +489,7 @@ type family ColsDbNames (cols :: [ColInfo p]) :: [Symbol] where
 type family IsPlainRecField (fi :: RecField' Symbol NameNSK) :: Bool where
   IsPlainRecField ('RFToHere tab rs)   = 'False
   IsPlainRecField ('RFFromHere tab rs) = 'False
+  IsPlainRecField ('RFSelfRef tab rs)  = 'False
   IsPlainRecField fi        = 'True
 
 type family AllPlainCols (cols :: [ColInfo NameNSK]) :: Bool where
