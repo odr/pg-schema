@@ -360,7 +360,7 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
     , ToJSON (PGEnum sch n) )
 
 newtype Tagged s t = Tagged { unTagged :: t }
-  deriving stock (Show, Read, Eq, Ord, Functor, Generic, Foldable, Traversable)
+  deriving stock (Show, Read, Eq, Ord, Functor, Foldable, Traversable)
 
 type s := t = Tagged s t
 infixr 5 :=
