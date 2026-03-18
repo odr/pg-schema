@@ -361,6 +361,7 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
 
 newtype Tagged s t = Tagged { unTagged :: t }
   deriving stock (Show, Read, Eq, Ord, Functor, Foldable, Traversable)
+  deriving newtype (Semigroup, Monoid)
 
 type s := t = Tagged s t
 infixr 5 :=
