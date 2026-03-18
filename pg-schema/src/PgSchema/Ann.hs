@@ -571,11 +571,10 @@ type family WalkLevelAnn
   (ann :: Ann) (fis :: [FieldInfo Symbol]) (rs :: [Symbol]) :: Constraint where
   WalkLevelAnn check ann '[] rs = SP.Apply (SP.Apply check ann) rs
   WalkLevelAnn check ann ('FieldInfo name db ('RFPlain fd) ': xs) rs =
-    WalkLevelAnn check ann xs (name ': rs)
+    WalkLevelAnn check ann xs (db ': rs)
   WalkLevelAnn check ('Ann ren sch tab)
     ('FieldInfo _ _ ('RFToHere ('RecordInfo childTab childFIs) refs) ': xs) rs =
-      ( WalkLevelAnn check ('Ann ren sch childTab)
-          childFIs (SP.Map FromNameSym0 refs)
+      ( WalkLevelAnn check ('Ann ren sch childTab) childFIs (SP.Map FromNameSym0 refs)
       , WalkLevelAnn check ('Ann ren sch tab) xs rs )
   WalkLevelAnn check ann (_ ': xs) rs = WalkLevelAnn check ann xs rs
 
