@@ -67,7 +67,7 @@ data GenNames = GenNames
   , addRelations :: [AddRelation] -- ^ additional relations. Be careful!
   }
 
-type AnnCat tn = 'Ann RenamerId PgCatalog (PGC tn)
+type AnnCat tn = 'Ann RenamerId PgCatalog 3 (PGC tn)
 
 selCat :: forall (tn :: Symbol) -> forall r. (Selectable (AnnCat tn) r)
   => Connection -> QueryParam PgCatalog (PGC tn) -> IO ([r], (Text,[SomeToField]))

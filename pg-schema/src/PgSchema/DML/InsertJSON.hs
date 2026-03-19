@@ -34,18 +34,18 @@ import Prelude as P
 -- All mandatory fields having no defaults should be present.
 --
 insertJSON
-  :: forall ren sch tab -> forall r r'. InsertTreeReturning ren sch tab r r'
+  :: forall ann -> forall r r'. InsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
-insertJSON ren sch tab @r @r' = insertJSONImpl (Ann ren sch tab) @r @r'
+insertJSON ann @r @r' = insertJSONImpl ann @r @r'
 
 -- | Insert records into table and its children using JSON data internally without returnings.
 --
 -- All mandatory fields having no defaults should be present.
 --
 insertJSON_
-  :: forall ren sch tab -> forall r. InsertTreeNonReturning ren sch tab r
+  :: forall ann -> forall r. InsertTreeNonReturning ann r
   => Connection -> [r] -> IO Text
-insertJSON_ ren sch tab @r = insertJSONImpl_ (Ann ren sch tab) @r
+insertJSON_ ann @r = insertJSONImpl_ ann @r
 
 -- | Upsert records into table and its children using JSON data internally.
 --
@@ -57,19 +57,19 @@ insertJSON_ ren sch tab @r = insertJSONImpl_ (Ann ren sch tab) @r
 -- HasPK, AllMandatory      => @UPSERT@
 --
 upsertJSON
-  :: forall ren sch tab -> forall r r'. UpsertTreeReturning ren sch tab r r'
+  :: forall ann -> forall r r'. UpsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
-upsertJSON ren sch tab @r @r' = insertJSONImpl (Ann ren sch tab) @r @r'
+upsertJSON ann @r @r' = insertJSONImpl ann @r @r'
 
 -- | Upsert records into table and its children using JSON data internally without returnings.
 --
 upsertJSON_
-  :: forall ren sch tab -> forall r. UpsertTreeNonReturning ren sch tab r
+  :: forall ann -> forall r. UpsertTreeNonReturning ann r
   => Connection -> [r] -> IO Text
-upsertJSON_ ren sch tab @r = insertJSONImpl_ (Ann ren sch tab) @r
+upsertJSON_ ann @r = insertJSONImpl_ ann @r
 
 insertJSONImpl
-  :: forall ann -> forall r r'. (TreeSch ann sch ren tab, TreeIn ann r, TreeOut ann r')
+  :: forall ann -> forall r r'. (TreeSch ann, TreeIn ann r, TreeOut ann r')
   => Connection -> [r] -> IO ([r'], Text)
 insertJSONImpl ann @r @r' conn rs = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
@@ -89,7 +89,7 @@ withTransactionIfNot conn act = do
   (if isInTrans then id else withTransaction conn) act
 
 insertJSONImpl_
-  :: forall ann -> forall r. (TreeSch ann sch ren tab, TreeIn ann r)
+  :: forall ann -> forall r. (TreeSch ann, TreeIn ann r)
   => Connection -> [r] -> IO Text
 insertJSONImpl_ ann @r conn rs = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
@@ -99,16 +99,16 @@ insertJSONImpl_ ann @r conn rs = withTransactionIfNot conn do
     sql = insertJSONText_ ann @r
 
 insertJSONText_ :: forall ann -> forall r s.
-  (IsString s, Monoid s, Ord s, TreeSch ann sch ren tab, CRecInfo ann r) => s
-insertJSONText_ (Ann ren sch tab) @r = insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
-  (getRecordInfo @('Ann ren sch tab) @r) []
+  (IsString s, Monoid s, Ord s, TreeSch ann, CRecInfo ann r) => s
+insertJSONText_ ann @r = insertJSONText' (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+  (getRecordInfo @ann @r) []
 
 insertJSONText :: forall ann -> forall r r'.
-  ( TreeSch ann sch ren tab, CRecInfo ann r, CRecInfo ann r'
+  ( TreeSch ann, CRecInfo ann r, CRecInfo ann r'
   , IsString s, Monoid s, Ord s ) => s
-insertJSONText (Ann ren sch tab) @r @r' =
-  insertJSONText' (typDefMap @sch) (tabInfoMap @sch)
-    (getRecordInfo @('Ann ren sch tab) @r) (getRecordInfo @('Ann ren sch tab) @r').fields
+insertJSONText ann @r @r' =
+  insertJSONText' (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+    (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
 
 insertJSONText'
   :: forall s. (IsString s, Monoid s, Ord s)

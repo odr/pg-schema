@@ -187,7 +187,7 @@ data AddressRet = AddressRet
   , cust_addr :: ["id" := Int32]}
   deriving Generic
 
-type AnnSch tn = 'Ann RenamerSch Sch (NSC tn)
+type AnnSch tn = 'Ann RenamerSch Sch 3 (NSC tn)
 
 selSch :: forall (tn :: Symbol) -> forall r h. Selectable (AnnSch tn) r
   => Connection -> QueryParam Sch (NSC tn) -> IO ([r], (Text,[SomeToField]))
@@ -208,29 +208,29 @@ selSchText :: forall tn -> forall r. (Selectable (AnnSch tn) r) =>
 selSchText tn @r = selectText (AnnSch tn) @r
 
 insJSONText
-  :: forall tn -> forall r r'.(InsertTreeReturning RenamerSch Sch (NSC tn) r r')
+  :: forall tn -> forall r r'.(InsertTreeReturning (AnnSch tn) r r')
   => Text
-insJSONText tn @r @r' = insertJSONText (Ann RenamerSch Sch (NSC tn)) @r @r'
+insJSONText tn @r @r' = insertJSONText (AnnSch tn) @r @r'
 
 insJSON_
-  :: forall tn -> forall r. (InsertTreeNonReturning RenamerSch Sch (NSC tn) r)
+  :: forall tn -> forall r. (InsertTreeNonReturning (AnnSch tn) r)
   => Connection -> [r] -> IO Text
-insJSON_ tn = insertJSON_ RenamerSch Sch (NSC tn)
+insJSON_ tn = insertJSON_ (AnnSch tn)
 
 insJSON
-  :: forall tn -> forall r r'. (InsertTreeReturning RenamerSch Sch (NSC tn) r r')
+  :: forall tn -> forall r r'. (InsertTreeReturning (AnnSch tn) r r')
   => Connection -> [r] -> IO ([r'], Text)
-insJSON tn = insertJSON RenamerSch Sch (NSC tn)
+insJSON tn = insertJSON (AnnSch tn)
 
 upsJSON_
-  :: forall tn -> forall r. (UpsertTreeNonReturning RenamerSch Sch (NSC tn) r)
+  :: forall tn -> forall r. (UpsertTreeNonReturning (AnnSch tn) r)
   => Connection -> [r] -> IO Text
-upsJSON_ tn = upsertJSON_ RenamerSch Sch (NSC tn)
+upsJSON_ tn = upsertJSON_ (AnnSch tn)
 
 upsJSON
-  :: forall tn -> forall r r' . (UpsertTreeReturning RenamerSch Sch (NSC tn) r r')
+  :: forall tn -> forall r r' . (UpsertTreeReturning (AnnSch tn) r r')
   => Connection -> [r] -> IO ([r'], Text)
-upsJSON tn = upsertJSON RenamerSch Sch (NSC tn)
+upsJSON tn = upsertJSON (AnnSch tn)
 
 updByCond_
   :: forall tn -> forall r. UpdateNonReturning (AnnSch tn) r

@@ -59,14 +59,14 @@ type Selectable ann r = (CRecInfo ann r, FromRow (PgTag ann r))
 --
 -- To set `QueryParam` use `MonadQP`
 --
-selectSch :: forall ann -> forall r. (Selectable ann r, ann ~ 'Ann ren sch tab)
+selectSch :: forall ann -> forall r. (Selectable ann r, ann ~ 'Ann ren sch d tab)
   => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))
 selectSch ann @r conn (selectText ann @r -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
   $ (,(sql,fs)) . fmap (unPgTag @ann @r) <$> query conn (fromString $ T.unpack sql) fs
 
 -- | Just get a text of select for debugging or something else.
-selectText :: forall ann -> forall r. (CRecInfo ann r, ann ~ 'Ann ren sch tab)
+selectText :: forall ann -> forall r. (CRecInfo ann r, ann ~ 'Ann ren sch d tab)
   => QueryParam sch tab -> (Text,[SomeToField])
 selectText ann @r qp = evalRWS (selectM "" (getRecordInfo @ann @r)) (qr0 qp) qs0
 

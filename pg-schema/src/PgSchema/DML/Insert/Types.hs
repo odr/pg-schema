@@ -35,7 +35,7 @@ type UpdateReturning ann r r' = (UpdateNonReturning ann r, PlainOut ann r')
 -- Check that all updated fields belong to the root table.
 type UpdateNonReturning ann r = PlainIn ann r
 
-type TreeSch ann sch ren tab = (ann ~ 'Ann ren sch tab, CSchema sch)
+type TreeSch ann = CSchema (AnnSch ann)
 
 type TreeIn ann r = (CRecInfo ann r, ToJSON (PgTag ann r))
 
@@ -46,8 +46,8 @@ type TreeOut ann r' = (CRecInfo ann r', FromJSON (PgTag ann r'),
 --
 -- Check that all mandatory fields are present in all tables in tree.
 -- Reference fields in the child tables are not checked - they are inserted automatically.
-type InsertTreeNonReturning ren sch tab r =
-  (CSchema sch, TreeIn ('Ann ren sch tab) r, AllMandatoryTree ('Ann ren sch tab) r '[])
+type InsertTreeNonReturning ann r =
+  (TreeSch ann, TreeIn ann r, AllMandatoryTree ann r '[])
 
 -- | Insert tree with RETURNING.
 --
@@ -55,16 +55,15 @@ type InsertTreeNonReturning ren sch tab r =
 -- Reference fields in the child tables are not checked - they are inserted automatically.
 --
 -- It also checks that we get returnings only from the tables we inserted into.
-type InsertTreeReturning ren sch tab r r' =
-  ( InsertTreeNonReturning ren sch tab r, TreeOut ('Ann ren sch tab) r'
-  , ReturningIsSubtree ('Ann ren sch tab) r r' )
+type InsertTreeReturning ann r r' =
+  ( InsertTreeNonReturning ann r, TreeOut ann r', ReturningIsSubtree ann r r' )
 
 -- | Upsert tree without RETURNING.
 --
 -- Check that all mandatory fields or primary keys are present in all tables in tree.
 -- Reference fields in the child tables are not checked - they are inserted automatically.
-type UpsertTreeNonReturning ren sch tab r =
-  (CSchema sch, TreeIn ('Ann ren sch tab) r, AllMandatoryOrHasPKTree ('Ann ren sch tab) r '[])
+type UpsertTreeNonReturning ann r =
+  (TreeSch ann, TreeIn ann r, AllMandatoryOrHasPKTree ann r '[])
 
 -- | Upsert tree with RETURNING.
 --
@@ -72,6 +71,5 @@ type UpsertTreeNonReturning ren sch tab r =
 -- Reference fields in the child tables are not checked - they are inserted automatically.
 --
 -- It also checks that we get returnings only from the tables we upserted into.
-type UpsertTreeReturning ren sch tab r r' =
-  ( UpsertTreeNonReturning ren sch tab r, TreeOut ('Ann ren sch tab) r'
-  , ReturningIsSubtree ('Ann ren sch tab) r r' )
+type UpsertTreeReturning ann r r' =
+  ( UpsertTreeNonReturning ann r, TreeOut ann r', ReturningIsSubtree ann r r' )

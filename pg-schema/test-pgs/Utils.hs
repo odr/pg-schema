@@ -53,7 +53,7 @@ withRollback conn act = execute_ conn "BEGIN" >> act `finally` rollback conn
 withPool :: Pool Connection -> (Connection -> IO a) -> IO a
 withPool pool a = Pool.withResource pool \conn -> withRollback conn (a conn)
 
-type AnnSch tn = 'Ann RenamerSch Sch (TS tn)
+type AnnSch tn = 'Ann RenamerSch Sch 3 (TS tn)
 
 insSch
   :: forall tn -> forall r r'. InsertReturning (AnnSch tn) r r'
@@ -83,24 +83,24 @@ delByCond :: forall tn -> ToStar tn
 delByCond tn = deleteByCond Sch (TS tn)
 
 insJSON_
-  :: forall tn -> forall r. (InsertTreeNonReturning RenamerSch Sch (TS tn) r)
+  :: forall tn -> forall r. (InsertTreeNonReturning (AnnSch tn) r)
   => Connection -> [r] -> IO Text
-insJSON_ tn = insertJSON_ RenamerSch Sch (TS tn)
+insJSON_ tn = insertJSON_ (AnnSch tn)
 
 insJSON
-  :: forall tn -> forall r r'. (InsertTreeReturning RenamerSch Sch (TS tn) r r')
+  :: forall tn -> forall r r'. (InsertTreeReturning (AnnSch tn) r r')
   => Connection -> [r] -> IO ([r'], Text)
-insJSON tn = insertJSON RenamerSch Sch (TS tn)
+insJSON tn = insertJSON (AnnSch tn)
 
 upsJSON_
-  :: forall tn -> forall r. (UpsertTreeNonReturning RenamerSch Sch (TS tn) r)
+  :: forall tn -> forall r. (UpsertTreeNonReturning (AnnSch tn) r)
   => Connection -> [r] -> IO Text
-upsJSON_ tn = upsertJSON_ RenamerSch Sch (TS tn)
+upsJSON_ tn = upsertJSON_ (AnnSch tn)
 
 upsJSON
-  :: forall tn -> forall r r'. (UpsertTreeReturning RenamerSch Sch (TS tn) r r')
+  :: forall tn -> forall r r'. (UpsertTreeReturning (AnnSch tn) r r')
   => Connection -> [r] -> IO ([r'], Text)
-upsJSON tn = upsertJSON RenamerSch Sch (TS tn)
+upsJSON tn = upsertJSON (AnnSch tn)
 
 genDay :: Gen Day
 genDay = ModifiedJulianDay . fromIntegral <$> Gen.int (Range.linear 50000 80000)

@@ -21,7 +21,7 @@ import GHC.TypeError
 import PgSchema.Schema
 import PgSchema.Types
 import PgSchema.Utils.Internal
-import Prelude.Singletons as SP hiding (type (+))
+import Prelude.Singletons as SP hiding (type (+), type (-))
 
 
 
@@ -33,7 +33,11 @@ import Prelude.Singletons as SP hiding (type (+))
 data Ann = Ann
   { annRen  :: Symbol ~> Symbol
   , annSch  :: Type
+  , annDepth :: Nat
   , annTab  :: NameNSK }
+
+type family AnnSch (ann :: Ann) where
+  AnnSch ('Ann ren sch depth tab) = sch
 
 data ColInfo (p :: Type) = ColInfo
   { ciField   :: SymNat
@@ -96,28 +100,28 @@ type family Col (ann :: Ann) (fld :: Symbol) t :: [ColInfo NameNSK] where
   Col ann fld (Aggr' ACount Int64) =
     '[ 'ColInfo '(fld, 0) (Aggr' ACount Int64) fld
       ('RFAggr ('FldDef ("pg_catalog" ->> "int8") False False) 'ACount 'True) ]
-  Col ('Ann ren sch tab) fld t = ColFI ('Ann ren sch tab) fld (TDBFieldInfo sch tab (Apply ren fld)) t
+  Col ('Ann ren sch d tab) fld t = ColFI ('Ann ren sch d tab) fld (TDBFieldInfo sch tab (Apply ren fld)) t
 
 type family ColFI (ann :: Ann) (fld :: Symbol) (fi :: RecFieldK NameNSK) t
   :: [ColInfo NameNSK] where
-    ColFI ('Ann ren sch _) fld ('RFPlain ('FldDef tn False def)) (PgArr t) =
+    ColFI ('Ann ren sch _ _) fld ('RFPlain ('FldDef tn False def)) (PgArr t) =
       '[ 'ColInfo '(fld, 0) (PgTag (TypElem (TTypDef sch tn)) (PgArr t))
         (Apply ren fld) (RFPlain ('FldDef tn False def))]
-    ColFI ('Ann ren sch _) fld ('RFPlain ('FldDef tn True def)) (Maybe (PgArr t)) =
+    ColFI ('Ann ren sch _ _) fld ('RFPlain ('FldDef tn True def)) (Maybe (PgArr t)) =
       '[ 'ColInfo '(fld, 0) (Maybe (PgTag (TypElem (TTypDef sch tn)) (PgArr t)))
         (Apply ren fld) (RFPlain ('FldDef tn True def))]
     -- RFFromHere: Maybe r
-    ColFI ('Ann ren sch _) fld ('RFFromHere (toTab :: NameNSK) refs) (Maybe r) =
-      '[ 'ColInfo '(fld, 0) (Maybe (PgTag ('Ann ren sch toTab) r))
+    ColFI ('Ann ren sch d _) fld ('RFFromHere (toTab :: NameNSK) refs) (Maybe r) =
+      '[ 'ColInfo '(fld, 0) (Maybe (PgTag (AnnRefTabDepth ('Ann ren sch d toTab) toTab) r))
         (Apply ren fld) ('RFFromHere toTab refs) ]
     -- RFFromHere: r (non-Maybe)
-    ColFI ('Ann ren sch _) fld ('RFFromHere (toTab :: NameNSK) refs) r =
-      '[ 'ColInfo '(fld, 0) (PgTag ('Ann ren sch toTab) r)
+    ColFI ('Ann ren sch d _) fld ('RFFromHere (toTab :: NameNSK) refs) r =
+      '[ 'ColInfo '(fld, 0) (PgTag (AnnRefTabDepth ('Ann ren sch d toTab) toTab) r)
         (Apply ren fld) ('RFFromHere toTab refs) ]
-    ColFI ('Ann ren sch _) fld ('RFToHere (fromTab :: NameNSK) refs) [t] =
-      '[ 'ColInfo '(fld, 0) [PgTag ('Ann ren sch fromTab) t]
+    ColFI ('Ann ren sch d _) fld ('RFToHere (fromTab :: NameNSK) refs) [t] =
+      '[ 'ColInfo '(fld, 0) [PgTag (AnnRefTabDepth ('Ann ren sch d fromTab) fromTab) t]
         (Apply ren fld) ('RFToHere fromTab refs) ]
-    ColFI ('Ann ren sch _) fld fd t = '[ 'ColInfo '(fld, 0) t (Apply ren fld) fd ]
+    ColFI ('Ann ren sch d _) fld fd t = '[ 'ColInfo '(fld, 0) t (Apply ren fld) fd ]
     ColFI ann fld ('RFSelfRef tab refs) [t] = ColFI ann fld ('RFToHere tab refs) [t]
     ColFI ann fld ('RFSelfRef tab refs) t = ColFI ann fld ('RFFromHere tab refs) t
 --------------------------------------------------------------------------------
@@ -426,7 +430,7 @@ class CFldInfo (ann :: Ann) (fld :: RecField' Symbol NameNSK) t where
 --   getRecordInfo = RecordInfo (demote @tab) []
 
 instance
-  (ann ~ 'Ann ren sch tab, SingI tab, cols ~ Cols ann r, CRecInfoCols ann cols)
+  (ann ~ 'Ann ren sch d tab, SingI tab, cols ~ Cols ann r, CRecInfoCols ann cols)
   => CRecInfo ann r where
   getRecordInfo = RecordInfo (demote @tab) (getFields @ann @cols)
 
@@ -452,22 +456,23 @@ instance (ToStar fd, ToStar af, ToStar b) =>
   CFldInfo ann ('RFAggr fd af b) t where
   getFldInfo = RFAggr (demote @fd) (demote @af) (demote @b)
 
-instance (CRecInfo ('Ann ren sch fromTab) r, ToStar refs)
-  => CFldInfo ('Ann ren sch tab) ('RFToHere fromTab refs)
-    [PgTag ('Ann ren sch fromTab) r] where
-  getFldInfo = RFToHere (getRecordInfo @('Ann ren sch fromTab) @r) (demote @refs)
+type family AnnRefTabDepth (ann :: Ann) refTab :: Ann where
+  AnnRefTabDepth ('Ann ren sch d tab) refTab =
+    'Ann ren sch (DecDepth ('Ann ren sch d tab)) refTab
+
+instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann fromTab)
+  => CFldInfo ann ('RFToHere fromTab refs) [PgTag ann' r] where
+  getFldInfo = RFToHere (getRecordInfo @ann' @r) (demote @refs)
 
 -- nullable ребёнок
-instance (CRecInfo ('Ann ren sch toTab) r, ToStar refs)
-  => CFldInfo ('Ann ren sch tab) ('RFFromHere toTab refs)
-    (Maybe (PgTag ('Ann ren sch toTab) r)) where
-  getFldInfo = RFFromHere (getRecordInfo @('Ann ren sch toTab) @r) (demote @refs)
+instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab)
+  => CFldInfo ann ('RFFromHere toTab refs) (Maybe (PgTag ann' r)) where
+  getFldInfo = RFFromHere (getRecordInfo @ann' @r) (demote @refs)
 
 -- не‑nullable ребёнок
-instance (CRecInfo ('Ann ren sch toTab) r, ToStar refs)
-  => CFldInfo ('Ann ren sch tab) ('RFFromHere toTab refs)
-    (PgTag ('Ann ren sch toTab) r) where
-  getFldInfo = RFFromHere (getRecordInfo @('Ann ren sch toTab) @r) (demote @refs)
+instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab)
+  => CFldInfo ann ('RFFromHere toTab refs) (PgTag ann' r) where
+  getFldInfo = RFFromHere (getRecordInfo @ann' @r) (demote @refs)
 
 --------------------------------------------------------------------------------
 -- Helpers over Cols ann r
@@ -506,32 +511,27 @@ type family AllPlain (ann :: Ann) (r :: Type) :: Constraint where
       :$$: Text "Cols:  " :<>: ShowType (Cols ann r) ))
 
 --------------------------------------------------------------------------------
--- Node-level проверки Mandatory / PK (аналог CheckNodeAll*)
---------------------------------------------------------------------------------
-
--- rs: список колонок, которые уже "покрыты" (включая те, что придут из Reference)
-type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
-  CheckAllMandatory ('Ann ren sch tab) rs = Assert
-    (SP.Null (RestMandatory sch tab rs))
-    (TypeError
-      (  Text "We can't insert data because not all mandatory fields are present."
-      :$$: Text "Table: " :<>: ShowType tab
-      :$$: Text "Missing mandatory fields: " :<>: ShowType (RestMandatory sch tab rs) ))
-
-type family CheckAllMandatoryOrHasPK (ann :: Ann) (rs :: [Symbol]) :: Constraint where
-  CheckAllMandatoryOrHasPK ('Ann ren sch tab) rs = Assert
-    ( SP.Null (RestMandatory sch tab rs)
-      || SP.Null (RestPK sch tab rs) )
-    (TypeError
-      (  Text "We can't upsert data because for table " :<>: ShowType tab
-      :$$: Text "either not all mandatory fields or not all PK fields are present."
-      :$$: Text "Missing mandatory fields: " :<>: ShowType (RestMandatory sch tab rs)
-      :$$: Text "Missing PK fields: " :<>: ShowType (RestPK sch tab rs) ))
-
-genDefunSymbols [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasPK]
---------------------------------------------------------------------------------
 -- Type-level RecordInfo для Ann
 --------------------------------------------------------------------------------
+-- | Decrease relation-walk depth kept in 'Ann'.
+-- When depth is exhausted, fail with a detailed type error instead of
+-- potentially diverging in recursive type families/instances.
+type family DecDepth (ann :: Ann) :: Nat where
+  DecDepth ('Ann ren sch 0 tab) = TypeError
+    (  Text "pg-schema: relation walk depth limit reached."
+    :$$: Text ""
+    :$$: Text "Ann:   " :<>: ShowType ('Ann ren sch 0 tab)
+    :$$: Text "Table: " :<>: ShowType tab
+    :$$: Text ""
+    :$$: Text "Likely reason:"
+    :$$: Text "  Recursive/self-referential tree (SelfRef or cycle) is deeper"
+    :$$: Text "  than annDepth in your Ann."
+    :$$: Text ""
+    :$$: Text "How to fix:"
+    :$$: Text "  1) Increase annDepth in Ann;"
+    :$$: Text "  2) Reduce recursion depth in selected/inserted shape;"
+    :$$: Text "  3) For true graph cycles, use manual SQL." )
+  DecDepth ('Ann _ _ d _) = d - 1
 
 -- Type-level аналог CFldInfo: берём DB-уровневый RecFieldK и Haskell-тип поля t
 -- и строим RecField' Symbol (RecordInfo Symbol) с уже вложенным TRecordInfo для детей.
@@ -540,15 +540,15 @@ type family TFldInfo (ann :: Ann) (fi :: RecField' Symbol NameNSK) t
   TFldInfo ann ('RFPlain fd) t      = 'RFPlain fd
   TFldInfo ann ('RFAggr  fd af b) t = 'RFAggr fd af b
   TFldInfo ann ('RFEmpty s)    t    = 'RFEmpty s
-  TFldInfo ('Ann ren sch tab) ('RFToHere (toTab :: NameNSK) refs)
-    [PgTag ('Ann ren sch toTab) rChild] =
-    'RFToHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch toTab) rChild)) refs
-  TFldInfo ('Ann ren sch tab) ('RFFromHere (toTab :: NameNSK) refs)
-    (Maybe (PgTag ('Ann ren sch toTab) rChild)) =
-    'RFFromHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch toTab) rChild)) refs
-  TFldInfo ('Ann ren sch tab) ('RFFromHere (toTab :: NameNSK) refs)
-    (PgTag ('Ann ren sch toTab) rChild) =
-    'RFFromHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch toTab) rChild)) refs
+  TFldInfo ('Ann ren sch d tab) ('RFToHere (toTab :: NameNSK) refs)
+    [PgTag ('Ann ren sch d' toTab) rChild] =
+    'RFToHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch d' toTab) rChild)) refs
+  TFldInfo ('Ann ren sch d tab) ('RFFromHere (toTab :: NameNSK) refs)
+    (Maybe (PgTag ('Ann ren sch d' toTab) rChild)) =
+    'RFFromHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch d' toTab) rChild)) refs
+  TFldInfo ('Ann ren sch d tab) ('RFFromHere (toTab :: NameNSK) refs)
+    (PgTag ('Ann ren sch d' toTab) rChild) =
+    'RFFromHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch d' toTab) rChild)) refs
   TFldInfo ann fi t = TypeError
     (  Text "TFldInfo: unsupported RecField for Ann."
     :$$: Text "  Ann: " :<>: ShowType ann
@@ -565,6 +565,32 @@ type family TRecordInfoCols (ann  :: Ann) (cols :: [ColInfo NameNSK]) :: [FieldI
 
 type family TRecordInfo (ann :: Ann) (r :: Type) :: [FieldInfo Symbol] where
   TRecordInfo ann r = TRecordInfoCols ann (Cols ann r)
+
+--------------------------------------------------------------------------------
+-- Node-level проверки Mandatory / PK (аналог CheckNodeAll*)
+--------------------------------------------------------------------------------
+
+-- rs: список колонок, которые уже "покрыты" (включая те, что придут из Reference)
+type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
+  CheckAllMandatory ('Ann ren sch d tab) rs = Assert
+    (SP.Null (RestMandatory sch tab rs))
+    (TypeError
+      (  Text "We can't insert data because not all mandatory fields are present."
+      :$$: Text "Table: " :<>: ShowType tab
+      :$$: Text "Missing mandatory fields: " :<>: ShowType (RestMandatory sch tab rs) ))
+
+type family CheckAllMandatoryOrHasPK (ann :: Ann) (rs :: [Symbol]) :: Constraint where
+  CheckAllMandatoryOrHasPK ('Ann ren sch d tab) rs = Assert
+    ( SP.Null (RestMandatory sch tab rs)
+      || SP.Null (RestPK sch tab rs) )
+    (TypeError
+      (  Text "We can't upsert data because for table " :<>: ShowType tab
+      :$$: Text "either not all mandatory fields or not all PK fields are present."
+      :$$: Text "Missing mandatory fields: " :<>: ShowType (RestMandatory sch tab rs)
+      :$$: Text "Missing PK fields: " :<>: ShowType (RestPK sch tab rs) ))
+
+genDefunSymbols [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasPK]
+
 --------------------------------------------------------------------------------
 -- Recursive AllMandatory / PK for tree (JSON‑insert / upsert)
 --------------------------------------------------------------------------------
@@ -574,10 +600,10 @@ type family WalkLevelAnn
   WalkLevelAnn check ann '[] rs = SP.Apply (SP.Apply check ann) rs
   WalkLevelAnn check ann ('FieldInfo name db ('RFPlain fd) ': xs) rs =
     WalkLevelAnn check ann xs (db ': rs)
-  WalkLevelAnn check ('Ann ren sch tab)
+  WalkLevelAnn check ('Ann ren sch d tab)
     ('FieldInfo _ _ ('RFToHere ('RecordInfo childTab childFIs) refs) ': xs) rs =
-      ( WalkLevelAnn check ('Ann ren sch childTab) childFIs (SP.Map FromNameSym0 refs)
-      , WalkLevelAnn check ('Ann ren sch tab) xs rs )
+      ( WalkLevelAnn check ('Ann ren sch d childTab) childFIs (SP.Map FromNameSym0 refs)
+      , WalkLevelAnn check ('Ann ren sch d tab) xs rs )
   WalkLevelAnn check ann (_ ': xs) rs = WalkLevelAnn check ann xs rs
 
 type family AllMandatoryTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])

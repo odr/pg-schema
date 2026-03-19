@@ -20,7 +20,7 @@ import Prelude as P
 
 -- | Update records by condition. We can get any fields from updated records in result.
 updateByCond :: forall ann -> forall r r'.
-  (ann ~ 'Ann ren sch t, UpdateReturning ann r r') =>
+  (ann ~ 'Ann ren sch d t, UpdateReturning ann r r') =>
   Connection -> r -> Cond sch t -> IO [r']
 updateByCond ann @r @r' conn r (updateText ann @r @r' -> (q,ps)) =
   trace' (q <> "\n\n" <> P.show ps <> "\n\n")
@@ -30,7 +30,7 @@ updateByCond ann @r @r' conn r (updateText ann @r @r' -> (q,ps)) =
 
 -- | Update records by condition without returnings.
 updateByCond_ :: forall ann -> forall r.
-  (ann ~ 'Ann ren sch t, UpdateNonReturning ann r) =>
+  (ann ~ 'Ann ren sch d t, UpdateNonReturning ann r) =>
   Connection -> r -> Cond sch t -> IO Int64
 updateByCond_ ann @r conn r (updateText_ ann @r -> (q, ps)) =
   trace' (q <> "\n\n" <> P.show ps <> "\n\n")
@@ -39,7 +39,7 @@ updateByCond_ ann @r conn r (updateText_ ann @r -> (q, ps)) =
 
 -- | Construct SQL text for updating records by condition and returning some fields.
 updateText :: forall ann -> forall r r' s.
-  (CRecInfo ann r, CRecInfo ann r', IsString s, Monoid s, ann ~ 'Ann ren sch t)
+  (CRecInfo ann r, CRecInfo ann r', IsString s, Monoid s, ann ~ 'Ann ren sch d t)
   => Cond sch t -> (s, [SomeToField])
 updateText ann @r @r' (updateText_ ann @r -> (q, p)) = (q <> " returning " <> fs', p)
   where
