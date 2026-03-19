@@ -1,4 +1,4 @@
-{- HLINT ignore "Eta reduce" -}
+{-# LANGUAGE OverloadedRecordDot #-}
 module PgSchema.DML.InsertJSON
   ( insertJSON, insertJSON_, upsertJSON, upsertJSON_
   , insertJSONText, insertJSONText_ ) where
@@ -36,7 +36,7 @@ import Prelude as P
 insertJSON
   :: forall ren sch tab -> forall r r'. InsertTreeReturning ren sch tab r r'
   => Connection -> [r] -> IO ([r'], Text)
-insertJSON ren sch tab @r @r' conn rs = insertJSONImpl (Ann ren sch tab) @r @r' conn rs
+insertJSON ren sch tab @r @r' = insertJSONImpl (Ann ren sch tab) @r @r'
 
 -- | Insert records into table and its children using JSON data internally without returnings.
 --
@@ -45,7 +45,7 @@ insertJSON ren sch tab @r @r' conn rs = insertJSONImpl (Ann ren sch tab) @r @r' 
 insertJSON_
   :: forall ren sch tab -> forall r. InsertTreeNonReturning ren sch tab r
   => Connection -> [r] -> IO Text
-insertJSON_ ren sch tab @r conn rs = insertJSONImpl_ (Ann ren sch tab) @r conn rs
+insertJSON_ ren sch tab @r = insertJSONImpl_ (Ann ren sch tab) @r
 
 -- | Upsert records into table and its children using JSON data internally.
 --
@@ -59,14 +59,14 @@ insertJSON_ ren sch tab @r conn rs = insertJSONImpl_ (Ann ren sch tab) @r conn r
 upsertJSON
   :: forall ren sch tab -> forall r r'. UpsertTreeReturning ren sch tab r r'
   => Connection -> [r] -> IO ([r'], Text)
-upsertJSON ren sch tab @r @r' conn rs = insertJSONImpl (Ann ren sch tab) @r @r' conn rs
+upsertJSON ren sch tab @r @r' = insertJSONImpl (Ann ren sch tab) @r @r'
 
 -- | Upsert records into table and its children using JSON data internally without returnings.
 --
 upsertJSON_
   :: forall ren sch tab -> forall r. UpsertTreeNonReturning ren sch tab r
   => Connection -> [r] -> IO Text
-upsertJSON_ ren sch tab @r conn rs = insertJSONImpl_ (Ann ren sch tab) @r conn rs
+upsertJSON_ ren sch tab @r = insertJSONImpl_ (Ann ren sch tab) @r
 
 insertJSONImpl
   :: forall ann -> forall r r'. (TreeSch ann sch ren tab, TreeIn ann r, TreeOut ann r')
@@ -136,6 +136,12 @@ type MonadInsert s = RWS (s, Int) ([s],[s]) Int
 
 data OP = INS | UPD | UPS deriving (Eq, Show)
 
+data Field v = Field
+  { jsonName :: Text
+  , dbName :: Text
+  , info :: v }
+  deriving (Eq, Show)
+
 insertJSONTextM
   :: forall s. (IsString s, Monoid s, Ord s)
   => M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo Text
@@ -198,16 +204,16 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
                   \(name, _) -> name <> " = " <> "EXCLUDED." <> name) ]
             <> rets
         qretVars = (<> sn) <$> qretFlds
-        plains = iplains <&> \ip -> (fromText (fst ip), jsonFld ip)
+        plains = iplains <&> \ip -> (fromText ip.dbName, jsonFld ip)
         (plainsPK, plainsOthers) = L.partition ((`L.elem` foldMap fst mbKeyMand) . fst) plains
-        jsonFld (dbn,def) = case mapTypes M.!? def.fdType of
+        jsonFld ip = case mapTypes M.!? ip.info.fdType of
           Just (TypDef "A" (Just t) _) ->
-            "case when jsonb_typeof(" <> rowN <> ".value->'" <> fromText dbn <> "') = 'array'"
+            "case when jsonb_typeof(" <> rowN <> ".value->'" <> fromText ip.jsonName <> "') = 'array'"
             <> " then (select coalesce(array_agg(__x)::" <> fromText (qualName t) <> "[], '{}')"
-            <> " from jsonb_array_elements_text(" <> rowN <> ".value->'" <> fromText dbn <> "') __x) else null end"
+            <> " from jsonb_array_elements_text(" <> rowN <> ".value->'" <> fromText ip.jsonName <> "') __x) else null end"
           _ ->
-            "(" <> rowN <> ".value->>'" <> fromText dbn <> "')::"
-              <> fromText (qualName def.fdType)
+            "(" <> rowN <> ".value->>'" <> fromText ip.jsonName <> "')::"
+              <> fromText (qualName ip.info.fdType)
         rets
           | noRets = []
           | otherwise = ["    returning " <> intercalate' ", " qretFlds
@@ -215,26 +221,26 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
     endLoop = "end loop;"
     processChildren = do
       (spaces', _) <- ask
-      (mapMaybe sequenceA -> arrs) <- for ichildren \ic -> do
+      (mapMaybe sequenceA -> arrs) <- for ichildren \(child, childRi) -> do
         modify (+1)
         n' <- get
         tell (mempty, pure $ spaces' <> "data_" <> show' n' <> " := "
-          <> rowN <> ".value->'" <> fromText (fst $ fst ic) <> "';")
+          <> rowN <> ".value->'" <> fromText child.jsonName <> "';")
         let
           qfs' = foldMap ((.fields) . snd)
-            $ L.find (\qc -> ((==) `on` (fst . fst)) qc ic) qchildren
+            $ L.find (\(qc, _) -> qc.jsonName == child.jsonName) qchildren
         mbArr <- local (second $ const n') $ insertJSONTextM mapTypes mapTabs
-          (snd ic) qfs' (fromText . (.fromName) <$> snd (fst ic))
-          ((<> sn) . fromText . (.toName) <$> snd (fst ic))
-        pure (fromText (fst $ fst ic), mbArr)
+          childRi qfs' (fromText . (.fromName) <$> child.info)
+          ((<> sn) . fromText . (.toName) <$> child.info)
+        pure (fromText child.jsonName, mbArr)
       let
         appendArray = foldMap (\arrN -> pure $ arrN <> ":= array_append("
           <> arrN <> ", jsonb_build_object(" <> jsonFlds <> "));") mbArrN
           where
             jsonFlds = intercalate' ", "
-              $ (qplains <&> \qp -> let fld = fromText (fst qp) in
-                "'" <> fld <> "', " <> fld <> sn)
-              <> (arrs <&> \(dbn, arr) -> "'" <> dbn <> "', to_jsonb(" <> arr <> ")")
+              $ (qplains <&> \qp -> "'" <> fromText qp.jsonName
+              <> "', " <> fromText qp.dbName <> sn)
+              <> (arrs <&> \(jsonN, arr) -> "'" <> jsonN <> "', to_jsonb(" <> arr <> ")")
       tell (mempty, fmap (spaces' <>) appendArray)
   tell (decs, fmap (spaces <>) $ initArray <> startLoop <> ins)
   case op of
@@ -247,8 +253,8 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
   pure mbArrN
   where
     splitFields = P.foldr (\fi -> case fi.fieldKind of
-      (RFPlain fd)  -> first ((fi.fieldDbName, fd):)
-      (RFToHere ri' refs) -> second (((fi.fieldDbName, refs), ri'):)
+      (RFPlain fd)  -> first (Field fi.fieldName fi.fieldDbName fd :)
+      (RFToHere ri' refs) -> second ((Field fi.fieldName fi.fieldDbName refs, ri') :)
       _ -> P.id) mempty
     (iplains, ichildren) = splitFields ri.fields
     (qplains, qchildren) = splitFields qfs
@@ -258,8 +264,8 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
         . M.filter (\fd -> not $ fd.fdNullable || fd.fdHasDefault) . (.tiFlds))
     qualTabName = fromText (qualName ri.tabName)
     qcFlds = fmap ((,) <$> (.toName) <*> qualName . (.toDef.fdType))
-      $ nubBy ((==) `on` (.toName)) $ ichildren >>= snd . fst
-    qpFlds = ((,) <$> fst <*> qualName . (.fdType) . snd) <$> qplains
+      $ nubBy ((==) `on` (.toName)) $ ichildren >>= (\x -> (fst x).info)
+    qpFlds = qplains <&> \p -> (p.dbName, qualName p.info.fdType)
     qretPairs = fmap (bimap fromText fromText)
       $ nubBy ((==) `on` fst) $ qcFlds <> qpFlds
     nameVal name val = name <> " = " <> val

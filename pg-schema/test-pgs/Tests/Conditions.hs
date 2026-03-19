@@ -25,6 +25,7 @@ import Utils
 data RootI = MkRootI
   { code :: Text
   , grp :: Int32
+  , someEmpty :: ()
   , name :: Text }
   deriving (Show, Generic)
   deriving anyclass GenDefault

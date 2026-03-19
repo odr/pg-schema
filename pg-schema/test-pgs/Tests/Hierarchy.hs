@@ -24,10 +24,10 @@ import Sch
 import Utils
 
 
-type RootRec = "code" := Text :. "grp" := Int32 :. "name" := Text
+type RootRec = "code" := Text :. "grp" := Int32 :. "name" := Text :. "someEmpty" := ()
 
 type Mid1Rec =
-  "flag" := Bool :. "pos" := Int32 :. "sort_key" := Int32 :. "payload" := Maybe Text
+  "flag" := Bool :. "pos" := Int32 :. "sortKey" := Int32 :. "payload" := Maybe Text
 
 data Mid2Rec = MkMid2Rec
   { seq :: Int32
@@ -40,28 +40,30 @@ data Mid2Rec = MkMid2Rec
 data Mid2RecRev = MkMid2RecRev
   { seq :: Int32
   , kind :: Text
-  , mid2_root_fk :: RootRec
+  , mid2RootFk :: RootRec
     :. "mid1_root_fk" := ["flag" := Bool]
     :. "mid1_root_fk2" := ["pos" := Int32]}
   deriving (Generic, Eq, Ord, Show)
   deriving anyclass GenDefault
 
 data LeafI = MkLeafI
-  { leaf_no :: Int32
+  { leafNo :: Int32
+  , someEmpty :: ()
   , value :: Double }
   deriving (Generic, Eq, Ord, Show)
   deriving anyclass GenDefault
 
 data Leaf = MkLeaf
-  { leaf_no :: Int32
+  { leafNo :: Int32
   , value :: Double
+  , someEmpty :: ()
   , category :: Maybe Text
-  , leaf_mid2_fk :: Mid2Rec
+  , leafMid2Fk :: Mid2Rec
   , leaf_mid2_rev_fk :: Mid2RecRev }
   deriving (Generic, Eq, Ord, Show)
   deriving anyclass GenDefault
--- >>> getRecordInfo @Sch @(TS "leaf") @(HSch "leaf" Leaf)
--- RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "leaf"}, fields = [FieldInfo {fieldName = "leaf_no", fieldDbName = "leaf_no", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "value", fieldDbName = "value", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "numeric"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "category", fieldDbName = "category", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = True, fdHasDefault = False})},FieldInfo {fieldName = "leaf_mid2_fk", fieldDbName = "leaf_mid2_fk", fieldKind = RFFromHere (RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "mid2"}, fields = [FieldInfo {fieldName = "seq", fieldDbName = "seq", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "kind", fieldDbName = "kind", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "flag", fieldDbName = "flag", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "bool"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "priority", fieldDbName = "priority", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})}]}) [Ref {fromName = "root_id", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "root_id", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}},Ref {fromName = "seq", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "seq", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}}]},FieldInfo {fieldName = "leaf_mid2_fk___1", fieldDbName = "leaf_mid2_fk", fieldKind = RFFromHere (RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "mid2"}, fields = [FieldInfo {fieldName = "seq", fieldDbName = "seq", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "kind", fieldDbName = "kind", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "mid2_root_fk", fieldDbName = "mid2_root_fk", fieldKind = RFFromHere (RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "root"}, fields = [FieldInfo {fieldName = "code", fieldDbName = "code", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "grp", fieldDbName = "grp", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "name", fieldDbName = "name", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "text"}, fdNullable = False, fdHasDefault = False})}]}) [Ref {fromName = "root_id", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "id", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = True}}]}]}) [Ref {fromName = "root_id", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "root_id", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}},Ref {fromName = "seq", fromDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}, toName = "seq", toDef = FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False}}]}]}
+-- >>> getRecordInfo @('Ann RenamerSch Sch (TS "leaf")) @LeafI
+-- RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "leaf"}, fields = [FieldInfo {fieldName = "leaf_no", fieldDbName = "leaf_no", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "value", fieldDbName = "value", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "float4"}, fdNullable = False, fdHasDefault = False})}]}
 
 eqRoot :: RootRec -> RootRec -> Bool
 eqRoot (a1 :. b1 :. c1) (a2 :. b2 :. c2) = (a1, b1) == (a2, b2)
@@ -70,13 +72,13 @@ prop_hier_insert_simple_fk :: Pool Connection -> Property
 prop_hier_insert_simple_fk pool = withTests 30 $ property do
   rootsIn <- forAll (L.nubBy eqRoot <$> genData' RootRec 1 200)
   mid1In <- forAll (genData' Mid1Rec 0 20)
-  let inIns = rootsIn <&> ("mid1_root_fk" =: mid1In :.)
+  let inIns = rootsIn <&> ("mid1RootFk" =: mid1In :.)
   (outIns, outSel1, outUps, outSel2) <- evalIO $ withPool pool \conn -> do
     delByCond "mid1" conn mempty
     delByCond "root" conn mempty
-    (fst -> (outIns' :: ["id" := Int32 :. "mid1_root_fk" := ["id" := Int32 :. Mid1Rec]])) <-
+    (fst -> (outIns' :: ["id" := Int32 :. "mid1RootFk" := ["id" := Int32 :. Mid1Rec]])) <-
       insJSON "root" conn inIns
-    (fst -> (outSel1' :: ["id" := Int32 :. "mid1_root_fk" := [Mid1Rec] :. RootRec])) <-
+    (fst -> (outSel1' :: ["id" := Int32 :. "mid1RootFk" := [Mid1Rec] :. RootRec])) <-
       selSch "root" conn qpEmpty
     (outUps' :: ["id" := Int32 :. "mid1_root_fk" := [Mid1Rec] :. RootRec], _txt) <-
       upsJSON "root" conn $ outIns' <&> \(ir :. PgTag ms) -> "mid1_root_fk" =:
@@ -151,7 +153,7 @@ prop_hier_duplicate_names_root_nested :: Pool Connection -> Property
 prop_hier_duplicate_names_root_nested pool = withTests 30 $ property do
   rootsIn <- forAll (L.nubBy eqRoot <$> genData' RootRec 1 100)
   mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genData' Mid2Rec 0 10)
-  leafIn <- forAll (L.nubBy ((==) `on` (.leaf_no)) <$> genData' LeafI 0 10)
+  leafIn <- forAll (L.nubBy ((==) `on` (.leafNo)) <$> genData' LeafI 0 10)
   let inIns = rootsIn <&> (("mid2_root_fk" =: (mid2In <&> (("leaf_mid2_fk" =: leafIn) :.))) :.)
   outSel <- evalIO $ withPool pool \conn -> do
     delByCond "leaf" conn mempty

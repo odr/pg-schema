@@ -91,7 +91,7 @@ module PgSchema.DML
   -- ** Execute SQL
   , updateByCond, updateByCond_, updateText, updateText_
   -- ** Constraints
-  , UpdateReturning, UpdateNonReturning, CRecInfo
+  , UpdateReturning, UpdateNonReturning, CRecInfo(..)
   -- * Tree-base Insert/Upsert
   -- ** Execute SQL
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_, insertJSONText, insertJSONText_

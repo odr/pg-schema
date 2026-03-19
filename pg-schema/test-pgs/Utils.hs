@@ -45,7 +45,7 @@ type instance Apply RenamerSch s = RenamerSchImpl s
 type family RenamerSchImpl s where
   RenamerSchImpl "leaf_mid2_rev_fk" = "leaf_mid2_fk"
   RenamerSchImpl "mid1_root_fk2" = "mid1_root_fk"
-  RenamerSchImpl s = s
+  RenamerSchImpl s = CamelToSnake s
 
 withRollback :: Connection -> IO a -> IO a
 withRollback conn act = execute_ conn "BEGIN" >> act `finally` rollback conn
@@ -133,6 +133,7 @@ instance (GProdDefault f) => GProdDefault (M1 i meta f) where
 instance (GenDefault c) => GProdDefault (K1 i c) where
   gprodDefGen = K1 <$> defGen
 
+instance GenDefault () where defGen = pure ()
 instance GenDefault Int32 where defGen = Gen.int32 (Range.linear 0 1000000)
 instance GenDefault Text where defGen = Gen.text (Range.linear 0 50) Gen.alpha
 instance GenDefault Bool where defGen = Gen.bool
