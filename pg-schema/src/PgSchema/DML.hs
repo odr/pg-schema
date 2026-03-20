@@ -10,18 +10,20 @@
 -- = TLDR; Examples:
 --
 -- @
--- data Order = Order { num :: Text, created_at :: Day, items :: [OrdPos] } deriving Generic
+-- data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
 -- data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
 -- data Article = Article { id :: Int32, name :: Text } deriving Generic
---
--- ...
+-- type MyAnn tabName = 'Ann 5 CamelToSnake MySch ("dbSchema" ->> tabName)
+--     ...
 -- do
---   void $ insertJSON_ RenamerId Sch ("dbs" ->> "orders") conn
+--   -- insert an order with order positions
+--   void $ insertJSON_ (MyAnn "orders") conn
 --     [ "num" =: "num1" :. "ord__ord_pos" =:
---       [ "num" =: 1 :. "article_id" =: 42 :. "price" =: 10
---       , "num" =: 2 :. "article_id" =: 41 :. "price" =: 15 ]
---     ]
---   (xs :: [Order]) <- selectSch RenamerId Sch ("dbs" ->> "orders") conn
+--       [ "num" =: 1 :. "articleId" =: 42 :. "price" =: 10
+--       , "num" =: 2 :. "articleId" =: 41 :. "price" =: 15 ] ]
+
+--   -- select orders
+--   (xs :: [Order]) <- selectSch (MyAnn "orders") conn
 --     $ qRoot do
 --       qWhere $ "created_at" >? someDay
 --         &&& pchild "ord__ord_pos" defTabParam

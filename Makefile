@@ -6,6 +6,8 @@
 # Hackage (cabal.project.hackage — no +arbitrary/+flat/+hashable; matches .cabal defaults):
 #   hackage-docs  — only pg-schema; not pg-schema-tutorial.
 #   hackage-sdist — source tarball of pg-schema only.
+#   hackage-upload-candidate / hackage-upload-docs-candidate — upload existing tarballs
+#     (no rebuild; interactive confirm). Auth: ~/.config/cabal/config (token or user/pass).
 #
 # test-run needs PostgreSQL for generation (override PG_CONN in test-gen).
 # Tutorial generator uses a fixed DSN in generator/Main.hs unless you change it.
@@ -24,6 +26,9 @@ BUILDDIR_DEBUG   := dist-make-debug
 BUILDDIR_HADDOCK := dist-haddock-hackage
 BUILDDIR_SDIST   := dist-make-sdist
 OUT_SDIST        := dist-sdist
+
+HACKAGE_SDIST_TAR := $(OUT_SDIST)/$(PKG)-$(VERSION).tar.gz
+HACKAGE_DOCS_TAR  := $(BUILDDIR_HADDOCK)/$(PKG)-$(VERSION)-docs.tar.gz
 
 PROJECT_HACKAGE  := --project-file=cabal.project.hackage
 
@@ -44,9 +49,11 @@ help:
 	@echo "  tutorial-run    (generate app/Sch.hs, build, run pgs-tutorial)"
 	@echo "  tutorial-run-debug"
 	@echo "  local-docs      Haddock $(PKG) -> $(BUILDDIR_IDE) (cabal.project; for HLS hover)"
-	@echo "  hackage-docs  -> $(BUILDDIR_HADDOCK)/$(PKG)-$(VERSION)-docs.tar.gz"
+	@echo "  hackage-docs  -> $(HACKAGE_DOCS_TAR)"
 	@echo "                  (pg-schema only; cabal.project.hackage = default package flags)"
-	@echo "  hackage-sdist -> $(OUT_SDIST)/$(PKG)-$(VERSION).tar.gz  (same project file)"
+	@echo "  hackage-sdist -> $(HACKAGE_SDIST_TAR)  (same project file)"
+	@echo "  hackage-upload-candidate      (upload $(HACKAGE_SDIST_TAR) as candidate; confirm)"
+	@echo "  hackage-upload-docs-candidate (upload $(HACKAGE_DOCS_TAR) for candidate; confirm)"
 
 # --- library / project build ---
 
@@ -103,4 +110,18 @@ hackage-docs:
 hackage-sdist:
 	mkdir -p $(OUT_SDIST)
 	$(CABAL_SDT) sdist $(PKG) --output-directory=$(OUT_SDIST)
-	@echo "Source tarball: $(OUT_SDIST)/$(PKG)-$(VERSION).tar.gz"
+	@echo "Source tarball: $(HACKAGE_SDIST_TAR)"
+
+# Upload only existing files (no --publish = release candidate on Hackage).
+
+.PHONY: hackage-upload-candidate
+hackage-upload-candidate:
+	@test -f "$(HACKAGE_SDIST_TAR)" || { printf '%s\n' "Missing $(HACKAGE_SDIST_TAR) — run: $(MAKE) hackage-sdist"; exit 1; }
+	@printf 'Upload Hackage source *candidate* (not published):\n  %s\nOK? [y/N] ' "$(HACKAGE_SDIST_TAR)" && read ans && case "$$ans" in y|Y|yes|YES) ;; *) echo 'Aborted.'; exit 1;; esac
+	$(CABAL) upload "$(HACKAGE_SDIST_TAR)"
+
+.PHONY: hackage-upload-docs-candidate
+hackage-upload-docs-candidate:
+	@test -f "$(HACKAGE_DOCS_TAR)" || { printf '%s\n' "Missing $(HACKAGE_DOCS_TAR) — run: $(MAKE) hackage-docs"; exit 1; }
+	@printf 'Upload Hackage documentation for *candidate* (not published):\n  %s\nOK? [y/N] ' "$(HACKAGE_DOCS_TAR)" && read ans && case "$$ans" in y|Y|yes|YES) ;; *) echo 'Aborted.'; exit 1;; esac
+	$(CABAL) upload --documentation "$(HACKAGE_DOCS_TAR)"

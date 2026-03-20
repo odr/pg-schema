@@ -10,7 +10,7 @@ import PgSchema.Types
 import PgSchema.Schema
 
 --------------------------------------------------------------------------------
--- Plain Insert / Upsert / Update (Ann-based, без HList)
+-- Plain Insert / Upsert / Update
 --------------------------------------------------------------------------------
 
 type PlainIn ann r = (CRecInfo ann r, AllPlain ann r, ToRow (PgTag ann r))

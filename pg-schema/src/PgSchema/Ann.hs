@@ -189,9 +189,6 @@ class FromJSONCols (ann :: Ann) (colsCase :: ColsCase) (cols :: [ColInfo NameNSK
 --------------------------------------------------------------------------------
 -- NonGeneric: (:=) и (:.)
 --------------------------------------------------------------------------------
-
--- Если в Ann поле имеет тип () — оно мапится в пустой набор колонок.
--- Тогда ToRow/FromRow должны просто не трогать БД и возвращать PgTag ().
 instance ToJSONCols ann 'NonGenericCase '[] (fld := ()) where
   toPairs _ = []
 
@@ -281,7 +278,7 @@ instance (FromJSONCols ann 'NonGenericCase cols (fld := t))
       . parseJSONCols @ann @'NonGenericCase @cols @(fld := t)
 
 --------------------------------------------------------------------------------
--- ToRow / FromRow для PgTag ann r
+-- ToRow / FromRow for PgTag ann r
 --------------------------------------------------------------------------------
 instance ToJSON (PgTag ann r) => ToField (PgTag (ann :: Ann) r) where
   toField = toJSONField
@@ -298,7 +295,7 @@ instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
     fromField = fromJSONField
 
 --------------------------------------------------------------------------------
--- ToRow / FromRow для PgTag ann r
+-- ToRow / FromRow for PgTag ann r
 --------------------------------------------------------------------------------
 instance
   (cols ~ Cols ann r, colsCase ~ ColsCaseOf r, ToRowCols ann colsCase cols r)
@@ -324,7 +321,7 @@ class FromRowCols (ann :: Ann) (colsCase :: ColsCase) (cols :: [ColInfo NameNSK]
     fromRowCols :: RowParser r
 
 --------------------------------------------------------------------------------
--- NonGeneric: (:=) и (:.)
+-- NonGeneric: (:=) and (:.)
 --------------------------------------------------------------------------------
 instance ToRowCols ann 'NonGenericCase '[] (fld := ()) where
   toRowCols _ = []
@@ -355,7 +352,7 @@ instance
   fromRowCols = (:.) <$> fromRowCols @ann @ca @colsA <*> fromRowCols @ann @cb @colsB
 
 --------------------------------------------------------------------------------
--- Generic: через Rep r
+-- Generic: through Rep r
 --------------------------------------------------------------------------------
 
 class GToRowCols (ann :: Ann) (cols :: [ColInfo NameNSK]) (rep :: Type -> Type) where
@@ -447,11 +444,6 @@ instance
 instance ToStar fd => CFldInfo ann ('RFPlain fd) t where
   getFldInfo = RFPlain (demote @fd)
 
--- -- "пустое" поле должно быть исключено из CFldInfo раньше
--- instance (KnownSymbol s) => CFldInfo ann ('RFEmpty s) t where
---   getFldInfo = RFEmpty $ demote @s
-
--- агрегат
 instance (ToStar fd, ToStar af, ToStar b) =>
   CFldInfo ann ('RFAggr fd af b) t where
   getFldInfo = RFAggr (demote @fd) (demote @af) (demote @b)
@@ -464,12 +456,10 @@ instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann fromTab)
   => CFldInfo ann ('RFToHere fromTab refs) [PgTag ann' r] where
   getFldInfo = RFToHere (getRecordInfo @ann' @r) (demote @refs)
 
--- nullable ребёнок
 instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab)
   => CFldInfo ann ('RFFromHere toTab refs) (Maybe (PgTag ann' r)) where
   getFldInfo = RFFromHere (getRecordInfo @ann' @r) (demote @refs)
 
--- не‑nullable ребёнок
 instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab)
   => CFldInfo ann ('RFFromHere toTab refs) (PgTag ann' r) where
   getFldInfo = RFFromHere (getRecordInfo @ann' @r) (demote @refs)
@@ -478,17 +468,15 @@ instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab)
 -- Helpers over Cols ann r
 --------------------------------------------------------------------------------
 
--- Имя колонки в БД (после Renamer)
 type family ColDbName (c :: ColInfo p) :: Symbol where
   ColDbName ('ColInfo '(fld, idx) t db fi) = db
 
--- Список имён всех колонок (DB names)
 type family ColsDbNames (cols :: [ColInfo p]) :: [Symbol] where
   ColsDbNames '[]       = '[]
   ColsDbNames (c ': cs) = ColDbName c ': ColsDbNames cs
 
 --------------------------------------------------------------------------------
--- Plain-поля (без relation-полей)
+-- Plain fields (without relation fields)
 --------------------------------------------------------------------------------
 
 type family IsPlainRecField (fi :: RecField' Symbol NameNSK) :: Bool where
@@ -501,7 +489,7 @@ type family AllPlainCols (cols :: [ColInfo NameNSK]) :: Bool where
   AllPlainCols '[] = 'True
   AllPlainCols ('ColInfo sn t db fi ': cs) = IsPlainRecField fi && AllPlainCols cs
 
--- Все поля plain (нет RFToHere/RFFromHere)
+-- | All fields are plain (no RFToHere/RFFromHere)
 type family AllPlain (ann :: Ann) (r :: Type) :: Constraint where
   AllPlain ann r = Assert (AllPlainCols (Cols ann r))
     (TypeError
@@ -511,7 +499,7 @@ type family AllPlain (ann :: Ann) (r :: Type) :: Constraint where
       :$$: Text "Cols:  " :<>: ShowType (Cols ann r) ))
 
 --------------------------------------------------------------------------------
--- Type-level RecordInfo для Ann
+-- Type-level RecordInfo for Ann
 --------------------------------------------------------------------------------
 -- | Decrease relation-walk depth kept in 'Ann'.
 -- When depth is exhausted, fail with a detailed type error instead of
@@ -533,8 +521,8 @@ type family DecDepth (ann :: Ann) :: Nat where
     :$$: Text "  3) For true graph cycles, use manual SQL." )
   DecDepth ('Ann _ _ d _) = d - 1
 
--- Type-level аналог CFldInfo: берём DB-уровневый RecFieldK и Haskell-тип поля t
--- и строим RecField' Symbol (RecordInfo Symbol) с уже вложенным TRecordInfo для детей.
+-- Type-level analogue of CFldInfo: take DB-level RecFieldK and Haskell type of field t
+-- and build RecField' Symbol (RecordInfo Symbol) with TRecordInfo for children.
 type family TFldInfo (ann :: Ann) (fi :: RecField' Symbol NameNSK) t
   :: RecField' Symbol (RecordInfo Symbol) where
   TFldInfo ann ('RFPlain fd) t      = 'RFPlain fd
@@ -567,10 +555,11 @@ type family TRecordInfo (ann :: Ann) (r :: Type) :: [FieldInfo Symbol] where
   TRecordInfo ann r = TRecordInfoCols ann (Cols ann r)
 
 --------------------------------------------------------------------------------
--- Node-level проверки Mandatory / PK (аналог CheckNodeAll*)
+-- Node-level checks for Mandatory / PK (analogue of CheckNodeAll*)
 --------------------------------------------------------------------------------
 
--- rs: список колонок, которые уже "покрыты" (включая те, что придут из Reference)
+-- | One-table check that all mandatory fields are present
+-- rs: list of columns that are already "covered" (including those that come from Reference)
 type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckAllMandatory ('Ann ren sch d tab) rs = Assert
     (SP.Null (RestMandatory sch tab rs))
@@ -579,6 +568,8 @@ type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
       :$$: Text "Table: " :<>: ShowType tab
       :$$: Text "Missing mandatory fields: " :<>: ShowType (RestMandatory sch tab rs) ))
 
+-- | One-table check that all mandatory fields are present
+-- or all PK fields are present
 type family CheckAllMandatoryOrHasPK (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckAllMandatoryOrHasPK ('Ann ren sch d tab) rs = Assert
     ( SP.Null (RestMandatory sch tab rs)
@@ -592,7 +583,7 @@ type family CheckAllMandatoryOrHasPK (ann :: Ann) (rs :: [Symbol]) :: Constraint
 genDefunSymbols [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasPK]
 
 --------------------------------------------------------------------------------
--- Recursive AllMandatory / PK for tree (JSON‑insert / upsert)
+-- Recursive AllMandatory / PK for tree (JSON insert / upsert)
 --------------------------------------------------------------------------------
 type family WalkLevelAnn
   (check :: Ann ~> [Symbol] ~> Constraint)
@@ -649,6 +640,7 @@ type family CheckSubtreeAt (path :: [Symbol]) (fisIn :: [FieldInfo Symbol])
       , CheckSubtreeAt path fisIn xs )
   CheckSubtreeAt path fisIn (_ ': xs) = CheckSubtreeAt path fisIn xs
 
-type family ReturningIsSubtree ann rIn rOut :: Constraint where
+-- | Check that returning tree is a subtree of input tree
+type family ReturningIsSubtree (ann :: Ann) (rIn :: Type) (rOut :: Type) :: Constraint where
   ReturningIsSubtree ann rIn rOut =
     CheckSubtreeAt '[] (TRecordInfo ann rIn) (TRecordInfo ann rOut)
