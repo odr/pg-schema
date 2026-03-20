@@ -1,0 +1,18 @@
+-- Like cabal.project, but only pg-schema and no manual flags on it.
+-- Use for local Hackage doc tarball / sdist so builds match package defaults
+-- (arbitrary / flat / hashable / debug off per pg-schema.cabal).
+-- Keep compiler and global stanzas aligned with cabal.project when you change them.
+
+optimization: False
+
+with-compiler: ghc-9.12.2
+
+packages:
+  pg-schema
+
+package *
+  ghc-options: -fwrite-ide-info -fprint-potential-instances
+
+package pg-schema
+  haddock-options: "--quickjump"
+  haddock-hyperlink-source: True

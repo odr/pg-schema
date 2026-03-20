@@ -14,6 +14,7 @@ packages:
 
 constraints:
   pg-schema +arbitrary +flat +hashable
+-- Hackage-oriented builds (default package flags): see cabal.project.hackage + Makefile hackage-*.
 
 package *
   ghc-options: -fwrite-ide-info -fprint-potential-instances
