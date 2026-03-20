@@ -68,7 +68,7 @@ description:
     * "PgSchema.DML" - module with DML functions. Import this module into your application and use it to generate safe DML for PostgreSQL.
     * "PgSchema.Import" - generated schema module import this module.
 
-homepage:       https://github.com/odr/pg-schema/pg-schema#readme
+homepage:       https://github.com/odr/pg-schema/tree/master/pg-schema#readme
 bug-reports:    https://github.com/odr/pg-schema/issues
 extra-doc-files:
     ChangeLog.md
