@@ -10,28 +10,46 @@ license-file:   LICENSE
 build-type:     Simple
 synopsis:       Type-level definition of database schema and safe DML for PostgreSQL.
 description:
-    === Type-level definition of database schema and safe DML for PostgreSQL.
+    == Schema definition
 
-    There is
+    Use @PgSchema.Generation.updateSchemaFile@ function to generate type-level definition of database schema.
+    You can make several schemas with any parts of your database.
 
-    * flexible generation of type-level definition of database schema
+    Usually you make executable which imports this module and run it to generate schema definition.
+    You can run it on CI to check if schema definition is up to date.
 
-    * safe generation of performant DML for PostgreSQL
+    == Safe DML for PostgreSQL
 
-    === TLDR;
+    Use @PgSchema.DML@ module to generate (in runtime) safe DML for PostgreSQL.
+    All operations are statically checked and you can't write invalid SQL.
+
+    With @pg-schema@ you can select or insert/upsert data into tree-like ADT in one request.
+
+    === Example
+    Let's say
+
+    - we have a database with tables: "orders", "order_positions", "articles".
+    - There are articles with ids 41 and 42.
+    - We generate MySch schema with @PgSchema.Generation.updateSchemaFile@ function.
+
+    Then we can write a function to insert an order with order positions.
+    And select orders with order positions and articles in one request using some conditions for orders and order positions that return in order.
 
     @
-    data Order = Order { num :: Text, created_at :: Day, items :: [OrdPos] } deriving Generic
+    data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
     data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
     data Article = Article { id :: Int32, name :: Text } deriving Generic
+    type MyAnn tabName = 'Ann 5 CamelToSnake MySch ("dbSchema" ->> tabName)
         ...
     do
-      void $ insertJSON_ RenamerId Sch ("dbs" ->> "orders") conn
+      -- insert an order with order positions
+      void $ insertJSON_ (MyAnn "orders") conn
         [ "num" =: "num1" :. "ord__ord_pos" =:
-          [ "num" =: 1 :. "article_id" =: 42 :. "price" =: 10
-          , "num" =: 2 :. "article_id" =: 41 :. "price" =: 15 ]
-        ]
-      (xs :: [Order]) <- selectSch RenamerId Sch ("dbs" ->> "orders") conn
+          [ "num" =: 1 :. "articleId" =: 42 :. "price" =: 10
+          , "num" =: 2 :. "articleId" =: 41 :. "price" =: 15 ] ]
+
+      -- select orders
+      (xs :: [Order]) <- selectSch (MyAnn "orders") conn
         $ qRoot do
           qWhere $ "created_at" >? someDay
             &&& pchild "ord__ord_pos" defTabParam
@@ -47,7 +65,7 @@ description:
 
     * "PgSchema.Generation" - module with generation functions.
       Usually you make executable which generates schema definition using this module.
-    * "PgSchema.DML" - module with DML functions. Import this module into your application.
+    * "PgSchema.DML" - module with DML functions. Import this module into your application and use it to generate safe DML for PostgreSQL.
     * "PgSchema.Import" - generated schema module import this module.
 
 homepage:       https://github.com/odr/pg-schema#readme
@@ -86,6 +104,8 @@ library
     PgSchema.DML
     PgSchema.Generation
     PgSchema.Import
+    PgSchema.Schema.Catalog
+    PgSchema.Schema.Info
     PgSchema.Utils.GenDot
   other-modules:
     PgSchema.Ann
@@ -97,8 +117,6 @@ library
     PgSchema.DML.Select.Types
     PgSchema.DML.Update
     PgSchema.Schema
-    PgSchema.Schema.Catalog
-    PgSchema.Schema.Info
     PgSchema.Types
     PgSchema.Utils.CamelToSnake
     PgSchema.Utils.Internal
@@ -165,11 +183,11 @@ library
     TypeFamilies
     ViewPatterns
 
-test-suite doctest
+test-suite json-spec
   type: exitcode-stdio-1.0
-  main-is: doctest.hs
+  main-is: json-spec.hs
   other-modules:
-    HListDoctest
+    PgTagJsonSpec
     -- Paths and PackageInfo
     Paths_pg_schema
     PackageInfo_pg_schema
@@ -181,10 +199,17 @@ test-suite doctest
       base
     , aeson
     , bytestring
-    , doctest
     , pg-schema
-  build-tool-depends: doctest:doctest
+    , postgresql-simple >= 0.6 && < 0.8
+    , text
   default-language: GHC2021
+  default-extensions:
+    DataKinds
+    OverloadedStrings
+    RequiredTypeArguments
+    TypeAbstractions
+    TypeFamilies
+    UndecidableInstances
   ghc-options: -Wall
 
 executable test-gen
