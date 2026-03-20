@@ -40,7 +40,7 @@ type EnumPGS s = PGEnum Sch ("test_pgs" ->> s)
 
 data RenamerSch :: Renamer
 
-type instance Apply RenamerSch s = RenamerSchImpl s
+type instance ApplyRenamer RenamerSch s = RenamerSchImpl s
 
 type family RenamerSchImpl s where
   RenamerSchImpl "leaf_mid2_rev_fk" = "leaf_mid2_fk"

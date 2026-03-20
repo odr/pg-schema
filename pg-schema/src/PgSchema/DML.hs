@@ -5,9 +5,9 @@
 -- Maintainer: olshanskydr@gmail.com, dima@typeable.io
 -- Stability: experimental
 --
--- === A module to generate and safely execute SQL statements.
+-- = A module to generate and safely execute SQL statements.
 --
--- = TLDR; Examples:
+-- == TLDR; Examples:
 --
 -- @
 -- data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
@@ -16,23 +16,20 @@
 -- type MyAnn tabName = 'Ann 5 CamelToSnake MySch ("dbSchema" ->> tabName)
 --     ...
 -- do
---   -- insert an order with order positions
 --   void $ insertJSON_ (MyAnn "orders") conn
 --     [ "num" =: "num1" :. "ord__ord_pos" =:
 --       [ "num" =: 1 :. "articleId" =: 42 :. "price" =: 10
 --       , "num" =: 2 :. "articleId" =: 41 :. "price" =: 15 ] ]
-
---   -- select orders
---   (xs :: [Order]) <- selectSch (MyAnn "orders") conn
---     $ qRoot do
---       qWhere $ "created_at" >? someDay
---         &&& pchild "ord__ord_pos" defTabParam
---           (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
---       qOrderBy [descf "created_at", descf "num"]
---       qPath "ord__ord_pos" do
---         qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
---         qOrderBy [ascf "num"]
---       qLimit 20
+--
+--   (xs :: [Order]) <- selectSch (MyAnn "orders") conn $ qRoot do
+--     qWhere $ "created_at" >? someDay
+--       &&& pchild "ord__ord_pos" defTabParam
+--         (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
+--     qOrderBy [descf "created_at", descf "num"]
+--     qPath "ord__ord_pos" do
+--       qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
+--       qOrderBy [ascf "num"]
+--     qLimit 20
 -- @
 --
 -- Here we get all orders created after `someDay` that have positions with articles like "%pencil%",
@@ -45,73 +42,56 @@
 --
 -- Here both @INSERT@ and @SELECT@ are single and fast operation in database (using JSON internally).
 --
+-- Note that we use 'Renamer' ('CamelToSnake' here) to convert Haskell field names to snake_case for database.
+-- But in conditions and 'QueryParams' we use original database field names.
+-- It can be changed in the future.
+--
 module PgSchema.DML
   (
-  -- * Select
-  -- ** Execute SQL
+  -- * DML
+  -- ** Select
+  -- *** Execute SQL
     selectSch, selectText, Selectable
-  -- ** Monad to set Query Params
-  -- *** Base definitions
+  -- *** Monad to set Query Params
   , MonadQP, qpEmpty
-  , QueryParam(..), CondWithPath(..), OrdWithPath(..), LimOffWithPath(..), DistWithPath(..)
-  -- *** Monad functions
   , qRoot, qPath, qWhere, qOrderBy, qDistinct, qDistinctOn, qLimit, qOffset
-  -- ** Conditions
-  -- *** Base definitions
-  , Cond(..), Cmp(..), BoolOp(..)
-  -- *** Conditions EDSL
-  -- **** Comparing operations.
+  -- **** Internals
+  , QueryParam(..), CondWithPath(..), OrdWithPath(..), LimOffWithPath(..), DistWithPath(..)
+  -- *** Conditions
   -- | Example: @"name" =? "John"@
   , (<?),(>?),(<=?),(>=?),(=?)
-  -- **** Like and ILike.
   -- | Example: @"name" ~~? "%joh%"@
   ,(~=?),(~~?)
-  -- **** Boolean operations
-  , (|||), (&&&), pnot
-  -- **** Parent and child conditions
-  , pparent, pchild
-  -- **** Other conditions
-  , pnull, pin, pinArr
-  -- **** Unsafe condition
+  , (|||), (&&&), pnot, pnull, pin, pinArr
+  , pparent, pchild, TabParam(..), defTabParam
   , pUnsafeCond
-  -- *** TabParam for child
-  , TabParam(..), defTabParam
-  -- *** Internals for 'UnsafeCond'
+  , Cond(..), Cmp(..), BoolOp(..)
   , CondMonad, SomeToField(..), showCmp, tabPref, qual
-  -- *** Constrainrs for Cond
   , CDBField, CDBValue, CDBFieldNullable, CRelDef
-  -- ** Order By and others
-  , OrdDirection(..), OrdFld(..), Dist(..), LO(..)
-  -- *** Make OrdFld and LO
+  -- *** Order By and others
   , ordf, ascf, descf, defLO, lo1
-  -- * Plain Insert
-  -- ** Execute SQL
+  , OrdDirection(..), OrdFld(..), Dist(..), LO(..)
+  -- ** Plain Insert
   , insertSch, insertSch_, insertText, insertText_, AllPlain
-  -- ** Constraints
   , InsertNonReturning, InsertReturning
-  -- * Update
-  -- ** Execute SQL
+  -- ** Update
   , updateByCond, updateByCond_, updateText, updateText_
-  -- ** Constraints
   , UpdateReturning, UpdateNonReturning, CRecInfo(..)
-  -- * Tree-base Insert/Upsert
-  -- ** Execute SQL
+  -- ** Tree-base Insert/Upsert
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_, insertJSONText, insertJSONText_
-  -- ** Constraints
   , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasPKTree, TreeSch
   , InsertTreeNonReturning, InsertTreeReturning
-  , UpsertTreeNonReturning, UpsertTreeReturning
-  , TRecordInfo
-  -- * Delete
+  , UpsertTreeNonReturning, UpsertTreeReturning, TRecordInfo
+  -- ** Delete
   , deleteByCond, deleteText
   -- * Types
   , Ann(..), ToStar
-  -- * Renamers
-  , RenamerId, CamelToSnake, Renamer
+  -- ** Renamers
+  , RenamerId, CamelToSnake, Renamer, ApplyRenamer
   -- ** PgTag types
-  , type (:=), (=:)
-  -- *** Reexport
-  , PgTag(..), (:.)(..), Apply
+  , type (:=), (=:), PgTag(..),
+  -- ** Reexport
+  (:.)(..)
   -- ** Enum
   , PGEnum
   -- ** Aggregates
@@ -127,7 +107,6 @@ module PgSchema.DML
   ) where
 
 
-import Data.Singletons
 import PgSchema.Ann
 import PgSchema.DML.Select as S
 import PgSchema.DML.Select.Types as S

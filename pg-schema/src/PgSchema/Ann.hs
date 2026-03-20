@@ -31,7 +31,7 @@ import Prelude.Singletons as SP hiding (type (+), type (-))
 -- >>> conn <- connectPostgreSQL ""
 
 data Ann = Ann
-  { annRen  :: Symbol ~> Symbol
+  { annRen  :: Renamer
   , annSch  :: Type
   , annDepth :: Nat
   , annTab  :: NameNSK }
@@ -48,7 +48,8 @@ data ColInfo (p :: Type) = ColInfo
 
 type Renamer = Symbol ~> Symbol
 data RenamerId :: Renamer
-type instance Apply RenamerId s = s
+type family ApplyRenamer (renamer :: Renamer) (s :: Symbol) :: Symbol
+type instance ApplyRenamer RenamerId s = s
 
 --------------------------------------------------------------------------------
 -- Case dispatch
@@ -100,28 +101,29 @@ type family Col (ann :: Ann) (fld :: Symbol) t :: [ColInfo NameNSK] where
   Col ann fld (Aggr' ACount Int64) =
     '[ 'ColInfo '(fld, 0) (Aggr' ACount Int64) fld
       ('RFAggr ('FldDef ("pg_catalog" ->> "int8") False False) 'ACount 'True) ]
-  Col ('Ann ren sch d tab) fld t = ColFI ('Ann ren sch d tab) fld (TDBFieldInfo sch tab (Apply ren fld)) t
+  Col ('Ann ren sch d tab) fld t =
+    ColFI ('Ann ren sch d tab) fld (TDBFieldInfo sch tab (ApplyRenamer ren fld)) t
 
 type family ColFI (ann :: Ann) (fld :: Symbol) (fi :: RecFieldK NameNSK) t
   :: [ColInfo NameNSK] where
     ColFI ('Ann ren sch _ _) fld ('RFPlain ('FldDef tn False def)) (PgArr t) =
       '[ 'ColInfo '(fld, 0) (PgTag (TypElem (TTypDef sch tn)) (PgArr t))
-        (Apply ren fld) (RFPlain ('FldDef tn False def))]
+        (ApplyRenamer ren fld) (RFPlain ('FldDef tn False def))]
     ColFI ('Ann ren sch _ _) fld ('RFPlain ('FldDef tn True def)) (Maybe (PgArr t)) =
       '[ 'ColInfo '(fld, 0) (Maybe (PgTag (TypElem (TTypDef sch tn)) (PgArr t)))
-        (Apply ren fld) (RFPlain ('FldDef tn True def))]
+        (ApplyRenamer ren fld) (RFPlain ('FldDef tn True def))]
     -- RFFromHere: Maybe r
     ColFI ('Ann ren sch d _) fld ('RFFromHere (toTab :: NameNSK) refs) (Maybe r) =
       '[ 'ColInfo '(fld, 0) (Maybe (PgTag (AnnRefTabDepth ('Ann ren sch d toTab) toTab) r))
-        (Apply ren fld) ('RFFromHere toTab refs) ]
+        (ApplyRenamer ren fld) ('RFFromHere toTab refs) ]
     -- RFFromHere: r (non-Maybe)
     ColFI ('Ann ren sch d _) fld ('RFFromHere (toTab :: NameNSK) refs) r =
       '[ 'ColInfo '(fld, 0) (PgTag (AnnRefTabDepth ('Ann ren sch d toTab) toTab) r)
-        (Apply ren fld) ('RFFromHere toTab refs) ]
+        (ApplyRenamer ren fld) ('RFFromHere toTab refs) ]
     ColFI ('Ann ren sch d _) fld ('RFToHere (fromTab :: NameNSK) refs) [t] =
       '[ 'ColInfo '(fld, 0) [PgTag (AnnRefTabDepth ('Ann ren sch d fromTab) fromTab) t]
-        (Apply ren fld) ('RFToHere fromTab refs) ]
-    ColFI ('Ann ren sch d _) fld fd t = '[ 'ColInfo '(fld, 0) t (Apply ren fld) fd ]
+        (ApplyRenamer ren fld) ('RFToHere fromTab refs) ]
+    ColFI ('Ann ren sch d _) fld fd t = '[ 'ColInfo '(fld, 0) t (ApplyRenamer ren fld) fd ]
     ColFI ann fld ('RFSelfRef tab refs) [t] = ColFI ann fld ('RFToHere tab refs) [t]
     ColFI ann fld ('RFSelfRef tab refs) t = ColFI ann fld ('RFFromHere tab refs) t
 --------------------------------------------------------------------------------

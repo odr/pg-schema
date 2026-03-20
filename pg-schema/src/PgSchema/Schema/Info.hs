@@ -1,5 +1,15 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-| Internal module: ordinary (term-level) ADTs matching the shape of rows returned
+when querying PostgreSQL system catalogs during schema introspection.
+
+This is not part of the application-facing @pg-schema@ API; these types are used
+in the generation pipeline and in internal plumbing. Application code should not
+import this module: field layout may change together with the generator.
+
+The module appears in the package export list for technical reasons (tests, shared
+dependencies, hidden modules). Do not rely on it as a library compatibility boundary.
+-}
 module PgSchema.Schema.Info where
 
 import Data.Text as T

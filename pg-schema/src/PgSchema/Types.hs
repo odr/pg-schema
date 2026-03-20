@@ -57,7 +57,8 @@ import Data.Hashable
 
 
 -- | Introduce `enum` database types.
--- Data instances are produced by schema generation
+-- Data instances are produced by schema generation.
+-- You can use these data instances in you records to select/upsert data
 data family PGEnum sch (name :: NameNSK) :: Type
 
 instance

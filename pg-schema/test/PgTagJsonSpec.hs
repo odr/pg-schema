@@ -12,7 +12,7 @@ import PgSchema.Schema.Info (PgClassShort (..), PgEnum (..), PgRelation (..))
 
 data RenSnake :: Renamer
 
-type instance Apply RenSnake s = CamelToSnake s
+type instance ApplyRenamer RenSnake s = CamelToSnake s
 
 type AnnCons = 'Ann RenSnake PgCatalog 3 (PGC "pg_constraint")
 

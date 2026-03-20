@@ -11,10 +11,8 @@ import PgSchema.Schema
 import PgSchema.Utils.Internal
 import Data.Singletons
 
--- TODO (?):
--- deleteByKey Connection -> [r] -> IO [r']
 
--- | Delete records in tableby condition.
+-- | Delete records in table by condition.
 --
 deleteByCond :: forall sch t -> SingI t =>
   Connection -> Cond sch t -> IO (Int64, (Text,[SomeToField]))

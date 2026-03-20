@@ -1,12 +1,23 @@
--- |
--- Module: PgSchema.Import
--- Copyright: (c) Dmitry Olshansky
--- License: BSD-3-Clause
--- Maintainer: olshanskydr@gmail.com, dima@typeable.io
--- Stability: experimental
---
--- === Module with generated schema imports this module.
---
+{-| Shared import surface for /generated/ schema modules only.
+
+Do @not@ import this module from handwritten application or library code.
+
+@pg-schema@ tooling emits a schema module (per database or slice) that imports
+"PgSchema.Import" to pull in the type classes, type families, and promoted data
+that describe your schema at compile time. That generated module is what your
+application should import alongside "PgSchema.DML" (and optionally
+"PgSchema.Generation" for the codegen executable).
+
+"PgSchema.Import" is a thin re-export hub: it exists so generated files stay short
+and stable across @pg-schema@ versions, and so the generator does not need to
+duplicate long import lists from internal modules. It is part of the package’s
+@exposed-modules@ only so those generated modules (which live in your project, not
+inside this package) can depend on it via ordinary package imports.
+
+If you import "PgSchema.Import" directly, you bypass the intended layering, gain no
+extra capability, and risk silent breakage when the re-export set changes.
+Treat it as implementation detail for codegen output, not as a public API to build on.
+-}
 module PgSchema.Import
   (
   -- * CSchema class

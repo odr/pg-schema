@@ -12,7 +12,7 @@ synopsis:       Type-level definition of database schema and safe DML for Postgr
 description:
     == Schema definition
 
-    Use @PgSchema.Generation.updateSchemaFile@ function to generate type-level definition of database schema.
+    Use `updateSchemaFile` function from "PgSchema.Generation" module to generate type-level definition of database schema.
     You can make several schemas with any parts of your database.
 
     Usually you make executable which imports this module and run it to generate schema definition.
@@ -20,7 +20,7 @@ description:
 
     == Safe DML for PostgreSQL
 
-    Use @PgSchema.DML@ module to generate (in runtime) safe DML for PostgreSQL.
+    Use "PgSchema.DML" module to describe and generate (in runtime) safe DML for PostgreSQL.
     All operations are statically checked and you can't write invalid SQL.
 
     With @pg-schema@ you can select or insert/upsert data into tree-like ADT in one request.
@@ -30,7 +30,7 @@ description:
 
     - we have a database with tables: "orders", "order_positions", "articles".
     - There are articles with ids 41 and 42.
-    - We generate MySch schema with @PgSchema.Generation.updateSchemaFile@ function.
+    - We have generated `MySch` schema with `updateSchemaFile` function from "PgSchema.Generation" module.
 
     Then we can write a function to insert an order with order positions.
     And select orders with order positions and articles in one request using some conditions for orders and order positions that return in order.
@@ -49,16 +49,15 @@ description:
           , "num" =: 2 :. "articleId" =: 41 :. "price" =: 15 ] ]
 
       -- select orders
-      (xs :: [Order]) <- selectSch (MyAnn "orders") conn
-        $ qRoot do
-          qWhere $ "created_at" >? someDay
-            &&& pchild "ord__ord_pos" defTabParam
-              (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
-          qOrderBy [descf "created_at", descf "num"]
-          qPath "ord__ord_pos" do
-            qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
-            qOrderBy [ascf "num"]
-          qLimit 20
+      (xs :: [Order]) <- selectSch (MyAnn "orders") conn $ qRoot do
+        qWhere $ "created_at" >? someDay
+          &&& pchild "ord__ord_pos" defTabParam
+            (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
+        qOrderBy [descf "created_at", descf "num"]
+        qPath "ord__ord_pos" do
+          qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
+          qOrderBy [ascf "num"]
+        qLimit 20
     @
 
     === Module structure
@@ -79,7 +78,7 @@ source-repository head
   location: https://github.com/odr/pg-schema
 
 flag arbitrary
-  description: Make Arbitrary instances for all types (Enums, PgPgTag, SchList)
+  description: Make Arbitrary instances for all types (Enums, PgTag, SchList)
   manual:      True
   default:     False
 
@@ -89,12 +88,12 @@ flag debug
   default:     False
 
 flag flat
-  description: Make Flat instances for all types (Enums, PgPgTag, SchList)
+  description: Make Flat instances for all types (Enums, PgTag, SchList)
   manual:      True
   default:     False
 
 flag hashable
-  description: Make Hashable instances for all types (Enums, PgPgTag, SchList)
+  description: Make Hashable instances for all types (Enums, PgTag, SchList)
   manual:      True
   default:     False
 

@@ -7,9 +7,13 @@ import Data.Type.Equality
 
 
 -- | CamelToSnake:
+--
+-- @
 -- >>> import Data.Proxy
 -- >>> symbolVal (Proxy @(CamelToSnake "TESTCamelTo_snake_Case"))
 -- "t_e_s_t_camel_to_snake__case"
+--
+-- @
 type CamelToSnake (s :: Symbol) = CamelToSnakeInternal (UnconsSymbol s)
 
 type family CamelToSnakeInternal (m :: Maybe (Char, Symbol)) :: Symbol where

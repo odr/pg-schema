@@ -56,7 +56,9 @@ data ExceptionSch
 instance Exception ExceptionSch
 
 data AddRelation = AddRelation
-  { name  :: Text -- ^ name of an additional relation (these use namespace \"_add\")
+  { name  :: Text
+  -- ^ name of an additional (non-existing in the database) relation.
+  -- All additional relations will be added with the namespace "_add".
   , from  :: NameNS
   , to    :: NameNS
   , cols  :: [(Text, Text)] }

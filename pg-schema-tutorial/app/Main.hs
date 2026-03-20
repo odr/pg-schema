@@ -54,7 +54,7 @@ type family TRenamerSch (s :: Symbol) :: Symbol where
   TRenamerSch "avgNum" = "num"
   TRenamerSch s = s
 
-type instance Apply RenamerSch s = TRenamerSch s
+type instance ApplyRenamer RenamerSch s = TRenamerSch s
 
 data Country = MkCountry
   { code :: Maybe Text

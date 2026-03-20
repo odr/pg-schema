@@ -1,5 +1,16 @@
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-| Internal module: a type-level description of @pg_catalog@ tables in PostgreSQL
+(the system catalogs), as required by @pg-schema@ for code generation and queries.
+
+Application code should not need this module: use your generated schema module and
+the supported public entry points (e.g. "PgSchema.Generation" and "PgSchema.DML").
+
+It remains in the package export list because of technical constraints (visibility of
+types and instances for other components and tests). Do not treat it as a stable
+public API, and avoid importing it directly unless you are maintaining custom codegen
+or library extensions.
+-}
 module PgSchema.Schema.Catalog where
 
 import Data.Text as T

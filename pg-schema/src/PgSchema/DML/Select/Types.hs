@@ -14,7 +14,6 @@ module PgSchema.DML.Select.Types
   where
 
 import Control.Monad.RWS
-import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Kind
 import Data.List as L
 import Data.List.NonEmpty as NE
@@ -175,15 +174,8 @@ data LimOffWithPath sch t where
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like | ILike
   deriving (Show, Eq, Generic)
 
-instance FromJSON Cmp
-instance ToJSON Cmp
-
 -- | Just boolean operations
-data BoolOp = And | Or
-  deriving (Show, Eq, Generic)
-
-instance FromJSON BoolOp
-instance ToJSON BoolOp
+data BoolOp = And | Or deriving (Show, Eq, Generic)
 
 showCmp :: IsString s => Cmp -> s
 showCmp = \case

@@ -1,7 +1,10 @@
--- | Module for generating DOT representation of schema.
---
--- It is just a separate utility module.
---
+{-| Helper module: export a schema as DOT (Graphviz-style graphs). Useful for
+debugging and documenting a schema; not the primary API for database work through
+@pg-schema@.
+
+It is exposed as a small utility; it could be made non-public in a future release.
+Avoid depending on it in compatibility-sensitive code unless you really need graph output.
+-}
 module PgSchema.Utils.GenDot where
 
 import Data.Foldable as F
