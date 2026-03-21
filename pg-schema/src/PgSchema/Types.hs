@@ -140,7 +140,7 @@ instance ToField PgChar where
 -- | 'PGArray' has no JSON instances. '[]' has JSON, but no PG.
 -- This one has both.
 -- All elements are 'Maybe' because PostgreSQL does not guarantee that all elements are present.
--- 'PgTag' @TypeName 'PgArr' can be /safely/ converted to 'ToField' with type information (e.g. @<val>::int[]@).
+-- 'PgTag' @<typeName>@ 'PgArr' can be /safely/ converted to 'ToField' with type information (e.g. @<val>::int[]@).
 -- It is used internally in the generation of SQL.
 --
 newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
