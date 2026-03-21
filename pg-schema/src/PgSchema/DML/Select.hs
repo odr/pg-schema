@@ -54,10 +54,23 @@ type MonadQuery sch t m = (MonadRWS (QueryRead sch t) [SomeToField] QueryState m
 
 type Selectable ann r = (CRecInfo ann r, FromRow (PgTag ann r))
 
--- | With given 'Renamer' `ren`, 'CSchema' `sch` and table name `tab` get list of
--- table records with related entities accordingly to the struture of `r` and 'QueryParam' `qp`.
+-- | Run a single @SELECT@ for root table @tab@ (see annotation @ann@ with schema
+-- @sch@ and 'Renamer' @ren@) and decode rows into @[r]@, also returning the SQL
+-- text and bind parameters (for tracing or debugging).
 --
--- To set `QueryParam` use `MonadQP`
+-- The desired result type @r@ /fixes the shape/ of each row: typically a record
+-- with columns of the root table and nested Haskell values for relations along the
+-- schema graph. There may be several /child/-side fields (often lists of nested
+-- records) and several /parent/-side fields (nested records; wrapped in 'Maybe'
+-- when the foreign-key side you join from allows NULL).
+--
+-- What actually appears in the generated SQL beyond that shape is controlled by
+-- the 'QueryParam': filters, which paths are traversed, ordering on a branch
+-- (e.g. child rows sorted by their position number), limits, and similar options.
+-- You only configure in 'QueryParam' what you need for this query—not every
+-- possible relation field in @r@.
+--
+-- Build 'QueryParam' with the 'MonadQP' API.
 --
 selectSch :: forall ann -> forall r. (Selectable ann r, ann ~ 'Ann ren sch d tab)
   => Connection -> QueryParam sch tab -> IO ([r], (Text,[SomeToField]))

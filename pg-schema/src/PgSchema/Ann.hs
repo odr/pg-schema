@@ -30,11 +30,18 @@ import Prelude.Singletons as SP hiding (type (+), type (-))
 -- >>> import Database.PostgreSQL.Simple
 -- >>> conn <- connectPostgreSQL ""
 
+-- | Type-level annotation to check constraints in compile-time
+-- and make demoted types to generate correct SQL.
+-- 'annRen' and 'annSch' are fixed for the whole DML-operation.
+-- 'annDepth' and 'annTab' are changed while traversing the structure of the ADT.
+--
 data Ann = Ann
-  { annRen  :: Renamer
-  , annSch  :: Type
+  { annRen  :: Renamer -- ^ Renamer to convert Haskell names to database names.
+  , annSch  :: Type    -- ^ Schema with tables, relations and types.
   , annDepth :: Nat
-  , annTab  :: NameNSK }
+  -- ^ Depth of the nested relations. It is mostly used to prevent cycles in types.
+  , annTab  :: NameNSK -- ^ Name of the root table.
+  }
 
 type family AnnSch (ann :: Ann) where
   AnnSch ('Ann ren sch depth tab) = sch
@@ -46,9 +53,24 @@ data ColInfo (p :: Type) = ColInfo
   , ciInfo    :: RecField' Symbol p
   }
 
+-- | Renamer is a type-level function from 'Symbol' to 'Symbol'.
 type Renamer = Symbol ~> Symbol
-data RenamerId :: Renamer
+
+-- | Apply renamer to symbol.
+--
+--  Like 'Data.Singletons.Apply' but specialized for 'Symbol'.
+--
+-- To make your own Renamer, typically you make
+--
+-- * data MyRenamer :: Renamer
+-- * closed type family: `type family MyRenamerImpl (s :: Symbol) :: Symbol where ... `
+-- * type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
+--
 type family ApplyRenamer (renamer :: Renamer) (s :: Symbol) :: Symbol
+
+-- | Renamer that does not change the symbol.
+data RenamerId :: Renamer
+
 type instance ApplyRenamer RenamerId s = s
 
 --------------------------------------------------------------------------------

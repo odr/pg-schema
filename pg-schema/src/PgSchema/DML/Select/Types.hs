@@ -356,14 +356,14 @@ data OrdFld sch tab where
 
 data Dist sch tab where
   Distinct :: Dist sch tab
-  -- | Having 'DistinctOn` we automatically add fields from DistinctOn
-  -- into the begining of ORDER BY.
+  -- | Having 'DistinctOn' we automatically add fields from 'DistinctOn'
+  -- into the begining of @ORDER BY@.
   -- (It is "good enough" and more simple than check it on type level).
   --
   -- That's why we use 'OrdFld' who include 'OrdDirection'.
   -- Naturally 'OrdDirection' is not used in DISTINCT ON part itself.
   --
-  -- Beside that DISTINCT ON part can include expressions like ORDER BY.
+  -- Beside that @DISTINCT ON@ part can include expressions like @ORDER BY@.
   -- We can also use 'UnsafeOrd' here
   DistinctOn :: [OrdFld sch tab] -> Dist sch tab
 

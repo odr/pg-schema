@@ -29,39 +29,57 @@ import Prelude as P
 
 -- | Insert records into table and its children using JSON data internally.
 --
--- We can get any fields from inserted records and its children in returned result.
---
--- All mandatory fields having no defaults should be present.
---
+-- | Like 'upsertJSON', but requires all mandatory columns at every node (insert-only constraint).
+
 insertJSON
   :: forall ann -> forall r r'. InsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
 insertJSON ann @r @r' = insertJSONImpl ann @r @r'
 
--- | Insert records into table and its children using JSON data internally without returnings.
---
--- All mandatory fields having no defaults should be present.
+-- | Like 'insertJSON', but does not return rows.
 --
 insertJSON_
   :: forall ann -> forall r. InsertTreeNonReturning ann r
   => Connection -> [r] -> IO Text
 insertJSON_ ann @r = insertJSONImpl_ ann @r
 
--- | Upsert records into table and its children using JSON data internally.
+-- | Upsert a forest of rows into the root table and its /child/ tables in one
+-- round-trip, using JSON inside PostgreSQL (same pipeline as 'insertJSON').
 --
--- We can get any fields from upserted records and its children in returned result.
+-- __Input shape (@r@):__ a record tree that may contain the root table’s columns
+-- and nested /child/ branches (one-to-many from the root downward). There are no
+-- nested /parent/ branches: parent keys are implied by the tree you send, not by
+-- embedding parent rows inside children.
 --
--- Rules for upsert:
--- AllMandatory && NoPK     => @INSERT@
--- HasPK, not AllMandatory  => @UPDATE@
--- HasPK, AllMandatory      => @UPSERT@
+-- __Output shape (@r'@):__ a record tree whose graph of nested tables is a
+-- /subgraph/ of the input: the same tables can appear, but you choose which
+-- columns (and which levels) appear in the result—whatever is available through
+-- the generated @RETURNING@/result projection. Field sets may differ from @r@;
+-- relation structure cannot grow beyond what you sent in.
 --
+-- __What to supply at each node:__ at every level, each row must either include
+-- all mandatory columns (for columns that are mandatory in the schema /sense of
+-- this API/) or, alternatively, enough primary-key columns to identify an existing
+-- row. Foreign-key columns that are filled in by the parent level (for example
+-- after an auto-generated id on insert) do /not/ need to be present on the child
+-- payload.
+--
+-- __Insert vs update vs upsert per row:__ the engine picks one of @INSERT@,
+-- @UPDATE@, or @UPSERT@ from the keys and mandatory fields you provide:
+--
+-- * all mandatory fields present and /no/ primary key  →  @INSERT@
+-- * primary key present, not all mandatory fields      →  @UPDATE@
+-- * primary key present /and/ all mandatory fields    →  @UPSERT@
+--
+-- 'insertJSON' is the same execution path but adds a stricter type-level
+-- constraint: /every/ mandatory field must be present (pure inserts). 'upsertJSON'
+-- relaxes that so updates and upserts are expressible as in the rules above.
 upsertJSON
   :: forall ann -> forall r r'. UpsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
 upsertJSON ann @r @r' = insertJSONImpl ann @r @r'
 
--- | Upsert records into table and its children using JSON data internally without returnings.
+-- | Like 'upsertJSON', but does not return rows.
 --
 upsertJSON_
   :: forall ann -> forall r. UpsertTreeNonReturning ann r

@@ -17,14 +17,14 @@ import PgSchema.Utils.Internal
 import Prelude.Singletons as SP
 
 
--- | SQL aggregate used in 'RecField'' metadata ('RFAggr').
+-- | Supported SQL aggregate functions
 data AggrFun = ACount | AMin | AMax | ASum | AAvg
   deriving Show
 
 -- | Qualified PostgreSQL name: namespace (schema) + local name.
 data NameNS' s = NameNS
   { nnsNamespace :: s -- ^ Namespace (database schema), e.g. @public@ or @pg_catalog@.
-  , nnsName :: s      -- ^ Unqualified table/relation/type name.
+  , nnsName :: s      -- ^ Unqualified table / relation / type name.
   } deriving (Show, Eq, Ord)
 
 -- | Description of a PostgreSQL type (category, array element, enum labels).

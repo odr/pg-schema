@@ -58,7 +58,7 @@ import Data.Hashable
 
 -- | Introduce `enum` database types.
 -- Data instances are produced by schema generation.
--- You can use these data instances in you records to select/upsert data
+-- You can use these data instances in you records to @SELECT@/@INSERT@/@UPSERT@ data
 data family PGEnum sch (name :: NameNSK) :: Type
 
 instance
@@ -107,12 +107,12 @@ instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
 --
 -- 'Aggr' requires a 'Maybe' argument for all functions except @count@.
 --
--- Only a small set of aggregations are supported currently: `count`, `min`, `max`, `sum`, `avg`.
+-- Only a small set of aggregations are supported currently: @count@, @min@, @max@, @sum@, @avg@.
 newtype Aggr (f :: AggrFun) t = Aggr { unAggr :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
 
--- | All aggregate functions except count can return NULL.
+-- | All aggregate functions except @count@ can return NULL.
 -- But if field under aggregate is mandatory they return NULL only on empty set
 -- if there is no group by clause. E.g. `select min(a) from t where false`
 -- So we require Nullable for Aggr.
@@ -140,7 +140,9 @@ instance ToField PgChar where
 -- | 'PGArray' has no JSON instances. '[]' has JSON, but no PG.
 -- This one has both.
 -- All elements are 'Maybe' because PostgreSQL does not guarantee that all elements are present.
--- 'PgTag' 'PgArr' can be safely converted to 'ToField' with type information (e.g. @<val>::int[]@).
+-- 'PgTag' @TypeName 'PgArr' can be /safely/ converted to 'ToField' with type information (e.g. @<val>::int[]@).
+-- It is used internally in the generation of SQL.
+--
 newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
   deriving stock (Show, Read)
   deriving newtype (Eq, Ord, FromJSON, ToJSON, Semigroup, Monoid
@@ -360,6 +362,27 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
     , FromJSON (PGEnum sch n)
     , ToJSON (PGEnum sch n) )
 
+-- | Annotates a value with schema/type information for DML codecs.
+--
+-- You can describe rows in two ways:
+--
+-- 1. Ordinary Haskell records with a 'GHC.Generics.Generic' instance.
+-- 2. Symbol-labelled rows built from '(=:)' and chained with '(:.)' from
+--    @postgresql-simple@ (re-exported from "PgSchema.DML").
+--
+-- 'PgTag' is analogous to 'Data.Tagged.Tagged' from the @tagged@ package, but
+-- carries JSON (and related) instances suited to @pg-schema@.
+--
+-- Both representations can be mixed in one row.
+--
+-- Two pieces of syntax cooperate with 'PgTag':
+--
+-- * '(=:)' builds a 'PgTag' value (field name + payload).
+-- @RequiredTypeArguments@ lets you avoid noisy explicit type application on the
+-- field name: you write "name" =: "John" instead of @"name" =: "John".
+-- * '(:=)' is the type-level spelling of the same idea (see the '(:=)' type
+--   synonym below).
+--
 newtype PgTag s t = PgTag { unPgTag :: t }
   deriving stock (Show, Read, Eq, Ord, Functor, Foldable, Traversable)
   deriving newtype (Semigroup, Monoid)

@@ -6,7 +6,7 @@ import Data.Type.Bool
 import Data.Type.Equality
 
 
--- | CamelToSnake:
+-- | Closed type family to convert CamelCase to snake_case that can be used in 'Renamer'.
 --
 -- @
 -- >>> import Data.Proxy
