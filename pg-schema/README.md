@@ -10,11 +10,11 @@ For reading and writing data, use the `PgSchema.DML` module. Queries are built f
 
 Inserts and reads use either ordinary Haskell records with a Generic instance or types of the form `"fld1" := Int32 :. "fld2" := Maybe Text`. Field names in Haskell records must match those in the database (with renaming supported) but you can work with any subset of the table's fields. Navigation along relationships uses foreign-key constraint names. Types and nullability are checked against the data layout.
 
-SELECT and INSERT/UPSERT are implemented. UPDATE and DELETE apply to a single table.
+SELECT and INSERT/UPSERT are implemented for the nested structures. UPDATE and DELETE apply to a single table.
 
 When reading data, an EDSL sets conditions, ordering, and grouping. All of these operations are type-safe.
 
-For inserts and updates, additional compile-time checks derive from database constraints—for example, inserts verify that required fields are present at every level.
+For inserts and updates, additional compile-time checks derive from database constraints—for example, inserts verify that mandatory fields are present at every level.
 
 ## Requirements
 
