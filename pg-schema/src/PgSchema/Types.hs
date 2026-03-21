@@ -137,11 +137,14 @@ instance ToField PgChar where
   toField = toField . (:[]) . unPgChar
 
 --
--- | 'PGArray' has no JSON instances. '[]' has JSON, but no PG.
+-- | 'PGArray' has no JSON instances. '[]' has JSON, but no PG instances.
 -- This one has both.
+--
+-- Use this type to work with arrays in database.
+--
 -- All elements are 'Maybe' because PostgreSQL does not guarantee that all elements are present.
--- 'PgTag' @<typeName>@ 'PgArr' can be /safely/ converted to 'ToField' with type information (e.g. @<val>::int[]@).
--- It is used internally in the generation of SQL.
+-- 'PgTag' @typeName@ 'PgArr' can be /safely/ converted to 'ToField' with type information (e.g. @val::int[]@).
+-- This instance is used internally in the generation of SQL.
 --
 newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
   deriving stock (Show, Read)
@@ -160,15 +163,6 @@ newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
 
 instance (FromField a, Typeable a) => FromField (PgTag s (PgArr a)) where
   fromField = (fmap (coerce @(PGArray (Maybe a))) .) . fromField
-
--- instance ToField a => ToField (PgTag s (PgArr a)) where
---   toField = toField . coerce @_ @(PGArray (Maybe a))
-
--- instance (FromField a, Typeable a) => FromField (PgArr a) where
---   fromField = (fmap (coerce @(PGArray (Maybe a))) .) . fromField
-
--- instance ToField a => ToField (PgArr a) where
---   toField = toField . coerce @_ @(PGArray (Maybe a))
 
 instance (ToField a, ToStar s) => ToField (PgTag (s :: Maybe NameNSK) (PgArr a)) where
   toField (PgTag (PgArr xs)) =
