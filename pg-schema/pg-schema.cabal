@@ -65,7 +65,7 @@ description:
     * "PgSchema.Generation" - module with generation functions.
       Usually you make executable which generates schema definition using this module.
     * "PgSchema.DML" - module with DML functions. Import this module into your application and use it to generate safe DML for PostgreSQL.
-    * "PgSchema.Import" - generated schema module import this module.
+    * "PgSchema.Import" - generated schema module imports this module.
 
 homepage:       https://github.com/odr/pg-schema/tree/master/pg-schema#readme
 bug-reports:    https://github.com/odr/pg-schema/issues
