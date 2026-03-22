@@ -15,6 +15,8 @@ module PgSchema.DML.Select.Types
 
 import Control.Monad.RWS
 import Data.Kind
+import Data.Proxy
+import Data.Singletons (demote)
 import Data.List as L
 import Data.List.NonEmpty as NE
 import Data.String
@@ -26,8 +28,7 @@ import GHC.Generics
 import GHC.Natural
 import GHC.TypeLits
 import PgSchema.Utils.Internal
-
-import Prelude.Singletons
+import PgSchema.Utils.TF
 
 
 -- | Parameters that are used to describe @SELECT@.

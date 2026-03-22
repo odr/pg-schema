@@ -276,7 +276,7 @@ type instance TTabs PgCatalog
 
 We can now generate dot-description of our schema:
 ```haskell
-ghci> import PgSchema.Utils.GenDot
+ghci> import PgSchema.GenDot
 ghci> mapM_ T.putStrLn $ T.lines $ genDot @Tutorial False []
 
 digraph G {

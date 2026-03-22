@@ -7,6 +7,7 @@ import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Key as Key
 import Data.Coerce
 import Data.Singletons.TH (genDefunSymbols)
+import Data.Type.Bool
 import Data.Typeable
 import Data.Text qualified as T
 import Data.Kind
@@ -17,11 +18,12 @@ import Database.PostgreSQL.Simple.FromRow(FromRow(..), RowParser, field)
 import GHC.Generics
 import GHC.Int
 import GHC.TypeLits
-import GHC.TypeError
+import GHC.TypeError as TE
 import PgSchema.Schema
 import PgSchema.Types
 import PgSchema.Utils.Internal
-import Prelude.Singletons as SP hiding (type (+), type (-))
+import Data.Singletons as SP
+import PgSchema.Utils.TF as SP
 
 
 
@@ -585,7 +587,7 @@ type family TRecordInfo (ann :: Ann) (r :: Type) :: [FieldInfo Symbol] where
 -- | One-table check that all mandatory fields are present
 -- rs: list of columns that are already "covered" (including those that come from Reference)
 type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
-  CheckAllMandatory ('Ann ren sch d tab) rs = Assert
+  CheckAllMandatory ('Ann ren sch d tab) rs = TE.Assert
     (SP.Null (RestMandatory sch tab rs))
     (TypeError
       (  Text "We can't insert data because not all mandatory fields are present."
@@ -595,7 +597,7 @@ type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
 -- | One-table check that all mandatory fields are present
 -- or all PK fields are present
 type family CheckAllMandatoryOrHasPK (ann :: Ann) (rs :: [Symbol]) :: Constraint where
-  CheckAllMandatoryOrHasPK ('Ann ren sch d tab) rs = Assert
+  CheckAllMandatoryOrHasPK ('Ann ren sch d tab) rs = TE.Assert
     ( SP.Null (RestMandatory sch tab rs)
       || SP.Null (RestPK sch tab rs) )
     (TypeError
@@ -617,7 +619,7 @@ type family WalkLevelAnn
     WalkLevelAnn check ann xs (db ': rs)
   WalkLevelAnn check ('Ann ren sch d tab)
     ('FieldInfo _ _ ('RFToHere ('RecordInfo childTab childFIs) refs) ': xs) rs =
-      ( WalkLevelAnn check ('Ann ren sch d childTab) childFIs (SP.Map FromNameSym0 refs)
+      ( WalkLevelAnn check ('Ann ren sch d childTab) childFIs (SP.Map1 FromNameSym0 refs)
       , WalkLevelAnn check ('Ann ren sch d tab) xs rs )
   WalkLevelAnn check ann (_ ': xs) rs = WalkLevelAnn check ann xs rs
 

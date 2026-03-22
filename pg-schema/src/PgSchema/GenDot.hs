@@ -5,7 +5,7 @@ debugging and documenting a schema; not the primary API for database work throug
 It is exposed as a small utility; it could be made non-public in a future release.
 Avoid depending on it in compatibility-sensitive code unless you really need graph output.
 -}
-module PgSchema.Utils.GenDot where
+module PgSchema.GenDot where
 
 import Data.Foldable as F
 import Data.List as L

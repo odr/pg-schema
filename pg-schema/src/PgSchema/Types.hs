@@ -37,13 +37,15 @@ import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import GHC.TypeLits as TL
 import GHC.TypeError as TE
+import Data.Type.Equality (type (==))
 import GHC.Int
 import Prelude as P
 import Type.Reflection
 import PgSchema.Schema.Catalog (PGC)
+import Data.Type.Bool (Not, type (&&), type (||))
 import PgSchema.Schema
 import PgSchema.Utils.Internal hiding (fromText)
-import Prelude.Singletons as SP
+
 
 #ifdef MK_ARBITRARY
 import Test.QuickCheck(Arbitrary(arbitrary), arbitraryBoundedEnum)
@@ -241,18 +243,18 @@ type family CanConvertMaybe sch (tab::NameNSK) (fld::Symbol) (tn::NameNSK)
   CanConvertMaybe sch tab fld tn nullable td (Aggr' ACount t) =
     ErrWithHead "You have to use Int64 for Aggr' ACount fields" tab fld tn t
   CanConvertMaybe sch tab fld tn nullable td (Aggr AMin t) = GuardConvert
-    (IsMaybe t && Elem (TypCategory td) '["N","S","B","D"])
+    (IsMaybe t && Elem' (TypCategory td) '["N","S","B","D"])
     sch tab fld tn td (Aggr AMin t) (UnMaybe t)
     "'Aggr AMin' is possible only for 'Maybe' values and numeric, text, bool or date fields"
   CanConvertMaybe sch tab fld tn nullable td (Aggr' AMin t) = GuardConvert
-    (Elem (TypCategory td) '["N","S","B","D"]) sch tab fld tn td (Aggr' AMin t) t
+    (Elem' (TypCategory td) '["N","S","B","D"]) sch tab fld tn td (Aggr' AMin t) t
       "'Aggr' AMin' is possible only for numeric, text, bool or date fields"
   CanConvertMaybe sch tab fld tn nullable td (Aggr AMax t) = GuardConvert
-    (IsMaybe t && Elem (TypCategory td) '["N","S","B","D"])
+    (IsMaybe t && Elem' (TypCategory td) '["N","S","B","D"])
     sch tab fld tn td (Aggr AMax t) (UnMaybe t)
     "'Aggr AMax' is possible only for 'Maybe' values and numeric, text, bool or date fields"
   CanConvertMaybe sch tab fld tn nullable td (Aggr' AMax t) = GuardConvert
-    (Elem (TypCategory td) '["N","S","B","D"])
+    (Elem' (TypCategory td) '["N","S","B","D"])
     sch tab fld tn td (Aggr' AMax t) t
     "'Aggr' AMax' is possible only for numeric, text, bool or date fields"
   CanConvertMaybe sch tab fld tn nullable td (Aggr AAvg (Maybe Scientific)) =

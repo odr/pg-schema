@@ -105,7 +105,7 @@ library
     PgSchema.Import
     PgSchema.Schema.Catalog
     PgSchema.Schema.Info
-    PgSchema.Utils.GenDot
+    PgSchema.GenDot
   other-modules:
     PgSchema.Ann
     PgSchema.DML.Delete
@@ -118,7 +118,9 @@ library
     PgSchema.Schema
     PgSchema.Types
     PgSchema.Utils.CamelToSnake
+    PgSchema.Utils.Instances
     PgSchema.Utils.Internal
+    PgSchema.Utils.TF
     PgSchema.Utils.ShowType
     --
     Paths_pg_schema
@@ -139,7 +141,6 @@ library
     , postgresql-simple >= 0.6 && < 0.8
     , scientific >= 0.2 && < 0.4
     , singletons >= 3.0.3 && < 3.1
-    , singletons-base >= 3.4 && < 3.6
     , singletons-th >= 3.4 && < 3.6
     , text >= 2.0 && < 2.2
     , time >= 1.12 && < 2
@@ -273,7 +274,6 @@ test-suite test-pgs
     pg-schema,
     bytestring,
     singletons,
-    singletons-base,
     case-insensitive,
     hedgehog >= 1.1,
     postgresql-simple,

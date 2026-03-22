@@ -27,8 +27,8 @@ import GHC.Generics
 import GHC.TypeLits
 import PgSchema.Types
 import PgSchema.Utils.Internal
+import PgSchema.Utils.TF (Snd)
 import Prelude as P
-import Prelude.Singletons as SP hiding (Any)
 
 
 data QueryRead sch t = QueryRead
