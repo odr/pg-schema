@@ -78,7 +78,7 @@ selectSch ann @r conn (selectText ann @r -> (sql,fs)) =
   trace' ("\n\n" <> T.unpack sql <> "\n\n" <> P.show fs <> "\n\n")
   $ (,(sql,fs)) . fmap (unPgTag @ann @r) <$> query conn (fromString $ T.unpack sql) fs
 
--- | Just get a text of select for debugging or something else.
+-- | Return the generated @SELECT@ SQL text (and bind parameters), e.g. for debugging.
 selectText :: forall ann -> forall r. (CRecInfo ann r, ann ~ 'Ann ren sch d tab)
   => QueryParam sch tab -> (Text,[SomeToField])
 selectText ann @r qp = evalRWS (selectM "" (getRecordInfo @ann @r)) (qr0 qp) qs0
@@ -180,8 +180,8 @@ selectM refTxt ri = do
     <> orderText
     <> qsLimOff
 
--- | return text for field, alias and expression to check is empty
--- (not obvious for FieldTo)
+-- | SQL text for the column expression, result alias, and emptiness-test expression
+-- (non-obvious for nested relation fields).
 fieldM :: MonadQuery sch tab m => FieldInfo Text -> m (Text, Text, Text)
 fieldM fi = case fi.fieldKind of
   RFEmpty s -> pure ("null", s, "true")

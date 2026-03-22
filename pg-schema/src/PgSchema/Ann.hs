@@ -30,8 +30,8 @@ import Prelude.Singletons as SP hiding (type (+), type (-))
 -- >>> import Database.PostgreSQL.Simple
 -- >>> conn <- connectPostgreSQL ""
 
--- | Type-level annotation to check constraints in compile-time
--- and make demoted types to generate correct SQL.
+-- | Type-level annotation: enforce constraints at compile time
+-- and drive demoted types used to generate correct SQL.
 -- 'annRen' and 'annSch' are fixed for the whole DML-operation.
 -- 'annDepth' and 'annTab' are changed while traversing the structure of the ADT.
 --

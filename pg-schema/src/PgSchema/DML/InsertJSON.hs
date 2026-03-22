@@ -27,7 +27,7 @@ import PgSchema.Utils.Internal
 import Prelude as P
 
 
--- | Insert records into table and its children using JSON data internally.
+-- | Insert records into a table and its children using JSON data internally.
 --
 -- | Like 'upsertJSON', but requires all mandatory columns at every node (insert-only constraint).
 

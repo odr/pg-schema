@@ -307,8 +307,8 @@ type family CanConvertMaybe sch (tab::NameNSK) (fld::Symbol) (tn::NameNSK)
   CanConvertMaybe sch tab fld tn nullable td t = GuardConvert (Not nullable)
     sch tab fld tn td t t "You have to use Maybe for nullable fields"
 
--- | Many to many relation between db-type and Haskell type (not nullable)
--- You can add your own instances to this family
+-- | Open mapping from a PostgreSQL type (non-nullable) to a Haskell type.
+-- Add your own equations to this family to support extra pairings.
 type family CanConvert1 sch (tab::NameNSK) (fld::Symbol) (tn::NameNSK) (td::TypDefK) t :: Constraint
 
 type instance CanConvert1 sch tab fld tn ('TypDef "A" ('Just n) y) (PgArr t) =

@@ -13,8 +13,8 @@ import PgSchema.Types
 import PgSchema.Utils.Internal
 
 
--- | Insert records into table.
--- We can get any fields from inserted record in returned result.
+-- | Insert records into a table.
+-- You can request any subset of columns from the inserted row via the result type.
 --
 -- All mandatory fields having no defaults should be present.
 --
@@ -27,7 +27,7 @@ insertSch ann @r @r' conn = let sql = insertText ann @r @r' in
     . returning conn (fromString $ T.unpack sql)
     . fmap (PgTag @ann @r)
 
--- | Insert records into table without returnings.
+-- | Insert records into a table without @RETURNING@.
 insertSch_ :: forall ann -> forall r. (InsertNonReturning ann r) =>
   Connection -> [r] -> IO (Int64, Text)
 insertSch_ ann @r conn recs = let sql = insertText_ ann @r in do
@@ -36,7 +36,7 @@ insertSch_ ann @r conn recs = let sql = insertText_ ann @r in do
     . executeMany conn (fromString $ T.unpack sql)
     . fmap (PgTag @ann @r) $ recs
 
--- | Construct SQL text for inserting records into table and returning some fields.
+-- | Construct SQL text for inserting records into a table and returning some fields.
 insertText
   :: forall ann -> forall r r' s
   . (CRecInfo ann r, CRecInfo ann r', IsString s, Monoid s) => s
@@ -45,7 +45,7 @@ insertText ann @r @r'= insertText_ ann @r <> " returning " <> fs'
     ri = getRecordInfo @ann @r'
     fs' = fromText $ T.intercalate "," [ fi.fieldDbName | fi <- ri.fields]
 
--- | Construct SQL text for inserting records into table without returnings.
+-- | Construct SQL text for inserting records into a table without @RETURNING@.
 insertText_ :: forall ann -> forall r s. (IsString s, Monoid s) =>
   CRecInfo ann r => s
 insertText_ ann @r = "insert into " <> tn <> "(" <> fs <> ") values (" <> qs <> ")"

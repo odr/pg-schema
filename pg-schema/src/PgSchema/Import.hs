@@ -16,7 +16,7 @@ inside this package) can depend on it via ordinary package imports.
 
 If you import "PgSchema.Import" directly, you bypass the intended layering, gain no
 extra capability, and risk silent breakage when the re-export set changes.
-Treat it as implementation detail for codegen output, not as a public API to build on.
+Treat it as an implementation detail of codegen output, not as a public API to build on.
 -}
 module PgSchema.Import
   (

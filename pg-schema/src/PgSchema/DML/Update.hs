@@ -18,7 +18,7 @@ import Prelude as P
 -- updateByKeyJSON Connection -> [r] -> IO [r']
 -- updateExp (e.q. update t set a = a + c + 1 where b > 10)
 
--- | Update records by condition. We can get any fields from updated records in result.
+-- | Update rows matching a condition; the result type selects which columns are returned.
 updateByCond :: forall ann -> forall r r'.
   (ann ~ 'Ann ren sch d t, UpdateReturning ann r r') =>
   Connection -> r -> Cond sch t -> IO [r']
@@ -28,7 +28,7 @@ updateByCond ann @r @r' conn r (updateText ann @r @r' -> (q,ps)) =
   $ query conn (fromString q)
   $ PgTag @ann @r r :. ps
 
--- | Update records by condition without returnings.
+-- | Update records by condition without @RETURNING@.
 updateByCond_ :: forall ann -> forall r.
   (ann ~ 'Ann ren sch d t, UpdateNonReturning ann r) =>
   Connection -> r -> Cond sch t -> IO Int64
@@ -46,7 +46,7 @@ updateText ann @r @r' (updateText_ ann @r -> (q, p)) = (q <> " returning " <> fs
     ri' = getRecordInfo @ann @r'
     fs' = fromText $ T.intercalate "," [fi.fieldDbName | fi <- ri'.fields]
 
--- | Construct SQL text for updating records by condition without returnings.
+-- | Construct SQL text for updating records by condition without @RETURNING@.
 updateText_
   :: forall ann -> forall r s. (IsString s, Monoid s, CRecInfo ann r)
   => Cond sch t -> (s, [SomeToField])

@@ -30,7 +30,7 @@ import PgSchema.Utils.Internal
 import Prelude.Singletons
 
 
--- | Parameters that is used to describe @SELECT@.
+-- | Parameters that are used to describe @SELECT@.
 --
 -- You don't need to make it directly. Use 'MonadQP' to define 'QueryParam' instead.
 --
@@ -38,7 +38,7 @@ data QueryParam sch t = QueryParam
   { qpConds     :: ![CondWithPath sch t]    -- ^ `where` conditions for branches of Data-Tree
   , qpOrds      :: ![OrdWithPath sch t]     -- ^ `order by` clauses
   , qpLOs       :: ![LimOffWithPath sch t]  -- ^ `limit/offset` clauses
-  , qpDistinct  :: ![DistWithPath sch t]    -- ^ `destinct` and `distinct on` clauses
+  , qpDistinct  :: ![DistWithPath sch t]    -- ^ `distinct` and `distinct on` clauses
   }
 
 -- | Empty 'QueryParam'.
@@ -51,13 +51,14 @@ type MonadQP sch t path = (TabPath sch t path, ToStar path) => RWS (Proxy path) 
 
 -- | Execute 'MonadQP' and get 'QueryParam'.
 --
--- The table `t` define a context and become the "current" table
+-- The table `t` defines a context and becomes the "current" table
 qRoot :: RWS (Proxy '[]) () (QueryParam sch t) () -> QueryParam sch t
 qRoot m = fst $ execRWS m Proxy qpEmpty
 
 -- | Change context (current table) to parent or child table.
 --
--- 'Symbol' parameter must be the name of reference constraint "to" or "from" current table
+-- The 'Symbol' must name the foreign-key constraint (edge to the parent or from the child)
+-- for the step away from the current table.
 --
 qPath :: forall sch t path path'.
   forall (p :: Symbol) ->
@@ -69,7 +70,7 @@ qPath _p m = do
 
 -- | Add @WHERE@ condition for the current table.
 --
--- If several 'qWhere' exists they are composed in accordance to 'Monoid' for 'Cond', i.e. with '(&&&)'
+-- If several 'qWhere' exist they are composed according to the 'Monoid' instance for 'Cond', i.e. with '(&&&)'
 qWhere :: forall sch t path. Cond sch (TabOnPath sch t path) -> MonadQP sch t path
 qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 
@@ -77,7 +78,7 @@ qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 --
 -- Several 'qOrderBy' are possible and they are composed together.
 --
--- There can be mixed with "parent" table. I.e. having
+-- Ordering can span the current table and joined parents. For example:
 --
 -- @
 -- qOrderBy [ascf "f1"]
@@ -99,9 +100,9 @@ qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpD
 
 -- | Add @DISTINCT ON@ condition for the current table.
 --
--- It can be applied also to "parent" table because it just joined to the current table.
+-- It can also be applied on a parent table because that parent is joined to the current table.
 --
--- 'qDistinctOn' automatically add fields to the @ORDER BY@ clause (as PostgreSql require).
+-- 'qDistinctOn' automatically adds fields to the @ORDER BY@ clause (as PostgreSQL requires).
 -- (That's why 'OrdDirection' is needed)
 -- So having
 --
@@ -121,7 +122,7 @@ qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn
 -- | Add `LIMIT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
 --
--- If several 'qLimit` applied to the same path only the last one is used
+-- If 'qLimit' is applied several times on the same path, only the last one is used
 qLimit :: forall sch t path. Snd (TabOnPath2 sch t path) ~ RelMany
   => Natural -> MonadQP sch t path
 qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
@@ -136,7 +137,7 @@ qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
 -- | Add `OFFSET` condition for the current table.
 -- It is applied only to "root" or "children" tables.
 --
--- If several 'qOffset` applied to the same path only the last one is used
+-- If 'qOffset' is applied several times on the same path, only the last one is used
 qOffset :: forall sch t path. Snd (TabOnPath2 sch t path) ~ RelMany
   => Natural -> MonadQP sch t path
 qOffset n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
@@ -169,8 +170,8 @@ data LimOffWithPath sch t where
     (TabPath sch t path, ToStar path, Snd (TabOnPath2 sch t path) ~ 'RelMany)
     => LO -> LimOffWithPath sch t
 
--- | Comparing constructors. They are paired with corresponding operation.
--- E.g. constructor '(:=)' is paired with '(=?)' etc
+-- | Comparison constructors; each is paired with its corresponding operator
+-- (e.g. '(:=)' with '(=?)').
 data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like | ILike
   deriving (Show, Eq, Generic)
 
@@ -191,7 +192,7 @@ showCmp = \case
 * Read: Stack of numbers of parent tables. The top is "current table"
 * Write: List of placeholder-values.
 
-    Note: We have to generate sql from top to bottom to correct order of fields
+    Note: SQL is generated top-down so placeholder values appear in the correct order.
 
 * State: Last number of table "in use"
 -}
@@ -226,8 +227,8 @@ data Cond (sch::Type) (tab::NameNSK) where
   In :: forall fld v sch tab fd. CDBValue sch tab fld fd v => NonEmpty v -> Cond sch tab
   -- ^ Check that field value belongs to non-empty list of values
   InArr :: forall fld v sch tab fd. CDBValue sch tab fld fd v => [v] -> Cond sch tab
-  -- ^ Check that field value belongs to the list of values
-  -- if list of values is empty it return @false@
+  -- ^ Check that field value belongs to the list of values.
+  -- If the list is empty, the condition evaluates to @false@.
   Null :: forall fld sch tab fd. CDBFieldNullable sch tab fld fd => Cond sch tab
   -- ^ Check that field value is @NULL@
   Not :: Cond sch tab -> Cond sch tab
@@ -242,16 +243,16 @@ data Cond (sch::Type) (tab::NameNSK) where
   -- condition on child table
   Parent :: forall sch ref . CRelDef sch ref =>
     Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
-  -- ^ @JOIN@ with those parents who satisfied their conditions
+  -- ^ @JOIN@ to parent rows that satisfy the nested condition
   UnsafeCond :: CondMonad Text -> Cond sch tab
-  -- ^ Unsafe condition that user can make in 'CondMonad' by self
+  -- ^ Unsafe condition built manually inside 'CondMonad'
 
--- Conjunction (&&&) is much more often operation for query conditions so
--- we use it for Semigroup.
--- But note that EmptyCond is neutral also for disjuction (|||).
+-- Conjunction '(&&&)' is much more often operation for query conditions so
+-- we use it for 'Semigroup'.
+-- But note that 'EmptyCond' is also neutral for disjunction '(|||)'.
 instance Semigroup (Cond sch tab) where
   c1 <> c2 = c1 &&& c2
-  -- ^ Using conjunction ('(&&&)') for 'Semifroup' instance
+  -- ^ Using conjunction ('(&&&)') for 'Semigroup' instance
 
 instance Monoid (Cond sch tab) where
   mempty = EmptyCond
@@ -275,7 +276,7 @@ defTabParam = TabParam mempty mempty defLO
 pnull :: forall sch tab fd. forall name -> CDBFieldNullable sch tab name fd => Cond sch tab
 pnull name = Null @name
 
--- | Check that exists related records in child table and the condition is satisfied there
+-- | True when related rows exist in the child table and satisfy the nested condition there
 --
 -- 'TabParam' is used to limit child dataset (usually with @ORDER BY@ and @LIMIT@) before applying
 -- condition on child table
@@ -308,7 +309,7 @@ pin :: forall name -> forall sch tab fd v. CDBValue sch tab name fd v
 pin name = In @name
 
 -- | Check that field value belongs to the list of values.
--- If list of values is empty it returns @false@
+-- If the list is empty, the condition evaluates to @false@.
 {-# INLINE pinArr #-}
 pinArr :: forall name -> forall sch tab fd v. CDBValue sch tab name fd v
   => [v] -> Cond sch tab

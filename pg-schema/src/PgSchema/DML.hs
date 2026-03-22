@@ -43,7 +43,7 @@
 -- JSON internally. Child data is carried in list fields: the field’s name (after 'Renamer') names
 -- the FK constraint in the database and thus selects the child table and link;
 -- each list element supplies one child row’s columns, with nested lists for further
--- children in the same way.. For strict inserts,
+-- children in the same way. For strict inserts,
 -- 'insertJSON' and 'insertJSON_' require every mandatory column at each node;
 -- 'upsertJSON' / 'upsertJSON_' relax that so each row can be resolved by keys and
 -- optional columns (see their Haddock). Plain 'insertSch' / 'insertSch_' follow the
@@ -57,13 +57,13 @@
 --
 -- We can use both 'GHC.Generics.Generic'-based and 'PgTag'-based ('(=:)') interfaces and mix them in any way.
 --
--- Note that all "strings" here are 'GHC.TypeLits.Symbol' due to @RequiredTypeArguments@ extension.
--- And operations are safe if database schema is correct.
+-- All string literals at the type level are 'GHC.TypeLits.Symbol' thanks to @RequiredTypeArguments@.
+-- Operations are safe when the live database schema matches the generated schema types.
 --
--- Here both @INSERT@ and @SELECT@ are single and fast operation in database (using JSON internally).
+-- The @INSERT@ and @SELECT@ shown here each run as a single, fast database round-trip (JSON inside PostgreSQL).
 --
--- Note that we use 'Renamer' ('CamelToSnake' here) to convert Haskell field names to snake_case for database.
--- But in conditions and 'QueryParams' we use original database field names.
+-- We use a 'Renamer' (e.g. 'CamelToSnake') to map Haskell field names to @snake_case@ in the database.
+-- In conditions and 'QueryParams', column names are the original database names.
 -- It can be changed in the future.
 --
 module PgSchema.DML

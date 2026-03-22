@@ -6,10 +6,10 @@
 -- Maintainer: olshanskydr@gmail.com, dima@typeable.io
 -- Stability: experimental
 --
--- === Generation of Type-level definition of database schema
+-- === Generation of type-level database schema definitions
 --
--- Typically you create executable which imports this module
--- and run it to generate schema definition.
+-- Typically you build an executable that imports this module
+-- and run it to emit the schema definition.
 --
 module PgSchema.Generation
   (updateSchemaFile, GenNames(..), AddRelation(..)
@@ -220,7 +220,7 @@ getDefs (types,classes,relations) =
         getName t n = M.lookup (t,n) mClassAttrs
         getName2 n1 n2 = (,) <$> getName rdFrom n1 <*> getName rdTo n2
 
--- | Update (or create) hs-file with schema definition
+-- | Update (or create) the Haskell file containing the schema definition
 updateSchemaFile
   :: Bool       -- ^ verbose mode
   -> String     -- ^ file name
