@@ -29,7 +29,7 @@ import Prelude as P
 
 -- | Insert records into a table and its children using JSON data internally.
 --
--- | Like 'upsertJSON', but requires all mandatory columns at every node (insert-only constraint).
+-- Like 'upsertJSON', but requires all mandatory columns at every node (insert-only constraint).
 
 insertJSON
   :: forall ann -> forall r r'. InsertTreeReturning ann r r'
