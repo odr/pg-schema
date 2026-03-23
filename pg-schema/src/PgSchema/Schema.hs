@@ -12,7 +12,10 @@ import Data.Text as T hiding (show)
 import Data.Type.Bool
 import Data.Type.Equality
 import GHC.TypeLits
-import PgSchema.Utils.Instances()
+-- import PgSchema.Utils.Instances()
+-- import Data.Maybe.Singletons()
+import Data.Bool.Singletons()
+import Data.Maybe.Singletons()
 import PgSchema.Utils.Internal
 import PgSchema.Utils.TF
 
@@ -113,11 +116,6 @@ type family GetRelTab (froms :: [(NameNSK, RelDefK)])
       If (NnsName a == s) '(RdTo b, RelOne) (GetRelTab xs ys s)
     GetRelTab '[] ('(c,d) ':ys) s =
       If (NnsName c == s) '(RdFrom d, RelMany) (GetRelTab '[] ys s)
-
-type family Elem' (x :: Symbol) (xs :: [Symbol]) :: Bool where
-  Elem' x '[] = False
-  Elem' x (x ': xs) = True
-  Elem' x (y ': xs) = Elem' x xs
 
 type IsMandatory fd = Not (FdNullable fd || FdHasDefault fd)
 type IsMandatory' sch tab fld = IsMandatory (GetFldDef sch tab fld)
