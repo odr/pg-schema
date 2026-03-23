@@ -13,8 +13,6 @@ import Data.Type.Bool
 import Data.Type.Equality
 import GHC.TypeLits
 -- import PgSchema.Utils.Instances()
--- import Data.Maybe.Singletons()
-import Data.Bool.Singletons()
 import Data.Maybe.Singletons()
 import PgSchema.Utils.Internal
 import PgSchema.Utils.TF
