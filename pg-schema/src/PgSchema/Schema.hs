@@ -114,27 +114,27 @@ type family GetRelTab (froms :: [(NameNSK, RelDefK)])
     GetRelTab '[] ('(c,d) ':ys) s =
       If (NnsName c == s) '(RdFrom d, RelMany) (GetRelTab '[] ys s)
 
-type family Elem' (x :: Symbol) (xs :: [Symbol]) :: Bool where
-  Elem' x '[] = False
-  Elem' x (x ': xs) = True
-  Elem' x (y ': xs) = Elem' x xs
-
 type IsMandatory fd = Not (FdNullable fd || FdHasDefault fd)
 type IsMandatory' sch tab fld = IsMandatory (GetFldDef sch tab fld)
 
 type family RestMandatory' sch t (rs :: [Symbol]) (fs :: [Symbol]) (res :: [Symbol]) :: [Symbol] where
   RestMandatory' sch t rs '[] res = res
-  RestMandatory' sch t rs (fld ': fs) res = RestMandatory' sch t rs fs
-    (If (IsMandatory' sch t fld && Not (Elem' fld rs)) (fld ': res) res)
+  RestMandatory' sch t rs (fld ': fs) res =
+    RestMandatory'' sch t rs fs res fld (IsMandatory' sch t fld && Not (Elem' fld rs))
+
+type family RestMandatory'' (sch :: k) (t :: NameNSK) (rs :: [Symbol])
+  (fs :: [Symbol]) (res :: [Symbol]) (fld :: Symbol) (b :: Bool) :: [Symbol] where
+    RestMandatory'' sch t rs fs res fld 'True = fld ': RestMandatory' sch t rs fs res
+    RestMandatory'' sch t rs fs res fld 'False = RestMandatory' sch t rs fs res
 
 type RestMandatory sch t rs = RestMandatory' sch t rs (TdFlds (TTabDef sch t)) '[]
 
-type family RestPK' sch t (rs :: [Symbol]) (fs :: [Symbol]) (res :: [Symbol]) :: [Symbol] where
-  RestPK' sch t rs '[] res = res
-  RestPK' sch t rs (fld ': fs) res =
-    RestPK' sch t rs fs (If (Not (Elem' fld rs)) (fld ': res) res)
+type family RestPK' (rs :: [Symbol]) (fs :: [Symbol]) (res :: [Symbol]) :: [Symbol] where
+  RestPK' rs '[] res = res
+  RestPK' rs (fld ': fs) res =
+    RestPK' rs fs (If (Not (Elem' fld rs)) (fld ': res) res)
 
-type RestPK sch t rs = RestPK' sch t rs (TdKey (TTabDef sch t)) '[]
+type RestPK sch t rs = RestPK' rs (TdKey (TTabDef sch t)) '[]
 
 simpleType :: Text -> TypDef
 simpleType c = TypDef c Nothing []

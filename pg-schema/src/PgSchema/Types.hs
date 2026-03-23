@@ -45,7 +45,7 @@ import PgSchema.Schema.Catalog (PGC)
 import Data.Type.Bool (Not, type (&&), type (||))
 import PgSchema.Schema
 import PgSchema.Utils.Internal hiding (fromText)
-
+import PgSchema.Utils.TF
 
 #ifdef MK_ARBITRARY
 import Test.QuickCheck(Arbitrary(arbitrary), arbitraryBoundedEnum)
