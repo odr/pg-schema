@@ -6,8 +6,9 @@
 # Hackage (cabal.project.hackage — no +arbitrary/+flat/+hashable; matches .cabal defaults):
 #   hackage-docs  — only pg-schema; not pg-schema-tutorial.
 #   hackage-sdist — source tarball of pg-schema only.
-#   hackage-upload-candidate / hackage-upload-docs-candidate — upload existing tarballs
-#     (no rebuild; interactive confirm). Auth: ~/.config/cabal/config (token or user/pass).
+#   hackage-upload-* — upload tarballs from hackage-sdist / hackage-docs only (no rebuild).
+#     *-candidate = release candidate; *-publish = final publish (--publish).
+#     Auth: ~/.config/cabal/config (token or user/pass).
 #
 # test-run needs PostgreSQL for generation (override PG_CONN in test-gen).
 # Tutorial generator uses a fixed DSN in generator/Main.hs unless you change it.
@@ -52,8 +53,10 @@ help:
 	@echo "  hackage-docs  -> $(HACKAGE_DOCS_TAR)"
 	@echo "                  (pg-schema only; cabal.project.hackage = default package flags)"
 	@echo "  hackage-sdist -> $(HACKAGE_SDIST_TAR)  (same project file)"
-	@echo "  hackage-upload-candidate      (upload $(HACKAGE_SDIST_TAR) as candidate; confirm)"
-	@echo "  hackage-upload-docs-candidate (upload $(HACKAGE_DOCS_TAR) for candidate; confirm)"
+	@echo "  hackage-upload-candidate       (upload hackage-sdist tarball → candidate)"
+	@echo "  hackage-upload-docs-candidate  (upload hackage-docs tarball → candidate)"
+	@echo "  hackage-upload-publish         (same sdist tarball → *published*)"
+	@echo "  hackage-upload-docs-publish    (same docs tarball → published package)"
 
 # --- library / project build ---
 
@@ -104,7 +107,7 @@ local-docs:
 .PHONY: hackage-docs
 hackage-docs:
 	$(CABAL_HDK) haddock --haddock-for-hackage $(PKG)
-	@echo "Documentation tarball: $(BUILDDIR_HADDOCK)/$(PKG)-$(VERSION)-docs.tar.gz"
+	@echo "Documentation tarball: $(HACKAGE_DOCS_TAR)"
 
 .PHONY: hackage-sdist
 hackage-sdist:
@@ -112,7 +115,7 @@ hackage-sdist:
 	$(CABAL_SDT) sdist $(PKG) --output-directory=$(OUT_SDIST)
 	@echo "Source tarball: $(HACKAGE_SDIST_TAR)"
 
-# Upload only existing files (no --publish = release candidate on Hackage).
+# Upload only existing files. Candidate targets omit --publish; publish targets use --publish.
 
 .PHONY: hackage-upload-candidate
 hackage-upload-candidate:
@@ -125,3 +128,15 @@ hackage-upload-docs-candidate:
 	@test -f "$(HACKAGE_DOCS_TAR)" || { printf '%s\n' "Missing $(HACKAGE_DOCS_TAR) — run: $(MAKE) hackage-docs"; exit 1; }
 	@printf 'Upload Hackage documentation for *candidate* (not published):\n  %s\nOK? [y/N] ' "$(HACKAGE_DOCS_TAR)" && read ans && case "$$ans" in y|Y|yes|YES) ;; *) echo 'Aborted.'; exit 1;; esac
 	$(CABAL) upload --documentation "$(HACKAGE_DOCS_TAR)"
+
+.PHONY: hackage-upload-publish
+hackage-upload-publish:
+	@test -f "$(HACKAGE_SDIST_TAR)" || { printf '%s\n' "Missing $(HACKAGE_SDIST_TAR) — run: $(MAKE) hackage-sdist"; exit 1; }
+	@printf '*** PUBLISH *** Hackage source (final, not candidate):\n  %s\nOK? [y/N] ' "$(HACKAGE_SDIST_TAR)" && read ans && case "$$ans" in y|Y|yes|YES) ;; *) echo 'Aborted.'; exit 1;; esac
+	$(CABAL) upload --publish "$(HACKAGE_SDIST_TAR)"
+
+.PHONY: hackage-upload-docs-publish
+hackage-upload-docs-publish:
+	@test -f "$(HACKAGE_DOCS_TAR)" || { printf '%s\n' "Missing $(HACKAGE_DOCS_TAR) — run: $(MAKE) hackage-docs"; exit 1; }
+	@printf '*** PUBLISH *** Hackage documentation for published package:\n  %s\nOK? [y/N] ' "$(HACKAGE_DOCS_TAR)" && read ans && case "$$ans" in y|Y|yes|YES) ;; *) echo 'Aborted.'; exit 1;; esac
+	$(CABAL) upload --documentation --publish "$(HACKAGE_DOCS_TAR)"
