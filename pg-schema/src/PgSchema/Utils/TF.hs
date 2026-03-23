@@ -60,3 +60,8 @@ type family SplitAtHelper (x :: k) (res :: ([k], [k])) :: ([k], [k]) where
 type family Map1 (f :: a ~> b) (xs :: [a]) :: [b] where
   Map1 f '[] = '[]
   Map1 f (x ': xs) = Apply f x ': Map1 f xs
+
+type family Elem' (x :: Symbol) (xs :: [Symbol]) :: Bool where
+  Elem' x '[] = False
+  Elem' x (x ': xs) = True
+  Elem' x (y ': xs) = Elem' x xs
