@@ -118,7 +118,7 @@ library
     PgSchema.Schema
     PgSchema.Types
     PgSchema.Utils.CamelToSnake
-    PgSchema.Utils.Instances
+    -- PgSchema.Utils.Instances
     PgSchema.Utils.Internal
     PgSchema.Utils.TF
     PgSchema.Utils.ShowType
