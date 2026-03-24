@@ -6,11 +6,12 @@
 module Tests.Hierarchy where
 
 import Control.Monad (void)
+import Data.Coerce (coerce)
 import Data.Function (on)
 import Data.Functor
 import Data.Int (Int32, Int64)
 import Data.List qualified as L
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Pool as Pool
 import Data.Proxy (Proxy(..))
 import Data.Text (Text)
@@ -19,12 +20,24 @@ import Data.Time (UTCTime, getCurrentTime)
 import Database.PostgreSQL.Simple
 import GHC.Generics
 import Hedgehog
+import Hedgehog.Gen qualified as Gen
+import Hedgehog.Range qualified as Range
 import PgSchema.DML
 import Sch
 import Utils
 
 
 type RootRec = "code" := Text :. "grp" := Int32 :. "name" := Text :. "someEmpty" := ()
+
+type DimRec = "name" := Text
+
+-- | Plain root row for insertSch: mandatory fields, optional @dim_a_id@ / @dim_b_id@.
+type RootPlainDimA =
+  "code" := Text
+  :. "grp" := Int32
+  :. "name" := Text
+  :. "dim_a_id" := Maybe Int32
+  :. "dim_b_id" := Maybe Int32
 
 type Mid1Rec =
   "flag" := Bool :. "pos" := Int32 :. "sortKey" := Int32 :. "payload" := Maybe Text
@@ -67,6 +80,47 @@ data Leaf = MkLeaf
 
 eqRoot :: RootRec -> RootRec -> Bool
 eqRoot (a1 :. b1 :. c1) (a2 :. b2 :. c2) = (a1, b1) == (a2, b2)
+
+rootKey :: RootRec -> (Text, Int32)
+rootKey (c :. g :. _ :. _) = (coerce c, coerce g)
+
+-- | Nullable FK @dim_a_id@ (optional link to @dim@); plain @insSch@ because @insertJSON@
+-- lacks working @ToJSON@ for @Maybe (PgTag …)@ on Generic records here.
+prop_hier_insert_optional_parent_dim_a :: Pool Connection -> Property
+prop_hier_insert_optional_parent_dim_a pool = withTests 30 $ property do
+  rootsIn <- forAll (L.nubBy eqRoot <$> genData' RootRec 1 80)
+  useDim <- forAll (Gen.list (Range.linear (length rootsIn) (length rootsIn)) Gen.bool)
+  dimOut <- forAll (genData' DimRec 1 30)
+  outSel <- evalIO $ withPool pool \conn -> do
+    delByCond "root" conn mempty
+    delByCond "dim" conn mempty
+    void $ insSch_ "dim" conn (dimOut :: [DimRec])
+    (dimRows, _) <- selSch "dim" conn qpEmpty
+    let dimIds =
+          (dimRows :: ["id" := Int32 :. DimRec]) <&> \(i :. _) -> coerce i :: Int32
+        plainIns :: [RootPlainDimA]
+        plainIns =
+          zipWith3
+            (\(c :. g :. n :. _) wantDim k ->
+              "code" =: coerce c
+                :. "grp" =: coerce g
+                :. "name" =: coerce n
+                :. "dim_a_id"
+                =: (if wantDim then Just (dimIds !! (k `mod` length dimIds)) else Nothing)
+                :. "dim_b_id" =: Nothing)
+            rootsIn
+            useDim
+            [(0 :: Int) ..]
+    void $ insSch_ "root" conn plainIns
+    (xs, _) <- selSch "root" conn qpEmpty
+    pure (xs :: ["id" := Int32 :. "dim_a_id" := Maybe Int32 :. RootRec :. "root_dim_a_fk" := Maybe DimRec])
+  let
+    expected =
+      L.sortOn (rootKey . fst) $ zip rootsIn useDim <&> \(r, u) -> (r, u)
+    got =
+      L.sortOn (rootKey . \(_ :. _ :. r :. _) -> r) outSel
+        <&> \(_ :. PgTag dimA :. r :. _) -> (r, isJust dimA)
+  expected === got
 
 prop_hier_insert_simple_fk :: Pool Connection -> Property
 prop_hier_insert_simple_fk pool = withTests 30 $ property do
@@ -155,11 +209,14 @@ prop_hier_duplicate_names_root_nested pool = withTests 30 $ property do
   mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genData' Mid2Rec 0 10)
   leafIn <- forAll (L.nubBy ((==) `on` (.leafNo)) <$> genData' LeafI 0 10)
   let inIns = rootsIn <&> (("mid2_root_fk" =: (mid2In <&> (("leaf_mid2_fk" =: leafIn) :.))) :.)
-  outSel <- evalIO $ withPool pool \conn -> do
+  (outSel', outSel'') <- evalIO $ withPool pool \conn -> do
     delByCond "leaf" conn mempty
     delByCond "mid2" conn mempty
     delByCond "root" conn mempty
     void $ insJSON_ "root" conn inIns
     (fst -> (outSel' :: [Leaf])) <- selSch "leaf" conn qpEmpty
-    pure outSel'
-  L.length outSel === L.length (inIns >>= \(PgTag xs :. _) -> xs >>= \(PgTag ys :. _) -> ys )
+    (fst -> (outSel'' :: [LeafI :. "leaf_mid2_fk" := Mid2Rec])) <- selSch "leaf" conn qpEmpty
+
+    pure (outSel', outSel'')
+  L.length outSel' === L.length (inIns >>= \(PgTag xs :. _) -> xs >>= \(PgTag ys :. _) -> ys )
+  L.length outSel'' === L.length outSel'

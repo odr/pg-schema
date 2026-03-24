@@ -1,5 +1,9 @@
 # Changelog for pg-schema
 
+## 0.5.2.0
+
+- Bug fixing (Problem with Self-references)
+
 ## 0.5.1.1
 
 - Improve error messaging

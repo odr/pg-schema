@@ -147,9 +147,9 @@ type family ColFI (ann :: Ann) (fld :: Symbol) (fi :: RecFieldK NameNSK) t
     ColFI ('Ann ren sch d _) fld ('RFToHere (fromTab :: NameNSK) refs) [t] =
       '[ 'ColInfo '(fld, 0) [PgTag (AnnRefTabDepth ('Ann ren sch d fromTab) fromTab) t]
         (ApplyRenamer ren fld) ('RFToHere fromTab refs) ]
-    ColFI ('Ann ren sch d _) fld fd t = '[ 'ColInfo '(fld, 0) t (ApplyRenamer ren fld) fd ]
     ColFI ann fld ('RFSelfRef tab refs) [t] = ColFI ann fld ('RFToHere tab refs) [t]
     ColFI ann fld ('RFSelfRef tab refs) t = ColFI ann fld ('RFFromHere tab refs) t
+    ColFI ('Ann ren sch d _) fld fd t = '[ 'ColInfo '(fld, 0) t (ApplyRenamer ren fld) fd ]
 --------------------------------------------------------------------------------
 -- GCols (closed TF: Generic Rep)
 --------------------------------------------------------------------------------
@@ -309,12 +309,19 @@ instance (FromJSONCols ann 'NonGenericCase cols (fld := t))
 instance ToJSON (PgTag ann r) => ToField (PgTag (ann :: Ann) r) where
   toField = toJSONField
 
+-- instance ToJSON (PgTag ann r) => ToField (Maybe (PgTag (ann :: Ann) r)) where
+--   toField = toJSONField
+
 instance ToJSON (PgTag ann r) => ToField [PgTag (ann :: Ann) r] where
   toField = toJSONField
 
 instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
   => FromField (PgTag (ann :: Ann) r) where
     fromField = fromJSONField
+
+-- instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
+--   => FromField (Maybe (PgTag (ann :: Ann) r)) where
+--     fromField = fromJSONField
 
 instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
   => FromField [PgTag (ann :: Ann) r] where
@@ -448,9 +455,6 @@ class CRecInfoCols (ann :: Ann) (cols :: [ColInfo NameNSK]) where
 
 class CFldInfo (ann :: Ann) (fld :: RecField' Symbol NameNSK) t where
   getFldInfo :: RecField (RecordInfo T.Text)
-
--- instance (ann ~ 'Ann ren sch tab, SingI tab) => CRecInfo ann () where
---   getRecordInfo = RecordInfo (demote @tab) []
 
 instance
   (ann ~ 'Ann ren sch d tab, SingI tab, cols ~ Cols ann r, CRecInfoCols ann cols)
