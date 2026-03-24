@@ -17,46 +17,6 @@ import GHC.TypeLits qualified as TL
 import PgSchema.Import
 data Sch
 
-instance CTypDef Sch ( "pg_catalog" ->> "_int4" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_int4" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "int4" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_text" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_text" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "text" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "date" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "date" ) = 
-    'TypDef "D" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "float8" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "float8" ) = 
-    'TypDef "N" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "int4" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "int4" ) = 
-    'TypDef "N" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "int8" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "int8" ) = 
-    'TypDef "N" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "numeric" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "numeric" ) = 
-    'TypDef "N" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "text" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "text" ) = 
-    'TypDef "S" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "timestamptz" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "timestamptz" ) = 
-    'TypDef "D" 'Nothing '[  ]
-
-instance CTypDef Sch ( "sch" ->> "order_state" ) where
-  type TTypDef Sch ( "sch" ->> "order_state" ) = 
-    'TypDef "E" 'Nothing '[ "paid","booked","delivered" ]
-
 data instance PGEnum Sch ( "sch" ->> "order_state" )
   = Order_state_paid | Order_state_booked | Order_state_delivered
   deriving (Show, Read, Ord, Eq, Generic, Bounded, Enum)
@@ -65,127 +25,112 @@ instance Hashable (PGEnum Sch ( "sch" ->> "order_state" ))
 
 instance NFData (PGEnum Sch ( "sch" ->> "order_state" ))
 
-instance CTabDef Sch ( "sch" ->> "addresses" ) where
-  type TTabDef Sch ( "sch" ->> "addresses" ) = 
-    'TabDef '[ "id","city_id"
-      ,"street","home","app","zipcode","phones","numbers" ] '[ "id" ] '[  ]
+type family TTypDefSch (name :: NameNSK) :: TypDef' TL.Symbol where
+  TTypDefSch ( "pg_catalog" ->> "_int4" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "int4" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_text" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "text" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "date" ) = 'TypDef "D" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "float8" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "int4" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "int8" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "numeric" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "text" ) = 'TypDef "S" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "timestamptz" ) = 'TypDef "D" 'Nothing '[  ]
+  TTypDefSch ( "sch" ->> "order_state" ) = 'TypDef "E" 'Nothing '[ "paid","booked","delivered" ]
+  TTypDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "type " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Types: pg_catalog._int4, pg_catalog._text, pg_catalog.date, pg_catalog.float8, pg_catalog.int4, pg_catalog.int8, pg_catalog.numeric, pg_catalog.text, pg_catalog.timestamptz, sch.order_state."
+    TE.:$$: TE.Text "")
+instance (ToStar (TTypDef Sch name), ToStar name) => CTypDef Sch name where
+  type TTypDef Sch name = TTypDefSch name
 
-instance CTabDef Sch ( "sch" ->> "articles" ) where
-  type TTabDef Sch ( "sch" ->> "articles" ) = 
-    'TabDef '[ "id"
-      ,"name","code","created_at","updated_at" ] '[ "id" ] '[ '[ "name" ] ]
+type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
+  TTabDefSch ( "sch" ->> "addresses" ) = 'TabDef '[ "id","city_id","street","home","app","zipcode","phones","numbers" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "articles" ) = 'TabDef '[ "id","name","code","created_at","updated_at" ] '[ "id" ] '[ '[ "name" ] ]
+  TTabDefSch ( "sch" ->> "cities" ) = 'TabDef '[ "id","country_id","name" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "companies" ) = 'TabDef '[ "id","name","address_id","created_at","updated_at" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "countries" ) = 'TabDef '[ "id","name","code" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "customers" ) = 'TabDef '[ "id","name","address_id","note","created_at","updated_at" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "order_positions" ) = 'TabDef '[ "order_id","num","article_id","cnt","price" ] '[ "order_id","num" ] '[ '[ "order_id","article_id" ] ]
+  TTabDefSch ( "sch" ->> "orders" ) = 'TabDef '[ "id","day","num","customer_id","seller_id","trader_id","state","created_at","updated_at" ] '[ "id" ] '[  ]
+  TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Tables: sch.addresses, sch.articles, sch.cities, sch.companies, sch.countries, sch.customers, sch.order_positions, sch.orders."
+    TE.:$$: TE.Text "")
+instance (ToStar (TTabDef Sch name), ToStar name) => CTabDef Sch name where
+  type TTabDef Sch name = TTabDefSch name
 
-instance CTabDef Sch ( "sch" ->> "cities" ) where
-  type TTabDef Sch ( "sch" ->> "cities" ) = 
-    'TabDef '[ "id","country_id","name" ] '[ "id" ] '[  ]
+type family TRelDefSch (ref :: NameNSK) :: RelDef' TL.Symbol where
+  TRelDefSch ( "sch" ->> "address_city" ) = 'RelDef ( "sch" ->> "addresses" ) ( "sch" ->> "cities" ) '[ '( "city_id","id" ) ]
+  TRelDefSch ( "sch" ->> "city_country" ) = 'RelDef ( "sch" ->> "cities" ) ( "sch" ->> "countries" ) '[ '( "country_id","id" ) ]
+  TRelDefSch ( "sch" ->> "comp_addr" ) = 'RelDef ( "sch" ->> "companies" ) ( "sch" ->> "addresses" ) '[ '( "address_id","id" ) ]
+  TRelDefSch ( "sch" ->> "cust_addr" ) = 'RelDef ( "sch" ->> "customers" ) ( "sch" ->> "addresses" ) '[ '( "address_id","id" ) ]
+  TRelDefSch ( "sch" ->> "opos_article" ) = 'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "articles" ) '[ '( "article_id","id" ) ]
+  TRelDefSch ( "sch" ->> "opos_order" ) = 'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "orders" ) '[ '( "order_id","id" ) ]
+  TRelDefSch ( "sch" ->> "ord_cust" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "customers" ) '[ '( "customer_id","id" ) ]
+  TRelDefSch ( "sch" ->> "ord_seller" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "seller_id","id" ) ]
+  TRelDefSch ( "sch" ->> "ord_trader" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "trader_id","id" ) ]
+  TRelDefSch ref = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "relation " TE.:<>: TE.ShowType ref TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Relations: sch.address_city, sch.city_country, sch.comp_addr, sch.cust_addr, sch.opos_article, sch.opos_order, sch.ord_cust, sch.ord_seller, sch.ord_trader."
+    TE.:$$: TE.Text "")
+instance ( ToStar (TRelDef Sch ref)
+         , CTabDef Sch (RdFrom (TRelDef Sch ref))
+         , CTabDef Sch (RdTo (TRelDef Sch ref)) )
+  => CRelDef Sch ref where
+  type TRelDef Sch ref = TRelDefSch ref
 
-instance CTabDef Sch ( "sch" ->> "companies" ) where
-  type TTabDef Sch ( "sch" ->> "companies" ) = 
-    'TabDef '[ "id"
-      ,"name","address_id","created_at","updated_at" ] '[ "id" ] '[  ]
+type family TFromSch (tab :: NameNSK) :: [NameNSK] where
+  TFromSch ( "sch" ->> "addresses" ) = '[ ( "sch" ->> "address_city" ) ]
 
-instance CTabDef Sch ( "sch" ->> "countries" ) where
-  type TTabDef Sch ( "sch" ->> "countries" ) = 
-    'TabDef '[ "id","name","code" ] '[ "id" ] '[  ]
+  TFromSch ( "sch" ->> "articles" ) = '[  ]
 
-instance CTabDef Sch ( "sch" ->> "customers" ) where
-  type TTabDef Sch ( "sch" ->> "customers" ) = 
-    'TabDef '[ "id"
-      ,"name","address_id","note","created_at","updated_at" ] '[ "id" ] '[  ]
+  TFromSch ( "sch" ->> "cities" ) = '[ ( "sch" ->> "city_country" ) ]
 
-instance CTabDef Sch ( "sch" ->> "order_positions" ) where
-  type TTabDef Sch ( "sch" ->> "order_positions" ) = 
-    'TabDef '[ "order_id","num","article_id"
-      ,"cnt","price" ] '[ "order_id","num" ] '[ '[ "order_id","article_id" ] ]
+  TFromSch ( "sch" ->> "companies" ) = '[ ( "sch" ->> "comp_addr" ) ]
 
-instance CTabDef Sch ( "sch" ->> "orders" ) where
-  type TTabDef Sch ( "sch" ->> "orders" ) = 
-    'TabDef '[ "id","day","num","customer_id","seller_id"
-      ,"trader_id","state","created_at","updated_at" ] '[ "id" ] '[  ]
+  TFromSch ( "sch" ->> "countries" ) = '[  ]
 
-instance CRelDef Sch ( "sch" ->> "address_city" ) where
-  type TRelDef Sch ( "sch" ->> "address_city" ) = 'RelDef ( "sch" ->> "addresses" ) ( "sch" ->> "cities" ) '[ '( "city_id","id" ) ]
+  TFromSch ( "sch" ->> "customers" ) = '[ ( "sch" ->> "cust_addr" ) ]
 
-instance CRelDef Sch ( "sch" ->> "city_country" ) where
-  type TRelDef Sch ( "sch" ->> "city_country" ) = 'RelDef ( "sch" ->> "cities" ) ( "sch" ->> "countries" ) '[ '( "country_id","id" ) ]
+  TFromSch ( "sch" ->> "order_positions" ) = '[ ( "sch" ->> "opos_article" ),( "sch" ->> "opos_order" ) ]
 
-instance CRelDef Sch ( "sch" ->> "comp_addr" ) where
-  type TRelDef Sch ( "sch" ->> "comp_addr" ) = 'RelDef ( "sch" ->> "companies" ) ( "sch" ->> "addresses" ) '[ '( "address_id","id" ) ]
+  TFromSch ( "sch" ->> "orders" ) = '[ ( "sch" ->> "ord_cust" )
+    ,( "sch" ->> "ord_seller" ),( "sch" ->> "ord_trader" ) ]
 
-instance CRelDef Sch ( "sch" ->> "cust_addr" ) where
-  type TRelDef Sch ( "sch" ->> "cust_addr" ) = 'RelDef ( "sch" ->> "customers" ) ( "sch" ->> "addresses" ) '[ '( "address_id","id" ) ]
+  TFromSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TFrom for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Tables: sch.addresses, sch.articles, sch.cities, sch.companies, sch.countries, sch.customers, sch.order_positions, sch.orders."
+    TE.:$$: TE.Text "")
 
-instance CRelDef Sch ( "sch" ->> "opos_article" ) where
-  type TRelDef Sch ( "sch" ->> "opos_article" ) = 'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "articles" ) '[ '( "article_id","id" ) ]
+type family TToSch (tab :: NameNSK) :: [NameNSK] where
+  TToSch ( "sch" ->> "addresses" ) = '[ ( "sch" ->> "comp_addr" ),( "sch" ->> "cust_addr" ) ]
 
-instance CRelDef Sch ( "sch" ->> "opos_order" ) where
-  type TRelDef Sch ( "sch" ->> "opos_order" ) = 'RelDef ( "sch" ->> "order_positions" ) ( "sch" ->> "orders" ) '[ '( "order_id","id" ) ]
+  TToSch ( "sch" ->> "articles" ) = '[ ( "sch" ->> "opos_article" ) ]
 
-instance CRelDef Sch ( "sch" ->> "ord_cust" ) where
-  type TRelDef Sch ( "sch" ->> "ord_cust" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "customers" ) '[ '( "customer_id","id" ) ]
+  TToSch ( "sch" ->> "cities" ) = '[ ( "sch" ->> "address_city" ) ]
 
-instance CRelDef Sch ( "sch" ->> "ord_seller" ) where
-  type TRelDef Sch ( "sch" ->> "ord_seller" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "seller_id","id" ) ]
+  TToSch ( "sch" ->> "companies" ) = '[ ( "sch" ->> "ord_seller" ),( "sch" ->> "ord_trader" ) ]
 
-instance CRelDef Sch ( "sch" ->> "ord_trader" ) where
-  type TRelDef Sch ( "sch" ->> "ord_trader" ) = 'RelDef ( "sch" ->> "orders" ) ( "sch" ->> "companies" ) '[ '( "trader_id","id" ) ]
+  TToSch ( "sch" ->> "countries" ) = '[ ( "sch" ->> "city_country" ) ]
 
-instance CTabRels Sch ( "sch" ->> "addresses" ) where
-  type TFrom Sch ( "sch" ->> "addresses" ) = 
-    '[ ( "sch" ->> "address_city" ) ]
+  TToSch ( "sch" ->> "customers" ) = '[ ( "sch" ->> "ord_cust" ) ]
 
-  type TTo Sch ( "sch" ->> "addresses" ) = 
-    '[ ( "sch" ->> "comp_addr" ),( "sch" ->> "cust_addr" ) ]
+  TToSch ( "sch" ->> "order_positions" ) = '[  ]
 
-instance CTabRels Sch ( "sch" ->> "articles" ) where
-  type TFrom Sch ( "sch" ->> "articles" ) = 
-    '[  ]
+  TToSch ( "sch" ->> "orders" ) = '[ ( "sch" ->> "opos_order" ) ]
 
-  type TTo Sch ( "sch" ->> "articles" ) = 
-    '[ ( "sch" ->> "opos_article" ) ]
-
-instance CTabRels Sch ( "sch" ->> "cities" ) where
-  type TFrom Sch ( "sch" ->> "cities" ) = 
-    '[ ( "sch" ->> "city_country" ) ]
-
-  type TTo Sch ( "sch" ->> "cities" ) = 
-    '[ ( "sch" ->> "address_city" ) ]
-
-instance CTabRels Sch ( "sch" ->> "companies" ) where
-  type TFrom Sch ( "sch" ->> "companies" ) = 
-    '[ ( "sch" ->> "comp_addr" ) ]
-
-  type TTo Sch ( "sch" ->> "companies" ) = 
-    '[ ( "sch" ->> "ord_seller" ),( "sch" ->> "ord_trader" ) ]
-
-instance CTabRels Sch ( "sch" ->> "countries" ) where
-  type TFrom Sch ( "sch" ->> "countries" ) = 
-    '[  ]
-
-  type TTo Sch ( "sch" ->> "countries" ) = 
-    '[ ( "sch" ->> "city_country" ) ]
-
-instance CTabRels Sch ( "sch" ->> "customers" ) where
-  type TFrom Sch ( "sch" ->> "customers" ) = 
-    '[ ( "sch" ->> "cust_addr" ) ]
-
-  type TTo Sch ( "sch" ->> "customers" ) = 
-    '[ ( "sch" ->> "ord_cust" ) ]
-
-instance CTabRels Sch ( "sch" ->> "order_positions" ) where
-  type TFrom Sch ( "sch" ->> "order_positions" ) = 
-    '[ ( "sch" ->> "opos_article" ),( "sch" ->> "opos_order" ) ]
-
-  type TTo Sch ( "sch" ->> "order_positions" ) = 
-    '[  ]
-
-instance CTabRels Sch ( "sch" ->> "orders" ) where
-  type TFrom Sch ( "sch" ->> "orders" ) = 
-    '[ ( "sch" ->> "ord_cust" )
-      ,( "sch" ->> "ord_seller" ),( "sch" ->> "ord_trader" ) ]
-
-  type TTo Sch ( "sch" ->> "orders" ) = 
-    '[ ( "sch" ->> "opos_order" ) ]
+  TToSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TTo for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Tables: sch.addresses, sch.articles, sch.cities, sch.companies, sch.countries, sch.customers, sch.order_positions, sch.orders."
+    TE.:$$: TE.Text "")
+instance CTabRels Sch tab where
+  type TFrom Sch tab = TFromSch tab
+  type TTo Sch tab = TToSch tab
 
 type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
   TDBFieldInfoSch ( "sch" ->> "addresses" ) "app" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)

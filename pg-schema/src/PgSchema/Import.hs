@@ -31,7 +31,7 @@ module PgSchema.Import
   -- * RecField class
   , RecField'(..), RecFieldK, Ref'(..)
   -- * TRelDef type family
-  , CRelDef(..)
+  , CRelDef(..), RdFrom, RdTo
   -- * CTabRels class
   , CTabRels(..)
   -- * PGEnum type

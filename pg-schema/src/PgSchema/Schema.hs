@@ -122,7 +122,7 @@ type family RestMandatory' sch t (rs :: [Symbol]) (fs :: [Symbol]) (res :: [Symb
   RestMandatory' sch t rs (fld ': fs) res =
     RestMandatory'' sch t rs fs res fld (IsMandatory' sch t fld && Not (Elem' fld rs))
 
-type family RestMandatory'' (sch :: k) (t :: NameNSK) (rs :: [Symbol])
+type family RestMandatory'' sch (t :: NameNSK) (rs :: [Symbol])
   (fs :: [Symbol]) (res :: [Symbol]) (fld :: Symbol) (b :: Bool) :: [Symbol] where
     RestMandatory'' sch t rs fs res fld 'True = fld ': RestMandatory' sch t rs fs res
     RestMandatory'' sch t rs fs res fld 'False = RestMandatory' sch t rs fs res
@@ -131,8 +131,11 @@ type RestMandatory sch t rs = RestMandatory' sch t rs (TdFlds (TTabDef sch t)) '
 
 type family RestPK' (rs :: [Symbol]) (fs :: [Symbol]) (res :: [Symbol]) :: [Symbol] where
   RestPK' rs '[] res = res
-  RestPK' rs (fld ': fs) res =
-    RestPK' rs fs (If (Not (Elem' fld rs)) (fld ': res) res)
+  RestPK' rs (fld ': fs) res = RestPK'' rs fs fld res (Elem' fld rs)
+
+type family RestPK'' rs fs fld (res :: [Symbol]) (b :: Bool) :: [Symbol] where
+  RestPK'' rs fs fld res 'True = RestPK' rs fs res
+  RestPK'' rs fs fld res 'False = RestPK' rs fs (fld ': res)
 
 type RestPK sch t rs = RestPK' rs (TdKey (TTabDef sch t)) '[]
 

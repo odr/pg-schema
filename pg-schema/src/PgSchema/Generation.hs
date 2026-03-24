@@ -258,19 +258,10 @@ updateSchemaFile verbose fileName ecs moduleName schName genNames = do
       handle (const @_ @SomeException $ pure "") (fromString <$> getEnv env)
     moduleText = genModuleText moduleName schName . getDefs
 
-mkInst :: ShowType a => Text -> [Text] -> a -> Text
-mkInst name pars a
-  =  "instance C" <> sgn <> " where\n"
-  <> "  type T" <> sgn <> " = \n"
-  <> "    " <> showSplit 6 70 a <> "\n"
-  where
-    sgn = T.intercalate " " (name : pars)
-
 textTypDef :: Text -> NameNS -> TypDef -> Text
-textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
+textTypDef sch typ TypDef {..} = pgEnum
   where
-    ss = [sch, showType typ]
-    st = T.intercalate " " ss
+    st = T.intercalate " " [sch, showType typ]
     pgEnum
       | L.null typEnum = ""
       | otherwise
@@ -284,24 +275,6 @@ textTypDef sch typ td@TypDef {..} = mkInst "TypDef" ss td <> pgEnum
 #endif
         <> "instance NFData (PGEnum " <> st <> ")\n\n"
 
-textTabDef :: Text -> NameNS -> TabDef -> Text
-textTabDef sch tab = mkInst "TabDef" [sch, showType tab]
-
-textRelDef :: Text -> NameNS -> RelDef -> Text
-textRelDef sch relName rel =
-  "instance CRelDef " <> sch <> " " <> showType relName <> " where\n" <>
-  "  type TRelDef " <> sch <> " " <> showType relName <> " = " <> showType rel <> "\n\n"
-
-textTabRel :: Text -> NameNS -> [NameNS] -> [NameNS] -> Text
-textTabRel sch tab froms tos
-  =  "instance CTabRels " <> pars <> " where\n"
-  <> "  type TFrom " <> pars <> " = \n"
-  <> "    " <> showSplit 6 70 froms <> "\n"
-  <> "  type TTo " <> pars <> " = \n"
-  <> "    " <> showSplit 6 70 tos <> "\n"
-  where
-    pars = T.intercalate " " [sch, showType tab]
-
 -- Generate Ref in type-level format (using 'FldDef directly)
 textRef :: FldDef -> FldDef -> Text -> Text -> Text
 textRef fromDef toDef fromName toName =
@@ -314,31 +287,34 @@ rhsPlain fd = "'RFPlain (" <> showType fd <> ")"
 
 rhsToHere :: NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
 rhsToHere tab fromTab rel mfld =
-  let refsText = T.intercalate "\n      , " $
-        [ textRef (mfld M.! (fromTab, fromName)) (mfld M.! (tab, toName)) fromName toName
-        | (fromName, toName) <- rdCols rel
-        ]
-  in "'RFToHere " <> showType fromTab <> "\n      '[ " <> refsText <> " ]"
+  "'RFToHere " <> showType fromTab <> "\n      '[ " <> refsText <> " ]"
+  where
+    refsText = T.intercalate "\n      , " $
+      [ textRef (mfld M.! (fromTab, fromName)) (mfld M.! (tab, toName)) fromName toName
+      | (fromName, toName) <- rdCols rel ]
 
 rhsFromHere :: NameNS -> NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
 rhsFromHere tab toTab rel mfld =
-  let refsText = T.intercalate "\n      , " $
-        [ textRef (mfld M.! (tab, fromName)) (mfld M.! (toTab, toName)) fromName toName
-        | (fromName, toName) <- rdCols rel
-        ]
-  in "'RFFromHere " <> showType toTab <> "\n      '[ " <> refsText <> " ]"
+  "'RFFromHere " <> showType toTab <> "\n      '[ " <> refsText <> " ]"
+  where
+    refsText = T.intercalate "\n      , "
+      [ textRef (mfld M.! (tab, fromName)) (mfld M.! (toTab, toName)) fromName toName
+      | (fromName, toName) <- rdCols rel ]
 
 rhsSelfRef :: NameNS -> RelDef -> M.Map (NameNS, Text) FldDef -> Text
 rhsSelfRef tab rel mfld =
-  let refsText = T.intercalate "\n      , " $
-        [ textRef (mfld M.! (tab, fromName)) (mfld M.! (tab, toName)) fromName toName
-        | (fromName, toName) <- rdCols rel
-        ]
-  in "'RFSelfRef " <> showType tab <> "\n      '[ " <> refsText <> " ]"
+  "'RFSelfRef " <> showType tab <> "\n      '[ " <> refsText <> " ]"
+  where
+    refsText = T.intercalate "\n      , "
+      [ textRef (mfld M.! (tab, fromName)) (mfld M.! (tab, toName)) fromName toName
+      | (fromName, toName) <- rdCols rel ]
 
 -- Closed type family TDBFieldInfo<Sch> and single CDBFieldInfo instance
-typeFamilyName :: Text -> Text
-typeFamilyName sch = "TDBFieldInfo" <> sch
+listValsText :: [Text] -> Text
+listValsText xs = if L.null xs then "<none>" else T.intercalate ", " xs
+
+nameNSText :: NameNS -> Text
+nameNSText NameNS {..} = nnsNamespace <> "." <> nnsName
 
 typeErrorMsg
   :: Text -> Text -> [Text] -> [Text] -> Text
@@ -367,7 +343,7 @@ textClosedFieldInfoTF schName (mfld, mtab, mrel) =
   <> "instance (ToStar (TDBFieldInfo " <> schName <> " t f), ToStar t, ToStar f) => CDBFieldInfo " <> schName <> " t f where\n"
   <> "  type TDBFieldInfo " <> schName <> " t f = " <> tfName <> " t f\n\n"
   where
-    tfName = typeFamilyName schName
+    tfName = "TDBFieldInfo" <> schName
       -- All (tab, fldName, rhs) in deterministic order: by table, then plain fields,
       -- then toHere, then fromHere, then selfRef (for self-FK).
     plainEntries =
@@ -376,21 +352,18 @@ textClosedFieldInfoTF schName (mfld, mtab, mrel) =
       [ (tab, nnsName relName, rhsToHere tab (rdFrom rel) rel mfld)
       | (tab, (_, _froms, tos)) <- M.toList mtab, relName <- tos
       , let rel = mrel M.! relName
-      , not (rdFrom rel == tab && rdTo rel == tab)
-      ]
+      , not (rdFrom rel == tab && rdTo rel == tab) ]
     fromHereEntries =
       [ (tab, nnsName relName, rhsFromHere tab (rdTo rel) rel mfld)
       | (tab, (_, froms, _tos)) <- M.toList mtab, relName <- froms
       , let rel = mrel M.! relName
-      , not (rdFrom rel == tab && rdTo rel == tab)
-      ]
+      , not (rdFrom rel == tab && rdTo rel == tab) ]
     selfEntries =
       [ (tab, nnsName relName, rhsSelfRef tab rel mfld)
       | (tab, (_, froms, tos)) <- M.toList mtab
       , relName <- L.nub (tos <> froms)
       , let rel = mrel M.! relName
-      , rdFrom rel == tab && rdTo rel == tab
-      ]
+      , rdFrom rel == tab && rdTo rel == tab ]
     allEntries = plainEntries <> toHereEntries <> fromHereEntries <> selfEntries
     eqnLine tab fldName rhs =
       "  " <> tfName <> " " <> showType tab <> " \"" <> fldName <> "\" = " <> rhs <> "\n"
@@ -407,6 +380,100 @@ textClosedFieldInfoTF schName (mfld, mtab, mrel) =
       <> " TE.:<>: TE.Text \" the table \" TE.:<>: TE.ShowType t TE.:<>: TE.Text \" is not defined.\""
       <> "\n    TE.:$$: TE.Text \"\""
       <> ")"
+
+textClosedTypDefTF :: Text -> M.Map NameNS TypDef -> Text
+textClosedTypDefTF schName mtyp =
+  "type family " <> tfName <> " (name :: NameNSK) :: TypDef' TL.Symbol where\n"
+  <> mconcat [ "  " <> tfName <> " " <> showType t <> " = " <> showType td <> "\n"
+             | (t, td) <- M.toList mtyp ]
+  <> "  " <> tfName <> " name = " <> typeErrorMsgFinal <> "\n"
+  <> "instance (ToStar (TTypDef " <> schName <> " name), ToStar name) => CTypDef "
+  <> schName <> " name where\n"
+  <> "  type TTypDef " <> schName <> " name = " <> tfName <> " name\n\n"
+  where
+    tfName = "TTypDef" <> schName
+    validTypes = listValsText (nameNSText <$> keys mtyp)
+    typeErrorMsgFinal =
+      "TE.TypeError (TE.Text \"In schema \" TE.:<>: TE.ShowType " <> schName
+      <> " TE.:$$: TE.Text \"type \" TE.:<>: TE.ShowType name TE.:<>: TE.Text \" is not defined.\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> "\n    TE.:$$: TE.Text \"Valid values are:\""
+      <> "\n    TE.:$$: TE.Text \"  Types: " <> validTypes <> ".\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> ")"
+
+textClosedTabDefTF :: Text -> M.Map NameNS (TabDef, [NameNS], [NameNS]) -> Text
+textClosedTabDefTF schName mtab =
+  "type family " <> tfName <> " (name :: NameNSK) :: TabDef' TL.Symbol where\n"
+  <> mconcat [ "  " <> tfName <> " " <> showType t <> " = " <> showType td <> "\n"
+             | (t, (td, _, _)) <- M.toList mtab ]
+  <> "  " <> tfName <> " name = " <> typeErrorMsgFinal <> "\n"
+  <> "instance (ToStar (TTabDef " <> schName <> " name), ToStar name) => CTabDef "
+  <> schName <> " name where\n"
+  <> "  type TTabDef " <> schName <> " name = " <> tfName <> " name\n\n"
+  where
+    tfName = "TTabDef" <> schName
+    validTabs = listValsText (nameNSText <$> keys mtab)
+    typeErrorMsgFinal =
+      "TE.TypeError (TE.Text \"In schema \" TE.:<>: TE.ShowType " <> schName
+      <> " TE.:$$: TE.Text \"table \" TE.:<>: TE.ShowType name TE.:<>: TE.Text \" is not defined.\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> "\n    TE.:$$: TE.Text \"Valid values are:\""
+      <> "\n    TE.:$$: TE.Text \"  Tables: " <> validTabs <> ".\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> ")"
+
+textClosedRelDefTF :: Text -> M.Map NameNS RelDef -> Text
+textClosedRelDefTF schName mrel =
+  "type family " <> tfName <> " (ref :: NameNSK) :: RelDef' TL.Symbol where\n"
+  <> mconcat [ "  " <> tfName <> " " <> showType r <> " = " <> showType rd <> "\n"
+             | (r, rd) <- M.toList mrel ]
+  <> "  " <> tfName <> " ref = " <> typeErrorMsgFinal <> "\n"
+  <> "instance ( ToStar (TRelDef " <> schName <> " ref)\n"
+  <> "         , CTabDef " <> schName <> " (RdFrom (TRelDef " <> schName <> " ref))\n"
+  <> "         , CTabDef " <> schName <> " (RdTo (TRelDef " <> schName <> " ref)) )\n"
+  <> "  => CRelDef " <> schName <> " ref where\n"
+  <> "  type TRelDef " <> schName <> " ref = " <> tfName <> " ref\n\n"
+  where
+    tfName = "TRelDef" <> schName
+    validRels = listValsText (nameNSText <$> keys mrel)
+    typeErrorMsgFinal =
+      "TE.TypeError (TE.Text \"In schema \" TE.:<>: TE.ShowType " <> schName
+      <> " TE.:$$: TE.Text \"relation \" TE.:<>: TE.ShowType ref TE.:<>: TE.Text \" is not defined.\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> "\n    TE.:$$: TE.Text \"Valid values are:\""
+      <> "\n    TE.:$$: TE.Text \"  Relations: " <> validRels <> ".\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> ")"
+
+textClosedTabRelsTF :: Text -> M.Map NameNS (TabDef, [NameNS], [NameNS]) -> Text
+textClosedTabRelsTF schName mtab =
+  "type family " <> tfFrom <> " (tab :: NameNSK) :: [NameNSK] where\n"
+  <> mconcat [ "  " <> tfFrom <> " " <> showType t <> " = " <> showSplit 4 70 froms <> "\n"
+             | (t, (_, froms, _)) <- M.toList mtab ]
+  <> "  " <> tfFrom <> " tab = " <> fromErr <> "\n\n"
+  <> "type family " <> tfTo <> " (tab :: NameNSK) :: [NameNSK] where\n"
+  <> mconcat [ "  " <> tfTo <> " " <> showType t <> " = " <> showSplit 4 70 tos <> "\n"
+             | (t, (_, _, tos)) <- M.toList mtab ]
+  <> "  " <> tfTo <> " tab = " <> toErr <> "\n"
+  <> "instance CTabRels " <> schName <> " tab where\n"
+  <> "  type TFrom " <> schName <> " tab = " <> tfFrom <> " tab\n"
+  <> "  type TTo " <> schName <> " tab = " <> tfTo <> " tab\n\n"
+  where
+    tfFrom = "TFrom" <> schName
+    tfTo = "TTo" <> schName
+    validTabs = listValsText (nameNSText <$> keys mtab)
+    mkErr kind var =
+      "TE.TypeError (TE.Text \"In schema \" TE.:<>: TE.ShowType " <> schName
+      <> " TE.:$$: TE.Text \"" <> kind <> " for table \" TE.:<>: TE.ShowType " <> var
+      <> " TE.:<>: TE.Text \" is not defined.\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> "\n    TE.:$$: TE.Text \"Valid values are:\""
+      <> "\n    TE.:$$: TE.Text \"  Tables: " <> validTabs <> ".\""
+      <> "\n    TE.:$$: TE.Text \"\""
+      <> ")"
+    fromErr = mkErr "TFrom" "tab"
+    toErr = mkErr "TTo" "tab"
 
 
 genModuleText
@@ -437,10 +504,10 @@ genModuleText moduleName schName (mtyp, mfld, mtab, mrel)
   <> "import PgSchema.Import\n"
   <> "data " <> schName <> "\n\n"
   <> mconcat (uncurry (textTypDef schName) <$> M.toList mtyp)
-  <> mconcat ((\(tab,(td,_,_)) -> textTabDef schName tab td) <$> M.toList mtab)
-  <> mconcat ([ textRelDef schName relName rel | (relName, rel) <- M.toList mrel ])
-  <> mconcat ((\(tab,(_,froms,tos)) -> textTabRel schName tab froms tos)
-    <$> M.toList mtab)
+  <> textClosedTypDefTF schName mtyp
+  <> textClosedTabDefTF schName mtab
+  <> textClosedRelDefTF schName mrel
+  <> textClosedTabRelsTF schName mtab
   <> textClosedFieldInfoTF schName (mfld, mtab, mrel)
   <> "instance CSchema " <> schName <> " where\n"
   <> "  type TTabs " <> schName <> " = " <> showSplit 4 70 (keys mtab) <> "\n"

@@ -352,15 +352,15 @@ main = do
       qLimit 5
       qOffset 0
       qPath "address_city" do
-        -- qDistinct -- not work (reason: RelOne)
+        -- qDistinct -- intentionally not work (reason: RelOne)
         qWhere $ "name" =? Just @Text "street"
         qPath "address_city" do
           qLimit 2
           qDistinctOn [descf "street"]
         qPath "city_country" do
-          -- qDistinct -- not work (reason: RelOne)
+          -- qDistinct -- intentionally not work (reason: RelOne)
           qDistinctOn [descf "name"]
-          -- qLimit 3 -- not work (reason: RelOne)
+          -- qLimit 3 -- intentionally not work (reason: RelOne)
           qOrderBy [ascf "name"]
           qWhere $ "name" >? ("Bar" :: Text)
         qDistinctOn [ascf "name"]

@@ -17,114 +17,6 @@ import GHC.TypeLits qualified as TL
 import PgSchema.Import
 data Sch
 
-instance CTypDef Sch ( "pg_catalog" ->> "_bool" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_bool" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "bool" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_bytea" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_bytea" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "bytea" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_date" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_date" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "date" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_float8" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_float8" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "float8" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_int4" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_int4" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "int4" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_jsonb" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_jsonb" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "jsonb" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_text" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_text" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "text" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_timestamptz" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_timestamptz" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "timestamptz" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "_uuid" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "_uuid" ) = 
-    'TypDef "A" ('Just ( "pg_catalog" ->> "uuid" )) '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "bool" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "bool" ) = 
-    'TypDef "B" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "bytea" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "bytea" ) = 
-    'TypDef "U" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "date" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "date" ) = 
-    'TypDef "D" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "float4" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "float4" ) = 
-    'TypDef "N" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "float8" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "float8" ) = 
-    'TypDef "N" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "int4" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "int4" ) = 
-    'TypDef "N" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "int8" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "int8" ) = 
-    'TypDef "N" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "json" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "json" ) = 
-    'TypDef "U" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "jsonb" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "jsonb" ) = 
-    'TypDef "U" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "text" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "text" ) = 
-    'TypDef "S" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "time" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "time" ) = 
-    'TypDef "D" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "timestamp" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "timestamp" ) = 
-    'TypDef "D" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "timestamptz" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "timestamptz" ) = 
-    'TypDef "D" 'Nothing '[  ]
-
-instance CTypDef Sch ( "pg_catalog" ->> "uuid" ) where
-  type TTypDef Sch ( "pg_catalog" ->> "uuid" ) = 
-    'TypDef "U" 'Nothing '[  ]
-
-instance CTypDef Sch ( "public" ->> "_citext" ) where
-  type TTypDef Sch ( "public" ->> "_citext" ) = 
-    'TypDef "A" ('Just ( "public" ->> "citext" )) '[  ]
-
-instance CTypDef Sch ( "public" ->> "citext" ) where
-  type TTypDef Sch ( "public" ->> "citext" ) = 
-    'TypDef "S" 'Nothing '[  ]
-
-instance CTypDef Sch ( "test_pgs" ->> "_color" ) where
-  type TTypDef Sch ( "test_pgs" ->> "_color" ) = 
-    'TypDef "A" ('Just ( "test_pgs" ->> "color" )) '[  ]
-
-instance CTypDef Sch ( "test_pgs" ->> "color" ) where
-  type TTypDef Sch ( "test_pgs" ->> "color" ) = 
-    'TypDef "E" 'Nothing '[ "red","green","blue" ]
-
 data instance PGEnum Sch ( "test_pgs" ->> "color" )
   = Color_red | Color_green | Color_blue
   deriving (Show, Read, Ord, Eq, Generic, Bounded, Enum)
@@ -133,143 +25,138 @@ instance Hashable (PGEnum Sch ( "test_pgs" ->> "color" ))
 
 instance NFData (PGEnum Sch ( "test_pgs" ->> "color" ))
 
-instance CTabDef Sch ( "test_pgs" ->> "arrays" ) where
-  type TTabDef Sch ( "test_pgs" ->> "arrays" ) = 
-    'TabDef '[ "id","root_id","dates_nullable","jsons" ] '[ "id" ] '[  ]
+type family TTypDefSch (name :: NameNSK) :: TypDef' TL.Symbol where
+  TTypDefSch ( "pg_catalog" ->> "_bool" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "bool" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_bytea" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "bytea" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_date" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "date" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_float8" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "float8" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_int4" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "int4" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_jsonb" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "jsonb" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_text" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "text" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_timestamptz" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "timestamptz" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "_uuid" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "uuid" )) '[  ]
+  TTypDefSch ( "pg_catalog" ->> "bool" ) = 'TypDef "B" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "bytea" ) = 'TypDef "U" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "date" ) = 'TypDef "D" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "float4" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "float8" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "int4" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "int8" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "json" ) = 'TypDef "U" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "jsonb" ) = 'TypDef "U" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "text" ) = 'TypDef "S" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "time" ) = 'TypDef "D" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "timestamp" ) = 'TypDef "D" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "timestamptz" ) = 'TypDef "D" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "uuid" ) = 'TypDef "U" 'Nothing '[  ]
+  TTypDefSch ( "public" ->> "_citext" ) = 'TypDef "A" ('Just ( "public" ->> "citext" )) '[  ]
+  TTypDefSch ( "public" ->> "citext" ) = 'TypDef "S" 'Nothing '[  ]
+  TTypDefSch ( "test_pgs" ->> "_color" ) = 'TypDef "A" ('Just ( "test_pgs" ->> "color" )) '[  ]
+  TTypDefSch ( "test_pgs" ->> "color" ) = 'TypDef "E" 'Nothing '[ "red","green","blue" ]
+  TTypDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "type " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Types: pg_catalog._bool, pg_catalog._bytea, pg_catalog._date, pg_catalog._float8, pg_catalog._int4, pg_catalog._jsonb, pg_catalog._text, pg_catalog._timestamptz, pg_catalog._uuid, pg_catalog.bool, pg_catalog.bytea, pg_catalog.date, pg_catalog.float4, pg_catalog.float8, pg_catalog.int4, pg_catalog.int8, pg_catalog.json, pg_catalog.jsonb, pg_catalog.text, pg_catalog.time, pg_catalog.timestamp, pg_catalog.timestamptz, pg_catalog.uuid, public._citext, public.citext, test_pgs._color, test_pgs.color."
+    TE.:$$: TE.Text "")
+instance (ToStar (TTypDef Sch name), ToStar name) => CTypDef Sch name where
+  type TTypDef Sch name = TTypDefSch name
 
-instance CTabDef Sch ( "test_pgs" ->> "base_arr_converts" ) where
-  type TTabDef Sch ( "test_pgs" ->> "base_arr_converts" ) = 
-    'TabDef '[ "cboolean"
-      ,"cint4","cfloat8","ctimestamptz","ctext" ] '[  ] '[  ]
+type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
+  TTabDefSch ( "test_pgs" ->> "arrays" ) = 'TabDef '[ "id","root_id","dates_nullable","jsons" ] '[ "id" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "base_arr_converts" ) = 'TabDef '[ "cboolean","cint4","cfloat8","ctimestamptz","ctext" ] '[  ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "base_converts" ) = 'TabDef '[ "cboolean","cint4","cfloat8","cdate","ctime","ctimestamp","ctimestamptz","ctext" ] '[  ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "dim" ) = 'TabDef '[ "id","name" ] '[ "id" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "ext_arr_converts" ) = 'TabDef '[ "ccitext","cbytea","cjsonb","cuuid","ccolor" ] '[  ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "ext_converts" ) = 'TabDef '[ "ccitext","cbytea","cjsonb","cjson","cuuid","ccolor" ] '[  ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "leaf" ) = 'TabDef '[ "root_id","seq","leaf_no","value","category","created_at" ] '[ "root_id","seq","leaf_no" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "mid1" ) = 'TabDef '[ "id","root_id","pos","flag","sort_key","payload" ] '[ "id" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "mid2" ) = 'TabDef '[ "root_id","seq","kind","flag","priority","payload" ] '[ "root_id","seq" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "root" ) = 'TabDef '[ "id","code","grp","name","created_at","dim_a_id","dim_b_id" ] '[ "id" ] '[ '[ "code","grp" ] ]
+  TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Tables: test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.root."
+    TE.:$$: TE.Text "")
+instance (ToStar (TTabDef Sch name), ToStar name) => CTabDef Sch name where
+  type TTabDef Sch name = TTabDefSch name
 
-instance CTabDef Sch ( "test_pgs" ->> "base_converts" ) where
-  type TTabDef Sch ( "test_pgs" ->> "base_converts" ) = 
-    'TabDef '[ "cboolean","cint4"
-      ,"cfloat8","cdate","ctime","ctimestamp","ctimestamptz","ctext" ] '[  ] '[  ]
+type family TRelDefSch (ref :: NameNSK) :: RelDef' TL.Symbol where
+  TRelDefSch ( "test_pgs" ->> "arrays_root_fk" ) = 'RelDef ( "test_pgs" ->> "arrays" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+  TRelDefSch ( "test_pgs" ->> "leaf_mid2_fk" ) = 'RelDef ( "test_pgs" ->> "leaf" ) ( "test_pgs" ->> "mid2" ) '[ '( "root_id","root_id" ),'( "seq","seq" ) ]
+  TRelDefSch ( "test_pgs" ->> "mid1_root_fk" ) = 'RelDef ( "test_pgs" ->> "mid1" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+  TRelDefSch ( "test_pgs" ->> "mid2_root_fk" ) = 'RelDef ( "test_pgs" ->> "mid2" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+  TRelDefSch ( "test_pgs" ->> "root_dim_a_fk" ) = 'RelDef ( "test_pgs" ->> "root" ) ( "test_pgs" ->> "dim" ) '[ '( "dim_a_id","id" ) ]
+  TRelDefSch ( "test_pgs" ->> "root_dim_b_fk" ) = 'RelDef ( "test_pgs" ->> "root" ) ( "test_pgs" ->> "dim" ) '[ '( "dim_b_id","id" ) ]
+  TRelDefSch ref = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "relation " TE.:<>: TE.ShowType ref TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Relations: test_pgs.arrays_root_fk, test_pgs.leaf_mid2_fk, test_pgs.mid1_root_fk, test_pgs.mid2_root_fk, test_pgs.root_dim_a_fk, test_pgs.root_dim_b_fk."
+    TE.:$$: TE.Text "")
+instance ( ToStar (TRelDef Sch ref)
+         , CTabDef Sch (RdFrom (TRelDef Sch ref))
+         , CTabDef Sch (RdTo (TRelDef Sch ref)) )
+  => CRelDef Sch ref where
+  type TRelDef Sch ref = TRelDefSch ref
 
-instance CTabDef Sch ( "test_pgs" ->> "dim" ) where
-  type TTabDef Sch ( "test_pgs" ->> "dim" ) = 
-    'TabDef '[ "id","name" ] '[ "id" ] '[  ]
+type family TFromSch (tab :: NameNSK) :: [NameNSK] where
+  TFromSch ( "test_pgs" ->> "arrays" ) = '[ ( "test_pgs" ->> "arrays_root_fk" ) ]
 
-instance CTabDef Sch ( "test_pgs" ->> "ext_arr_converts" ) where
-  type TTabDef Sch ( "test_pgs" ->> "ext_arr_converts" ) = 
-    'TabDef '[ "ccitext","cbytea","cjsonb","cuuid","ccolor" ] '[  ] '[  ]
+  TFromSch ( "test_pgs" ->> "base_arr_converts" ) = '[  ]
 
-instance CTabDef Sch ( "test_pgs" ->> "ext_converts" ) where
-  type TTabDef Sch ( "test_pgs" ->> "ext_converts" ) = 
-    'TabDef '[ "ccitext"
-      ,"cbytea","cjsonb","cjson","cuuid","ccolor" ] '[  ] '[  ]
+  TFromSch ( "test_pgs" ->> "base_converts" ) = '[  ]
 
-instance CTabDef Sch ( "test_pgs" ->> "leaf" ) where
-  type TTabDef Sch ( "test_pgs" ->> "leaf" ) = 
-    'TabDef '[ "root_id","seq","leaf_no"
-      ,"value","category","created_at" ] '[ "root_id","seq","leaf_no" ] '[  ]
+  TFromSch ( "test_pgs" ->> "dim" ) = '[  ]
 
-instance CTabDef Sch ( "test_pgs" ->> "mid1" ) where
-  type TTabDef Sch ( "test_pgs" ->> "mid1" ) = 
-    'TabDef '[ "id"
-      ,"root_id","pos","flag","sort_key","payload" ] '[ "id" ] '[  ]
+  TFromSch ( "test_pgs" ->> "ext_arr_converts" ) = '[  ]
 
-instance CTabDef Sch ( "test_pgs" ->> "mid2" ) where
-  type TTabDef Sch ( "test_pgs" ->> "mid2" ) = 
-    'TabDef '[ "root_id"
-      ,"seq","kind","flag","priority","payload" ] '[ "root_id","seq" ] '[  ]
+  TFromSch ( "test_pgs" ->> "ext_converts" ) = '[  ]
 
-instance CTabDef Sch ( "test_pgs" ->> "root" ) where
-  type TTabDef Sch ( "test_pgs" ->> "root" ) = 
-    'TabDef '[ "id","code","grp","name"
-      ,"created_at","dim_a_id","dim_b_id" ] '[ "id" ] '[ '[ "code","grp" ] ]
+  TFromSch ( "test_pgs" ->> "leaf" ) = '[ ( "test_pgs" ->> "leaf_mid2_fk" ) ]
 
-instance CRelDef Sch ( "test_pgs" ->> "arrays_root_fk" ) where
-  type TRelDef Sch ( "test_pgs" ->> "arrays_root_fk" ) = 'RelDef ( "test_pgs" ->> "arrays" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+  TFromSch ( "test_pgs" ->> "mid1" ) = '[ ( "test_pgs" ->> "mid1_root_fk" ) ]
 
-instance CRelDef Sch ( "test_pgs" ->> "leaf_mid2_fk" ) where
-  type TRelDef Sch ( "test_pgs" ->> "leaf_mid2_fk" ) = 'RelDef ( "test_pgs" ->> "leaf" ) ( "test_pgs" ->> "mid2" ) '[ '( "root_id","root_id" ),'( "seq","seq" ) ]
+  TFromSch ( "test_pgs" ->> "mid2" ) = '[ ( "test_pgs" ->> "mid2_root_fk" ) ]
 
-instance CRelDef Sch ( "test_pgs" ->> "mid1_root_fk" ) where
-  type TRelDef Sch ( "test_pgs" ->> "mid1_root_fk" ) = 'RelDef ( "test_pgs" ->> "mid1" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+  TFromSch ( "test_pgs" ->> "root" ) = '[ ( "test_pgs" ->> "root_dim_a_fk" )
+    ,( "test_pgs" ->> "root_dim_b_fk" ) ]
 
-instance CRelDef Sch ( "test_pgs" ->> "mid2_root_fk" ) where
-  type TRelDef Sch ( "test_pgs" ->> "mid2_root_fk" ) = 'RelDef ( "test_pgs" ->> "mid2" ) ( "test_pgs" ->> "root" ) '[ '( "root_id","id" ) ]
+  TFromSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TFrom for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Tables: test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.root."
+    TE.:$$: TE.Text "")
 
-instance CRelDef Sch ( "test_pgs" ->> "root_dim_a_fk" ) where
-  type TRelDef Sch ( "test_pgs" ->> "root_dim_a_fk" ) = 'RelDef ( "test_pgs" ->> "root" ) ( "test_pgs" ->> "dim" ) '[ '( "dim_a_id","id" ) ]
+type family TToSch (tab :: NameNSK) :: [NameNSK] where
+  TToSch ( "test_pgs" ->> "arrays" ) = '[  ]
 
-instance CRelDef Sch ( "test_pgs" ->> "root_dim_b_fk" ) where
-  type TRelDef Sch ( "test_pgs" ->> "root_dim_b_fk" ) = 'RelDef ( "test_pgs" ->> "root" ) ( "test_pgs" ->> "dim" ) '[ '( "dim_b_id","id" ) ]
+  TToSch ( "test_pgs" ->> "base_arr_converts" ) = '[  ]
 
-instance CTabRels Sch ( "test_pgs" ->> "arrays" ) where
-  type TFrom Sch ( "test_pgs" ->> "arrays" ) = 
-    '[ ( "test_pgs" ->> "arrays_root_fk" ) ]
+  TToSch ( "test_pgs" ->> "base_converts" ) = '[  ]
 
-  type TTo Sch ( "test_pgs" ->> "arrays" ) = 
-    '[  ]
+  TToSch ( "test_pgs" ->> "dim" ) = '[ ( "test_pgs" ->> "root_dim_a_fk" )
+    ,( "test_pgs" ->> "root_dim_b_fk" ) ]
 
-instance CTabRels Sch ( "test_pgs" ->> "base_arr_converts" ) where
-  type TFrom Sch ( "test_pgs" ->> "base_arr_converts" ) = 
-    '[  ]
+  TToSch ( "test_pgs" ->> "ext_arr_converts" ) = '[  ]
 
-  type TTo Sch ( "test_pgs" ->> "base_arr_converts" ) = 
-    '[  ]
+  TToSch ( "test_pgs" ->> "ext_converts" ) = '[  ]
 
-instance CTabRels Sch ( "test_pgs" ->> "base_converts" ) where
-  type TFrom Sch ( "test_pgs" ->> "base_converts" ) = 
-    '[  ]
+  TToSch ( "test_pgs" ->> "leaf" ) = '[  ]
 
-  type TTo Sch ( "test_pgs" ->> "base_converts" ) = 
-    '[  ]
+  TToSch ( "test_pgs" ->> "mid1" ) = '[  ]
 
-instance CTabRels Sch ( "test_pgs" ->> "dim" ) where
-  type TFrom Sch ( "test_pgs" ->> "dim" ) = 
-    '[  ]
+  TToSch ( "test_pgs" ->> "mid2" ) = '[ ( "test_pgs" ->> "leaf_mid2_fk" ) ]
 
-  type TTo Sch ( "test_pgs" ->> "dim" ) = 
-    '[ ( "test_pgs" ->> "root_dim_a_fk" )
-      ,( "test_pgs" ->> "root_dim_b_fk" ) ]
+  TToSch ( "test_pgs" ->> "root" ) = '[ ( "test_pgs" ->> "arrays_root_fk" )
+    ,( "test_pgs" ->> "mid1_root_fk" ),( "test_pgs" ->> "mid2_root_fk" ) ]
 
-instance CTabRels Sch ( "test_pgs" ->> "ext_arr_converts" ) where
-  type TFrom Sch ( "test_pgs" ->> "ext_arr_converts" ) = 
-    '[  ]
-
-  type TTo Sch ( "test_pgs" ->> "ext_arr_converts" ) = 
-    '[  ]
-
-instance CTabRels Sch ( "test_pgs" ->> "ext_converts" ) where
-  type TFrom Sch ( "test_pgs" ->> "ext_converts" ) = 
-    '[  ]
-
-  type TTo Sch ( "test_pgs" ->> "ext_converts" ) = 
-    '[  ]
-
-instance CTabRels Sch ( "test_pgs" ->> "leaf" ) where
-  type TFrom Sch ( "test_pgs" ->> "leaf" ) = 
-    '[ ( "test_pgs" ->> "leaf_mid2_fk" ) ]
-
-  type TTo Sch ( "test_pgs" ->> "leaf" ) = 
-    '[  ]
-
-instance CTabRels Sch ( "test_pgs" ->> "mid1" ) where
-  type TFrom Sch ( "test_pgs" ->> "mid1" ) = 
-    '[ ( "test_pgs" ->> "mid1_root_fk" ) ]
-
-  type TTo Sch ( "test_pgs" ->> "mid1" ) = 
-    '[  ]
-
-instance CTabRels Sch ( "test_pgs" ->> "mid2" ) where
-  type TFrom Sch ( "test_pgs" ->> "mid2" ) = 
-    '[ ( "test_pgs" ->> "mid2_root_fk" ) ]
-
-  type TTo Sch ( "test_pgs" ->> "mid2" ) = 
-    '[ ( "test_pgs" ->> "leaf_mid2_fk" ) ]
-
-instance CTabRels Sch ( "test_pgs" ->> "root" ) where
-  type TFrom Sch ( "test_pgs" ->> "root" ) = 
-    '[ ( "test_pgs" ->> "root_dim_a_fk" )
-      ,( "test_pgs" ->> "root_dim_b_fk" ) ]
-
-  type TTo Sch ( "test_pgs" ->> "root" ) = 
-    '[ ( "test_pgs" ->> "arrays_root_fk" )
-      ,( "test_pgs" ->> "mid1_root_fk" ),( "test_pgs" ->> "mid2_root_fk" ) ]
+  TToSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TTo for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Tables: test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.root."
+    TE.:$$: TE.Text "")
+instance CTabRels Sch tab where
+  type TFrom Sch tab = TFromSch tab
+  type TTo Sch tab = TToSch tab
 
 type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
   TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "dates_nullable" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_date" ) 'True 'False)

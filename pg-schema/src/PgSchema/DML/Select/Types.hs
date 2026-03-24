@@ -22,11 +22,12 @@ import Data.List.NonEmpty as NE
 import Data.String
 import Data.Text(Text)
 import Database.PostgreSQL.Simple.ToField
-import PgSchema.Schema
-import PgSchema.Types
 import GHC.Generics
 import GHC.Natural
 import GHC.TypeLits
+import GHC.TypeError qualified as TE
+import PgSchema.Schema
+import PgSchema.Types
 import PgSchema.Utils.Internal
 import PgSchema.Utils.TF
 
@@ -207,14 +208,32 @@ deriving instance Show SomeToField
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 
-type CDBField sch tab fld fd = (CDBFieldInfo sch tab fld
-  , TDBFieldInfo sch tab fld ~ 'RFPlain fd )
+type CDBField sch tab fld =
+  (CDBField' sch tab fld (TDBFieldInfo sch tab fld), CDBFieldInfo sch tab fld)
 
-type CDBValue sch tab fld fd v =
-  (CDBField sch tab fld fd, ToField v, Show v, CanConvert sch tab fld fd v)
+type family CDBField' sch tab fld fi :: Constraint where
+  CDBField' sch tab fld ('RFPlain fd) = ()
+  CDBField' sch tab fld fi = TypeError
+    (TE.Text "Field " :<>: ShowType fld :<>: TE.Text" is not found in table " :<>: ShowType tab
+    :$$: TE.Text "Schema: " :<>: ShowType sch
+    :$$: TE.Text "")
 
-type CDBFieldNullable sch tab fld fd =
-  ( CDBField sch tab fld fd, FdNullable fd ~ 'True)
+-- type CDBValue sch tab fld fd v =
+--   (CDBField sch tab fld fd, ToField v, Show v, CanConvert sch tab fld fd v)
+
+type CDBValue sch tab fld v =
+  (CDBValue' sch tab fld (TDBFieldInfo sch tab fld) v, CDBFieldInfo sch tab fld
+  , ToField v, Show v)
+
+type family CDBValue' sch tab fld fi v where
+  CDBValue' sch tab fld ('RFPlain fd) v = (CanConvert sch tab fld fd v)
+  CDBValue' sch tab fld fi v = TypeError
+    (TE.Text "Field " :<>: ShowType fld :<>: TE.Text" is not found in table " :<>: ShowType tab
+    :$$: TE.Text "Schema: " :<>: ShowType sch
+    :$$: TE.Text "")
+
+type CDBFieldNullable sch tab fld =
+  ( CDBField sch tab fld , FdNullable (GetFldDef sch tab fld) ~ 'True)
 
 -- | GADT to safely set `where` condition for table `tab` based on definition of schema `sch`
 --
@@ -223,14 +242,14 @@ type CDBFieldNullable sch tab fld fd =
 data Cond (sch::Type) (tab::NameNSK) where
   EmptyCond :: Cond sch tab
   -- ^ Empty Condition. Neutral for conjunction '(&&&)' and disjunction '(|||)'.
-  Cmp :: forall fld v sch tab fd. CDBValue sch tab fld fd v => Cmp -> v -> Cond sch tab
+  Cmp :: forall fld v sch tab. CDBValue sch tab fld v => Cmp -> v -> Cond sch tab
   -- ^ Comparing field value with parameter
-  In :: forall fld v sch tab fd. CDBValue sch tab fld fd v => NonEmpty v -> Cond sch tab
+  In :: forall fld v sch tab. CDBValue sch tab fld v => NonEmpty v -> Cond sch tab
   -- ^ Check that field value belongs to non-empty list of values
-  InArr :: forall fld v sch tab fd. CDBValue sch tab fld fd v => [v] -> Cond sch tab
+  InArr :: forall fld v sch tab. CDBValue sch tab fld v => [v] -> Cond sch tab
   -- ^ Check that field value belongs to the list of values.
   -- If the list is empty, the condition evaluates to @false@.
-  Null :: forall fld sch tab fd. CDBFieldNullable sch tab fld fd => Cond sch tab
+  Null :: forall fld sch tab. CDBFieldNullable sch tab fld => Cond sch tab
   -- ^ Check that field value is @NULL@
   Not :: Cond sch tab -> Cond sch tab
   -- ^ Boolean @NOT@
@@ -274,7 +293,7 @@ defTabParam = TabParam mempty mempty defLO
 
 -- | Check that field value is @NULL@
 {-# INLINE pnull #-}
-pnull :: forall sch tab fd. forall name -> CDBFieldNullable sch tab name fd => Cond sch tab
+pnull :: forall sch tab. forall name -> CDBFieldNullable sch tab name => Cond sch tab
 pnull name = Null @name
 
 -- | True when related rows exist in the child table and satisfy the nested condition there
@@ -305,14 +324,14 @@ pUnsafeCond = UnsafeCond
 
 -- | Check that field value belongs to non-empty list of values
 {-# INLINE pin #-}
-pin :: forall name -> forall sch tab fd v. CDBValue sch tab name fd v
+pin :: forall name -> forall sch tab v. CDBValue sch tab name v
   => NonEmpty v -> Cond sch tab
 pin name = In @name
 
 -- | Check that field value belongs to the list of values.
 -- If the list is empty, the condition evaluates to @false@.
 {-# INLINE pinArr #-}
-pinArr :: forall name -> forall sch tab fd v. CDBValue sch tab name fd v
+pinArr :: forall name -> forall sch tab v. CDBValue sch tab name v
   => [v] -> Cond sch tab
 pinArr name = InArr @name
 
@@ -337,14 +356,14 @@ infixl 3 &&&
 {-# INLINE (~=?) #-}
 {-# INLINE (~~?) #-}
 (<?),(>?),(<=?),(>=?),(=?)
-   :: forall fld -> forall sch tab fd v. CDBValue sch tab fld fd v => v -> Cond sch tab
+   :: forall fld -> forall sch tab v. CDBValue sch tab fld v => v -> Cond sch tab
 x <? b  = Cmp @x (:<)  b
 x >? b  = Cmp @x (:>)  b
 x <=? b = Cmp @x (:<=) b
 x >=? b = Cmp @x (:>=) b
 x =? b = Cmp @x (:=) b
 (~=?),(~~?)
-  :: forall fld -> forall sch tab fd v. CDBValue sch tab fld fd v => v -> Cond sch tab
+  :: forall fld -> forall sch tab v. CDBValue sch tab fld v => v -> Cond sch tab
 x ~=? b  = Cmp @x Like b
 x ~~? b  = Cmp @x ILike b
 infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
@@ -352,7 +371,7 @@ infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 data OrdDirection = Asc | Desc deriving Show
 
 data OrdFld sch tab where
-  OrdFld :: forall fld sch tab fd. CDBField sch tab fld fd =>
+  OrdFld :: forall fld sch tab. CDBField sch tab fld =>
     OrdDirection -> OrdFld sch tab
   UnsafeOrd :: CondMonad (Text, OrdDirection) -> OrdFld sch tab
 
@@ -371,16 +390,16 @@ data Dist sch tab where
 
 {-# INLINE ordf #-}
 ordf
-  :: forall fld -> forall sch tab fd. CDBField sch tab fld fd
+  :: forall fld -> forall sch tab. CDBField sch tab fld
   => OrdDirection -> OrdFld sch tab
 ordf fld = OrdFld @fld
 
 {-# INLINE ascf #-}
-ascf :: forall fld -> forall sch tab fd. CDBField sch tab fld fd => OrdFld sch tab
+ascf :: forall fld -> forall sch tab. CDBField sch tab fld => OrdFld sch tab
 ascf fld = ordf fld Asc
 
 {-# INLINE descf #-}
-descf :: forall fld -> forall sch tab fd. CDBField sch tab fld fd => OrdFld sch tab
+descf :: forall fld -> forall sch tab. CDBField sch tab fld => OrdFld sch tab
 descf fld = ordf fld Desc
 
 data LO = LO
