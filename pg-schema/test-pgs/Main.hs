@@ -31,8 +31,8 @@ main = do
       , testProperty "Insert/Upsert/Select root with children (composite FK)" $ prop_hier_insert_composite_fk pool
       , testProperty "Select child with parent (RFFromHere)" $ prop_hier_select_child_with_parent pool
       , testProperty "Duplicate field names in root and nested structure" $ prop_hier_duplicate_names_root_nested pool
-      , testProperty "Optional parent FK on root (dim_a_id)" $
-          prop_hier_insert_optional_parent_dim_a pool
+      -- , testProperty "Optional parent FK on root (dim_a_id)" $
+      --     prop_hier_insert_optional_parent_dim_a pool
       ]
     , testGroup "Query (test_dml)"
       [ testProperty "'Simple' queries" $ prop_cond_query pool

@@ -235,16 +235,19 @@ instance
       where
         keyTxt = demote @(NameSymNat sn)
 
+-- Note: we use "split ~" instead of " '(colsA, colsB) ~ " to avoid ambiguity.
 instance
   ( ca ~ ColsCaseOf a, cb ~ ColsCaseOf b
-  , '(colsA, colsB) ~ SplitAt (Length (Cols ann a)) cols
+  , split ~ SplitAt (Length (Cols ann a)) cols
+  , colsA ~ Fst split, colsB ~ Snd split
   , ToJSONCols ann ca colsA a, ToJSONCols ann cb colsB b )
   => ToJSONCols ann 'NonGenericCase cols (a :. b) where
     toPairs (a :. b) = toPairs @ann @ca @colsA a <> toPairs @ann @cb @colsB b
 
 instance
   ( ca ~ ColsCaseOf a, cb ~ ColsCaseOf b
-  , '(colsA, colsB) ~ SplitAt (Length (Cols ann a)) cols
+  , split ~ SplitAt (Length (Cols ann a)) cols
+  , colsA ~ Fst split, colsB ~ Snd split
   , FromJSONCols ann ca colsA a, FromJSONCols ann cb colsB b)
   => FromJSONCols ann 'NonGenericCase cols (a :. b) where
     parseJSONCols v =
@@ -280,13 +283,15 @@ instance GFromJSONCols ann cols flds
 
 -- (:*:)
 instance
-  ( '(colsA, colsB) ~ SplitAt (Length (GCols ann a)) cols
+  ( split ~ SplitAt (Length (GCols ann a)) cols
+  , colsA ~ Fst split, colsB ~ Snd split
   , GToJSONCols ann colsA a, GToJSONCols ann colsB b )
   => GToJSONCols ann cols (a :*: b) where
     gToPairs (a :*: b) = gToPairs @ann @colsA a <> gToPairs @ann @colsB b
 
 instance
-  ( '(colsA, colsB) ~ SplitAt (Length (GCols ann a)) cols
+  ( split ~ SplitAt (Length (GCols ann a)) cols
+  , colsA ~ Fst split, colsB ~ Snd split
   , GFromJSONCols ann colsA a, GFromJSONCols ann colsB b )
   => GFromJSONCols ann cols (a :*: b) where
     gParseJSONCols v =
@@ -372,17 +377,21 @@ instance (FromField tEff, Coercible t tEff)
 
 instance
   ( ca ~ ColsCaseOf a, cb ~ ColsCaseOf b
-  , '(colsA, colsB) ~ SplitAt (Length (Cols ann a)) cols
+  , split ~ SplitAt (Length (Cols ann a)) cols
+  , colsA ~ Fst split, colsB ~ Snd split
   , ToRowCols ann ca colsA a, ToRowCols ann cb colsB b )
   => ToRowCols ann 'NonGenericCase cols (a :. b) where
   toRowCols (a :. b) = toRowCols @ann @ca @colsA a <> toRowCols @ann @cb @colsB b
 
 instance
   ( ca ~ ColsCaseOf a, cb ~ ColsCaseOf b
-  , '(colsA, colsB) ~ SplitAt (Length (Cols ann a)) cols
+  , split ~ SplitAt (Length (Cols ann a)) cols
+  , colsA ~ Fst split, colsB ~ Snd split
   , FromRowCols ann ca colsA a, FromRowCols ann cb colsB b )
   => FromRowCols ann 'NonGenericCase cols (a :. b) where
-  fromRowCols = (:.) <$> fromRowCols @ann @ca @colsA <*> fromRowCols @ann @cb @colsB
+  fromRowCols = (:.)
+    <$> fromRowCols @ann @ca @(Fst split)
+    <*> fromRowCols @ann @cb @(Snd split)
 
 --------------------------------------------------------------------------------
 -- Generic: through Rep r
@@ -411,13 +420,15 @@ instance GFromRowCols ann cols flds
     gFromRowCols = fmap (M1 . M1) (gFromRowCols @ann @cols)
 
 instance
-  ( '(colsA, colsB) ~ SplitAt (Length (GCols ann a)) cols
-  , GToRowCols   ann colsA a, GToRowCols   ann colsB b )
+  ( split ~ SplitAt (Length (GCols ann a)) cols
+  , colsA ~ Fst split, colsB ~ Snd split
+  , GToRowCols ann colsA a, GToRowCols ann colsB b )
   => GToRowCols ann cols (a :*: b) where
     gToRowCols (a :*: b) = gToRowCols @ann @colsA a <> gToRowCols @ann @colsB b
 
 instance
-  ( '(colsA, colsB) ~ SplitAt (Length (GCols ann a)) cols
+  ( split ~ SplitAt (Length (GCols ann a)) cols
+  , colsA ~ Fst split, colsB ~ Snd split
   , GFromRowCols ann colsA a, GFromRowCols ann colsB b )
   => GFromRowCols ann cols (a :*: b) where
     gFromRowCols = (:*:) <$> gFromRowCols @ann @colsA <*> gFromRowCols @ann @colsB

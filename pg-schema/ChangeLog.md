@@ -14,4 +14,4 @@
 
 ## 0.5.0.0
 
-- First releas on Hackage
+- First release on Hackage

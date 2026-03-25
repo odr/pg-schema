@@ -49,7 +49,8 @@ data QueryParam sch t = QueryParam
 qpEmpty :: forall sch t. QueryParam sch t
 qpEmpty = QueryParam [] [] [] []
 
-type MonadQP sch t path = (TabPath sch t path, ToStar path) => RWS (Proxy path) () (QueryParam sch t) ()
+type MonadQP sch t path =
+  (TabPath sch t path, ToStar path) => RWS (Proxy path) () (QueryParam sch t) ()
 
 -- | Execute 'MonadQP' and get 'QueryParam'.
 --

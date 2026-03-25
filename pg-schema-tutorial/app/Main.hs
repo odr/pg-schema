@@ -63,6 +63,12 @@ data Country = MkCountry
   -- , city_country :: [City A2 B1] }
   deriving (Eq, Ord, Show, Generic)
 
+-- type Country' = "codes" := Maybe Text :. "name" := Text
+data Country' = MkCountry'
+  { code :: Maybe Text
+  , name :: Text }
+  deriving Generic
+
 instance Arbitrary Country where
   arbitrary = genericArbitrarySingle
 
@@ -245,7 +251,7 @@ main :: IO ()
 main = do
   countries <- generate $ replicateM 5 (arbitrary @Country)
   mapM_ (\(a,b) -> T.putStrLn a >> print b)
-    [ selSchText "countries" @Country qpEmpty
+    [ selSchText "countries" @Country' qpEmpty
     , selSchText "articles" @Article qpEmpty
     , selSchText "cities" @(City A1 B1) qpEmpty
     , selSchText "cities" @(City A2 B1) qpEmpty
