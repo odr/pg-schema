@@ -72,11 +72,11 @@ data GenNames = GenNames
 type AnnCat tn = 'Ann RenamerId PgCatalog 3 (PGC tn)
 
 selCat :: forall (tn :: Symbol) -> forall r. (Selectable (AnnCat tn) r)
-  => Connection -> QueryParam PgCatalog (PGC tn) -> IO ([r], (Text,[SomeToField]))
+  => Connection -> QueryParam RenamerId PgCatalog (PGC tn) -> IO ([r], (Text,[SomeToField]))
 selCat tn = selectSch (AnnCat tn)
 
 selTxt :: forall (tn :: Symbol) -> forall r. (Selectable (AnnCat tn) r)
-  => QueryParam PgCatalog (PGC tn) -> (Text,[SomeToField])
+  => QueryParam RenamerId PgCatalog (PGC tn) -> (Text,[SomeToField])
 selTxt tn @r = selectText (AnnCat tn) @r
 
 getSchema
@@ -114,11 +114,11 @@ getSchema conn GenNames {..} = do
           pure $ pgArr' $ fromIntegral . (+1) <$> inds
 
 -- all data are ordered to provide stable `hashSchema`
-    qpTyp = qRoot @PgCatalog @(PGC "pg_type") do
+    qpTyp = qRoot do
       qOrderBy [ascf "typname", ordNS "typnamespace"]
       qPath "enum__type" do
         qOrderBy [ascf "enumsortorder"]
-    qpClass = qRoot @PgCatalog @(PGC "pg_class") do
+    qpClass = qRoot do
       qWhere $ condClass &&& pin "relkind" (PgChar <$> 'v' :| "r") -- views & tables
       qOrderBy [ascf "relname", ordNS "relnamespace"]
       qPath "attribute__class" do
@@ -126,7 +126,7 @@ getSchema conn GenNames {..} = do
         qOrderBy [ascf "attnum"]
       qPath "constraint__class" do
         qOrderBy [ascf "conname"]
-    qpRel = qRoot @PgCatalog @(PGC "pg_constraint") do
+    qpRel = qRoot do
       qWhere
         $   pparent (PGC "constraint__class") condClass
         ||| pparent (PGC "constraint__fclass") condClass

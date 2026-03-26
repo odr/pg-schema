@@ -14,17 +14,17 @@ import Data.Singletons
 
 -- | Delete records in table by condition.
 --
-deleteByCond :: forall sch t -> SingI t =>
-  Connection -> Cond sch t -> IO (Int64, (Text,[SomeToField]))
-deleteByCond sch t conn cond = traceShow' (q,ps)
+deleteByCond :: forall ren sch t -> SingI t =>
+  Connection -> Cond ren sch t -> IO (Int64, (Text,[SomeToField]))
+deleteByCond ren sch t conn cond = traceShow' (q,ps)
   $ (,(q,ps)) <$> execute conn (fromString $ T.unpack q) ps
   where
-    (q, ps) = deleteText @sch @t cond
+    (q, ps) = deleteText @ren @sch @t cond
 
 -- | Construct SQL text for deleting records by condition.
 --
-deleteText :: forall sch t s. (IsString s, Monoid s, SingI t) =>
-  Cond sch t -> (s, [SomeToField])
+deleteText :: forall ren sch t s. (IsString s, Monoid s, SingI t) =>
+  Cond ren sch t -> (s, [SomeToField])
 deleteText cond =
   ("delete from " <> tn <> " t0 " <> fromText whereTxt, condParams )
   where

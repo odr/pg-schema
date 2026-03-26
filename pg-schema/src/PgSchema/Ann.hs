@@ -75,6 +75,13 @@ data RenamerId :: Renamer
 
 type instance ApplyRenamer RenamerId s = s
 
+type family ApplyRenamerNS (ren :: Renamer) (nns :: NameNSK) :: NameNSK where
+  ApplyRenamerNS ren ('NameNS ns n) = 'NameNS ns (ApplyRenamer ren n)
+
+type family MapRen (f :: Renamer) (xs :: [Symbol]) :: [Symbol] where
+  MapRen f '[] = '[]
+  MapRen f (x ': xs) = ApplyRenamer f x ': MapRen f xs
+
 --------------------------------------------------------------------------------
 -- Case dispatch
 --------------------------------------------------------------------------------

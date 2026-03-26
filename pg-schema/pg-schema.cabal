@@ -1,6 +1,6 @@
 cabal-version:  3.12
 name:           pg-schema
-version:        0.5.2.0
+version:        0.6.0.0
 category:       Database
 author:         Dmitry Olshansky
 maintainer:     olshanskydr@gmail.com

@@ -26,6 +26,7 @@ import GHC.Generics
 import GHC.Natural
 import GHC.TypeLits
 import GHC.TypeError qualified as TE
+import PgSchema.Ann
 import PgSchema.Schema
 import PgSchema.Types
 import PgSchema.Utils.Internal
@@ -36,26 +37,27 @@ import PgSchema.Utils.TF
 --
 -- You don't need to make it directly. Use 'MonadQP' to define 'QueryParam' instead.
 --
-data QueryParam sch t = QueryParam
-  { qpConds     :: ![CondWithPath sch t]    -- ^ `where` conditions for branches of Data-Tree
-  , qpOrds      :: ![OrdWithPath sch t]     -- ^ `order by` clauses
-  , qpLOs       :: ![LimOffWithPath sch t]  -- ^ `limit/offset` clauses
-  , qpDistinct  :: ![DistWithPath sch t]    -- ^ `distinct` and `distinct on` clauses
+data QueryParam ren sch t = QueryParam
+  { qpConds     :: ![CondWithPath ren sch t]    -- ^ `where` conditions for branches of Data-Tree
+  , qpOrds      :: ![OrdWithPath ren sch t]     -- ^ `order by` clauses
+  , qpLOs       :: ![LimOffWithPath ren sch t]  -- ^ `limit/offset` clauses
+  , qpDistinct  :: ![DistWithPath ren sch t]    -- ^ `distinct` and `distinct on` clauses
   }
 
 -- | Empty 'QueryParam'.
 --
 -- It means that @SELECT@ is defined only by structure of output type
-qpEmpty :: forall sch t. QueryParam sch t
+qpEmpty :: forall ren sch t. QueryParam ren sch t
 qpEmpty = QueryParam [] [] [] []
 
-type MonadQP sch t path =
-  (TabPath sch t path, ToStar path) => RWS (Proxy path) () (QueryParam sch t) ()
+type MonadQP ren sch t path
+  = (TabPath sch t (MapRen ren path), ToStar (MapRen ren path))
+  => RWS (Proxy path) () (QueryParam ren sch t) ()
 
 -- | Execute 'MonadQP' and get 'QueryParam'.
 --
 -- The table `t` defines a context and becomes the "current" table
-qRoot :: RWS (Proxy '[]) () (QueryParam sch t) () -> QueryParam sch t
+qRoot :: RWS (Proxy '[]) () (QueryParam ren sch t) () -> QueryParam ren sch t
 qRoot m = fst $ execRWS m Proxy qpEmpty
 
 -- | Change context (current table) to parent or child table.
@@ -63,10 +65,10 @@ qRoot m = fst $ execRWS m Proxy qpEmpty
 -- The 'Symbol' must name the foreign-key constraint (edge to the parent or from the child)
 -- for the step away from the current table.
 --
-qPath :: forall sch t path path'.
+qPath :: forall ren sch t path path'.
   forall (p :: Symbol) ->
-  (TabPath sch t path', ToStar path', path' ~ path ++ '[p]) =>
-  MonadQP sch t path' -> MonadQP sch t path
+  (TabPath sch t (MapRen ren path'), ToStar (MapRen ren path'), path' ~ path ++ '[p]) =>
+  MonadQP ren sch t path' -> MonadQP ren sch t path
 qPath _p m = do
   s <- get
   put $ fst $ execRWS m Proxy s
@@ -74,7 +76,7 @@ qPath _p m = do
 -- | Add @WHERE@ condition for the current table.
 --
 -- If several 'qWhere' exist they are composed according to the 'Monoid' instance for 'Cond', i.e. with '(&&&)'
-qWhere :: forall sch t path. Cond sch (TabOnPath sch t path) -> MonadQP sch t path
+qWhere :: forall ren sch t path. Cond ren sch (TabOnPath sch t (MapRen ren path)) -> MonadQP ren sch t path
 qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 
 -- | Add @ORDER BY@ condition for the current table
@@ -92,13 +94,13 @@ qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 --
 -- we get @ORDER BY t1.f1, t2.f2 DESC, t1.f3@
 --
-qOrderBy :: forall sch t path. [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
+qOrderBy :: forall ren sch t path. [OrdFld ren sch (TabOnPath sch t (MapRen ren path))] -> MonadQP ren sch t path
 qOrderBy ofs = modify \qp -> qp { qpOrds = OrdWithPath @path ofs : qp.qpOrds }
 
 -- | Add `DISTINCT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
-qDistinct :: forall sch t path t'. TabOnPath2 sch t path ~ '(t', 'RelMany) =>
-  MonadQP sch t path
+qDistinct :: forall ren sch t path t'. TabOnPath2 sch t path ~ '(t', 'RelMany) =>
+  MonadQP ren sch t path
 qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpDistinct }
 
 -- | Add @DISTINCT ON@ condition for the current table.
@@ -119,21 +121,21 @@ qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpD
 --
 -- we get @DISTINCT ON (t1.f1, t2.f2, t1.f3) ... ORDER BY t1.f1, t2.f2 DESC, t1.f3, t1.f0 DESC@
 --
-qDistinctOn :: forall sch t path. [OrdFld sch (TabOnPath sch t path)] -> MonadQP sch t path
+qDistinctOn :: forall ren sch t path. [OrdFld ren sch (TabOnPath sch t (MapRen ren path))] -> MonadQP ren sch t path
 qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn ofs) : qp.qpDistinct }
 
 -- | Add `LIMIT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
 --
 -- If 'qLimit' is applied several times on the same path, only the last one is used
-qLimit :: forall sch t path. Snd (TabOnPath2 sch t path) ~ RelMany
-  => Natural -> MonadQP sch t path
+qLimit :: forall ren sch t path. Snd (TabOnPath2 sch t (MapRen ren path)) ~ RelMany
+  => Natural -> MonadQP ren sch t path
 qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
       (xs1, []) -> new : xs1
       (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
-    eq (LimOffWithPath @p _) = demote @p == demote @path
+    eq (LimOffWithPath @p _) = demote @(MapRen ren p) == demote @(MapRen ren path)
     upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{ limit = Just n }
     new = LimOffWithPath @path LO { limit = Just n, offset = Nothing }
 
@@ -141,37 +143,38 @@ qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
 -- It is applied only to "root" or "children" tables.
 --
 -- If 'qOffset' is applied several times on the same path, only the last one is used
-qOffset :: forall sch t path. Snd (TabOnPath2 sch t path) ~ RelMany
-  => Natural -> MonadQP sch t path
+qOffset :: forall ren sch t path. Snd (TabOnPath2 sch t (MapRen ren path)) ~ RelMany
+  => Natural -> MonadQP ren sch t path
 qOffset n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
       (xs1, []) -> new : xs1
       (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
-    eq (LimOffWithPath @p _) = demote @p == demote @path
+    eq (LimOffWithPath @p _) = demote @(MapRen ren p) == demote @(MapRen ren path)
     upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{offset = Just n}
     new = LimOffWithPath @path LO { offset = Just n, limit = Nothing }
 
 -- | GADT to safely set `where` condition
-data CondWithPath sch t where
-  CondWithPath ::  forall (path :: [Symbol]) sch t. ToStar path
-    => Cond sch (TabOnPath sch t path) -> CondWithPath sch t
+data CondWithPath ren sch t where
+  CondWithPath ::  forall (path :: [Symbol]) ren sch t. ToStar (MapRen ren path)
+    => Cond ren sch (TabOnPath sch t (MapRen ren path)) -> CondWithPath ren sch t
 
 -- | GADT to safely set `order by` clauses
-data OrdWithPath sch t where
-  OrdWithPath :: forall (path :: [Symbol]) sch t. ToStar path
-    => [OrdFld sch (TabOnPath sch t path)] -> OrdWithPath sch t
+data OrdWithPath ren sch t where
+  OrdWithPath :: forall (path :: [Symbol]) ren sch t. ToStar (MapRen ren path)
+    => [OrdFld ren sch (TabOnPath sch t (MapRen ren path))] -> OrdWithPath ren sch t
 
 -- | GADT to safely set `distinct/distinct on` clauses
-data DistWithPath sch t where
-  DistWithPath :: forall (path :: [Symbol]) sch t. ToStar path
-    => Dist sch (TabOnPath sch t path) -> DistWithPath sch t
+data DistWithPath ren sch t where
+  DistWithPath :: forall (path :: [Symbol]) ren sch t. ToStar (MapRen ren path)
+    => Dist ren sch (TabOnPath sch t (MapRen ren path)) -> DistWithPath ren sch t
 
 -- | GADT to safely set `limit/offset` clauses
-data LimOffWithPath sch t where
-  LimOffWithPath :: forall (path :: [Symbol]) sch t.
-    (TabPath sch t path, ToStar path, Snd (TabOnPath2 sch t path) ~ 'RelMany)
-    => LO -> LimOffWithPath sch t
+data LimOffWithPath ren sch t where
+  LimOffWithPath :: forall (path :: [Symbol]) ren sch t.
+    ( TabPath sch t (MapRen ren path), ToStar (MapRen ren path)
+    , Snd (TabOnPath2 sch t (MapRen ren path)) ~ 'RelMany )
+    => LO -> LimOffWithPath ren sch t
 
 -- | Comparison constructors; each is paired with its corresponding operator
 -- (e.g. '(:=)' with '(=?)').
@@ -240,42 +243,45 @@ type CDBFieldNullable sch tab fld =
 --
 -- 'Cond' is 'Monoid' with conjunction ('(&&&)') as 'mappend'
 --
-data Cond (sch::Type) (tab::NameNSK) where
-  EmptyCond :: Cond sch tab
+data Cond (ren :: Renamer) (sch::Type) (tab::NameNSK) where
+  EmptyCond :: Cond ren sch tab
   -- ^ Empty Condition. Neutral for conjunction '(&&&)' and disjunction '(|||)'.
-  Cmp :: forall fld v sch tab. CDBValue sch tab fld v => Cmp -> v -> Cond sch tab
+  Cmp :: forall fld v ren sch tab. CDBValue sch tab (ApplyRenamer ren fld) v => Cmp -> v -> Cond ren sch tab
   -- ^ Comparing field value with parameter
-  In :: forall fld v sch tab. CDBValue sch tab fld v => NonEmpty v -> Cond sch tab
+  In :: forall fld v ren sch tab. CDBValue sch tab (ApplyRenamer ren fld) v => NonEmpty v -> Cond ren sch tab
   -- ^ Check that field value belongs to non-empty list of values
-  InArr :: forall fld v sch tab. CDBValue sch tab fld v => [v] -> Cond sch tab
+  InArr :: forall fld v ren sch tab. CDBValue sch tab (ApplyRenamer ren fld) v => [v] -> Cond ren sch tab
   -- ^ Check that field value belongs to the list of values.
   -- If the list is empty, the condition evaluates to @false@.
-  Null :: forall fld sch tab. CDBFieldNullable sch tab fld => Cond sch tab
+  Null :: forall fld ren sch tab.
+    CDBFieldNullable sch tab (ApplyRenamer ren fld) => Cond ren sch tab
   -- ^ Check that field value is @NULL@
-  Not :: Cond sch tab -> Cond sch tab
+  Not :: Cond ren sch tab -> Cond ren sch tab
   -- ^ Boolean @NOT@
-  BoolOp :: BoolOp -> Cond sch tab -> Cond sch tab -> Cond sch tab
+  BoolOp :: BoolOp -> Cond ren sch tab -> Cond ren sch tab -> Cond ren sch tab
   -- ^ Conjunction and disjunction
-  Child :: forall sch ref. CRelDef sch ref =>
-    TabParam sch (RdFrom (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
-    -> Cond sch (RdTo (TRelDef sch ref))
+  Child :: forall ren sch ref. CRelDef sch (ApplyRenamerNS ren ref)
+    => TabParam ren sch (RdFrom (TRelDef sch (ApplyRenamerNS ren ref)))
+    -> Cond ren sch (RdFrom (TRelDef sch (ApplyRenamerNS ren ref)))
+    -> Cond ren sch (RdTo (TRelDef sch (ApplyRenamerNS ren ref)))
   -- ^ condition @EXISTS@ in child table. 'TabParam' is used to limit
   -- child dataset (usually with @ORDER BY@ and @LIMIT@) before applying
   -- condition on child table
-  Parent :: forall sch ref . CRelDef sch ref =>
-    Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
+  Parent :: forall ren sch ref . CRelDef sch (ApplyRenamerNS ren ref)
+    => Cond ren sch (RdTo (TRelDef sch (ApplyRenamerNS ren ref)))
+    -> Cond ren sch (RdFrom (TRelDef sch (ApplyRenamerNS ren ref)))
   -- ^ @JOIN@ to parent rows that satisfy the nested condition
-  UnsafeCond :: CondMonad Text -> Cond sch tab
+  UnsafeCond :: CondMonad Text -> Cond ren sch tab
   -- ^ Unsafe condition built manually inside 'CondMonad'
 
 -- Conjunction '(&&&)' is much more often operation for query conditions so
 -- we use it for 'Semigroup'.
 -- But note that 'EmptyCond' is also neutral for disjunction '(|||)'.
-instance Semigroup (Cond sch tab) where
+instance Semigroup (Cond ren sch tab) where
   c1 <> c2 = c1 &&& c2
   -- ^ Using conjunction ('(&&&)') for 'Semigroup' instance
 
-instance Monoid (Cond sch tab) where
+instance Monoid (Cond ren sch tab) where
   mempty = EmptyCond
 
 -- | Parameters for child table.
@@ -283,18 +289,18 @@ instance Monoid (Cond sch tab) where
 -- It is used to limit child dataset (usually with @ORDER BY@ and @LIMIT@) before applying
 -- condition on child table
 --
-data TabParam sch tab = TabParam
-  { cond :: Cond sch tab
-  , order :: [OrdFld sch tab]
+data TabParam ren sch tab = TabParam
+  { cond :: Cond ren sch tab
+  , order :: [OrdFld ren sch tab]
   , lo :: LO }
 
 -- | Default empty 'TabParam'.
-defTabParam :: TabParam sch tab
+defTabParam :: TabParam ren sch tab
 defTabParam = TabParam mempty mempty defLO
 
 -- | Check that field value is @NULL@
 {-# INLINE pnull #-}
-pnull :: forall sch tab. forall name -> CDBFieldNullable sch tab name => Cond sch tab
+pnull :: forall ren sch tab. forall name -> CDBFieldNullable sch tab (ApplyRenamer ren name) => Cond ren sch tab
 pnull name = Null @name
 
 -- | True when related rows exist in the child table and satisfy the nested condition there
@@ -303,43 +309,45 @@ pnull name = Null @name
 -- condition on child table
 --
 {-# INLINE pchild #-}
-pchild :: forall sch . forall ref -> CRelDef sch ref =>
-  TabParam sch (RdFrom (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
-  -> Cond sch (RdTo (TRelDef sch ref))
-pchild name = Child @sch @name
+pchild :: forall ren sch . forall ref -> CRelDef sch (ApplyRenamerNS ren ref)
+  => TabParam ren sch (RdFrom (TRelDef sch (ApplyRenamerNS ren ref)))
+  -> Cond ren sch (RdFrom (TRelDef sch (ApplyRenamerNS ren ref)))
+  -> Cond ren sch (RdTo (TRelDef sch (ApplyRenamerNS ren ref)))
+pchild name = Child @ren @sch @name
 
 -- | Check that condition is satisfied in parent table
 {-# INLINE pparent #-}
-pparent :: forall sch. forall ref -> CRelDef sch ref =>
-  Cond sch (RdTo (TRelDef sch ref)) -> Cond sch (RdFrom (TRelDef sch ref))
-pparent name = Parent @sch @name
+pparent :: forall ren sch. forall ref -> CRelDef sch (ApplyRenamerNS ren ref)
+  => Cond ren sch (RdTo (TRelDef sch (ApplyRenamerNS ren ref)))
+  -> Cond ren sch (RdFrom (TRelDef sch (ApplyRenamerNS ren ref)))
+pparent name = Parent @ren @sch @name
 
 -- | Boolean @NOT@
 {-# INLINE pnot #-}
-pnot :: Cond sch tab -> Cond sch tab
+pnot :: Cond ren sch tab -> Cond ren sch tab
 pnot = Not
 
 {-# INLINE pUnsafeCond #-}
-pUnsafeCond :: CondMonad Text -> Cond sch tab
+pUnsafeCond :: CondMonad Text -> Cond ren sch tab
 pUnsafeCond = UnsafeCond
 
 -- | Check that field value belongs to non-empty list of values
 {-# INLINE pin #-}
-pin :: forall name -> forall sch tab v. CDBValue sch tab name v
-  => NonEmpty v -> Cond sch tab
+pin :: forall name -> forall ren sch tab v. CDBValue sch tab (ApplyRenamer ren name) v
+  => NonEmpty v -> Cond ren sch tab
 pin name = In @name
 
 -- | Check that field value belongs to the list of values.
 -- If the list is empty, the condition evaluates to @false@.
 {-# INLINE pinArr #-}
-pinArr :: forall name -> forall sch tab v. CDBValue sch tab name v
-  => [v] -> Cond sch tab
+pinArr :: forall name -> forall ren sch tab v. CDBValue sch tab (ApplyRenamer ren name) v
+  => [v] -> Cond ren sch tab
 pinArr name = InArr @name
 
 -- | Conjunction
-(&&&) :: Cond sch tab -> Cond sch tab -> Cond sch tab
+(&&&) :: Cond ren sch tab -> Cond ren sch tab -> Cond ren sch tab
 -- | Disjunction
-(|||) :: Cond sch tab -> Cond sch tab -> Cond sch tab
+(|||) :: Cond ren sch tab -> Cond ren sch tab -> Cond ren sch tab
 EmptyCond &&& cond = cond
 cond &&& EmptyCond = cond
 c1 &&& c2 = BoolOp And c1 c2
@@ -357,27 +365,27 @@ infixl 3 &&&
 {-# INLINE (~=?) #-}
 {-# INLINE (~~?) #-}
 (<?),(>?),(<=?),(>=?),(=?)
-   :: forall fld -> forall sch tab v. CDBValue sch tab fld v => v -> Cond sch tab
+   :: forall fld -> forall ren sch tab v. CDBValue sch tab (ApplyRenamer ren fld) v => v -> Cond ren sch tab
 x <? b  = Cmp @x (:<)  b
 x >? b  = Cmp @x (:>)  b
 x <=? b = Cmp @x (:<=) b
 x >=? b = Cmp @x (:>=) b
 x =? b = Cmp @x (:=) b
 (~=?),(~~?)
-  :: forall fld -> forall sch tab v. CDBValue sch tab fld v => v -> Cond sch tab
+  :: forall fld -> forall ren sch tab v. CDBValue sch tab (ApplyRenamer ren fld) v => v -> Cond ren sch tab
 x ~=? b  = Cmp @x Like b
 x ~~? b  = Cmp @x ILike b
 infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
 
 data OrdDirection = Asc | Desc deriving Show
 
-data OrdFld sch tab where
-  OrdFld :: forall fld sch tab. CDBField sch tab fld =>
-    OrdDirection -> OrdFld sch tab
-  UnsafeOrd :: CondMonad (Text, OrdDirection) -> OrdFld sch tab
+data OrdFld ren sch tab where
+  OrdFld :: forall fld ren sch tab. CDBField sch tab (ApplyRenamer ren fld) =>
+    OrdDirection -> OrdFld ren sch tab
+  UnsafeOrd :: CondMonad (Text, OrdDirection) -> OrdFld ren sch tab
 
-data Dist sch tab where
-  Distinct :: Dist sch tab
+data Dist ren sch tab where
+  Distinct :: Dist ren sch tab
   -- | Having 'DistinctOn' we automatically add fields from 'DistinctOn'
   -- into the begining of @ORDER BY@.
   -- (It is "good enough" and more simple than check it on type level).
@@ -387,20 +395,22 @@ data Dist sch tab where
   --
   -- Beside that @DISTINCT ON@ part can include expressions like @ORDER BY@.
   -- We can also use 'UnsafeOrd' here
-  DistinctOn :: [OrdFld sch tab] -> Dist sch tab
+  DistinctOn :: [OrdFld ren sch tab] -> Dist ren sch tab
 
 {-# INLINE ordf #-}
 ordf
-  :: forall fld -> forall sch tab. CDBField sch tab fld
-  => OrdDirection -> OrdFld sch tab
+  :: forall fld -> forall sch tab. CDBField sch tab (ApplyRenamer ren fld)
+  => OrdDirection -> OrdFld ren sch tab
 ordf fld = OrdFld @fld
 
 {-# INLINE ascf #-}
-ascf :: forall fld -> forall sch tab. CDBField sch tab fld => OrdFld sch tab
+ascf :: forall fld -> forall sch tab. CDBField sch tab (ApplyRenamer ren fld)
+  => OrdFld ren sch tab
 ascf fld = ordf fld Asc
 
 {-# INLINE descf #-}
-descf :: forall fld -> forall sch tab. CDBField sch tab fld => OrdFld sch tab
+descf :: forall fld -> forall sch tab. CDBField sch tab (ApplyRenamer ren fld)
+  => OrdFld ren sch tab
 descf fld = ordf fld Desc
 
 data LO = LO

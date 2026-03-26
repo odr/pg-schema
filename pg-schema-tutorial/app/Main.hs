@@ -52,7 +52,7 @@ type family TRenamerSch (s :: Symbol) :: Symbol where
   TRenamerSch "maxNum" = "num"
   TRenamerSch "sumNum" = "num"
   TRenamerSch "avgNum" = "num"
-  TRenamerSch s = s
+  TRenamerSch s = CamelToSnake s
 
 type instance ApplyRenamer RenamerSch s = TRenamerSch s
 
@@ -175,8 +175,8 @@ data AddressI = MkAddressI
   , zipcode :: Maybe Text
   , phones :: Maybe (PgArr Text)
   , numbers :: Maybe (PgArr Int32)
-  , cust_addr :: [CustomerI]
-  , comp_addr :: [CompanyI] }
+  , custAddr :: [CustomerI]
+  , compAddr :: [CompanyI] }
   deriving Generic
 
 instance HasResolution a => FromField (Fixed a) where
@@ -196,7 +196,7 @@ data AddressRet = AddressRet
 type AnnSch tn = 'Ann RenamerSch Sch 3 (NSC tn)
 
 selSch :: forall (tn :: Symbol) -> forall r h. Selectable (AnnSch tn) r
-  => Connection -> QueryParam Sch (NSC tn) -> IO ([r], (Text,[SomeToField]))
+  => Connection -> QueryParam RenamerSch Sch (NSC tn) -> IO ([r], (Text,[SomeToField]))
 selSch tn = selectSch (AnnSch tn)
 
 insSch
@@ -210,7 +210,7 @@ insSch_
 insSch_ tn = insertSch_ (AnnSch tn)
 
 selSchText :: forall tn -> forall r. (Selectable (AnnSch tn) r) =>
-  QueryParam Sch (NSC tn) -> (Text,[SomeToField])
+  QueryParam RenamerSch Sch (NSC tn) -> (Text,[SomeToField])
 selSchText tn @r = selectText (AnnSch tn) @r
 
 insJSONText
@@ -240,11 +240,11 @@ upsJSON tn = upsertJSON (AnnSch tn)
 
 updByCond_
   :: forall tn -> forall r. UpdateNonReturning (AnnSch tn) r
-  => Connection -> r -> Cond Sch (NSC tn) -> IO Int64
+  => Connection -> r -> Cond RenamerSch Sch (NSC tn) -> IO Int64
 updByCond_ tn = updateByCond_ (AnnSch tn)
 
 updByCond :: forall tn -> forall r r' . (UpdateReturning (AnnSch tn) r r')
-  => Connection -> r -> Cond Sch (NSC tn) -> IO [r']
+  => Connection -> r -> Cond RenamerSch Sch (NSC tn) -> IO [r']
 updByCond tn = updateByCond (AnnSch tn)
 
 main :: IO ()
@@ -301,20 +301,20 @@ main = do
       , MkAddressI "street2" (Just "zip2") mempty Nothing [MkCustomerI "Dima" mempty]
         [MkCompanyI "WellTyped"] ]
   void $ insJSON_ "addresses" @AddressI conn insData
-  (as1 :: ["id" := Int32 :. "cust_addr" := ["id" := Int32 :. "name" := Text]], _insTxt)
+  (as1 :: ["id" := Int32 :. "custAddr" := ["id" := Int32 :. "name" := Text]], _insTxt)
     <- insJSON "addresses" @AddressI conn insData
   curTime <- T.show <$> getCurrentTime
   upsJSON_ "addresses" conn $ as1 <&> \(a :. PgTag xs) ->
-    a :. "cust_addr" =: (xs <&> \(cid :. cname) ->
+    a :. "custAddr" =: (xs <&> \(cid :. cname) ->
       cid :. fmap (<> ": " <> curTime <> " updated") cname)
   let
-    upsVals = as1 <&> \(a :. PgTag xs) -> a :. "cust_addr" =:
+    upsVals = as1 <&> \(a :. PgTag xs) -> a :. "custAddr" =:
       (xs <&> \(cid :. _) -> cid :. "note" =: Just curTime)
   mapM_ print upsVals
   upsJSON_ "addresses" conn upsVals
   T.putStrLn "\n====== 13 ========\n"
-  (as2 :: ["id" := Int32 :. "cust_addr" :=
-    ["id" := Int32 :. "updated_at" := Maybe ZonedTime]], _upsTxt)
+  (as2 :: ["id" := Int32 :. "custAddr" :=
+    ["id" := Int32 :. "updatedAt" := Maybe ZonedTime]], _upsTxt)
     <- upsJSON "addresses" conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"
@@ -350,20 +350,20 @@ main = do
       qDistinct
       -- qDistinctOn [ascf "street"]
       qWhere
-        $ pparent (NSC "address_city")
+        $ pparent (NSC "addressCity")
         $ pparent (NSC "city_country")
         $ "code" `pinArr` [Just @Text "RU", Just "US"]
     qp' = qRoot do
       qpr
       qLimit 5
       qOffset 0
-      qPath "address_city" do
+      qPath "addressCity" do
         -- qDistinct -- intentionally not work (reason: RelOne)
         qWhere $ "name" =? Just @Text "street"
         qPath "address_city" do
           qLimit 2
           qDistinctOn [descf "street"]
-        qPath "city_country" do
+        qPath "cityCountry" do
           -- qDistinct -- intentionally not work (reason: RelOne)
           qDistinctOn [descf "name"]
           -- qLimit 3 -- intentionally not work (reason: RelOne)

@@ -1,5 +1,10 @@
 # Changelog for pg-schema
 
+## 0.6.0.0
+
+- Using Renamer for QueryParams and Cond
+- Improve error messaging
+
 ## 0.5.2.0
 
 - Bug fixing (Problem with Self-references)

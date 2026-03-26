@@ -66,21 +66,21 @@ insSch_
 insSch_ tn = insertSch_ (AnnSch tn)
 
 selSch :: forall tn -> forall r. Selectable (AnnSch tn) r
-  => Connection -> QueryParam Sch (TS tn) -> IO ([r], (Text,[SomeToField]))
+  => Connection -> QueryParam RenamerSch Sch (TS tn) -> IO ([r], (Text,[SomeToField]))
 selSch tn = selectSch (AnnSch tn)
 
 updByCond_
   :: forall tn -> forall r. UpdateNonReturning (AnnSch tn) r
-  => Connection -> r -> Cond Sch (TS tn) -> IO Int64
+  => Connection -> r -> Cond RenamerSch Sch (TS tn) -> IO Int64
 updByCond_ tn = updateByCond_ (AnnSch tn)
 
 updByCond :: forall tn -> forall r r'. UpdateReturning (AnnSch tn) r r'
-  => Connection -> r -> Cond Sch (TS tn) -> IO [r']
+  => Connection -> r -> Cond RenamerSch Sch (TS tn) -> IO [r']
 updByCond tn = updateByCond (AnnSch tn)
 
 delByCond :: forall tn -> ToStar tn
-  => Connection -> Cond Sch (TS tn) -> IO (Int64, (Text,[SomeToField]))
-delByCond tn = deleteByCond Sch (TS tn)
+  => Connection -> Cond RenamerSch Sch (TS tn) -> IO (Int64, (Text,[SomeToField]))
+delByCond tn = deleteByCond RenamerSch Sch (TS tn)
 
 insJSON_
   :: forall tn -> forall r. (InsertTreeNonReturning (AnnSch tn) r)

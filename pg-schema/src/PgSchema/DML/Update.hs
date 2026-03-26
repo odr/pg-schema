@@ -21,7 +21,7 @@ import Prelude as P
 -- | Update rows matching a condition; the result type selects which columns are returned.
 updateByCond :: forall ann -> forall r r'.
   (ann ~ 'Ann ren sch d t, UpdateReturning ann r r') =>
-  Connection -> r -> Cond sch t -> IO [r']
+  Connection -> r -> Cond ren sch t -> IO [r']
 updateByCond ann @r @r' conn r (updateText ann @r @r' -> (q,ps)) =
   trace' (q <> "\n\n" <> P.show ps <> "\n\n")
   $ fmap (fmap (unPgTag @ann @r'))
@@ -31,7 +31,7 @@ updateByCond ann @r @r' conn r (updateText ann @r @r' -> (q,ps)) =
 -- | Update records by condition without @RETURNING@.
 updateByCond_ :: forall ann -> forall r.
   (ann ~ 'Ann ren sch d t, UpdateNonReturning ann r) =>
-  Connection -> r -> Cond sch t -> IO Int64
+  Connection -> r -> Cond ren sch t -> IO Int64
 updateByCond_ ann @r conn r (updateText_ ann @r -> (q, ps)) =
   trace' (q <> "\n\n" <> P.show ps <> "\n\n")
   $ execute conn (fromString q)
@@ -40,7 +40,7 @@ updateByCond_ ann @r conn r (updateText_ ann @r -> (q, ps)) =
 -- | Construct SQL text for updating records by condition and returning some fields.
 updateText :: forall ann -> forall r r' s.
   (CRecInfo ann r, CRecInfo ann r', IsString s, Monoid s, ann ~ 'Ann ren sch d t)
-  => Cond sch t -> (s, [SomeToField])
+  => Cond ren sch t -> (s, [SomeToField])
 updateText ann @r @r' (updateText_ ann @r -> (q, p)) = (q <> " returning " <> fs', p)
   where
     ri' = getRecordInfo @ann @r'
@@ -49,7 +49,7 @@ updateText ann @r @r' (updateText_ ann @r -> (q, p)) = (q <> " returning " <> fs
 -- | Construct SQL text for updating records by condition without @RETURNING@.
 updateText_
   :: forall ann -> forall r s. (IsString s, Monoid s, CRecInfo ann r)
-  => Cond sch t -> (s, [SomeToField])
+  => Cond ren sch t -> (s, [SomeToField])
 updateText_ ann @r (pgCond 0 -> (condTxt, condParams)) =
   ("update " <> tn <> " t0 set " <> fs <> fromText whereTxt, condParams )
   where
