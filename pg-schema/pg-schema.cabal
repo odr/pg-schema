@@ -60,11 +60,12 @@ description:
         qLimit 20
     @
 
-    === Module structure
+    === Structure of modules
 
     * "PgSchema.Generation" - module with generation functions.
       Usually you make executable which generates schema definition using this module.
-    * "PgSchema.DML" - module with DML functions. Import this module into your application and use it to generate safe DML for PostgreSQL.
+    * "PgSchema.DML" - module with DML functions.
+      Import this module into your application and use it to generate safe DML for PostgreSQL.
     * "PgSchema.Import" - generated schema module imports this module.
 
 homepage:       https://github.com/odr/pg-schema/tree/master/pg-schema#readme
@@ -212,7 +213,7 @@ test-suite json-spec
     UndecidableInstances
   ghc-options: -Wall
 
-executable test-gen
+test-suite test-gen
   main-is:          Main.hs
   other-modules:
     -- Paths and PackageInfo

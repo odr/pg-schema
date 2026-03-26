@@ -234,6 +234,7 @@ updateSchemaFile
   -> GenNames -- ^ names of schemas in database or tables to generate
   -> IO Bool
 updateSchemaFile verbose fileName ecs moduleName schName genNames = do
+  getCurrentDirectory >>= print
   connStr <- either getConnStr pure ecs
   if BS.null connStr
     then pure False

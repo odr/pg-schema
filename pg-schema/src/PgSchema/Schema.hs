@@ -65,6 +65,9 @@ data RecField' s p
   | RFAggr (FldDef' s) AggrFun Bool
     -- ^ Aggregate field: 'FldDef'', which aggregate, and whether it is allowed outside @GROUP BY@
     -- (when 'True': any select; when 'False': only with @GROUP BY@).
+  | RFUnsafe [s] s
+  -- ^ Plain field that we get as expression. E.g. @RFUnsafe ["a", "b"] "? + ?"@
+  -- means @tn.a + tn.b@ in query
   | RFToHere p [Ref' s]
     -- ^ Relation: navigate @p@ toward the current table (“to here”).
   | RFFromHere p [Ref' s]

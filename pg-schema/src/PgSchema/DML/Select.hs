@@ -180,6 +180,14 @@ selectM refTxt ri = do
     <> orderText
     <> qsLimOff
 
+renderUnsafeExpr :: Int -> [Text] -> Text -> Text
+renderUnsafeExpr n ps = T.concat
+  . P.zipWith (<>) (mempty : ((("t" <> show' n <> ".") <> ) <$> ps))
+  . T.splitOn "?"
+
+-- >>> renderUnsafeExpr 5 ["a", "b"] "foo ? bar ? baz"
+-- "foo t5.a bar t5.b baz"
+
 -- | SQL text for the column expression, result alias, and emptiness-test expression
 -- (non-obvious for nested relation fields).
 fieldM :: MonadQuery ren sch tab m => FieldInfo Text -> m (Text, Text, Text)
@@ -196,6 +204,10 @@ fieldM fi = case fi.fieldKind of
     pure case fname of
       "count" -> ("count(*)", fi.fieldName, " false")
       _ -> (val, fi.fieldName, val <> " is null")
+  RFUnsafe ps expr -> do
+    n <- asks qrCurrTabNum
+    let val = renderUnsafeExpr n ps expr
+    pure (val, fi.fieldName, val <> " is null")
   RFFromHere ri refs -> do
     QueryRead {..} <- ask
     modify \QueryState{qsLastTabNum = (+1) -> n2, qsParents} -> QueryState

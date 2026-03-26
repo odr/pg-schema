@@ -52,6 +52,7 @@ type family TRenamerSch (s :: Symbol) :: Symbol where
   TRenamerSch "maxNum" = "num"
   TRenamerSch "sumNum" = "num"
   TRenamerSch "avgNum" = "num"
+  TRenamerSch "code_test" = "code"
   TRenamerSch s = CamelToSnake s
 
 type instance ApplyRenamer RenamerSch s = TRenamerSch s
@@ -66,6 +67,7 @@ data Country = MkCountry
 -- type Country' = "codes" := Maybe Text :. "name" := Text
 data Country' = MkCountry'
   { code :: Maybe Text
+  , name2 :: UnsafeCol ["name", "code_test"] "concat(?,?)" Text
   , name :: Text }
   deriving Generic
 
@@ -246,6 +248,9 @@ updByCond_ tn = updateByCond_ (AnnSch tn)
 updByCond :: forall tn -> forall r r' . (UpdateReturning (AnnSch tn) r r')
   => Connection -> r -> Cond RenamerSch Sch (NSC tn) -> IO [r']
 updByCond tn = updateByCond (AnnSch tn)
+
+-- >>> selSchText "countries" @Country' qpEmpty
+-- ("select t0.code \"code\",concat(t0.name,t0.code) \"name2\",t0.name \"name\" from sch.countries t0 ",[])
 
 main :: IO ()
 main = do

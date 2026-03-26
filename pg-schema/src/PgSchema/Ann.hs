@@ -126,12 +126,15 @@ type family ColsNonGeneric (ann :: Ann) r :: [ColInfo NameNSK] where
 
 type family Col (ann :: Ann) (fld :: Symbol) t :: [ColInfo NameNSK] where
   Col ann fld () = '[]
-  Col ann fld (Aggr ACount Int64) =
-    '[ 'ColInfo '(fld, 0) (Aggr ACount Int64) fld
+  Col ('Ann ren _s _d _t) fld (Aggr ACount Int64) =
+    '[ 'ColInfo '(fld, 0) (Aggr ACount Int64) (ApplyRenamer ren fld)
       ('RFAggr ('FldDef ("pg_catalog" ->> "int8") False False) 'ACount 'True) ]
-  Col ann fld (Aggr' ACount Int64) =
-    '[ 'ColInfo '(fld, 0) (Aggr' ACount Int64) fld
+  Col ('Ann ren _s _d _t) fld (Aggr' ACount Int64) =
+    '[ 'ColInfo '(fld, 0) (Aggr' ACount Int64) (ApplyRenamer ren fld)
       ('RFAggr ('FldDef ("pg_catalog" ->> "int8") False False) 'ACount 'True) ]
+  Col ('Ann ren sch _d tab) fld (UnsafeCol flds expr t) =
+    '[ 'ColInfo '(fld, 0) (PgTag '(sch, tab) (UnsafeCol (MapRen ren flds) expr t)) (ApplyRenamer ren fld)
+      ('RFUnsafe (MapRen ren flds) expr) ]
   Col ('Ann ren sch d tab) fld t =
     ColFI ('Ann ren sch d tab) fld (TDBFieldInfo sch tab (ApplyRenamer ren fld)) t
 
@@ -331,10 +334,6 @@ instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
   => FromField (PgTag (ann :: Ann) r) where
     fromField = fromJSONField
 
--- instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
---   => FromField (Maybe (PgTag (ann :: Ann) r)) where
---     fromField = fromJSONField
-
 instance (FromJSON (PgTag ann r), Typeable ann, Typeable r)
   => FromField [PgTag (ann :: Ann) r] where
     fromField = fromJSONField
@@ -496,6 +495,10 @@ instance (ToStar fd, ToStar af, ToStar b) =>
   CFldInfo ann ('RFAggr fd af b) t where
   getFldInfo = RFAggr (demote @fd) (demote @af) (demote @b)
 
+instance (ToStar flds, ToStar expr) =>
+  CFldInfo ann ('RFUnsafe flds expr) t where
+  getFldInfo = RFUnsafe (demote @flds) (demote @expr)
+
 type family AnnRefTabDepth (ann :: Ann) refTab :: Ann where
   AnnRefTabDepth ('Ann ren sch d tab) refTab =
     'Ann ren sch (DecDepth ('Ann ren sch d tab)) refTab
@@ -573,9 +576,9 @@ type family DecDepth (ann :: Ann) :: Nat where
 -- and build RecField' Symbol (RecordInfo Symbol) with TRecordInfo for children.
 type family TFldInfo (ann :: Ann) (fi :: RecField' Symbol NameNSK) t
   :: RecField' Symbol (RecordInfo Symbol) where
-  TFldInfo ann ('RFPlain fd) t      = 'RFPlain fd
-  TFldInfo ann ('RFAggr  fd af b) t = 'RFAggr fd af b
-  TFldInfo ann ('RFEmpty s)    t    = 'RFEmpty s
+  TFldInfo ann ('RFPlain fd) t = 'RFPlain fd
+  TFldInfo ann ('RFAggr fd af b) t = 'RFAggr fd af b
+  TFldInfo ann ('RFEmpty s) t = 'RFEmpty s
   TFldInfo ('Ann ren sch d tab) ('RFToHere (toTab :: NameNSK) refs)
     [PgTag ('Ann ren sch d' toTab) rChild] =
     'RFToHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch d' toTab) rChild)) refs

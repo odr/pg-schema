@@ -12,7 +12,9 @@ module PgSchema.Types(
   -- * Other types
   , PgChar(..), PgOid(..)
   -- * Conversion checks
-  , CanConvert, CanConvert1)
+  , CanConvert, CanConvert1
+  -- * UnsafeCol
+  , UnsafeCol(..) )
   where
 
 import Control.Monad
@@ -389,3 +391,39 @@ infixr 5 :=
 (=:) :: forall b. forall a -> b -> a := b
 (=:) _ = coerce
 infixr 5 =:
+
+newtype UnsafeCol (flds :: [Symbol]) (expr :: Symbol) res = UnsafeCol
+  { getUnsafeCol :: res }
+  -- deriving newtype (FromField, FromJSON)
+
+instance (FromField res, AllFields sch tab flds, CheckExpr flds expr) =>
+  FromField (PgTag '(sch, tab :: NameNSK) (UnsafeCol flds expr res)) where
+  fromField = (fmap (PgTag . UnsafeCol) .) . fromField
+
+type CheckExpr flds expr = CheckExprInternal flds (UnconsSymbol expr)
+
+type family CheckExprInternal flds (m :: Maybe (Char, Symbol)) :: Constraint where
+  CheckExprInternal '[] 'Nothing = ()
+  CheckExprInternal (x ': xs) 'Nothing = TypeError (TL.Text "Count of field names in the list of fields is more then count of question marks in expression" )
+  CheckExprInternal '[] ('Just '( '?', _)) = TypeError (TL.Text "Count of question marks in expression is more then count of field names in the list of fields" )
+  CheckExprInternal (x ': xs) ('Just '( '?', s)) = CheckExprInternal xs (UnconsSymbol s)
+  CheckExprInternal xs ('Just '( _, s)) = CheckExprInternal xs (UnconsSymbol s)
+
+-- >>> :kind! CheckExpr '["a", "b"] "? + ?"
+-- CheckExpr '["a", "b"] "? + ?" :: Constraint
+-- = () :: Constraint
+
+type family AllFields sch tab flds :: Constraint where
+  AllFields sch tab '[] = ()
+  AllFields sch tab (fld ': flds) = (AllFields sch tab flds, CDBFieldInfo sch tab fld)
+
+
+instance (Show res, ToStar expr, ToStar flds) => Show (UnsafeCol flds expr res) where
+  show (UnsafeCol res) = "UnsafeCol ["
+    <> T.unpack (intercalate' "," $ ("'"<>) . (<>"'") <$> (demote @flds)) <> "] '"
+    <> T.unpack (demote @expr) <> "' " <> P.show res
+
+-- instance FromField
+
+-- >>> P.show (UnsafeCol @["a","b"] @"? + ?" @Int 5)
+-- "UnsafeCol ['a','b'] '? + ?' 5"

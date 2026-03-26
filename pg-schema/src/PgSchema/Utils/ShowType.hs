@@ -56,9 +56,13 @@ instance ShowType (RecField NameNS) where
     RFEmpty s     -> "'RFEmpty " <> showType s
     RFPlain fd    -> "'RFPlain " <> showType fd
     RFAggr fd fn b -> "'RFAggr " <> T.intercalate " " [showType fd, showType fn, showType b]
+    RFUnsafe ps expr -> "'RFUnsafe " <> showType ps <> " " <> showType expr
     RFToHere t rr -> "'RFToHere " <> showType t <> " " <> showType rr
     RFFromHere t rr -> "'RFFromHere " <> showType t <> " " <> showType rr
     RFSelfRef t rr -> "'RFSelfRef " <> showType t <> " " <> showType rr
+
+-- >>> showType (RFUnsafe ["a", "b"] "foo ? bar ? baz" :: RecField NameNS)
+-- "'RFUnsafe '[ \"a\",\"b\" ] \"foo ? bar ? baz\""
 
 instance ShowType AggrFun where
   showType = \case

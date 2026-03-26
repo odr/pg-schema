@@ -84,7 +84,7 @@ module PgSchema.DML
   ,(~=?),(~~?)
   , (|||), (&&&), pnot, pnull, pin, pinArr
   , pparent, pchild, TabParam(..), defTabParam
-  , pUnsafeCond
+  , pUnsafeCond, UnsafeCol(..)
   , Cond(..), Cmp(..), BoolOp(..)
   , CondMonad, SomeToField(..), showCmp, tabPref, qual
   , CDBField, CDBValue, CDBFieldNullable, CRelDef

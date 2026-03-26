@@ -72,13 +72,13 @@ build-debug:
 
 .PHONY: test-run
 test-run:
-	$(CABAL_REL) run $(PKG):test-gen
+	$(CABAL_REL) test $(PKG):test-gen
 	$(CABAL_REL) build $(PKG):json-spec $(PKG):test-pgs $(PKG):test-gen
 	$(CABAL_REL) test $(PKG)
 
 .PHONY: test-run-debug
 test-run-debug:
-	$(CABAL_DBG) run $(PKG):test-gen $(PG_SCHEMA_DEBUG)
+	$(CABAL_DBG) test $(PKG):test-gen $(PG_SCHEMA_DEBUG)
 	$(CABAL_DBG) build $(PKG):json-spec $(PKG):test-pgs $(PKG):test-gen $(PG_SCHEMA_DEBUG)
 	$(CABAL_DBG) test $(PKG) $(PG_SCHEMA_DEBUG)
 
