@@ -47,6 +47,10 @@ data Ann = Ann
 
 type family AnnSch (ann :: Ann) where
   AnnSch ('Ann ren sch depth tab) = sch
+type family AnnRen (ann :: Ann) where
+  AnnRen ('Ann ren sch depth tab) = ren
+type family AnnTab (ann :: Ann) where
+  AnnTab ('Ann ren sch depth tab) = tab
 
 data ColInfo (p :: Type) = ColInfo
   { ciField   :: SymNat
@@ -474,9 +478,9 @@ class CFldInfo (ann :: Ann) (fld :: RecField' Symbol NameNSK) t where
   getFldInfo :: RecField (RecordInfo T.Text)
 
 instance
-  (ann ~ 'Ann ren sch d tab, SingI tab, cols ~ Cols ann r, CRecInfoCols ann cols)
+  (SingI (AnnTab ann), cols ~ Cols ann r, CRecInfoCols ann cols)
   => CRecInfo ann r where
-  getRecordInfo = RecordInfo (demote @tab) (getFields @ann @cols)
+  getRecordInfo = RecordInfo (demote @(AnnTab ann)) (getFields @ann @cols)
 
 instance CRecInfoCols ann '[] where getFields = []
 

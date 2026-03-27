@@ -404,8 +404,8 @@ type CheckExpr flds expr = CheckExprInternal flds (UnconsSymbol expr)
 
 type family CheckExprInternal flds (m :: Maybe (Char, Symbol)) :: Constraint where
   CheckExprInternal '[] 'Nothing = ()
-  CheckExprInternal (x ': xs) 'Nothing = TypeError (TL.Text "Count of field names in the list of fields is more then count of question marks in expression" )
-  CheckExprInternal '[] ('Just '( '?', _)) = TypeError (TL.Text "Count of question marks in expression is more then count of field names in the list of fields" )
+  CheckExprInternal (x ': xs) 'Nothing = TypeError (TL.Text "Count of field names in the list of fields is more then count of question marks in expression." )
+  CheckExprInternal '[] ('Just '( '?', _)) = TypeError (TL.Text "Count of question marks in expression is more then count of field names in the list of fields." )
   CheckExprInternal (x ': xs) ('Just '( '?', s)) = CheckExprInternal xs (UnconsSymbol s)
   CheckExprInternal xs ('Just '( _, s)) = CheckExprInternal xs (UnconsSymbol s)
 
