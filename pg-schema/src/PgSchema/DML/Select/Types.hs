@@ -66,7 +66,7 @@ qRoot m = fst $ execRWS m Proxy qpEmpty
 -- for the step away from the current table.
 --
 qPath :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
-  -> PathCheck 'Unknown p ren sch t path path' path'' tabPath p'
+  -> PathCheck 'Nothing p ren sch t path path' path'' tabPath p'
   => MonadQP ren sch t path' -> MonadQP ren sch t path
 qPath _p m = put . fst . execRWS m Proxy =<< get
 
@@ -76,7 +76,7 @@ qPath _p m = put . fst . execRWS m Proxy =<< get
 -- for the step away from the current table.
 --
 qPathFromHere :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
-  -> PathCheck 'FromHere p ren sch t path path' path'' tabPath p'
+  -> PathCheck ('Just 'FromHere) p ren sch t path path' path'' tabPath p'
   => MonadQP ren sch t path' -> MonadQP ren sch t path
 qPathFromHere _p m = put . fst . execRWS m Proxy =<< get
 
@@ -86,7 +86,7 @@ qPathFromHere _p m = put . fst . execRWS m Proxy =<< get
 -- for the step away from the current table.
 --
 qPathToHere :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
-  -> PathCheck 'ToHere p ren sch t path path' path'' tabPath p'
+  -> PathCheck ('Just 'ToHere) p ren sch t path path' path'' tabPath p'
   => MonadQP ren sch t path' -> MonadQP ren sch t path
 qPathToHere _p m = put . fst . execRWS m Proxy =<< get
 
