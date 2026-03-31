@@ -367,15 +367,24 @@ main = do
       qPath "addressCity" do
         -- qDistinct -- intentionally not work (reason: RelOne)
         qWhere $ "name" =? Just @Text "street"
-        qPathFromHere "address_city" do
+        qPathToHere "address_city" do
           qLimit 2
           qDistinctOn [descf "street"]
-        qPathToHere "cityCountry" do
+        qPathFromHere "cityCountry" do
           -- qDistinct -- intentionally not work (reason: RelOne)
           qDistinctOn [descf "name"]
           -- qLimit 3 -- intentionally not work (reason: RelOne)
           qOrderBy [ascf "name"]
           qWhere $ "name" >? ("Bar" :: Text)
         qDistinctOn [ascf "name"]
+      -- Example for self-reference direction:
+      -- qPathToHere "self_parent_fk" do
+      --   qDistinct
+      --   qLimit 3
+      --   qOffset 1
+      -- qPathFromHere "self_parent_fk" do
+      --   -- qLimit 1      -- intentionally not work (reason: RelOne)
+      --   -- qDistinct     -- intentionally not work (reason: RelOne)
+      --   pure ()
 
 -- >>> selSchText "addresses" @("address_city" := ("name" := Maybe Text)) $ qRoot $ qPath "address_city" $ qWhere $ "name" =? Just @Text "foo"

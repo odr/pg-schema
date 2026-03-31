@@ -7,6 +7,7 @@
 - Support for 'UnsafeCol'
 - Check possibility of type conversions for select-list/insert/update (it was broken in 0.5.0)
 - Check optional/mandatory for parent references is SELECT
+- Added qPathFromHere/qPathToHere. Self-reference require explicit direction in qPathXXX
 
 ## 0.5.2.0
 

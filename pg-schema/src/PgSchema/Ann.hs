@@ -84,6 +84,10 @@ type family MapRen (f :: Renamer) (xs :: [Symbol]) :: [Symbol] where
   MapRen f '[] = '[]
   MapRen f (x ': xs) = ApplyRenamer f x ': MapRen f xs
 
+type family MapRenPath (f :: Renamer) (xs :: [(Symbol, PathKind)]) :: [(Symbol, PathKind)] where
+  MapRenPath f '[] = '[]
+  MapRenPath f ('(x, k) ': xs) = '(ApplyRenamer f x, k) ': MapRenPath f xs
+
 --------------------------------------------------------------------------------
 -- Case dispatch
 --------------------------------------------------------------------------------

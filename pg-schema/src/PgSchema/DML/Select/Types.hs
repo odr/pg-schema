@@ -51,7 +51,7 @@ qpEmpty :: forall ren sch t. QueryParam ren sch t
 qpEmpty = QueryParam [] [] [] []
 
 type MonadQP ren sch t path
-  = (TabPath sch t (MapRen ren path), ToStar (MapRen ren path))
+  = (TabDPath sch t (MapRenPath ren path), ToStar (MapRenPath ren path))
   => RWS (Proxy path) () (QueryParam ren sch t) ()
 
 -- | Execute 'MonadQP' and get 'QueryParam'.
@@ -65,8 +65,8 @@ qRoot m = fst $ execRWS m Proxy qpEmpty
 -- The 'Symbol' must name the foreign-key constraint (edge to the parent or from the child)
 -- for the step away from the current table.
 --
-qPath :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
-  -> PathCheck 'Nothing p ren sch t path path' path'' tabPath p'
+qPath :: forall ren sch t path path' path'' tabPath p' k. forall (p :: Symbol)
+  -> PathCheck 'Nothing p ren sch t path path' path'' tabPath p' k
   => MonadQP ren sch t path' -> MonadQP ren sch t path
 qPath _p m = put . fst . execRWS m Proxy =<< get
 
@@ -75,8 +75,8 @@ qPath _p m = put . fst . execRWS m Proxy =<< get
 -- The 'Symbol' must name the foreign-key constraint (edge to the parent)
 -- for the step away from the current table.
 --
-qPathFromHere :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
-  -> PathCheck ('Just 'FromHere) p ren sch t path path' path'' tabPath p'
+qPathFromHere :: forall ren sch t path path' path'' tabPath p' k. forall (p :: Symbol)
+  -> PathCheck ('Just 'FromHere) p ren sch t path path' path'' tabPath p' k
   => MonadQP ren sch t path' -> MonadQP ren sch t path
 qPathFromHere _p m = put . fst . execRWS m Proxy =<< get
 
@@ -85,21 +85,51 @@ qPathFromHere _p m = put . fst . execRWS m Proxy =<< get
 -- The 'Symbol' must name the foreign-key constraint (edge from the child)
 -- for the step away from the current table.
 --
-qPathToHere :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
-  -> PathCheck ('Just 'ToHere) p ren sch t path path' path'' tabPath p'
+qPathToHere :: forall ren sch t path path' path'' tabPath p' k. forall (p :: Symbol)
+  -> PathCheck ('Just 'ToHere) p ren sch t path path' path'' tabPath p' k
   => MonadQP ren sch t path' -> MonadQP ren sch t path
 qPathToHere _p m = put . fst . execRWS m Proxy =<< get
 
-type PathCheck pathKind p ren sch t path path' path'' tabPath p' =
-  ( path' ~ (path ++ '[p]), path'' ~ MapRen ren (path ++ '[p])
-  , tabPath ~ TabOnPath sch t path'', p' ~ ApplyRenamer ren p
-  , ToStar path'', TabPath sch t path''
-  , CheckStep pathKind (HasFromStep sch tabPath p') (HasToStep sch tabPath p')
-    sch tabPath p' )
+type family ResolvePathKind
+  (pathKind :: Maybe PathKind) (hasFrom :: Bool) (hasTo :: Bool) (tab :: NameNSK) (name :: Symbol)
+  :: PathKind where
+    ResolvePathKind ('Just 'FromHere) 'True _ _ _ = 'FromHere
+    ResolvePathKind ('Just 'ToHere) _ 'True _ _ = 'ToHere
+    ResolvePathKind 'Nothing 'True 'False _ _ = 'FromHere
+    ResolvePathKind 'Nothing 'False 'True _ _ = 'ToHere
+    ResolvePathKind ('Just 'FromHere) _ _ tab name = TypeError
+      (TE.Text "Relation is not available in from-here direction."
+      :$$: TE.Text "Use qPathToHere or qPath."
+      :$$: TE.Text ""
+      :$$: TE.Text "Table: " :<>: ShowType tab
+      :$$: TE.Text "Relation: " :<>: ShowType name
+      :$$: TE.Text "" )
+    ResolvePathKind ('Just 'ToHere) _ _ tab name = TypeError
+      (TE.Text "Relation is not available in to-here direction."
+      :$$: TE.Text "Use qPathFromHere or qPath."
+      :$$: TE.Text ""
+      :$$: TE.Text "Table: " :<>: ShowType tab
+      :$$: TE.Text "Relation: " :<>: ShowType name
+      :$$: TE.Text "" )
+    ResolvePathKind 'Nothing _ _ tab name = TypeError
+      (TE.Text "qPath cannot be used for self-reference relation."
+      :$$: TE.Text "Use qPathFromHere or qPathToHere."
+      :$$: TE.Text ""
+      :$$: TE.Text "Table: " :<>: ShowType tab
+      :$$: TE.Text "Relation: " :<>: ShowType name
+      :$$: TE.Text "" )
+
+type PathCheck pathKind p ren sch t path path' path'' tabPath p' k =
+  ( p' ~ ApplyRenamer ren p
+  , tabPath ~ TabOnDPath sch t (MapRenPath ren path)
+  , k ~ ResolvePathKind pathKind (HasFromStep sch tabPath p') (HasToStep sch tabPath p') tabPath p'
+  , path' ~ (path ++ '[ '(p, k)])
+  , path'' ~ MapRenPath ren (path ++ '[ '(p, k)])
+  , ToStar path'', TabDPath sch t path'' )
 -- | Add @WHERE@ condition for the current table.
 --
 -- If several 'qWhere' exist they are composed according to the 'Monoid' instance for 'Cond', i.e. with '(&&&)'
-qWhere :: forall ren sch t path. Cond ren sch (TabOnPath sch t (MapRen ren path)) -> MonadQP ren sch t path
+qWhere :: forall ren sch t path. Cond ren sch (TabOnDPath sch t (MapRenPath ren path)) -> MonadQP ren sch t path
 qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 
 -- | Add @ORDER BY@ condition for the current table
@@ -117,12 +147,12 @@ qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 --
 -- we get @ORDER BY t1.f1, t2.f2 DESC, t1.f3@
 --
-qOrderBy :: forall ren sch t path. [OrdFld ren sch (TabOnPath sch t (MapRen ren path))] -> MonadQP ren sch t path
+qOrderBy :: forall ren sch t path. [OrdFld ren sch (TabOnDPath sch t (MapRenPath ren path))] -> MonadQP ren sch t path
 qOrderBy ofs = modify \qp -> qp { qpOrds = OrdWithPath @path ofs : qp.qpOrds }
 
 -- | Add `DISTINCT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
-qDistinct :: forall ren sch t path t'. TabOnPath2 sch t path ~ '(t', 'RelMany) =>
+qDistinct :: forall ren sch t path t'. TabOnDPath2 sch t path ~ '(t', 'RelMany) =>
   MonadQP ren sch t path
 qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpDistinct }
 
@@ -144,21 +174,21 @@ qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpD
 --
 -- we get @DISTINCT ON (t1.f1, t2.f2, t1.f3) ... ORDER BY t1.f1, t2.f2 DESC, t1.f3, t1.f0 DESC@
 --
-qDistinctOn :: forall ren sch t path. [OrdFld ren sch (TabOnPath sch t (MapRen ren path))] -> MonadQP ren sch t path
+qDistinctOn :: forall ren sch t path. [OrdFld ren sch (TabOnDPath sch t (MapRenPath ren path))] -> MonadQP ren sch t path
 qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn ofs) : qp.qpDistinct }
 
 -- | Add `LIMIT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
 --
 -- If 'qLimit' is applied several times on the same path, only the last one is used
-qLimit :: forall ren sch t path. Snd (TabOnPath2 sch t (MapRen ren path)) ~ RelMany
+qLimit :: forall ren sch t path. Snd (TabOnDPath2 sch t (MapRenPath ren path)) ~ RelMany
   => Natural -> MonadQP ren sch t path
 qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
       (xs1, []) -> new : xs1
       (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
-    eq (LimOffWithPath @p _) = demote @(MapRen ren p) == demote @(MapRen ren path)
+    eq (LimOffWithPath @p _) = demote @(MapRenPath ren p) == demote @(MapRenPath ren path)
     upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{ limit = Just n }
     new = LimOffWithPath @path LO { limit = Just n, offset = Nothing }
 
@@ -166,37 +196,37 @@ qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
 -- It is applied only to "root" or "children" tables.
 --
 -- If 'qOffset' is applied several times on the same path, only the last one is used
-qOffset :: forall ren sch t path. Snd (TabOnPath2 sch t (MapRen ren path)) ~ RelMany
+qOffset :: forall ren sch t path. Snd (TabOnDPath2 sch t (MapRenPath ren path)) ~ RelMany
   => Natural -> MonadQP ren sch t path
 qOffset n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
       (xs1, []) -> new : xs1
       (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
-    eq (LimOffWithPath @p _) = demote @(MapRen ren p) == demote @(MapRen ren path)
+    eq (LimOffWithPath @p _) = demote @(MapRenPath ren p) == demote @(MapRenPath ren path)
     upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{offset = Just n}
     new = LimOffWithPath @path LO { offset = Just n, limit = Nothing }
 
 -- | GADT to safely set `where` condition
 data CondWithPath ren sch t where
-  CondWithPath ::  forall (path :: [Symbol]) ren sch t. ToStar (MapRen ren path)
-    => Cond ren sch (TabOnPath sch t (MapRen ren path)) -> CondWithPath ren sch t
+  CondWithPath ::  forall (path :: [(Symbol, PathKind)]) ren sch t. ToStar (MapRenPath ren path)
+    => Cond ren sch (TabOnDPath sch t (MapRenPath ren path)) -> CondWithPath ren sch t
 
 -- | GADT to safely set `order by` clauses
 data OrdWithPath ren sch t where
-  OrdWithPath :: forall (path :: [Symbol]) ren sch t. ToStar (MapRen ren path)
-    => [OrdFld ren sch (TabOnPath sch t (MapRen ren path))] -> OrdWithPath ren sch t
+  OrdWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. ToStar (MapRenPath ren path)
+    => [OrdFld ren sch (TabOnDPath sch t (MapRenPath ren path))] -> OrdWithPath ren sch t
 
 -- | GADT to safely set `distinct/distinct on` clauses
 data DistWithPath ren sch t where
-  DistWithPath :: forall (path :: [Symbol]) ren sch t. ToStar (MapRen ren path)
-    => Dist ren sch (TabOnPath sch t (MapRen ren path)) -> DistWithPath ren sch t
+  DistWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. ToStar (MapRenPath ren path)
+    => Dist ren sch (TabOnDPath sch t (MapRenPath ren path)) -> DistWithPath ren sch t
 
 -- | GADT to safely set `limit/offset` clauses
 data LimOffWithPath ren sch t where
-  LimOffWithPath :: forall (path :: [Symbol]) ren sch t.
-    ( TabPath sch t (MapRen ren path), ToStar (MapRen ren path)
-    , Snd (TabOnPath2 sch t (MapRen ren path)) ~ 'RelMany )
+  LimOffWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t.
+    ( TabDPath sch t (MapRenPath ren path), ToStar (MapRenPath ren path)
+    , Snd (TabOnDPath2 sch t (MapRenPath ren path)) ~ 'RelMany )
     => LO -> LimOffWithPath ren sch t
 
 -- | Comparison constructors; each is paired with its corresponding operator
