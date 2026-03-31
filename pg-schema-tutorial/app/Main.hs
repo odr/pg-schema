@@ -367,10 +367,10 @@ main = do
       qPath "addressCity" do
         -- qDistinct -- intentionally not work (reason: RelOne)
         qWhere $ "name" =? Just @Text "street"
-        qPath "address_city" do
+        qPathFromHere "address_city" do
           qLimit 2
           qDistinctOn [descf "street"]
-        qPath "cityCountry" do
+        qPathToHere "cityCountry" do
           -- qDistinct -- intentionally not work (reason: RelOne)
           qDistinctOn [descf "name"]
           -- qLimit 3 -- intentionally not work (reason: RelOne)

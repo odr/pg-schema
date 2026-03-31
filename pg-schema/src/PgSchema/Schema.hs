@@ -11,7 +11,7 @@ import Data.String
 import Data.Text as T hiding (show)
 import Data.Type.Bool
 import Data.Type.Equality
-import GHC.TypeLits
+import GHC.TypeLits as TL
 import PgSchema.Utils.Instances()
 import PgSchema.Utils.Internal
 import PgSchema.Utils.TF
@@ -305,3 +305,40 @@ qualName :: NameNS -> Text
 qualName NameNS {..}
   | nnsNamespace == fromString "pg_catalog" = nnsName
   | otherwise = nnsNamespace <> fromString "." <> nnsName
+
+type family HasRelName (rels :: [NameNSK]) (name :: Symbol) :: Bool where
+  HasRelName '[] name = 'False
+  HasRelName ('NameNS nns name ': rs) name = 'True
+  HasRelName (_ ': rs) name = HasRelName rs name
+
+type HasFromStep sch tab name = HasRelName (TFrom sch tab) name
+type HasToStep   sch tab name = HasRelName (TTo sch tab) name
+
+data PathKind = FromHere | ToHere | Unknown
+
+type family CheckStep (pathKind :: PathKind) (hasFrom :: Bool) (hasTo :: Bool) sch tab name :: Constraint where
+  CheckStep 'FromHere 'True _ sch tab name = ()
+  CheckStep 'ToHere   _ 'True sch tab name = ()
+  CheckStep 'Unknown 'True 'False sch tab name = ()
+  CheckStep 'Unknown 'False 'True sch tab name = ()
+  CheckStep 'FromHere _ _ sch tab name = TypeError
+    ( TL.Text "Relation is not available in from-here direction."
+    :$$: TL.Text "Use qPathToHere or qPath."
+    :$$: TL.Text ""
+    :$$: TL.Text "Table: " :<>: ShowType tab
+    :$$: TL.Text "Relation: " :<>: ShowType name
+    :$$: TL.Text "" )
+  CheckStep 'ToHere _ _ sch tab name = TypeError
+    ( TL.Text "Relation is not available in to-here direction."
+    :$$: TL.Text "Use qPathFromHere or qPath."
+    :$$: TL.Text ""
+    :$$: TL.Text "Table: " :<>: ShowType tab
+    :$$: TL.Text "Relation: " :<>: ShowType name
+    :$$: TL.Text "" )
+  CheckStep 'Unknown _ _ sch tab name = TypeError
+    ( TL.Text "qPath cannot be used for self-reference relation."
+    :$$: TL.Text "Use qPathFromHere or qPathToHere."
+    :$$: TL.Text ""
+    :$$: TL.Text "Table: " :<>: ShowType tab
+    :$$: TL.Text "Relation: " :<>: ShowType name
+    :$$: TL.Text "" )

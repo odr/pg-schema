@@ -74,7 +74,8 @@ module PgSchema.DML
     selectSch, selectText, Selectable
   -- *** Monad to set Query Params
   , MonadQP, qpEmpty
-  , qRoot, qPath, qWhere, qOrderBy, qDistinct, qDistinctOn, qLimit, qOffset
+  , qRoot, qPath, qPathFromHere, qPathToHere, qWhere, qOrderBy
+  , qDistinct, qDistinctOn, qLimit, qOffset
   -- **** Internals
   , QueryParam(..), CondWithPath(..), OrdWithPath(..), LimOffWithPath(..), DistWithPath(..)
   -- *** Conditions

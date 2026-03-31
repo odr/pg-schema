@@ -4,7 +4,7 @@ module PgSchema.DML.Select.Types
   -- ( QueryParam(..), qpEmpty
   -- , CondWithPath(..), OrdWithPath(..), DistWithPath(..), LimOffWithPath(..)
   -- , LO(..)
-  -- , CondMonad, qRoot, qPath, qWhere, qOrderBy, qDistinct, qDistinctOn, qLimit, qOffset
+  -- , CondMonad, qRoot, qPath, qPathFromHere, qPathToHere, qWhere, qOrderBy, qDistinct, qDistinctOn, qLimit, qOffset
   -- , Cond(..), pnull, pchild, pparent, pnot, pin, pinArr, pUnsafeCond
   -- , (|||), (&&&), (<?),(>?),(<=?),(>=?),(=?),(~=?),(~~?), showCmp, BoolOp(..)
   -- , TabParam(..), OrdFld(..), Dist(..), defTabParam, defLO, lo1
@@ -65,14 +65,37 @@ qRoot m = fst $ execRWS m Proxy qpEmpty
 -- The 'Symbol' must name the foreign-key constraint (edge to the parent or from the child)
 -- for the step away from the current table.
 --
-qPath :: forall ren sch t path path'.
-  forall (p :: Symbol) ->
-  (TabPath sch t (MapRen ren path'), ToStar (MapRen ren path'), path' ~ path ++ '[p]) =>
-  MonadQP ren sch t path' -> MonadQP ren sch t path
-qPath _p m = do
-  s <- get
-  put $ fst $ execRWS m Proxy s
+qPath :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
+  -> PathCheck 'Unknown p ren sch t path path' path'' tabPath p'
+  => MonadQP ren sch t path' -> MonadQP ren sch t path
+qPath _p m = put . fst . execRWS m Proxy =<< get
 
+-- | Change context (current table) to parent table.
+--
+-- The 'Symbol' must name the foreign-key constraint (edge to the parent)
+-- for the step away from the current table.
+--
+qPathFromHere :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
+  -> PathCheck 'FromHere p ren sch t path path' path'' tabPath p'
+  => MonadQP ren sch t path' -> MonadQP ren sch t path
+qPathFromHere _p m = put . fst . execRWS m Proxy =<< get
+
+-- | Change context (current table) to child table.
+--
+-- The 'Symbol' must name the foreign-key constraint (edge from the child)
+-- for the step away from the current table.
+--
+qPathToHere :: forall ren sch t path path' path'' tabPath p'. forall (p :: Symbol)
+  -> PathCheck 'ToHere p ren sch t path path' path'' tabPath p'
+  => MonadQP ren sch t path' -> MonadQP ren sch t path
+qPathToHere _p m = put . fst . execRWS m Proxy =<< get
+
+type PathCheck pathKind p ren sch t path path' path'' tabPath p' =
+  ( path' ~ (path ++ '[p]), path'' ~ MapRen ren (path ++ '[p])
+  , tabPath ~ TabOnPath sch t path'', p' ~ ApplyRenamer ren p
+  , ToStar path'', TabPath sch t path''
+  , CheckStep pathKind (HasFromStep sch tabPath p') (HasToStep sch tabPath p')
+    sch tabPath p' )
 -- | Add @WHERE@ condition for the current table.
 --
 -- If several 'qWhere' exist they are composed according to the 'Monoid' instance for 'Cond', i.e. with '(&&&)'
