@@ -318,6 +318,9 @@ type family CanConvert1 sch (tab::NameNSK) (fld::Symbol) (tn::NameNSK) (td::TypD
 type instance CanConvert1 sch tab fld tn ('TypDef "A" ('Just n) y) (PgArr t) =
   CanConvert1 sch tab fld n (TTypDef sch n) t
 
+type instance CanConvert1 sch tab fld tn ('TypDef "A" ('Just n) y) (PgTag ('Just n) (PgArr t)) =
+  CanConvert1 sch tab fld n (TTypDef sch n) t
+
 type instance CanConvert1 sch tab fld tn ('TypDef "B" x y) Bool = ()
 type instance CanConvert1 sch tab fld (PGC "int2") ('TypDef "N" x y) Int16 = ()
 type instance CanConvert1 sch tab fld (PGC "int4") ('TypDef "N" x y) Int32 = ()

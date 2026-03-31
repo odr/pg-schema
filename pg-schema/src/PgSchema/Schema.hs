@@ -291,6 +291,11 @@ type family TabPath sch (t :: NameNSK) (path :: [Symbol]) :: Constraint where
 type RecField = RecField' Text
 type Ref = Ref' Text
 
+type family HasNullableRefs (rs :: [RefK]) :: Bool where
+  HasNullableRefs '[] = 'False
+  HasNullableRefs ('Ref _ ('FldDef _ 'True  _) _ _ ': rs) = 'True
+  HasNullableRefs ('Ref _ ('FldDef _ 'False _) _ _ ': rs) = HasNullableRefs rs
+
 -- | Value-level: whether any ref in the list has a nullable column.
 -- Companion to type-level 'HasNullableRefs'.
 hasNullableRefs :: [Ref] -> Bool

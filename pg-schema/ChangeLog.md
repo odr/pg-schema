@@ -4,6 +4,9 @@
 
 - Using Renamer for QueryParams and Cond
 - Improve error messaging
+- Support for 'UnsafeCol'
+- Check possibility of type conversions for select-list/insert/update (it was broken in 0.5.0)
+- Check optional/mandatory for parent references is SELECT
 
 ## 0.5.2.0
 

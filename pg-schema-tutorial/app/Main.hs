@@ -103,7 +103,7 @@ data AddressRev a b = MkAddressRev
   , home         :: Maybe Text
   , app          :: If (a == A1) (Maybe Text) ()
   , zipcode      :: Maybe Text
-  , address_city :: City a b }
+  , address_city :: Maybe (City a b) }
   deriving Generic
 
 deriving instance Show (AddressRev A2 B1)
@@ -349,6 +349,8 @@ main = do
   T.putStrLn "\n====== 24 ========\n"
   selSch "addresses" @(AddressRev A1 B1) conn qp >>= print
   selSch "addresses" @(AddressRev A2 B1) conn qp' >>= print
+  (\(a,b) -> T.putStrLn a >> print b)
+    $ selSchText "addresses" @("address_city" := Maybe ("name" := Maybe Text)) $ qRoot $ qPath "address_city" $ qWhere $ "name" =? Just @Text "foo"
   where
     qp = qRoot qpr
     qpr = do
@@ -375,3 +377,5 @@ main = do
           qOrderBy [ascf "name"]
           qWhere $ "name" >? ("Bar" :: Text)
         qDistinctOn [ascf "name"]
+
+-- >>> selSchText "addresses" @("address_city" := ("name" := Maybe Text)) $ qRoot $ qPath "address_city" $ qWhere $ "name" =? Just @Text "foo"

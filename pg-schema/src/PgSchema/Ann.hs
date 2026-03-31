@@ -7,7 +7,6 @@ import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Key as Key
 import Data.Coerce
 import Data.Singletons.TH (genDefunSymbols)
-import Data.Type.Bool
 import Data.Typeable
 import Data.Text qualified as T
 import Data.Kind
@@ -18,7 +17,6 @@ import Database.PostgreSQL.Simple.FromRow(FromRow(..), RowParser, field)
 import GHC.Generics
 import GHC.Int
 import GHC.TypeLits
-import GHC.TypeError as TE
 import PgSchema.Schema
 import PgSchema.Types
 import PgSchema.Utils.Internal
@@ -474,7 +472,7 @@ class CRecInfo (ann :: Ann) (r :: Type) where
 class CRecInfoCols (ann :: Ann) (cols :: [ColInfo NameNSK]) where
   getFields :: [FieldInfo T.Text]
 
-class CFldInfo (ann :: Ann) (fld :: RecField' Symbol NameNSK) t where
+class CFldInfo (ann :: Ann) (fldDbName :: Symbol) (fld :: RecField' Symbol NameNSK) t where
   getFldInfo :: RecField (RecordInfo T.Text)
 
 instance
@@ -485,22 +483,22 @@ instance
 instance CRecInfoCols ann '[] where getFields = []
 
 instance
-  (KnownSymNat sn, KnownSymbol db, CFldInfo ann fi t, CRecInfoCols ann cols)
+  (KnownSymNat sn, KnownSymbol db, CFldInfo ann db fi t, CRecInfoCols ann cols)
   => CRecInfoCols ann ('ColInfo sn t db fi ': cols) where
   getFields = FieldInfo
     { fieldName   = demote @(NameSymNat sn)
     , fieldDbName = demote @db
-    , fieldKind   = getFldInfo @ann @fi @t } : getFields @ann @cols
+    , fieldKind   = getFldInfo @ann @db @fi @t } : getFields @ann @cols
 
-instance ToStar fd => CFldInfo ann ('RFPlain fd) t where
+instance (ToStar fd, CanConvert (AnnSch ann) (AnnTab ann) fldDbName fd t) => CFldInfo ann fldDbName ('RFPlain fd) t where
   getFldInfo = RFPlain (demote @fd)
 
 instance (ToStar fd, ToStar af, ToStar b) =>
-  CFldInfo ann ('RFAggr fd af b) t where
+  CFldInfo ann _fldDbName ('RFAggr fd af b) t where
   getFldInfo = RFAggr (demote @fd) (demote @af) (demote @b)
 
 instance (ToStar flds, ToStar expr) =>
-  CFldInfo ann ('RFUnsafe flds expr) t where
+  CFldInfo ann _fldDbName ('RFUnsafe flds expr) t where
   getFldInfo = RFUnsafe (demote @flds) (demote @expr)
 
 type family AnnRefTabDepth (ann :: Ann) refTab :: Ann where
@@ -508,15 +506,15 @@ type family AnnRefTabDepth (ann :: Ann) refTab :: Ann where
     'Ann ren sch (DecDepth ('Ann ren sch d tab)) refTab
 
 instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann fromTab)
-  => CFldInfo ann ('RFToHere fromTab refs) [PgTag ann' r] where
+  => CFldInfo ann _fldDbName ('RFToHere fromTab refs) [PgTag ann' r] where
   getFldInfo = RFToHere (getRecordInfo @ann' @r) (demote @refs)
 
-instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab)
-  => CFldInfo ann ('RFFromHere toTab refs) (Maybe (PgTag ann' r)) where
+instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab, CheckRef ann _fldDbName(HasNullableRefs refs) 'True)
+  => CFldInfo ann _fldDbName ('RFFromHere toTab refs) (Maybe (PgTag ann' r)) where
   getFldInfo = RFFromHere (getRecordInfo @ann' @r) (demote @refs)
 
-instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab)
-  => CFldInfo ann ('RFFromHere toTab refs) (PgTag ann' r) where
+instance (CRecInfo ann' r, ToStar refs, ann' ~ AnnRefTabDepth ann toTab, CheckRef ann _fldDbName(HasNullableRefs refs) 'False)
+  => CFldInfo ann _fldDbName ('RFFromHere toTab refs) (PgTag ann' r) where
   getFldInfo = RFFromHere (getRecordInfo @ann' @r) (demote @refs)
 
 --------------------------------------------------------------------------------
@@ -540,18 +538,28 @@ type family IsPlainRecField (fi :: RecField' Symbol NameNSK) :: Bool where
   IsPlainRecField ('RFSelfRef tab rs)  = 'False
   IsPlainRecField fi        = 'True
 
-type family AllPlainCols (cols :: [ColInfo NameNSK]) :: Bool where
-  AllPlainCols '[] = 'True
-  AllPlainCols ('ColInfo sn t db fi ': cs) = IsPlainRecField fi && AllPlainCols cs
+type family NotPlainCols (cols :: [ColInfo NameNSK]) (rs :: [Symbol]) :: [Symbol] where
+  NotPlainCols '[] rs = rs
+  NotPlainCols ('ColInfo sn t db fi ': cs) rs =
+    NotPlainCols cs (AppNotPlain rs db (IsPlainRecField fi))
+
+type family AppNotPlain (rs :: [Symbol]) (db :: Symbol) (b :: Bool) :: [Symbol] where
+  AppNotPlain rs db 'True = rs
+  AppNotPlain rs db 'False = db ': rs
 
 -- | All fields are plain (no RFToHere/RFFromHere)
-type family AllPlain (ann :: Ann) (r :: Type) :: Constraint where
-  AllPlain ann r = Assert (AllPlainCols (Cols ann r))
-    (TypeError
-      (  Text "Not all fields in record are 'plain' (no relations allowed)."
-      :$$: Text "Ann:   " :<>: ShowType ann
-      :$$: Text "Type:  " :<>: ShowType r
-      :$$: Text "Cols:  " :<>: ShowType (Cols ann r) ))
+type AllPlain (ann :: Ann) (r :: Type) = AllPlainRS ann (NotPlainCols (Cols ann r) '[]) r
+
+type family AllPlainRS (ann :: Ann) (rs :: [Symbol]) (r :: Type) :: Constraint where
+  AllPlainRS ann '[] r = ()
+  AllPlainRS ann rs r = TypeError
+    (  Text "Not all fields in record are 'plain' (no relations allowed)."
+    :$$: Text ""
+    :$$: Text "Not plain cols: " :<>: ShowType rs
+    :$$: Text ""
+    :$$: Text "Ann:   " :<>: ShowType ann
+    :$$: Text "Cols:  " :<>: ShowType (Cols ann r)
+    :$$: Text "" )
 
 --------------------------------------------------------------------------------
 -- Type-level RecordInfo for Ann
@@ -610,30 +618,58 @@ type family TRecordInfo (ann :: Ann) (r :: Type) :: [FieldInfo Symbol] where
   TRecordInfo ann r = TRecordInfoCols ann (Cols ann r)
 
 --------------------------------------------------------------------------------
+-- CheckRef
+--------------------------------------------------------------------------------
+type family CheckRef (ann :: Ann) (fldDbName :: Symbol)
+  (hasNullable :: Bool) (expectMaybe :: Bool) :: Constraint where
+  CheckRef ('Ann ren sch d tab) fldDbName 'True 'False =
+    TypeError
+      (  Text "relation result must be Maybe because"
+      :$$: Text "foreign key in this relation is nullable."
+      :$$: Text ""
+      :$$: Text "Table:      " :<>: ShowType tab
+      :$$: Text "Relation:   " :<>: ShowType fldDbName
+      :$$: Text "" )
+  CheckRef ('Ann ren sch d tab) fldDbName 'False 'True =
+    TypeError
+      (  Text "relation result must NOT be Maybe because"
+      :$$: Text "foreign key in this relation is NOT NULL."
+      :$$: Text ""
+      :$$: Text "Table:      " :<>: ShowType tab
+      :$$: Text "Relation:   " :<>: ShowType fldDbName
+      :$$: Text "" )
+  CheckRef ann fldDbName b b = ()
+--------------------------------------------------------------------------------
 -- Node-level checks for Mandatory / PK (analogue of CheckNodeAll*)
 --------------------------------------------------------------------------------
 
 -- | One-table check that all mandatory fields are present
 -- rs: list of columns that are already "covered" (including those that come from Reference)
 type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
-  CheckAllMandatory ('Ann ren sch d tab) rs = TE.Assert
-    (SP.Null (RestMandatory sch tab rs))
-    (TypeError
-      (  Text "We can't insert data because not all mandatory fields are present."
-      :$$: Text "Table: " :<>: ShowType tab
-      :$$: Text "Missing mandatory fields: " :<>: ShowType (RestMandatory sch tab rs) ))
+  CheckAllMandatory ('Ann ren sch d tab) rs =
+    CheckAllMandatory' (RestMandatory sch tab rs) ('Ann ren sch d tab) rs
+
+type family CheckAllMandatory' (rest :: [Symbol]) (ann :: Ann) (rs :: [Symbol]) :: Constraint where
+  CheckAllMandatory' '[] ann rs = ()
+  CheckAllMandatory' rest ('Ann ren sch d tab) rs = TypeError
+    (  Text "We can't insert data because not all mandatory fields are present."
+    :$$: Text "Table: " :<>: ShowType tab
+    :$$: Text "Missing mandatory fields: " :<>: ShowType rest )
 
 -- | One-table check that all mandatory fields are present
 -- or all PK fields are present
 type family CheckAllMandatoryOrHasPK (ann :: Ann) (rs :: [Symbol]) :: Constraint where
-  CheckAllMandatoryOrHasPK ('Ann ren sch d tab) rs = TE.Assert
-    ( SP.Null (RestMandatory sch tab rs)
-      || SP.Null (RestPK sch tab rs) )
-    (TypeError
-      (  Text "We can't upsert data because for table " :<>: ShowType tab
-      :$$: Text "either not all mandatory fields or not all PK fields are present."
-      :$$: Text "Missing mandatory fields: " :<>: ShowType (RestMandatory sch tab rs)
-      :$$: Text "Missing PK fields: " :<>: ShowType (RestPK sch tab rs) ))
+  CheckAllMandatoryOrHasPK ('Ann ren sch d tab) rs = CheckAllMandatoryOrHasPK'
+    (RestMandatory sch tab rs) (RestPK sch tab rs) ('Ann ren sch d tab) rs
+
+type family CheckAllMandatoryOrHasPK' (restMandatory :: [Symbol]) (restPK :: [Symbol]) (ann :: Ann) (rs :: [Symbol]) :: Constraint where
+  CheckAllMandatoryOrHasPK' '[] rpk ann rs = ()
+  CheckAllMandatoryOrHasPK' rm '[] ann rs = ()
+  CheckAllMandatoryOrHasPK' rm rpk ('Ann ren sch d tab) rs = TypeError
+    (  Text "We can't upsert data because for table " :<>: ShowType tab
+    :$$: Text "either not all mandatory fields or not all PK fields are present."
+    :$$: Text "Missing mandatory fields: " :<>: ShowType rm
+    :$$: Text "Missing PK fields: " :<>: ShowType rpk )
 
 genDefunSymbols [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasPK]
 
