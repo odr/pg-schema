@@ -21,7 +21,9 @@ import Control.Monad
 import Data.Aeson
 import Data.ByteString as BS
 import Data.ByteString.Lazy as BSL
+#ifdef MK_CASE_INSENSITIVE
 import Data.CaseInsensitive
+#endif
 import Data.Coerce
 import Data.Fixed
 import Data.Kind
@@ -31,8 +33,12 @@ import Data.Scientific
 import Data.Singletons.TH
 import Data.Text as T
 import Data.Text.Encoding as T
+#ifdef MK_TIME
 import Data.Time
+#endif
+#ifdef MK_UUID
 import Data.UUID.Types
+#endif
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.FromField
 import Database.PostgreSQL.Simple.ToField
@@ -338,25 +344,31 @@ type instance CanConvert1 sch tab fld (PGC "float8") ('TypDef "N" x y) Scientifi
 type instance CanConvert1 sch tab fld (PGC "numeric") ('TypDef "N" x y) Scientific = ()
 type instance CanConvert1 sch tab fld (PGC "oid") ('TypDef "N" x y) PgOid = ()
 
+#ifdef MK_TIME
 type instance CanConvert1 sch tab fld (PGC "date") ('TypDef "D" x y) Day = ()
 type instance CanConvert1 sch tab fld (PGC "time") ('TypDef "D" x y) TimeOfDay = ()
 type instance CanConvert1 sch tab fld (PGC "timestamp") ('TypDef "D" x y) LocalTime = ()
 type instance CanConvert1 sch tab fld (PGC "timestamptz") ('TypDef "D" x y) ZonedTime = ()
 type instance CanConvert1 sch tab fld (PGC "timestamptz") ('TypDef "D" x y) UTCTime = ()
+#endif
 
 type instance CanConvert1 sch tab fld (PGC "char") ('TypDef "S" x y) PgChar = ()
 type instance CanConvert1 sch tab fld (PGC "text") ('TypDef "S" x y) Text = ()
 type instance CanConvert1 sch tab fld (PGC "varchar") ('TypDef "S" x y) Text = ()
 type instance CanConvert1 sch tab fld (PGC "name") ('TypDef "S" x y) Text = ()
+#if MK_CASE_INSENSITIVE
 type instance CanConvert1 sch tab fld (PGC "citext") ('TypDef "S" Nothing '[]) (CI Text) = ()
 type instance CanConvert1 sch tab fld ("public" ->> "citext") ('TypDef "S" Nothing '[]) (CI Text) = ()
+#endif
 type instance CanConvert1 sch tab fld (PGC "bytea") ('TypDef "U" x y) (Binary BS.ByteString) = ()
 type instance CanConvert1 sch tab fld (PGC "bytea") ('TypDef "U" x y) (Binary BSL.ByteString) = ()
 -- ^ Binary ByteString has no 'FromJSON'/'ToJSON' instances, so it can
 -- be used only in the root table.
 type instance CanConvert1 sch tab fld (PGC "jsonb") ('TypDef "U" x y) a = (FromJSON a, ToJSON a)
 type instance CanConvert1 sch tab fld (PGC "json") ('TypDef "U" x y) a = (FromJSON a, ToJSON a)
+#ifdef MK_UUID
 type instance CanConvert1 sch tab fld (PGC "uuid") ('TypDef "U" x y) UUID = ()
+#endif
 
 type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
   = ( TTypDef sch n ~ 'TypDef "E" 'Nothing es

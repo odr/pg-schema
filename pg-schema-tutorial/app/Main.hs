@@ -387,4 +387,4 @@ main = do
       --   -- qDistinct     -- intentionally not work (reason: RelOne)
       --   pure ()
 
--- >>> selSchText "addresses" @("address_city" := ("name" := Maybe Text)) $ qRoot $ qPath "address_city" $ qWhere $ "name" =? Just @Text "foo"
+-- >>> selSchText "addresses" @("address_city" := Maybe ("name" := Maybe Text)) $ qRoot $ qPath "address_city" $ qWhere $ "name" =? Just @Text "foo"
