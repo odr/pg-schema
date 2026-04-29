@@ -1,6 +1,6 @@
 cabal-version:  3.12
 name:           pg-schema
-version:        0.6.0.0
+version:        0.6.1.0
 category:       Database
 author:         Dmitry Olshansky
 maintainer:     olshanskydr@gmail.com
@@ -34,6 +34,8 @@ description:
 
     Then we can write a function to insert an order with order positions.
     And select orders with order positions and articles in one request using some conditions for orders and order positions that return in order.
+
+    Note that all table names, field names and foreign key constraint names are checked in compile time!
 
     @
     data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic

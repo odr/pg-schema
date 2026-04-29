@@ -108,7 +108,7 @@ module PgSchema.DML
   -- * Types
   , Ann(..), ToStar
   -- ** Renamers
-  , RenamerId, CamelToSnake, Renamer, ApplyRenamer, ApplyRenamerNS
+  , RenamerId, CamelToSnake, Renamer, ApplyRenamer -- , ApplyRenamerNS
   -- ** PgTag types
   , type (:=), (=:), PgTag(..),
   -- | Re-export from postgresql-simple

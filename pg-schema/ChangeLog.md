@@ -1,5 +1,9 @@
 # Changelog for pg-schema
 
+## 0.6.1.0
+
+- Bug fixing (ins/upsertJSON for json db-fields)
+
 ## 0.6.0.0
 
 - Using Renamer for QueryParams and Cond

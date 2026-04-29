@@ -1,0 +1,49 @@
+site_name: pg-schema tutorial
+site_description: Practical guide to pg-schema (RU first, EN later)
+repo_url: https://github.com/odr/pg-schema
+theme:
+  # name: material
+  name: readthedocs
+  language: ru
+  features:
+    - navigation.instant
+    - navigation.sections
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.snippets:
+      base_path:
+        - docs
+      check_paths: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.emoji:
+      # emoji_index: !!python/name:material.extensions.emoji.twemoji
+      # emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+docs_dir: docs
+
+nav:
+  - Русский:
+      - Введение: ru/index.md
+      - Зачем pg-schema: ru/00-why-pg-schema.md
+      - Pg-schema за 15 минут: ru/01-wow.md
+      - Рабочая модель pg-schema: ru/02-core-workflow.md
+      - Запросы и conditions (Generic): ru/03-read-with-conditions.md
+      - PgTag и смешанный стиль: ru/04-generic-vs-pgtag.md
+      - Плоский DML (insert/update/delete): ru/05-flat-dml.md
+      - Tree DML (insertJSON/upsertJSON): ru/06-tree-dml.md
+      - Ошибки компилятора как guide: ru/07-compiler-errors-as-guide.md
+      - SQL introspection и производительность: ru/08-sql-introspection-and-performance.md
+      - Edge cases и FAQ: ru/09-edge-cases-faq.md
+  - English:
+      - Introduction: en/index.md
+
+extra_css:
+  - styles/emoji.css

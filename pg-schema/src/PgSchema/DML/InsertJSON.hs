@@ -226,12 +226,16 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
         (plainsPK, plainsOthers) = L.partition ((`L.elem` foldMap fst mbKeyMand) . fst) plains
         jsonFld ip = case mapTypes M.!? ip.info.fdType of
           Just (TypDef "A" (Just t) _) ->
-            "case when jsonb_typeof(" <> rowN <> ".value->'" <> fromText ip.jsonName <> "') = 'array'"
+            "case when jsonb_typeof(" <> rowN <> ".value->'" <> fld <> "') = 'array'"
             <> " then (select coalesce(array_agg(__x)::" <> fromText (qualName t) <> "[], '{}')"
-            <> " from jsonb_array_elements_text(" <> rowN <> ".value->'" <> fromText ip.jsonName <> "') __x) else null end"
-          _ ->
-            "(" <> rowN <> ".value->>'" <> fromText ip.jsonName <> "')::"
-              <> fromText (qualName ip.info.fdType)
+            <> " from jsonb_array_elements_text(" <> rowN <> ".value->'" <> fld <> "') __x) else null end"
+          _
+            | tn == "json" || tn == "jsonb" -> "(" <> rowN <> ".value->'" <> fld <> "')"
+            | otherwise                     -> "(" <> rowN <> ".value->>'" <> fld <> "')::" <> ty
+          where
+            fld = fromText ip.jsonName
+            ty  = fromText (qualName ip.info.fdType)
+            tn  = ip.info.fdType.nnsName
         rets
           | noRets = []
           | otherwise = ["    returning " <> intercalate' ", " qretFlds

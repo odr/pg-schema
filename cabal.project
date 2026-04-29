@@ -11,6 +11,7 @@ with-compiler: ghc-9.12.2
 packages:
   pg-schema
   pg-schema-tutorial
+  tutorial/app
 
 constraints:
   pg-schema +arbitrary +flat +hashable

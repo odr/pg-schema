@@ -20,7 +20,7 @@ import Data.UUID.Types
 import qualified Data.Vector as Vec
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.Types (PGArray(..))
-import Hedgehog
+import Hedgehog as H
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import Prelude as P
@@ -107,3 +107,21 @@ prop_ext_arr_converts pool = withTests 30 $ property do
   recs <- forAll (genData ExtArrConverts)
   evalIO $ withPool pool \conn -> do
     void $ insSch_ "ext_arr_converts" conn recs
+
+prop_ext_converts_json_string_via_upsertjson :: Pool Connection -> Property
+prop_ext_converts_json_string_via_upsertjson pool = withTests 1 $ property do
+  (sql, outSel) <- evalIO $ withPool pool \conn -> do
+    delByCond "ext_converts" conn mempty
+    sql' <- upsJSON_ "ext_converts" conn recs
+    (xs, _) <- selSch "ext_converts" conn qpEmpty
+    pure (sql', xs)
+  H.assert $ "->'cjson'" `T.isInfixOf` sql
+  H.assert $ "->'cjsonb'" `T.isInfixOf` sql
+  H.assert $ not $ "->>'cjson'" `T.isInfixOf` sql
+  H.assert $ not $ "->>'cjsonb'" `T.isInfixOf` sql
+  L.sort outSel === L.sort recs
+  where
+    recs :: ["cjsonb" := Maybe Value :. "cjson" := Maybe Value]
+    recs =
+      [ "cjsonb" =: Just (String "Test")
+      :. "cjson" =: Just (String "Test") ]

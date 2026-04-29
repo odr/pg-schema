@@ -25,6 +25,7 @@ main = do
       , testProperty "Array of base types" $ prop_base_arr_converts pool
       , testProperty "Extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
       , testProperty "Array of extra types" $ prop_ext_arr_converts pool
+      , testProperty "InsertJSON: json/jsonb string values use -> operator" $ prop_ext_converts_json_string_via_upsertjson pool
       ]
     , testGroup "Hierarchy (test_dml)"
       [ testProperty "Insert/Upsert/Select root with children (simple FK)" $ prop_hier_insert_simple_fk pool

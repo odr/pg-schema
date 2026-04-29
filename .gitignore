@@ -6,3 +6,5 @@
 dist-*
 hie.yaml
 trash
+tutorial/site
+tutorial/.venv
