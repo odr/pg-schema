@@ -9,8 +9,10 @@ import GHC.Generics ( Generic )
 import GHC.TypeLits (Symbol)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time
+import Data.Int
 import PgSchema.DML
-import Sch ( Sch )
+import Sch
 
 data MyRenamer :: Renamer
 
@@ -30,10 +32,54 @@ data User = MkUser
 main :: IO ()
 main = do
   conn <- connectPostgreSQL "dbname=tutorial"
-  (cnt, tIns) <- insertSch_ (MyAnn "users") conn [MkUser "Bruce" Nothing]
+  (cnt, tIns) <- insertSch_ (MyAnn "users") conn [MkUser "Benjy" Nothing]
   (res, (tSel, selParams)) <- selectSch (MyAnn "users") @User conn qpEmpty
+  putStrLn $ "\ninsert text: " <> T.unpack tIns
   putStrLn $ "inserted " <> show cnt <> " rows"
-  putStrLn $ "selected rows: " <> show res
-  putStrLn $ "insert text: " <> T.unpack tIns
   putStrLn $ "select text: " <> T.unpack tSel
   putStrLn $ "select params: " <> show selParams
+  putStrLn $ "selected rows: " <> show res
+  {-
+inserted 1 rows
+selected rows: [MkUser {name = "Bruce", email = Nothing}]
+insert text: insert into tut.users(name,email) values (?,?)
+select text: select t0.name "name",t0.email "email" from tut.users t0
+select params: []
+  -}
+
+  (res2 :: ["id" := Int64 :. "createdAt" := UTCTime :. User], tIns2) <-
+    insertSch (MyAnn "users") conn
+      [ MkUser "Quentin" (Just "quentin@example.com")
+      , MkUser "Jason" (Just "jason@example.com") ]
+  (res3 :: ["name" := Text], (tSel3, selParams3)) <- selectSch (MyAnn "users") conn qpEmpty
+  putStrLn $ "\ninsert text: " <> T.unpack tIns2
+  putStrLn $ "inserted: " <> show res2
+  putStrLn $ "select text: " <> T.unpack tSel3
+  putStrLn $ "select params: " <> show selParams3
+  putStrLn $ "selected rows: " <> show res3
+{-
+insert text: insert into tut.users(name,email) values (?,?) returning id,created_at,name,email
+inserted: [PgTag {unPgTag = 2} :. (PgTag {unPgTag = 2026-05-01 18:25:06.8636 UTC} :. MkUser {name = "William", email = Just "william@example.com"}),PgTag {unPgTag = 3} :. (PgTag {unPgTag = 2026-05-01 18:25:06.8636 UTC} :. MkUser {name = "Bendji", email = Just "bendji@example.com"})]
+select text: select t0.name "name" from tut.users t0
+selected rows: [PgTag {unPgTag = "Bruce"},PgTag {unPgTag = "William"},PgTag {unPgTag = "Bendji"}]
+select params: []
+-}
+
+  (res4 :: ["id" := Int64], tIns4) <- insertSch (MyAnn "projects") conn
+    ["ownerId" =: (1 :: Int64) :. "title" =: ("pg-schema" :: Text)
+      :. "status" =: Project_status_active
+      :. "tags" =: pgArr' ["db" :: Text, "haskell"]
+    , "ownerId" =: 1 :. "title" =: "tutorial"
+      :. "status" =: Project_status_draft :. "tags" =: pgArr' ["learning"]]
+  putStrLn $ "\ninsert text: " <> T.unpack tIns4
+  putStrLn $ "inserted: " <> show res4
+{-
+insert text: insert into tut.projects(owner_id,title,status,tags) values (?,?,?,?) returning id
+inserted: [PgTag {unPgTag = 1},PgTag {unPgTag = 2}]
+-}
+  -- _ <- updateByCond_ (MyAnn "projects") conn ("status" =: Project_status_active) $ "id" =? (2 :: Int64)
+  let
+    (tUpd5 :: Text, updParams5) = updateText_ (MyAnn "projects")
+      @("status" := PGEnum Sch ("tut" ->> "project_status")) ("id" =? (2 :: Int64))
+  putStrLn $ "update text: " <> T.unpack tUpd5
+  putStrLn $ "update params: " <> show updParams5

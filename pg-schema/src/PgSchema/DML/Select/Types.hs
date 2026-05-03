@@ -44,6 +44,8 @@ data QueryParam ren sch t = QueryParam
   , qpDistinct  :: ![DistWithPath ren sch t]    -- ^ `distinct` and `distinct on` clauses
   }
 
+type QueryParamAnn ann = QueryParam (AnnRen ann) (AnnSch ann) (AnnTab ann)
+
 -- | Empty 'QueryParam'.
 --
 -- It means that @SELECT@ is defined only by structure of output type
@@ -326,6 +328,8 @@ data Cond (ren :: Renamer) (sch::Type) (tab::NameNSK) where
   -- ^ @JOIN@ to parent rows that satisfy the nested condition
   UnsafeCond :: CondMonad Text -> Cond ren sch tab
   -- ^ Unsafe condition built manually inside 'CondMonad'
+
+type CondAnn ann = Cond (AnnRen ann) (AnnSch ann) (AnnTab ann)
 
 -- Conjunction '(&&&)' is much more often operation for query conditions so
 -- we use it for 'Semigroup'.

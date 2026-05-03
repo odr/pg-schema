@@ -1,5 +1,11 @@
 # Changelog for pg-schema
 
+## 0.7.0.0
+
+- Bug fixing (updateText_ signature)
+- Change signature for deleteByCond
+- Add CondAnn & QueryParamsAnn
+
 ## 0.6.1.0
 
 - Bug fixing (ins/upsertJSON for json db-fields)

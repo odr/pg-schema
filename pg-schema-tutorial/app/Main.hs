@@ -198,7 +198,7 @@ data AddressRet = AddressRet
 type AnnSch tn = 'Ann RenamerSch Sch 3 (NSC tn)
 
 selSch :: forall (tn :: Symbol) -> forall r h. Selectable (AnnSch tn) r
-  => Connection -> QueryParam RenamerSch Sch (NSC tn) -> IO ([r], (Text,[SomeToField]))
+  => Connection -> QueryParamAnn (AnnSch tn) -> IO ([r], (Text,[SomeToField]))
 selSch tn = selectSch (AnnSch tn)
 
 insSch
@@ -212,7 +212,7 @@ insSch_
 insSch_ tn = insertSch_ (AnnSch tn)
 
 selSchText :: forall tn -> forall r. (Selectable (AnnSch tn) r) =>
-  QueryParam RenamerSch Sch (NSC tn) -> (Text,[SomeToField])
+  QueryParamAnn (AnnSch tn) -> (Text,[SomeToField])
 selSchText tn @r = selectText (AnnSch tn) @r
 
 insJSONText
@@ -242,11 +242,11 @@ upsJSON tn = upsertJSON (AnnSch tn)
 
 updByCond_
   :: forall tn -> forall r. UpdateNonReturning (AnnSch tn) r
-  => Connection -> r -> Cond RenamerSch Sch (NSC tn) -> IO Int64
+  => Connection -> r -> CondAnn (AnnSch tn) -> IO Int64
 updByCond_ tn = updateByCond_ (AnnSch tn)
 
 updByCond :: forall tn -> forall r r' . (UpdateReturning (AnnSch tn) r r')
-  => Connection -> r -> Cond RenamerSch Sch (NSC tn) -> IO [r']
+  => Connection -> r -> CondAnn (AnnSch tn) -> IO [r']
 updByCond tn = updateByCond (AnnSch tn)
 
 -- >>> selSchText "countries" @Country' qpEmpty
@@ -350,7 +350,8 @@ main = do
   selSch "addresses" @(AddressRev A1 B1) conn qp >>= print
   selSch "addresses" @(AddressRev A2 B1) conn qp' >>= print
   (\(a,b) -> T.putStrLn a >> print b)
-    $ selSchText "addresses" @("address_city" := Maybe ("name" := Maybe Text)) $ qRoot $ qPath "address_city" $ qWhere $ "name" =? Just @Text "foo"
+    $ selSchText "addresses" @("address_city" := Maybe ("name" := Maybe Text))
+    $ qRoot $ qPath "address_city" $ qWhere $ "name" =? Just @Text "foo"
   where
     qp = qRoot qpr
     qpr = do

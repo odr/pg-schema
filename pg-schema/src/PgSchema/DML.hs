@@ -77,7 +77,8 @@ module PgSchema.DML
   , qRoot, qPath, qPathFromHere, qPathToHere, qWhere, qOrderBy
   , qDistinct, qDistinctOn, qLimit, qOffset
   -- **** Internals
-  , QueryParam(..), CondWithPath(..), OrdWithPath(..), LimOffWithPath(..), DistWithPath(..)
+  , QueryParam(..), QueryParamAnn, CondWithPath(..), OrdWithPath(..)
+  , LimOffWithPath(..), DistWithPath(..)
   -- *** Conditions
   -- | Example: @"name" =? "John"@
   , (<?),(>?),(<=?),(>=?),(=?)
@@ -86,7 +87,7 @@ module PgSchema.DML
   , (|||), (&&&), pnot, pnull, pin, pinArr
   , pparent, pchild, TabParam(..), defTabParam
   , pUnsafeCond, UnsafeCol(..)
-  , Cond(..), Cmp(..), BoolOp(..)
+  , Cond(..), CondAnn, Cmp(..), BoolOp(..)
   , CondMonad, SomeToField(..), showCmp, tabPref, qual
   , CDBField, CDBValue, CDBFieldNullable, CRelDef
   -- *** Order By and others

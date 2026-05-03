@@ -41,7 +41,8 @@ executable tutorial
         hashable,
         pg-schema,
         postgresql-simple,
-        text
+        text,
+        time
 
     hs-source-dirs:   app
     default-language: GHC2024

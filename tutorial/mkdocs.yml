@@ -35,8 +35,8 @@ nav:
       - Зачем pg-schema: ru/00-why-pg-schema.md
       - Pg-schema за 15 минут: ru/01-wow.md
       - Рабочая модель pg-schema: ru/02-core-workflow.md
-      - Запросы и conditions (Generic): ru/03-read-with-conditions.md
-      - PgTag и смешанный стиль: ru/04-generic-vs-pgtag.md
+      - DML операции: ru/03-dml-operations.md
+      - Select: ru/04-select.md
       - Плоский DML (insert/update/delete): ru/05-flat-dml.md
       - Tree DML (insertJSON/upsertJSON): ru/06-tree-dml.md
       - Ошибки компилятора как guide: ru/07-compiler-errors-as-guide.md

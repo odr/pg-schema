@@ -7,19 +7,19 @@ data User = MkUser
 
 do
   conn <- connectPostgreSQL "dbname=tutorial"
-  (cnt, tIns) <- insertSch_ (MyAnn "users") conn [MkUser "Bruce" Nothing]
+  (cnt, tIns) <- insertSch_ (MyAnn "users") conn [MkUser "Benjy" Nothing]
   (res, (tSel, selParams)) <- selectSch (MyAnn "users") @User conn qpEmpty
+  putStrLn $ "\ninsert text: " <> T.unpack tIns
   putStrLn $ "inserted " <> show cnt <> " rows"
-  putStrLn $ "selected rows: " <> show res
-  putStrLn $ "insert text: " <> T.unpack tIns
   putStrLn $ "select text: " <> T.unpack tSel
   putStrLn $ "select params: " <> show selParams
+  putStrLn $ "selected rows: " <> show res
 ```
 
 ```
-inserted 1 rows
-selected rows: [MkUser {name = "Bruce", email = Nothing}]
 insert text: insert into tut.users(name,email) values (?,?)
+inserted 1 rows
 select text: select t0.name "name",t0.email "email" from tut.users t0
 select params: []
+selected rows: [MkUser {name = "Benjy", email = Nothing}]
 ```
