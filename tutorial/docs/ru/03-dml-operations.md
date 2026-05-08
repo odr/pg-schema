@@ -17,7 +17,20 @@
 
 Пример:
 
---8<-- "source/snippets/hs/DML3.md"
+```haskell
+  (res4 :: ["id" := Int64], tIns4) <- insertSch (MyAnn "projects") conn
+    ["ownerId" =: (1 :: Int64) :. "title" =: ("pg-schema" :: Text)
+      :. "status" =: Project_status_active
+      :. "tags" =: pgArr' ["db" :: Text, "haskell"]
+    , "ownerId" =: 1 :. "title" =: "tutorial"
+      :. "status" =: Project_status_draft :. "tags" =: pgArr' ["learning"]]
+  putStrLn $ "\ninsert text: " <> T.unpack tIns4
+  putStrLn $ "inserted: " <> show res4
+{-
+insert text: insert into tut.projects(owner_id,title,status,tags) values (?,?,?,?) returning id
+inserted: [PgTag {unPgTag = 1},PgTag {unPgTag = 2}]
+-}
+```
 
 :mag: Для работы с массивами используется свой тип `PgArr`. Этот тип имеет улучшенный (по сравнению с `PGArray` из `postgresql-simple`) инстанс `ToField`, использующий информацию о типе элементов в БД. Это позволяет вставлять произвольные массивы. Кроме того, элементы `PgArr` опциональны (`Maybe`), что соответствует массиву PostgreSql. Функция `pgArr'` делает массив из `Just` элементов.
 
@@ -31,67 +44,70 @@
 
 ### Update
 
-Для изменения данных можно воспользоваться операцией `updateByCond` (или вариантом `updateByCond_`). Эти операции производят изменения всех записей, удовлетворяющих условию. Виды условий, поддерживаемых в `pg-schema` описаны в разделе про SELECT-запросы. Здесь мы просто попробуем обновить по ключу:
-
-
-
-Типизированные поля:
+Для изменения данных можно воспользоваться операцией `updateByCond` (или вариантом `updateByCond_`). Эти операции производят изменения всех записей, удовлетворяющих условию. Виды условий, поддерживаемых в `pg-schema` описаны в разделе про SELECT-запросы. Условия также проходят проверку типов. Здесь мы просто попробуем обновить по ключу:
 
 ```haskell
-type TaskTag =
-  "seq" := Int32 :. "title" := Text :. "priority" := Int32
+  let
+    (tUpd5 :: Text, updParams5) = updateText_ (MyAnn "projects")
+      @("status" := PGEnum Sch ("tut" ->> "project_status")) ("id" =? (2 :: Int64))
+  putStrLn $ "update text: " <> T.unpack tUpd5
+  putStrLn $ "update params: " <> show updParams5
+{-
+update text: update tut.projects t0 set status = ? where t0.id = ?
+update params: [SomeToField 2]
+-}
 ```
 
-Значения:
+Тут мы только получили текст апдейта и распечатали его и известный параметр. При вызове `updateByCond` новые значения будут добавлены в нужное место.
+
+:mag: Пример ошибки:
+
+```
+• In schema Sch
+  for table "tut" ->> "projects"
+  name "status1" is not defined.
+
+  Valid values are:
+    Fields: id, owner_id, title, status, tags, created_at.
+    Foreign key constraints: projects_owner_id_fkey, tasks_project_id_fkey.
+
+  Your source or target type or renaimer is probably invalid.
+```
+
+### Delete
+
+Операция удаления делается аналогично:
 
 ```haskell
-taskVal = "seq" =: (1 :: Int32)
-      :. "title" =: ("Read docs" :: Text)
-      :. "priority" =: (10 :: Int32)
+(cnt5, tDel5) <- deleteByCond (MyAnn "projects") conn $ "id" =? (2 :: Int64)
+putStrLn $ "\ndelete text: " <> T.unpack (fst tDel5)
+putStrLn $ "delete params: " <> show (snd tDel5)
+putStrLn $ "deleted: " <> show cnt5 <> " rows"
+{-
+delete text: delete from tut.projects t0 where t0.id = ?
+delete params: [SomeToField 2]
+deleted: 1 rows
+-}
 ```
 
-## Тот же `selectSch`, но через PgTag
+## Операции со связанными таблицами
 
-```haskell
-type ProjectTag =
-  "title" := Text :. "tasks_project_id_fkey" := [TaskTag]
+Pg-schema позволяет проводить операции сразу с несколькими связанными таблицами. Это набор операций: `insertJSON`, `insertJSON_`, `upsertJSON`, `upsertJSON_`. При этом операция осуществляется как единая операция в базе данных. Корректность полей и связей проверяется во время компиляции.
 
-(rows :: [ProjectTag], _) <- selectSch (AnnTut "projects") conn $ qRoot do
-  qWhere $ "title" ~~? "%Demo%"
-  qPath "tasks_project_id_fkey" do
-    qWhere $ "priority" <? (50 :: Int32)
-```
+Во всех этих операциях входные и выходные данные неявно сериализуются в json-объекты. В базе данных для выполнения операции создается временная функция (для версий с подчеркиванием - процедура) для обработки этих объектов.
 
-## Смешивание Generic и PgTag
+Операции `insert` и `upsert` отличаются только ограничениями, накладываемыми на входные данные:
+- для `insert` данные должны содержать все обязательные поля, для которых нет дефолтных значений и которые не получаются из ссылочных ограничений. Так, при вставке данных в родительскую и дочернюю таблицу, идентификаторы родительской таблицы могут генерироваться базой данных при вставке и использоваться при вставке в дочернюю таблицу.
+- для выполнения `upsert` того же ограничения достаточно, но также возможны данные, у которых есть не все обязательные поля, зато есть все ключевые значения (части ключа могут быть получены из ссылочного ограничения).
 
-Нормальный практический сценарий:
-- доменные типы и output DTO держите в Generic;
-- точечные payload (например частичный update/insert) пишите через `PgTag`.
+Выходные структуры должны быть произвольными поддеревьями входных структур.
 
-Пример идеи:
+При исполнении запроса реализуется такой алгоритм:
 
-```haskell
--- select в Generic
-(xs :: [ProjectOut], _) <- selectSch (AnnTut "projects") conn qp
-
--- update payload в PgTag
-let upd = "title" =: ("Renamed" :: Text)
-```
-
-## Когда что выбирать
-
-- **Generic**: основная модель данных приложения.
-- **PgTag**: компактные ad-hoc структуры, временные payload, быстрые эксперименты.
-- **Mixed**: самый удобный стиль для реальных проектов.
-
-## Мини-checklist после главы
-
-- [ ] Понимаете синтаксис `:=` и `=:`.
-- [ ] Можете написать `selectSch` в PgTag-стиле.
-- [ ] Понимаете, как смешивать Generic и PgTag в одном модуле.
-
-## Что дальше
-
-- Что уже умеем: использовать обе нотации и выбирать подход под задачу.
-- Что пока ограничивает: CRUD-операции еще не разобраны отдельно для plain-случая.
-- Дальше: в `05-flat-dml` разбираем plain DML (`insertSch`, `updateByCond`, `deleteByCond`).
+- На каждом уровне дерева код анализирует входные поля текущей таблицы и вычисляет,
+  какую операцию выполнить: `UPDATE`, `UPSERT` или `INSERT`.
+- Если есть информация о ключе и видно, что обязательные поля неполные, выбирается `UPDATE` по ключу.
+- Если есть все обязательные поля и ключ (с учетом полей, пришедших из parent-связей), то выбирается `UPSERT` (т.е. попытка `insert` с `on conflict update` ).
+- Во всех остальных случаях выполняется обычный `INSERT`.
+- После этого (в той же функции) обрабатываются вложенные массивы детей, и алгоритм
+  рекурсивно повторяется для дочерних таблиц.

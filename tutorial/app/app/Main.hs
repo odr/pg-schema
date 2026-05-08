@@ -77,9 +77,22 @@ select params: []
 insert text: insert into tut.projects(owner_id,title,status,tags) values (?,?,?,?) returning id
 inserted: [PgTag {unPgTag = 1},PgTag {unPgTag = 2}]
 -}
-  -- _ <- updateByCond_ (MyAnn "projects") conn ("status" =: Project_status_active) $ "id" =? (2 :: Int64)
   let
     (tUpd5 :: Text, updParams5) = updateText_ (MyAnn "projects")
       @("status" := PGEnum Sch ("tut" ->> "project_status")) ("id" =? (2 :: Int64))
-  putStrLn $ "update text: " <> T.unpack tUpd5
+  putStrLn $ "\nupdate text: " <> T.unpack tUpd5
   putStrLn $ "update params: " <> show updParams5
+{-
+update text: update tut.projects t0 set status = ? where t0.id = ?
+update params: [SomeToField 2]
+-}
+
+  (cnt5, tDel5) <- deleteByCond (MyAnn "projects") conn $ "id" =? (2 :: Int64)
+  putStrLn $ "\ndelete text: " <> T.unpack (fst tDel5)
+  putStrLn $ "delete params: " <> show (snd tDel5)
+  putStrLn $ "deleted: " <> show cnt5 <> " rows"
+{-
+delete text: delete from tut.projects t0  where t0.id = ?
+delete params: [SomeToField 2]
+deleted: 1 rows
+-}

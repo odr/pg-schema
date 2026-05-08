@@ -1,5 +1,8 @@
 # Changelog for pg-schema
 
+## 0.7.0.1
+- Bug fixing (upsertJSON_ without change fields: on conflict do nothing)
+
 ## 0.7.0.0
 
 - Bug fixing (updateText_ signature)

@@ -97,7 +97,31 @@
 
 Простейший пример добавления и чтения данных:
 
---8<-- "source/snippets/hs/DML1.md"
+```haskell
+data User = MkUser
+  { name :: Text
+  , email :: Maybe Text
+  } deriving (Show, Generic)
+...
+
+do
+  conn <- connectPostgreSQL "dbname=tutorial"
+  (cnt, tIns) <- insertSch_ (MyAnn "users") conn [MkUser "Benjy" Nothing]
+  (res, (tSel, selParams)) <- selectSch (MyAnn "users") @User conn qpEmpty
+  putStrLn $ "\ninsert text: " <> T.unpack tIns
+  putStrLn $ "inserted " <> show cnt <> " rows"
+  putStrLn $ "select text: " <> T.unpack tSel
+  putStrLn $ "select params: " <> show selParams
+  putStrLn $ "selected rows: " <> show res
+```
+
+```
+insert text: insert into tut.users(name,email) values (?,?)
+inserted 1 rows
+select text: select t0.name "name",t0.email "email" from tut.users t0
+select params: []
+selected rows: [MkUser {name = "Benjy", email = Nothing}]
+```
 
 В результате мы получаем ту же запись, которую добавили в БД. Кроме результата операции мы получаем текст запроса и список параметров запроса (пустой в данном случае).
 
@@ -173,7 +197,25 @@
 
 При помощи тегов мы описываем поля и соединяем их при помощи оператора `(:.)` из пакета `postgresql-simple`. Мы также можем использовать `PgTag`-подход вместе с `Generic`-подходом.
 
---8<-- "source/snippets/hs/DML2.md"
+```haskell
+  (res2 :: ["id" := Int64 :. "createdAt" := UTCTime :. User], tIns2) <-
+    insertSch (MyAnn "users") conn
+      [ MkUser "Quentin" (Just "quentin@example.com")
+      , MkUser "Jason" (Just "jason@example.com") ]
+  (res3 :: ["name" := Text], (tSel3, selParams3)) <- selectSch (MyAnn "users") conn qpEmpty
+  putStrLn $ "\ninsert text: " <> T.unpack tIns2
+  putStrLn $ "inserted: " <> show res2
+  putStrLn $ "select text: " <> T.unpack tSel3
+  putStrLn $ "select params: " <> show selParams3
+  putStrLn $ "selected rows: " <> show res3
+{-
+insert text: insert into tut.users(name,email) values (?,?) returning id,created_at,name,email
+inserted: [PgTag {unPgTag = 2} :. (PgTag {unPgTag = 2026-05-02 12:23:32.344437 UTC} :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),PgTag {unPgTag = 3} :. (PgTag {unPgTag = 2026-05-02 12:23:32.344437 UTC} :. MkUser {name = "Jason", email = Just "jason@example.com"})]
+select text: select t0.name "name" from tut.users t0
+select params: []
+selected rows: [PgTag {unPgTag = "Benjy"},PgTag {unPgTag = "Quentin"},PgTag {unPgTag = "Jason"}]
+-}
+```
 
 Обратите внимание, здесь мы получаем результат вставки (`insert ... returning`). Причем набор полей в ответе определяется типом результата.
 Также можно заметить, что мы пишем `createdAt`, а не `created_at`. Имена полей преобразуются ренеймером. (Т.е. с нашим ренеймером мы можем использовать любой вариант).

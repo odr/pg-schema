@@ -206,7 +206,6 @@ insertJSONTextM mapTypes mapTabs ri qfs fromFields toVars = do
           , "    " <> sWhere]
         ups0 pk
           | L.null plainsOthers = case mbSetVars of
-            Just [] -> addSemiColon ins0
             Just xs -> ins0 <> [ "    on conflict do nothing;"]
               <> ["  " <> intercalate' " " xs]
             Nothing -> ins0 <> addSemiColon ([ "    on conflict do nothing"] <> rets)
