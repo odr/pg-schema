@@ -82,6 +82,9 @@ module PgSchema.DML
   -- *** Conditions
   -- | Example: @"name" =? "John"@
   , (<?),(>?),(<=?),(>=?),(=?)
+  -- | Null-safe equality on nullable columns (@IS NOT DISTINCT FROM@).
+  -- | Example: @"suffix" =?? (Just "a")@
+  , (=??)
   -- | Example: @"name" ~~? "%joh%"@
   ,(~=?),(~~?)
   , (|||), (&&&), pnot, pnull, pin, pinArr

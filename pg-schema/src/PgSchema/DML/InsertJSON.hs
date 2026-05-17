@@ -247,11 +247,10 @@ insertJSONTextM isInsertOnly mapTypes mapTabs ri qfs fromFields toVars = do
           , "    values (" <> intercalate' ", " srcVars <> ")"]
         mbTab = mapTabs M.!? ri.tabName
         mflds = foldMap (fmap fromText . mandatoryDbNames) mbTab
-        candidates
+        keyNames
           | isInsertOnly = []
-          | otherwise = foldMap identityCandidatesFromTab mbTab
-        mbChosenKey = L.find (\kc -> P.null (fmap fromText kc L.\\ srcFlds)) candidates
-        keyNames = maybe [] (fmap fromText) mbChosenKey
+          | otherwise = F.fold $ L.find (P.null . (L.\\ srcFlds))
+              $ fmap fromText <$> foldMap identityCandidatesFromTab mbTab
         (plainsKey, plainsOthers) =
           L.partition ((`L.elem` keyNames) . fst) plains
         sWhere = "where " <> intercalate' " and "
@@ -283,10 +282,9 @@ insertJSONTextM isInsertOnly mapTypes mapTabs ri qfs fromFields toVars = do
                   \(name, _) -> name <> " = " <> "EXCLUDED." <> name) ]
             <> rets
         resolve
-          | isInsertOnly = (addSemiColon (ins0 <> rets), INS)
-          | not $ P.null $ mflds L.\\ srcFlds = (addSemiColon (upd0 <> rets), UPD)
-          | Just kc <- mbChosenKey = (ups0 (fmap fromText kc), UPS)
-          | P.null candidates = (ups0 [], UPS)
+          | not isInsertOnly, not $ P.null $ mflds L.\\ srcFlds =
+            (addSemiColon (upd0 <> rets), UPD)
+          | not isInsertOnly, not $ P.null keyNames = (ups0 keyNames, UPS)
           | otherwise = (addSemiColon (ins0 <> rets), INS)
     endLoop = "end loop;"
     processChildren = do

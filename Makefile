@@ -68,6 +68,7 @@ help:
 	@echo "  old-tutorial-run    (generate app/Sch.hs, build, run pgs-tutorial)"
 	@echo "  old-tutorial-run-debug"
 	@echo "  tut-from-scratch   (db + schema + generator + app + docs sync + docs build)"
+	@echo "  run-all            (test-run + old-tutorial-run + tut-from-scratch)"
 	@echo "  tut-db-init        (create DB if needed, apply tutorial schema)"
 	@echo "  tut-run            (run tutorial generator and app executables)"
 	@echo "  tut-sync-docs-source (generate docs/source/*.md wrappers from source files)"
@@ -178,6 +179,9 @@ tut-docs-venv:
 
 .PHONY: tut-from-scratch
 tut-from-scratch: tut-db-init tut-run tut-sync-docs-source tut-docs-build
+
+.PHONY: run-all
+run-all: test-run old-tutorial-run tut-from-scratch
 
 # --- Haddock for HLS (default project + dist-newstyle; on demand) ---
 

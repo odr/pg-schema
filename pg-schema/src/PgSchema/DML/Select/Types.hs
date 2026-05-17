@@ -233,7 +233,7 @@ data LimOffWithPath ren sch t where
 
 -- | Comparison constructors; each is paired with its corresponding operator
 -- (e.g. '(:=)' with '(=?)').
-data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like | ILike
+data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like | ILike | NotDistinctFrom
   deriving (Show, Eq, Generic)
 
 -- | Just boolean operations
@@ -248,6 +248,7 @@ showCmp = \case
   (:>)  -> ">"
   Like  -> "like"
   ILike -> "ilike"
+  NotDistinctFrom -> "is not distinct from"
 
 {- | RWS-Monad to generate condition.
 * Read: Stack of numbers of parent tables. The top is "current table"
@@ -419,6 +420,7 @@ infixl 3 &&&
 {-# INLINE (<=?) #-}
 {-# INLINE (>=?) #-}
 {-# INLINE (=?) #-}
+{-# INLINE (=??) #-}
 {-# INLINE (~=?) #-}
 {-# INLINE (~~?) #-}
 (<?),(>?),(<=?),(>=?),(=?)
@@ -428,11 +430,19 @@ x >? b  = Cmp @x (:>)  b
 x <=? b = Cmp @x (:<=) b
 x >=? b = Cmp @x (:>=) b
 x =? b = Cmp @x (:=) b
+-- | Null-safe equality (@IS NOT DISTINCT FROM@) for nullable columns only.
+(=??)
+  :: forall fld -> forall ren sch tab v
+  . ( CDBFieldNullable sch tab (ApplyRenamer ren fld)
+    , CDBValue sch tab (ApplyRenamer ren fld) v
+    )
+  => v -> Cond ren sch tab
+x =?? b = Cmp @x NotDistinctFrom b
 (~=?),(~~?)
   :: forall fld -> forall ren sch tab v. CDBValue sch tab (ApplyRenamer ren fld) v => v -> Cond ren sch tab
 x ~=? b  = Cmp @x Like b
 x ~~? b  = Cmp @x ILike b
-infix 4 <?, >?, <=?, >=?, =?, ~=?, ~~?
+infix 4 <?, >?, <=?, >=?, =?, =??, ~=?, ~~?
 
 data OrdDirection = Asc | Desc deriving Show
 

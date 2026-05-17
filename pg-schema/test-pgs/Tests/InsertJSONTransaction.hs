@@ -15,20 +15,20 @@ import PgSchema.DML
 
 type RootRec = "code" := Text :. "grp" := Int32 :. "name" := Text :. "someEmpty" := ()
 
+type RootSel = "code" := Text :. "grp" := Int32 :. "name" := Text
+
 eqRoot :: RootRec -> RootRec -> Bool
 eqRoot (a1 :. b1 :. c1) (a2 :. b2 :. c2) = (a1, b1) == (a2, b2)
 
 countRoots :: Connection -> IO Int64
 countRoots conn = do
-  [Only n] <- query_ conn "select count(*)::int8 from test_pgs.root"
-  pure n
+  [cnt] <- fst <$> selSch "root" conn qpEmpty
+  pure $ unAggr @ACount $ unPgTag @"cnt" cnt
 
 countRootsCode :: Connection -> Text -> IO Int64
 countRootsCode conn code = do
-  [Only n] <- query conn
-    "select count(*)::int8 from test_pgs.root where code = ?"
-    (Only code)
-  pure n
+  [cnt] <- fst <$> selSch "root" conn (qRoot $ qWhere $ "code" =? code)
+  pure $ unAggr @ACount $ unPgTag @"cnt" cnt
 
 clearRoots :: Connection -> IO ()
 clearRoots conn = void $ delByCond "root" conn mempty
