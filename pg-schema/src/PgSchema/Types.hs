@@ -397,8 +397,70 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
 --   synonym below).
 --
 newtype PgTag s t = PgTag { unPgTag :: t }
-  deriving stock (Show, Read, Eq, Ord, Functor, Foldable, Traversable)
+  deriving stock (Eq, Ord, Functor, Foldable, Traversable)
   deriving newtype (Semigroup, Monoid)
+
+-- | Parse legacy @PgTag { unPgTag = … }@ (and minor spacing variants).
+--
+-- >>> P.show (fst (P.head (readsPgTagLegacy "PgTag { unPgTag = 9 }" :: [(PgTag "z" Int, String)])))
+-- "\"z\" =: 9"
+readsPgTagLegacy :: Read t => ReadS (PgTag s t)
+readsPgTagLegacy r =
+  [ (PgTag v, z)
+  | ("PgTag", r1) <- lex r
+  , ("{", r2) <- lex r1
+  , ("unPgTag", r3) <- lex r2
+  , ("=", r4) <- lex r3
+  , (v, r5) <- reads r4
+  , ("}", z) <- lex r5
+  ]
+
+-- | When @s :: 'Symbol'@ and @t@ is 'Show', render like @\"field\" =: value@:
+--
+-- >>> P.show ("ownerId" =: (1 :: Int))
+-- "\"ownerId\" =: 1"
+instance {-# OVERLAPPING #-} (KnownSymbol s, Show t) =>
+  Show (PgTag (s :: Symbol) t) where
+  showsPrec p (PgTag x) =
+    showParen (p > 5) $
+      showString (P.show (TL.symbolVal (Proxy @s) :: String))
+        . showString " =: "
+        . showsPrec 6 x
+
+-- | Accept @\"field\" =: value@ or the legacy @PgTag { unPgTag = … }@ form:
+--
+-- >>> P.show (read "\"x\" =: 42" :: PgTag "x" Int)
+-- "\"x\" =: 42"
+-- >>> P.show (read "PgTag { unPgTag = 42 }" :: PgTag "x" Int)
+-- "\"x\" =: 42"
+instance {-# OVERLAPPING #-} (KnownSymbol s, Read t) =>
+  Read (PgTag (s :: Symbol) t) where
+  readsPrec p r =
+    readParen (p > 5) tryEqColon r P.++ readParen (p > 11) readsPgTagLegacy r
+    where
+      tryEqColon s =
+        [ (PgTag a, u)
+        | (expected, t) <- reads s
+        , expected == (TL.symbolVal (Proxy @s) :: String)
+        , ("=:", u0) <- lex t
+        , (a, u) <- readsPrec 6 u0
+        ]
+
+-- | If @s@ is not a 'Symbol', fall back to record-style 'Show':
+--
+-- >>> P.show (PgTag @Bool (42 :: Int))
+-- "PgTag {unPgTag = 42}"
+instance {-# OVERLAPPABLE #-} Show t => Show (PgTag s t) where
+  showsPrec p (PgTag x) =
+    showParen (p > 11) $
+      showString "PgTag {unPgTag = " . shows x . showString "}"
+
+-- | Uses only 'readsPgTagLegacy' (see there for a doctest).
+--
+-- >>> P.show (read "PgTag { unPgTag = 42 }" :: PgTag Bool Int)
+-- "PgTag {unPgTag = 42}"
+instance {-# OVERLAPPABLE #-} Read t => Read (PgTag s t) where
+  readsPrec p = readParen (p > 11) readsPgTagLegacy
 
 type s := t = PgTag s t
 infixr 5 :=
@@ -409,7 +471,6 @@ infixr 5 =:
 
 newtype UnsafeCol (flds :: [Symbol]) (expr :: Symbol) res = UnsafeCol
   { getUnsafeCol :: res }
-  -- deriving newtype (FromField, FromJSON)
 
 instance (FromField res, AllFields sch tab flds, CheckExpr flds expr) =>
   FromField (PgTag '(sch, tab :: NameNSK) (UnsafeCol flds expr res)) where

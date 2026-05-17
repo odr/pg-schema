@@ -136,15 +136,27 @@ type family RestMandatory'' sch (t :: NameNSK) (rs :: [Symbol])
 
 type RestMandatory sch t rs = RestMandatory' sch t rs (TdFlds (TTabDef sch t)) '[]
 
-type family RestPK' (rs :: [Symbol]) (fs :: [Symbol]) (res :: [Symbol]) :: [Symbol] where
-  RestPK' rs '[] res = res
-  RestPK' rs (fld ': fs) res = RestPK'' rs fs fld res (Elem' fld rs)
+type family RestKey' (rs :: [Symbol]) (fs :: [Symbol]) (res :: [Symbol]) :: [Symbol] where
+  RestKey' rs '[] res = res
+  RestKey' rs (fld ': fs) res = RestKey'' rs fs fld res (Elem' fld rs)
 
-type family RestPK'' rs fs fld (res :: [Symbol]) (b :: Bool) :: [Symbol] where
-  RestPK'' rs fs fld res 'True = RestPK' rs fs res
-  RestPK'' rs fs fld res 'False = RestPK' rs fs (fld ': res)
+type family RestKey'' rs fs fld (res :: [Symbol]) (b :: Bool) :: [Symbol] where
+  RestKey'' rs fs fld res 'True = RestKey' rs fs res
+  RestKey'' rs fs fld res 'False = RestKey' rs fs (fld ': res)
 
-type RestPK sch t rs = RestPK' rs (TdKey (TTabDef sch t)) '[]
+-- | Columns still missing from @rs@ to complete candidate key @keyCols@.
+type RestKey rs keyCols = RestKey' rs keyCols '[]
+
+type family AppendPK (pk :: [Symbol]) (uks :: [[Symbol]]) :: [[Symbol]] where
+  AppendPK '[] uks = uks
+  AppendPK pk uks = pk ': uks
+
+-- | Keys accepted by 'CheckAllMandatoryOrHasKey': PK plus every unique
+-- constraint from the schema (catalog order). Runtime key choice uses
+-- 'PgSchema.DML.InsertJSON.identityCandidatesFromTab' and its priority rules.
+type family IdentityCandidates sch tab :: [[Symbol]] where
+  IdentityCandidates sch tab =
+    AppendPK (TdKey (TTabDef sch tab)) (TdUniq (TTabDef sch tab))
 
 simpleType :: Text -> TypDef
 simpleType c = TypDef c Nothing []

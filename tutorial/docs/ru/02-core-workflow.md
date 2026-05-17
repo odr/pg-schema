@@ -210,10 +210,10 @@ selected rows: [MkUser {name = "Benjy", email = Nothing}]
   putStrLn $ "selected rows: " <> show res3
 {-
 insert text: insert into tut.users(name,email) values (?,?) returning id,created_at,name,email
-inserted: [PgTag {unPgTag = 2} :. (PgTag {unPgTag = 2026-05-02 12:23:32.344437 UTC} :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),PgTag {unPgTag = 3} :. (PgTag {unPgTag = 2026-05-02 12:23:32.344437 UTC} :. MkUser {name = "Jason", email = Just "jason@example.com"})]
+inserted: ["id" =: 2 :. ("createdAt" =: 2026-05-02 12:23:32.344437 UTC :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),"id" =: 3 :. ("createdAt" =: 2026-05-02 12:23:32.344437 UTC :. MkUser {name = "Jason", email = Just "jason@example.com"})]
 select text: select t0.name "name" from tut.users t0
 select params: []
-selected rows: [PgTag {unPgTag = "Benjy"},PgTag {unPgTag = "Quentin"},PgTag {unPgTag = "Jason"}]
+selected rows: ["name" =: "Benjy","name" =: "Quentin","name" =: "Jason"]
 -}
 ```
 

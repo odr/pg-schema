@@ -357,10 +357,10 @@ instance
   => FromRow (PgTag ann r) where
     fromRow = PgTag <$> fromRowCols @ann @colsCase @cols
 
--- >>> type AnnRel = 'Ann RenamerId PgCatalog (PGC "pg_constraint")
+-- >>> type AnnRel = 'Ann RenamerId PgCatalog 1 (PGC "pg_constraint")
 -- >>> (r1 :: [PgTag AnnRel ( ("conkey" := Int16))]) <- query_ conn "select 1::int2"
 -- >>> r1
--- [PgTag {unPgTag = PgTag {unPgTag = 1}}]
+-- [PgTag {unPgTag = "conkey" =: 1}]
 
 class ToRowCols (ann :: Ann) (colsCase :: ColsCase) (cols :: [ColInfo NameNSK]) r
   where
@@ -644,7 +644,7 @@ type family CheckRef (ann :: Ann) (fldDbName :: Symbol)
       :$$: Text "" )
   CheckRef ann fldDbName b b = ()
 --------------------------------------------------------------------------------
--- Node-level checks for Mandatory / PK (analogue of CheckNodeAll*)
+-- Node-level checks for Mandatory / upsert keys (CheckNodeAll* analogue)
 --------------------------------------------------------------------------------
 
 -- | One-table check that all mandatory fields are present
@@ -660,22 +660,33 @@ type family CheckAllMandatory' (rest :: [Symbol]) (ann :: Ann) (rs :: [Symbol]) 
     :$$: Text "Table: " :<>: ShowType tab
     :$$: Text "Missing mandatory fields: " :<>: ShowType rest )
 
--- | One-table check that all mandatory fields are present
--- or all PK fields are present
-type family CheckAllMandatoryOrHasPK (ann :: Ann) (rs :: [Symbol]) :: Constraint where
-  CheckAllMandatoryOrHasPK ('Ann ren sch d tab) rs = CheckAllMandatoryOrHasPK'
-    (RestMandatory sch tab rs) (RestPK sch tab rs) ('Ann ren sch d tab) rs
+-- | All mandatory fields in @rs@, or a full primary key, or a full eligible
+-- unique key (see 'IdentityCandidates').
+type family CheckAllMandatoryOrHasKey (ann :: Ann) (rs :: [Symbol]) :: Constraint where
+  CheckAllMandatoryOrHasKey ('Ann ren sch d tab) rs = CheckAllMandatoryOrHasKey'
+    (RestMandatory sch tab rs) (IdentityCandidates sch tab)
+    ('Ann ren sch d tab) rs
 
-type family CheckAllMandatoryOrHasPK' (restMandatory :: [Symbol]) (restPK :: [Symbol]) (ann :: Ann) (rs :: [Symbol]) :: Constraint where
-  CheckAllMandatoryOrHasPK' '[] rpk ann rs = ()
-  CheckAllMandatoryOrHasPK' rm '[] ann rs = ()
-  CheckAllMandatoryOrHasPK' rm rpk ('Ann ren sch d tab) rs = TypeError
-    (  Text "We can't upsert data because for table " :<>: ShowType tab
-    :$$: Text "either not all mandatory fields or not all PK fields are present."
-    :$$: Text "Missing mandatory fields: " :<>: ShowType rm
-    :$$: Text "Missing PK fields: " :<>: ShowType rpk )
+type family CheckAllMandatoryOrHasKey' (restMandatory :: [Symbol]) (cands :: [[Symbol]]) (ann :: Ann) (rs :: [Symbol]) :: Constraint where
+  CheckAllMandatoryOrHasKey' '[] _ ann rs = ()
+  CheckAllMandatoryOrHasKey' rm cands ann rs = HasAnyFullIdentity rs cands ann
 
-genDefunSymbols [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasPK]
+type family HasAnyFullIdentity (rs :: [Symbol]) (cands :: [[Symbol]]) ann :: Constraint where
+  HasAnyFullIdentity rs '[] ('Ann _ sch _ tab) =
+    TypeError
+      (  Text "We can't upsert data because for table " :<>: ShowType tab
+      :$$: Text "not all mandatory fields are present and no full primary or"
+      :$$: Text "unique key is covered by record fields."
+      :$$: Text "Missing mandatory fields: " :<>: ShowType (RestMandatory sch tab rs)
+      :$$: Text "Possible keys: " :<>: ShowType (IdentityCandidates sch tab) )
+  HasAnyFullIdentity rs (k ': ks) ann =
+    HasAnyFullIdentity' (RestKey rs k) rs ks ann
+
+type family HasAnyFullIdentity' (restKey :: [Symbol]) (rs :: [Symbol]) (ks :: [[Symbol]]) ann :: Constraint where
+  HasAnyFullIdentity' '[] rs ks ann = ()
+  HasAnyFullIdentity' (_ ': _) rs ks ann = HasAnyFullIdentity rs ks ann
+
+genDefunSymbols [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasKey]
 
 --------------------------------------------------------------------------------
 -- Recursive AllMandatory / PK for tree (JSON insert / upsert)
@@ -698,11 +709,11 @@ type family AllMandatoryTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   AllMandatoryTree ann r rFlds =
     WalkLevelAnn CheckAllMandatorySym0 ann (TRecordInfo ann r) rFlds
 
-type family AllMandatoryOrHasPKTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
+type family AllMandatoryOrHasKeyTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   :: Constraint where
-  AllMandatoryOrHasPKTree ann [r] rFlds = AllMandatoryOrHasPKTree ann r rFlds
-  AllMandatoryOrHasPKTree ann r rFlds =
-    WalkLevelAnn CheckAllMandatoryOrHasPKSym0 ann (TRecordInfo ann r) rFlds
+  AllMandatoryOrHasKeyTree ann [r] rFlds = AllMandatoryOrHasKeyTree ann r rFlds
+  AllMandatoryOrHasKeyTree ann r rFlds =
+    WalkLevelAnn CheckAllMandatoryOrHasKeySym0 ann (TRecordInfo ann r) rFlds
 
 --------------------------------------------------------------------------------
 -- Returning tree must be subtree of input tree (with path)

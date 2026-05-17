@@ -60,14 +60,16 @@ type InsertTreeReturning ann r r' =
 
 -- | Upsert tree without @RETURNING@.
 --
--- Check that all mandatory fields or primary keys are present in all tables in tree.
+-- Check that all mandatory fields or a full primary / eligible unique key are
+-- present at each tree node.
 -- Reference fields in the child tables are not checked - they are inserted automatically.
 type UpsertTreeNonReturning ann r =
-  (TreeSch ann, TreeIn ann r, AllMandatoryOrHasPKTree ann r '[])
+  (TreeSch ann, TreeIn ann r, AllMandatoryOrHasKeyTree ann r '[])
 
 -- | Upsert tree with @RETURNING@.
 --
--- Check that all mandatory fields or primary keys are present in all tables in tree.
+-- Check that all mandatory fields or a full primary / eligible unique key are
+-- present at each tree node.
 -- Reference fields in the child tables are not checked - they are inserted automatically.
 --
 -- It also checks that we get returnings only from the tables we upserted into.

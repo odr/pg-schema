@@ -90,6 +90,16 @@ main = do
         constraint leaf_mid2_fk foreign key (root_id, seq) references mid2 (root_id, seq) on delete cascade
       );
 
+      -- Upsert by nullable unique key when table has no NOT NULL UK.
+      create table nullable_uq_row (
+        id     serial primary key,
+        code   text not null,
+        suffix text,
+        name   text not null,
+        note   text,
+        constraint nullable_uq_row_code_suffix_uq unique (code, suffix)
+      );
+
       -- Table for array types (nullable elements, no 2D arrays).
       create table arrays (
         id             serial primary key,

@@ -1,5 +1,16 @@
 # Changelog for pg-schema
 
+## 0.7.1.0
+- Improve transaction behavior for insertJSON/upsertJSON
+- Add tests for insertJSON/upsertJSON with transactions
+- `upsertJSON` / `upsertJSON_`: optional `ON CONFLICT` targets include NOT NULL
+  unique keys (primary key still first), then nullable unique keys when the table
+  has no NOT NULL UK; `UPDATE` by key uses `IS NOT DISTINCT FROM` for key columns;
+  `IdentityCandidates` (compile-time) lists every PK/UK from the schema
+- `insertJSON` / `insertJSON_`: insert-only (plain `INSERT`, no `ON CONFLICT` or
+  `UPDATE`; duplicate keys fail at the database)
+- Rename `AllMandatoryOrHasPKTree` to `AllMandatoryOrHasKeyTree`
+
 ## 0.7.0.1
 - Bug fixing (upsertJSON_ without change fields: on conflict do nothing)
 

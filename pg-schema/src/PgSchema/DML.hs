@@ -16,7 +16,7 @@
 -- data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
 -- data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
 -- data Article = Article { id :: Int32, name :: Text } deriving Generic
--- type MyAnn tabName = 'Ann 5 CamelToSnake MySch ("dbSchema" ->> tabName)
+-- type MyAnn tabName = 'Ann CamelToSnake MySch 5 ("dbSchema" ->> tabName)
 --     ...
 -- do
 --   void $ insertJSON_ (MyAnn "orders") conn
@@ -43,10 +43,10 @@
 -- JSON internally. Child data is carried in list fields: the field’s name (after 'Renamer') names
 -- the FK constraint in the database and thus selects the child table and link;
 -- each list element supplies one child row’s columns, with nested lists for further
--- children in the same way. For strict inserts,
--- 'insertJSON' and 'insertJSON_' require every mandatory column at each node;
--- 'upsertJSON' / 'upsertJSON_' relax that so each row can be resolved by keys and
--- optional columns (see their Haddock). Plain 'insertSch' / 'insertSch_' follow the
+-- children in the same way. 'insertJSON' / 'insertJSON_' require every mandatory
+-- column and emit plain @INSERT@ only (duplicates fail in the database).
+-- 'upsertJSON' / 'upsertJSON_' relax mandatory requirements and may @UPDATE@ or
+-- @INSERT … ON CONFLICT …@ (see their Haddock). Plain 'insertSch' / 'insertSch_' follow the
 -- same safety story for flat (non-tree) rows.
 --
 -- 'selectSch' decodes each row into a Haskell type @r@ whose fields describe the
@@ -101,7 +101,7 @@ module PgSchema.DML
   , UpdateReturning, UpdateNonReturning, CRecInfo(..)
   -- ** Tree-base Insert/Upsert
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_, insertJSONText, insertJSONText_
-  , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasPKTree, TreeSch
+  , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasKeyTree, TreeSch
   , InsertTreeNonReturning, InsertTreeReturning
   , UpsertTreeNonReturning, UpsertTreeReturning, TRecordInfo
   -- ** Delete

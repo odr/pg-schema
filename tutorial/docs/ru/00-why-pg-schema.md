@@ -33,7 +33,7 @@
 
 ```haskell
 -- условный пример
-type MyAnn tab = 'Ann 5 CamelToSnake Sch ("tut" ->> tab)
+type MyAnn tab = 'Ann CamelToSnake Sch 5 ("tut" ->> tab)
 
 rows <- selectSch (MyAnn "projects") conn $ qRoot do
   qWhere $ "status" =? (ProjectStatus_active)

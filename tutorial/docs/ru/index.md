@@ -15,11 +15,6 @@
 3. `02-core-workflow` — рабочая модель и pipeline библиотеки.
 4. `03-read-with-conditions` — запросы и conditions в Generic-стиле.
 5. `04-generic-vs-pgtag` — `PgTag` и смешивание двух нотаций.
-6. `05-flat-dml` — плоский DML: insert/update/delete.
-7. `06-tree-dml` — tree DML: `insertJSON`/`upsertJSON`.
-8. `07-compiler-errors-as-guide` — ошибки компилятора и как их читать.
-9. `08-sql-introspection-and-performance` — SQL introspection, one round-trip, perf/transaction, `PgArr`.
-10. `09-edge-cases-faq` — edge cases + FAQ (`nullable`, `self-ref`, composite keys, `annDepth`, `Unsafe*`).
 
 ## Мини-checklist перед стартом
 

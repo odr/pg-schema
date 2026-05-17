@@ -10,6 +10,8 @@ import Test.Tasty.Hedgehog
 
 import Tests.BaseConverts
 import Tests.Hierarchy
+import Tests.InsertJSONTransaction
+import Tests.UpsertUniqueKey
 import Tests.Conditions
 
 prop_not_implemented :: Property
@@ -34,6 +36,26 @@ main = do
       , testProperty "Duplicate field names in root and nested structure" $ prop_hier_duplicate_names_root_nested pool
       -- , testProperty "Optional parent FK on root (dim_a_id)" $
       --     prop_hier_insert_optional_parent_dim_a pool
+      ]
+    , testGroup "InsertJSON transactions (test_dml)"
+      [ testProperty "Standalone call commits" $
+          prop_insertJSON_standalone_commits pool
+      , testProperty "Outer transaction is not committed" $
+          prop_insertJSON_respects_outer_transaction pool
+      , testProperty "BEGIN without prior writes rolls back" $
+          prop_insertJSON_begin_without_prior_writes pool
+      , testProperty "Failure rolls back standalone transaction" $
+          prop_insertJSON_rolls_back_on_failure pool
+      ]
+    , testGroup "Upsert by unique key (test_dml)"
+      [ testProperty "upsertJSON on composite unique without PK in payload" $
+          prop_upsert_json_by_composite_unique pool
+      , testProperty "upsertJSON on nullable unique without NOT NULL UK" $
+          prop_upsert_json_by_nullable_unique pool
+      , testProperty "upsertJSON UPDATE by nullable unique key" $
+          prop_upsert_json_update_by_nullable_unique pool
+      , testProperty "upsertJSON null in nullable key inserts again" $
+          prop_upsert_json_nullable_key_null_inserts_twice pool
       ]
     , testGroup "Query (test_dml)"
       [ testProperty "'Simple' queries" $ prop_cond_query pool

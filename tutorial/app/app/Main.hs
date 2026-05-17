@@ -59,9 +59,9 @@ select params: []
   putStrLn $ "selected rows: " <> show res3
 {-
 insert text: insert into tut.users(name,email) values (?,?) returning id,created_at,name,email
-inserted: [PgTag {unPgTag = 2} :. (PgTag {unPgTag = 2026-05-01 18:25:06.8636 UTC} :. MkUser {name = "William", email = Just "william@example.com"}),PgTag {unPgTag = 3} :. (PgTag {unPgTag = 2026-05-01 18:25:06.8636 UTC} :. MkUser {name = "Bendji", email = Just "bendji@example.com"})]
+inserted: ["id" =: 2 :. ("createdAt" =: 2026-05-01 18:25:06.8636 UTC :. MkUser {name = "William", email = Just "william@example.com"}),"id" =: 3 :. ("createdAt" =: 2026-05-01 18:25:06.8636 UTC :. MkUser {name = "Bendji", email = Just "bendji@example.com"})]
 select text: select t0.name "name" from tut.users t0
-selected rows: [PgTag {unPgTag = "Bruce"},PgTag {unPgTag = "William"},PgTag {unPgTag = "Bendji"}]
+selected rows: ["name" =: "Bruce","name" =: "William","name" =: "Bendji"]
 select params: []
 -}
 
@@ -75,7 +75,7 @@ select params: []
   putStrLn $ "inserted: " <> show res4
 {-
 insert text: insert into tut.projects(owner_id,title,status,tags) values (?,?,?,?) returning id
-inserted: [PgTag {unPgTag = 1},PgTag {unPgTag = 2}]
+inserted: ["id" =: 1,"id" =: 2]
 -}
   let
     (tUpd5 :: Text, updParams5) = updateText_ (MyAnn "projects")
@@ -96,3 +96,52 @@ delete text: delete from tut.projects t0  where t0.id = ?
 delete params: [SomeToField 2]
 deleted: 1 rows
 -}
+
+  let
+    treeIn =
+      [ "ownerId" =: (1 :: Int64)
+        :. "title" =: ("tree-demo" :: Text)
+        :. "status" =: Project_status_active
+        :. "tags" =: pgArr' ["nested" :: Text]
+        :. "tasksProjectIdFkey" =:
+          [ "seq" =: (1 :: Int32)
+            :. "title" =: ("task-1" :: Text)
+            :. "priority" =: (10 :: Int32)
+            :. "taskEventsProjectIdSeqFkey" =:
+              [ "eventNo" =: (1 :: Int32)
+                :. "kind" =: ("created" :: Text)
+              ]
+          ]
+      ]
+
+  -- insertJSON_ (без returning)
+  tInsJ0 <- insertJSON_ (MyAnn "projects") conn treeIn
+  putStrLn $ "\ninsertJSON_ text: " <> T.unpack tInsJ0
+
+  -- insertJSON (с returning)
+  (resJ1 :: ["id" := Int64 :. "tasksProjectIdFkey" := ["projectId" := Int64 :. "seq" := Int32]], tInsJ1) <-
+    insertJSON (MyAnn "projects") conn treeIn
+  putStrLn $ "\ninsertJSON text: " <> T.unpack tInsJ1
+  putStrLn $ "insertJSON result: " <> show resJ1
+
+  -- upsertJSON_ (без returning)
+  let
+    treeUps =
+      [ "id" =: (1 :: Int64)
+        :. "tasksProjectIdFkey" =:
+          [ "seq" =: (1 :: Int32)
+            :. "title" =: ("task-1-updated" :: Text)
+            :. "taskEventsProjectIdSeqFkey" =:
+              [ "eventNo" =: (1 :: Int32)
+                :. "kind" =: ("updated" :: Text)
+              ]
+          ]
+      ]
+  tUpsJ0 <- upsertJSON_ (MyAnn "projects") conn treeUps
+  putStrLn $ "\nupsertJSON_ text: " <> T.unpack tUpsJ0
+
+  -- upsertJSON (с returning)
+  (resUpsJ1 :: ["id" := Int64 :. "tasksProjectIdFkey" := ["seq" := Int32 :. "title" := Text]], tUpsJ1) <-
+    upsertJSON (MyAnn "projects") conn treeUps
+  putStrLn $ "\nupsertJSON text: " <> T.unpack tUpsJ1
+  putStrLn $ "upsertJSON result: " <> show resUpsJ1

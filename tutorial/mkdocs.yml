@@ -2,8 +2,8 @@ site_name: pg-schema tutorial
 site_description: Practical guide to pg-schema (RU first, EN later)
 repo_url: https://github.com/odr/pg-schema
 theme:
-  # name: material
-  name: readthedocs
+  name: material
+  # name: readthedocs
   language: ru
   features:
     - navigation.instant
@@ -37,11 +37,6 @@ nav:
       - Рабочая модель pg-schema: ru/02-core-workflow.md
       - DML операции: ru/03-dml-operations.md
       - Select: ru/04-select.md
-      - Плоский DML (insert/update/delete): ru/05-flat-dml.md
-      - Tree DML (insertJSON/upsertJSON): ru/06-tree-dml.md
-      - Ошибки компилятора как guide: ru/07-compiler-errors-as-guide.md
-      - SQL introspection и производительность: ru/08-sql-introspection-and-performance.md
-      - Edge cases и FAQ: ru/09-edge-cases-faq.md
   - English:
       - Introduction: en/index.md
 
