@@ -103,7 +103,8 @@ module PgSchema.DML
   , updateByCond, updateByCond_, updateText, updateText_
   , UpdateReturning, UpdateNonReturning, CRecInfo(..)
   -- ** Tree-base Insert/Upsert
-  , insertJSON, insertJSON_, upsertJSON, upsertJSON_, insertJSONText, insertJSONText_
+  , insertJSON, insertJSON_, upsertJSON, upsertJSON_
+  , insertJSONText, insertJSONText_, upsertJSONText, upsertJSONText_
   , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasKeyTree, TreeSch
   , InsertTreeNonReturning, InsertTreeReturning
   , UpsertTreeNonReturning, UpsertTreeReturning, TRecordInfo

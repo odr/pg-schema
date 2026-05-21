@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 module PgSchema.DML.InsertJSON
   ( insertJSON, insertJSON_, upsertJSON, upsertJSON_
-  , insertJSONText, insertJSONText_ ) where
+  , insertJSONText, insertJSONText_, upsertJSONText, upsertJSONText_ ) where
 
 import Control.Monad
 import Control.Monad.RWS
@@ -145,6 +145,19 @@ insertJSONText :: forall ann -> forall r r'.
   , IsString s, Monoid s, Ord s ) => s
 insertJSONText ann @r @r' =
   insertJSONText' True (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+    (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
+
+upsertJSONText_ :: forall ann -> forall r s.
+  (IsString s, Monoid s, Ord s, TreeSch ann, CRecInfo ann r) => s
+upsertJSONText_ ann @r =
+  insertJSONText' False (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+    (getRecordInfo @ann @r) []
+
+upsertJSONText :: forall ann -> forall r r'.
+  ( TreeSch ann, CRecInfo ann r, CRecInfo ann r'
+  , IsString s, Monoid s, Ord s ) => s
+upsertJSONText ann @r @r' =
+  insertJSONText' False (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
 
 -- | @isInsertOnly@: plain @INSERT@ only ('insertJSON'); 'False' enables upsert

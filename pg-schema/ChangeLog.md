@@ -1,5 +1,8 @@
 # Changelog for pg-schema
 
+## 0.7.1.1
+- Add upsertJSONText, upsertJSONText_
+
 ## 0.7.1.0
 - Condition DSL: `(=??)` on nullable columns generates SQL
   `IS NOT DISTINCT FROM` (same null-safe key equality as upsertJSON)
