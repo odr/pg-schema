@@ -1,5 +1,8 @@
 # Changelog for pg-schema
 
+## 0.7.1.2
+- Fix bug with aggregates (Min/Max/Sum/Avg)
+
 ## 0.7.1.1
 - Add upsertJSONText, upsertJSONText_
 

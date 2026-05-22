@@ -165,6 +165,10 @@ type family ColFI (ann :: Ann) (fld :: Symbol) (fi :: RecFieldK NameNSK) t
         (ApplyRenamer ren fld) ('RFToHere fromTab refs) ]
     ColFI ann fld ('RFSelfRef tab refs) [t] = ColFI ann fld ('RFToHere tab refs) [t]
     ColFI ann fld ('RFSelfRef tab refs) t = ColFI ann fld ('RFFromHere tab refs) t
+    ColFI ('Ann ren sch d tab) fld ('RFPlain fd) (Aggr af t) =
+      '[ 'ColInfo '(fld, 0) (Aggr af t) (ApplyRenamer ren fld) ('RFAggr fd af 'True) ]
+    ColFI ('Ann ren sch d tab) fld ('RFPlain fd) (Aggr' af t) =
+      '[ 'ColInfo '(fld, 0) (Aggr' af t) (ApplyRenamer ren fld) ('RFAggr fd af 'False) ]
     ColFI ('Ann ren sch d _) fld fd t = '[ 'ColInfo '(fld, 0) t (ApplyRenamer ren fld) fd ]
 --------------------------------------------------------------------------------
 -- GCols (closed TF: Generic Rep)

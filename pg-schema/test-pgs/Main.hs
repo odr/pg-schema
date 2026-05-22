@@ -13,6 +13,7 @@ import Tests.Hierarchy
 import Tests.InsertJSONTransaction
 import Tests.UpsertUniqueKey
 import Tests.Conditions
+import Tests.Aggregates
 
 prop_not_implemented :: Property
 prop_not_implemented = property $ fail "not implemented"
@@ -60,6 +61,10 @@ main = do
     , testGroup "Query (test_dml)"
       [ testProperty "'Simple' queries" $ prop_cond_query pool
       , testProperty "Conditions by duplicated path" $ prop_cond_by_dup_path pool
+      ]
+    , testGroup "Aggregates (test_dml)"
+      [ testProperty "Aggr' on plain column is not in GROUP BY" $
+          prop_selectText_aggr_plain_not_in_group_by pool
       ]
     --   , testProperty "Cond: Child / Parent exists" prop_not_implemented
     --   , testProperty "Conditions by path (root vs nested path)" prop_not_implemented
