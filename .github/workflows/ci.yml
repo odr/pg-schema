@@ -1,0 +1,193 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    - cron: '0 6 1,7,13,19,25 * *'
+
+jobs:
+  build:
+    name: build (${{ matrix.profile }}, GHC ${{ matrix.ghc }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ['9.10.3', '9.12.4', '9.14.1']
+        profile: [full, minimal]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: haskell-actions/setup@v2
+        id: haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: '3.16'
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev libgmp-dev
+
+      - name: Configure project for CI
+        run: |
+          printf '%s\n' \
+            "with-compiler: ghc-${{ matrix.ghc }}" \
+            > cabal.project.local
+
+      - name: Set package flag constraints
+        id: flags
+        shell: bash
+        run: |
+          case "${{ matrix.profile }}" in
+            full)
+              echo 'constraint=pg-schema +time +uuid +case-insensitive +arbitrary +flat +hashable' \
+                >> "$GITHUB_OUTPUT"
+              ;;
+            minimal)
+              echo 'constraint=pg-schema -time -uuid -case-insensitive -arbitrary -flat -hashable' \
+                >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "unknown profile: ${{ matrix.profile }}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Freeze dependencies fingerprint
+        id: plan
+        shell: bash
+        run: |
+          cabal \
+            --project-file=cabal.project.hackage \
+            --with-compiler="ghc-${{ matrix.ghc }}" \
+            --constraint="${{ steps.flags.outputs.constraint }}" \
+            freeze
+          echo "hash=$(sha256sum cabal.project.freeze | cut -c1-16)" \
+            >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.haskell.outputs.cabal-store }}
+          key: >-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.profile }}-plan-${{
+            steps.plan.outputs.hash }}
+          restore-keys: |
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.profile }}-plan-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-
+
+      - name: Build pg-schema
+        shell: bash
+        run: |
+          cabal \
+            --project-file=cabal.project.hackage \
+            --with-compiler="ghc-${{ matrix.ghc }}" \
+            --constraint="${{ steps.flags.outputs.constraint }}" \
+            build --only-dependencies pg-schema
+          cabal \
+            --project-file=cabal.project.hackage \
+            --with-compiler="ghc-${{ matrix.ghc }}" \
+            --constraint="${{ steps.flags.outputs.constraint }}" \
+            build pg-schema
+
+      - uses: actions/cache/save@v4
+        if: success()
+        with:
+          path: ${{ steps.haskell.outputs.cabal-store }}
+          key: >-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.profile }}-plan-${{
+            steps.plan.outputs.hash }}
+
+  test:
+    name: test (hackage, GHC ${{ matrix.ghc }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ['9.10.3', '9.12.4', '9.14.1']
+
+    env:
+      PG_CONN: >-
+        dbname=schema_test host=localhost user=postgres password=postgres
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: haskell-actions/setup@v2
+        id: haskell
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: '3.16'
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev libgmp-dev
+
+      - name: Configure project for CI
+        run: |
+          printf '%s\n' \
+            "with-compiler: ghc-${{ matrix.ghc }}" \
+            > cabal.project.local
+
+      - name: Freeze dependencies fingerprint
+        id: plan
+        shell: bash
+        run: |
+          cabal \
+            --project-file=cabal.project.hackage \
+            --with-compiler="ghc-${{ matrix.ghc }}" \
+            freeze
+          echo "hash=$(sha256sum cabal.project.freeze | cut -c1-16)" \
+            >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.haskell.outputs.cabal-store }}
+          key: >-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-hackage-plan-${{
+            steps.plan.outputs.hash }}
+          restore-keys: |
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-hackage-plan-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-
+
+      - name: Build dependencies only
+        shell: bash
+        run: |
+          cabal \
+            --project-file=cabal.project.hackage \
+            --with-compiler="ghc-${{ matrix.ghc }}" \
+            build --only-dependencies pg-schema
+
+      - name: Create test database
+        run: |
+          PGPASSWORD=postgres createdb -h localhost -U postgres schema_test \
+            || true
+
+      - name: Run tests
+        shell: bash
+        run: |
+          make test-run \
+            CABAL='cabal --project-file=cabal.project.hackage --with-compiler=ghc-${{ matrix.ghc }}'
+
+      - uses: actions/cache/save@v4
+        if: success()
+        with:
+          path: ${{ steps.haskell.outputs.cabal-store }}
+          key: >-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-hackage-plan-${{
+            steps.plan.outputs.hash }}

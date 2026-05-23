@@ -1,3 +1,5 @@
+cabal.project.freeze
+cabal.project.local
 .stack-work/
 *~
 *.bak

@@ -307,7 +307,7 @@ insertJSONTextM mode mapTypes mapTabs ri qfs fromFields toVars parentDbKeys = do
         let
           qfs' = foldMap ((.fields) . snd)
             $ L.find (\(qc, _) -> qc.jsonName == child.jsonName) qchildren
-        let parentKeys = nubBy (==) $ P.map (.fromName) child.info
+        let parentKeys = nub $ P.map (.fromName) child.info
         mbArr <- local (second $ const n') $ insertJSONTextM mode
           mapTypes mapTabs
           childRi qfs' (fromText . (.fromName) <$> child.info)

@@ -2,7 +2,6 @@
 module PgSchema.DML.UpsertByKey
   ( upsertByKey, upsertByKey_, upsertByKeyText, upsertByKeyText_ ) where
 
-import Data.Bifunctor
 import Control.Monad (forM)
 import Data.List as L
 import Data.Maybe
@@ -84,12 +83,7 @@ keyedOp ann @r =
 
 upsertByKeyStmt
   :: forall ann -> forall r. (CRecInfo ann r, CSchema (AnnSch ann)) => Text
-upsertByKeyStmt ann @r =
-  case keyedParts ann @r of
-    Left ins -> ins
-    Right (upd, ups) -> case ups of
-      Just u -> u
-      Nothing -> upd
+upsertByKeyStmt ann @r = either id (uncurry fromMaybe) $ keyedParts ann @r
 
 keyedParts
   :: forall ann -> forall r. (CRecInfo ann r, CSchema (AnnSch ann)) => Either Text (Text, Maybe Text)
@@ -113,7 +107,7 @@ keyedParts ann @r =
       | L.null plainsOthers =
         ins <> " on conflict do nothing"
       | otherwise =
-        ins <> upsertOnConflict plainsKey plainsOthers keyNames
+        ins <> upsertOnConflict plainsOthers keyNames
     nameVal n v = n <> " = " <> v
   in case resolveKeyedOp ti srcFlds keyNames of
     KeyedIns -> Left ins

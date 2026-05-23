@@ -11,7 +11,7 @@ import Data.Function (on)
 import Data.Functor
 import Data.Int (Int32, Int64)
 import Data.List qualified as L
-import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe, catMaybes)
 import Data.Pool as Pool
 import Data.Proxy (Proxy(..))
 import Data.Text (Text)
@@ -127,7 +127,7 @@ prop_hier_insert_simple_fk pool = withTests 30 $ property do
       selSch "root" conn qpEmpty
     pure (outIns', outSel1', outUps', outSel2')
   assert $ all isJust outUps && not (null outUps)
-  let outUpsBare = [x | Just x <- outUps]
+  let outUpsBare = catMaybes outUps
   L.sort (inIns <&> \(ms :. _) -> L.length ms) ===
     L.sort (outIns <&> \(_ :. ms) -> L.length ms)
   L.length outIns === L.length outSel1
@@ -161,7 +161,7 @@ prop_hier_insert_composite_fk pool = withTests 30 $ property do
       selSch "root" conn qpEmpty
     pure (outIns', outSel1', outUps', outSel2')
   assert $ all isJust outUps && not (null outUps)
-  let outUpsBare = [x | Just x <- outUps]
+  let outUpsBare = catMaybes outUps
   L.sort (inIns <&> \(ms :. _) -> L.length ms) ===
     L.sort (outIns <&> \(_ :. ms) -> L.length ms)
   L.length outIns === L.length outSel1
