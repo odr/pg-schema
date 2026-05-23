@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 module PgSchema.DML.InsertJSON
-  ( insertJSON, insertJSON_, upsertJSON, upsertJSON_
-  , insertJSONText, insertJSONText_, upsertJSONText, upsertJSONText_ ) where
+  ( InsertMode(..)
+  , insertJSON, insertJSON_, upsertJSON, upsertJSON_
+  , updateJSON, updateJSON_
+  , insertJSONText, insertJSONText_, upsertJSONText, upsertJSONText_
+  , updateJSONText, updateJSONText_ ) where
 
 import Control.Monad
 import Control.Monad.RWS
@@ -18,6 +21,7 @@ import Data.Text as T hiding (any)
 import Data.Traversable
 import PgSchema.Ann
 import PgSchema.DML.Insert.Types
+import PgSchema.DML.KeyedWrite (mandatoryDbNames, pickKeyNames)
 import Database.PostgreSQL.LibPQ qualified as PQ
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.Internal (withConnection)
@@ -26,6 +30,9 @@ import PgSchema.Types
 import Data.String
 import PgSchema.Utils.Internal
 import Prelude as P
+
+
+data InsertMode = Insert | Upsert | Update deriving (Eq, Show)
 
 
 -- | Insert records into a table and its children using JSON data internally.
@@ -39,66 +46,51 @@ import Prelude as P
 insertJSON
   :: forall ann -> forall r r'. InsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
-insertJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs True
+insertJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs Insert
 
 -- | Like 'insertJSON', but does not return rows.
 --
 insertJSON_
   :: forall ann -> forall r. InsertTreeNonReturning ann r
   => Connection -> [r] -> IO Text
-insertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs True
+insertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Insert
 
 -- | Upsert a forest of rows into the root table and its /child/ tables in one
 -- round-trip, using JSON inside PostgreSQL (same pipeline as 'insertJSON').
 --
--- __Input shape (@r@):__ a record tree that may contain the root table’s columns
--- and nested /child/ branches (one-to-many from the root downward). There are no
--- nested /parent/ branches: parent keys are implied by the tree you send, not by
--- embedding parent rows inside children.
---
--- __Output shape (@r'@):__ a record tree whose graph of nested tables is a
--- /subgraph/ of the input: the same tables can appear, but you choose which
--- columns (and which levels) appear in the result—whatever is available through
--- the generated @RETURNING@/result projection. Field sets may differ from @r@;
--- relation structure cannot grow beyond what you sent in.
---
--- __What to supply at each node:__ at every level, each row must either include
--- all mandatory columns (for columns that are mandatory in the schema /sense of
--- this API/) or, alternatively, enough columns to identify an existing row via
--- the primary key or a unique constraint (including constraints with nullable
--- columns when the table has no @NOT NULL@ unique constraint besides PK).
--- If a nullable key column is @null@ in the payload, conflict/update semantics
--- follow PostgreSQL (see haddock on 'upsertJSON').
--- Foreign-key columns that are filled in by the parent level (for example
--- after an auto-generated id on insert) do /not/ need to be present on the child
--- payload.
---
--- __Insert vs update vs upsert per row:__ the engine picks one of @INSERT@,
--- @UPDATE@, or @UPSERT@ from the keys and mandatory fields you provide:
---
--- * all mandatory fields present and no full identity key  →  @INSERT@
--- * identity (PK or first eligible unique whose columns are all in the node), not all mandatory  →  @UPDATE@
--- * identity present /and/ all mandatory fields  →  @UPSERT@ (@INSERT … ON CONFLICT …@)
---
--- 'insertJSON' shares this execution path but is insert-only at runtime and
--- requires /every/ mandatory field at compile time. 'upsertJSON' relaxes both.
+-- See Haddock on previous versions for input/output shape and per-row @INSERT@ /
+-- @UPDATE@ / @UPSERT@ selection. Returning list elements use bare rows where the
+-- input node has all mandatory fields, and @Maybe@ otherwise ('ReturningMatchesUpsert').
 upsertJSON
   :: forall ann -> forall r r'. UpsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
-upsertJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs False
+upsertJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs Upsert
 
 -- | Like 'upsertJSON', but does not return rows.
 --
 upsertJSON_
   :: forall ann -> forall r. UpsertTreeNonReturning ann r
   => Connection -> [r] -> IO Text
-upsertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs False
+upsertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Upsert
+
+-- | Update an existing forest (never @INSERT@). Every list row in the returning
+-- type must be @Maybe@ ('ReturningMatchesUpdate').
+updateJSON
+  :: forall ann -> forall r r'. UpdateTreeReturning ann r r'
+  => Connection -> [r] -> IO ([r'], Text)
+updateJSON ann @r @r' conn rs = insertJSONImpl ann @r @r' conn rs Update
+
+-- | Like 'updateJSON', but does not return rows.
+--
+updateJSON_
+  :: forall ann -> forall r. UpdateTreeNonReturning ann r
+  => Connection -> [r] -> IO Text
+updateJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Update
 
 insertJSONImpl
   :: forall ann -> forall r r'. (TreeSch ann, TreeIn ann r, TreeOut ann r')
-  => Connection -> [r] -> Bool -> IO ([r'], Text)
-  -- ^ @Bool@ is @isInsertOnly@.
-insertJSONImpl ann @r @r' conn rs isInsertOnly = withTransactionIfNot conn do
+  => Connection -> [r] -> InsertMode -> IO ([r'], Text)
+insertJSONImpl ann @r @r' conn rs mode = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
   [Only res] <- let q = "select pg_temp.__ins(?)" in
     traceShow' q
@@ -107,7 +99,7 @@ insertJSONImpl ann @r @r' conn rs isInsertOnly = withTransactionIfNot conn do
   void $ execute_ conn "drop function pg_temp.__ins"
   pure (unPgTag @ann @r' <$> res, sql)
   where
-    sql = insertJSONText' isInsertOnly (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+    sql = insertJSONText' mode (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
       (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
 
 withTransactionIfNot :: Connection -> IO a -> IO a
@@ -125,49 +117,60 @@ withTransactionIfNot conn act = do
 
 insertJSONImpl_
   :: forall ann -> forall r. (TreeSch ann, TreeIn ann r)
-  => Connection -> [r] -> Bool -> IO Text
-insertJSONImpl_ ann @r conn rs isInsertOnly = withTransactionIfNot conn do
+  => Connection -> [r] -> InsertMode -> IO Text
+insertJSONImpl_ ann @r conn rs mode = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
   void $ execute conn "call pg_temp.__ins(?)" $ Only $ PgTag @ann @r <$> rs
   sql <$ execute_ conn "drop procedure pg_temp.__ins"
   where
-    sql = insertJSONText' isInsertOnly (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+    sql = insertJSONText' mode (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
       (getRecordInfo @ann @r) []
 
 insertJSONText_ :: forall ann -> forall r s.
   (IsString s, Monoid s, Ord s, TreeSch ann, CRecInfo ann r) => s
 insertJSONText_ ann @r =
-  insertJSONText' True (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+  insertJSONText' Insert (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) []
 
 insertJSONText :: forall ann -> forall r r'.
   ( TreeSch ann, CRecInfo ann r, CRecInfo ann r'
   , IsString s, Monoid s, Ord s ) => s
 insertJSONText ann @r @r' =
-  insertJSONText' True (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+  insertJSONText' Insert (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
 
 upsertJSONText_ :: forall ann -> forall r s.
   (IsString s, Monoid s, Ord s, TreeSch ann, CRecInfo ann r) => s
 upsertJSONText_ ann @r =
-  insertJSONText' False (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+  insertJSONText' Upsert (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) []
 
 upsertJSONText :: forall ann -> forall r r'.
   ( TreeSch ann, CRecInfo ann r, CRecInfo ann r'
   , IsString s, Monoid s, Ord s ) => s
 upsertJSONText ann @r @r' =
-  insertJSONText' False (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+  insertJSONText' Upsert (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
 
--- | @isInsertOnly@: plain @INSERT@ only ('insertJSON'); 'False' enables upsert
--- key resolution ('upsertJSON').
+updateJSONText_ :: forall ann -> forall r s.
+  (IsString s, Monoid s, Ord s, TreeSch ann, CRecInfo ann r) => s
+updateJSONText_ ann @r =
+  insertJSONText' Update (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+    (getRecordInfo @ann @r) []
+
+updateJSONText :: forall ann -> forall r r'.
+  ( TreeSch ann, CRecInfo ann r, CRecInfo ann r'
+  , IsString s, Monoid s, Ord s ) => s
+updateJSONText ann @r @r' =
+  insertJSONText' Update (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
+    (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
+
 insertJSONText'
   :: forall s. (IsString s, Monoid s, Ord s)
-  => Bool
+  => InsertMode
   -> M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo Text
   -> [FieldInfo Text] -> s
-insertJSONText' isInsertOnly mapTypes mapTabs ir qfs = unlines'
+insertJSONText' mode mapTypes mapTabs ir qfs = unlines'
   [ maybe
     "create or replace procedure pg_temp.__ins(data_0 jsonb) as $$"
     (const "create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$")
@@ -181,13 +184,10 @@ insertJSONText' isInsertOnly mapTypes mapTabs ir qfs = unlines'
   , "$$ language plpgsql;" ]
   where
     (mbRes, (decl, body)) =
-      evalRWS (insertJSONTextM isInsertOnly mapTypes mapTabs ir qfs [] [])
+      evalRWS (insertJSONTextM mode mapTypes mapTabs ir qfs [] [] [])
         ("  ",0) 0
 
 type MonadInsert s = RWS (s, Int) ([s],[s]) Int
--- R: (leading spaces to format code, number of table in tree)
--- W: (lines of declarations, lines of function body)
--- S: maximum number of table in tree "in use"
 
 data OP = INS | UPD | UPS deriving (Eq, Show)
 
@@ -197,40 +197,37 @@ data Field v = Field
   , info :: v }
   deriving (Eq, Show)
 
--- | Runtime conflict/update targets: PK, then @NOT NULL@ unique constraints,
--- then nullable unique constraints only when the table has no @NOT NULL@ UK.
--- Compile-time checks use all keys from 'IdentityCandidates'.
-identityCandidatesFromTab :: TabInfo -> [[Text]]
-identityCandidatesFromTab ti =
-  P.filter (not . P.null) [ti.tiDef.tdKey] <> notNullUks <> nullUks
-  where
-    isNullable = (== Just True) . fmap (.fdNullable) . (`M.lookup` ti.tiFlds)
-    (nullUks, notNullUks) = L.partition (P.any isNullable) ti.tiDef.tdUniq
-
-mandatoryDbNames :: TabInfo -> [Text]
-mandatoryDbNames ti =
-  M.keys $ M.filter (\fd -> not $ fd.fdNullable || fd.fdHasDefault) ti.tiFlds
-
 insertJSONTextM
   :: forall s. (IsString s, Monoid s, Ord s)
-  => Bool
+  => InsertMode
   -> M.Map NameNS TypDef -> M.Map NameNS TabInfo -> RecordInfo Text
-  -> [FieldInfo Text] -> [s] -> [s] -> MonadInsert s (Maybe s)
-insertJSONTextM isInsertOnly mapTypes mapTabs ri qfs fromFields toVars = do
+  -> [FieldInfo Text] -> [s] -> [s] -> [Text] -> MonadInsert s (Maybe s)
+insertJSONTextM mode mapTypes mapTabs ri qfs fromFields toVars parentDbKeys = do
   (spaces, n) <- ask
   let
     sn = show' n
     dataN = "data_" <> sn
     rowN  = "row_" <> sn
+    foundN = "found_" <> sn
     mbArrN = ("arr_" <> sn) <$ guard (not $ P.null qfs)
     decs = (if n == 0 then P.id else (dataN <> " jsonb;" :))
-      [rowN <> " record;"]
+      (foundN <> " boolean;" : [rowN <> " record;"])
       <> foldMap (pure . (<> " jsonb[];")) mbArrN <> qretDecls
     qretDecls = qretPairs <&> \(fld, typ) -> fld <> sn <> " " <> typ <> "; "
     initArray = foldMap (pure . (<> ":= '{}';")) mbArrN
     startLoop =
       ["for " <> rowN <> " in select * from jsonb_array_elements("
       <> dataN <> ")", "loop"]
+    keyOnlyInput =
+      let
+        mbTab = mapTabs M.!? ri.tabName
+        mflds = foldMap (fmap fromText . mandatoryDbNames) mbTab
+        srcFldsLoc = parentDbKeys <> ((.dbName) <$> iplains)
+      in not $ P.null $ mflds L.\\ srcFldsLoc
+    keyNamesTxt = case mapTabs M.!? ri.tabName of
+      Just ti ->
+        fromMaybe [] $ pickKeyNames ti (parentDbKeys <> ((.dbName) <$> iplains))
+      Nothing -> []
     (ins, op) = resolve
       where
         jsonFld ip = case mapTypes M.!? ip.info.fdType of
@@ -258,12 +255,7 @@ insertJSONTextM isInsertOnly mapTypes mapTabs ri qfs fromFields toVars = do
         ins0 =
           [ "  insert into " <> qualTabName <> "(" <> intercalate' ", " srcFlds <> ")"
           , "    values (" <> intercalate' ", " srcVars <> ")"]
-        mbTab = mapTabs M.!? ri.tabName
-        mflds = foldMap (fmap fromText . mandatoryDbNames) mbTab
-        keyNames
-          | isInsertOnly = []
-          | otherwise = F.fold $ L.find (P.null . (L.\\ srcFlds))
-              $ fmap fromText <$> foldMap identityCandidatesFromTab mbTab
+        keyNames = fromText <$> keyNamesTxt
         (plainsKey, plainsOthers) =
           L.partition ((`L.elem` keyNames) . fst) plains
         sWhere = "where " <> intercalate' " and "
@@ -284,20 +276,25 @@ insertJSONTextM isInsertOnly mapTypes mapTabs ri qfs fromFields toVars = do
               <> ["  " <> intercalate' " " xs]
             Nothing -> ins0 <> addSemiColon ([ "    on conflict do nothing"] <> rets)
               <> ["  if not found then"
-                , "    select " <> intercalate' ", " qretFlds <> " into " <> intercalate' ", " qretVars
+                , "    select " <> intercalate' ", " qretFlds <> " into "
+                  <> intercalate' ", " qretVars
                 , "      from " <> qualTabName
                 , "      " <> sWhere <> ";"
                 , "  end if;"]
           | P.null conflictCols = addSemiColon ins0
           | otherwise = addSemiColon $ ins0
             <> [ "    on conflict (" <> intercalate' ", " conflictCols <> ")"
-              , "      do update set " <> intercalate' ", " (plainsOthers <&>
-                  \(name, _) -> name <> " = " <> "EXCLUDED." <> name) ]
+              , "      do update set " <> intercalate' ", "
+                  (plainsOthers <&> \(name, _) -> name <> " = EXCLUDED." <> name) ]
             <> rets
         resolve
-          | not isInsertOnly, not $ P.null $ mflds L.\\ srcFlds =
+          | mode == Update =
             (addSemiColon (upd0 <> rets), UPD)
-          | not isInsertOnly, not $ P.null keyNames = (ups0 keyNames, UPS)
+          | mode == Insert =
+            (addSemiColon (ins0 <> rets), INS)
+          | keyOnlyInput =
+            (addSemiColon (upd0 <> rets), UPD)
+          | not $ P.null keyNamesTxt = (ups0 keyNames, UPS)
           | otherwise = (addSemiColon (ins0 <> rets), INS)
     endLoop = "end loop;"
     processChildren = do
@@ -310,27 +307,55 @@ insertJSONTextM isInsertOnly mapTypes mapTabs ri qfs fromFields toVars = do
         let
           qfs' = foldMap ((.fields) . snd)
             $ L.find (\(qc, _) -> qc.jsonName == child.jsonName) qchildren
-        mbArr <- local (second $ const n') $ insertJSONTextM isInsertOnly
+        let parentKeys = nubBy (==) $ P.map (.fromName) child.info
+        mbArr <- local (second $ const n') $ insertJSONTextM mode
           mapTypes mapTabs
           childRi qfs' (fromText . (.fromName) <$> child.info)
           ((<> sn) . fromText . (.toName) <$> child.info)
+          parentKeys
         pure (fromText child.jsonName, mbArr)
+      pure arrs
+    appendReturning arrN arrs =
       let
-        appendArray = foldMap (\arrN -> pure $ arrN <> ":= array_append("
-          <> arrN <> ", jsonb_build_object(" <> jsonFlds <> "));") mbArrN
-          where
-            jsonFlds = intercalate' ", "
-              $ (qplains <&> \qp -> "'" <> fromText qp.jsonName
-              <> "', " <> fromText qp.dbName <> sn)
-              <> (arrs <&> \(jsonN, arr) -> "'" <> jsonN <> "', to_jsonb(" <> arr <> ")")
-      tell (mempty, fmap (spaces' <>) appendArray)
-  tell (decs, fmap (spaces <>) $ initArray <> startLoop <> ins)
-  case op of
+        jsonFlds = intercalate' ", "
+          $ (qplains <&> \qp -> "'" <> fromText qp.jsonName
+            <> "', " <> fromText qp.dbName <> sn)
+          <> (arrs <&> \(jsonN, arr) -> "'" <> jsonN <> "', to_jsonb(" <> arr <> ")")
+        obj = "jsonb_build_object(" <> jsonFlds <> ")"
+      in case (mode, op) of
+        (Update, UPD) ->
+          [ spaces <> "  if " <> foundN <> " then"
+          , spaces <> "    " <> arrN <> " := array_append(" <> arrN <> ", " <> obj <> ");"
+          , spaces <> "  else"
+          , spaces <> "    " <> arrN <> " := array_append("
+            <> arrN <> ", 'null'::jsonb);"
+          , spaces <> "  end if;" ]
+        (Upsert, UPD)
+          | keyOnlyInput ->
+            [ spaces <> "  if " <> foundN <> " then"
+            , spaces <> "    " <> arrN <> " := array_append(" <> arrN <> ", " <> obj <> ");"
+            , spaces <> "  else"
+            , spaces <> "    " <> arrN <> " := array_append("
+              <> arrN <> ", 'null'::jsonb);"
+            , spaces <> "  end if;" ]
+          | otherwise ->
+            [ spaces <> "  if " <> foundN <> " then"
+            , spaces <> "    " <> arrN <> " := array_append(" <> arrN <> ", " <> obj <> ");"
+            , spaces <> "  end if;" ]
+        _ ->
+          [ spaces <> "  " <> arrN <> " := array_append(" <> arrN <> ", " <> obj <> ");" ]
+  tell (decs, fmap (spaces <>) $ initArray <> startLoop <> ins
+    <> [spaces <> "  " <> foundN <> " := found;"])
+  arrs <- case op of
     UPD -> do
       tell (mempty, pure $ spaces <> "  if found then")
-      local (first ("    " <>)) processChildren
+      ch <- local (first ("    " <>)) processChildren
       tell (mempty, pure $ spaces <> "  end if;")
+      pure ch
     _ -> local (first ("  " <>)) processChildren
+  case mbArrN of
+    Nothing -> pure ()
+    Just arrN -> tell (mempty, appendReturning arrN arrs)
   tell (mempty, pure $ spaces <> endLoop)
   pure mbArrN
   where

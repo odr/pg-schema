@@ -11,7 +11,7 @@ import Data.Function (on)
 import Data.Functor
 import Data.Int (Int32, Int64)
 import Data.List qualified as L
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Pool as Pool
 import Data.Proxy (Proxy(..))
 import Data.Text (Text)
@@ -120,25 +120,26 @@ prop_hier_insert_simple_fk pool = withTests 30 $ property do
       insJSON "root" conn inIns
     (fst -> (outSel1' :: ["id" := Int32 :. "mid1RootFk" := [Mid1Rec] :. RootRec])) <-
       selSch "root" conn qpEmpty
-    (outUps' :: ["id" := Int32 :. "mid1_root_fk" := [Mid1Rec] :. RootRec], _txt) <-
+    (outUps' :: [Maybe ("id" := Int32 :. "mid1_root_fk" := [Mid1Rec] :. RootRec)], _txt) <-
       upsJSON "root" conn $ outIns' <&> \(ir :. PgTag ms) -> "mid1_root_fk" =:
         (ms <&> \(i :. flag :. x) -> i :. (not <$> flag) :. x) :. ir
-    -- T.putStrLn $ "\n\n" <> txt <> "\n\n"
     (fst -> (outSel2' :: ["id" := Int32 :. "mid1_root_fk" := [Mid1Rec] :. RootRec])) <-
       selSch "root" conn qpEmpty
     pure (outIns', outSel1', outUps', outSel2')
+  assert $ all isJust outUps && not (null outUps)
+  let outUpsBare = [x | Just x <- outUps]
   L.sort (inIns <&> \(ms :. _) -> L.length ms) ===
     L.sort (outIns <&> \(_ :. ms) -> L.length ms)
   L.length outIns === L.length outSel1
   L.length outIns === L.length outSel2
-  L.length outIns === L.length outUps
+  L.length outIns === L.length outUpsBare
   (L.sort outIns <&> \(ir :. ms) -> ir :. length ms)
     === (L.sort outSel2 <&> \(ir :. ms :. _) -> ir :. length ms)
   (L.sort outIns <&> \(ir :. ms) -> ir :. length ms)
-    === (L.sort outUps <&> \(ir :. ms :. _) -> ir :. length ms)
+    === (L.sort outUpsBare <&> \(ir :. ms :. _) -> ir :. length ms)
   (L.sort outIns <&> \(ir :. PgTag ms) -> ir :. length (filter (\(_ :. PgTag b :. _) -> b) ms))
     === (L.sort outSel2 <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (\(PgTag b :. _) -> not b) ms))
-  (L.sort outUps <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (\(PgTag b :. _) -> b) ms))
+  (L.sort outUpsBare <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (\(PgTag b :. _) -> b) ms))
     === (L.sort outSel2 <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (\(PgTag b :. _) -> b) ms))
 
 prop_hier_insert_composite_fk :: Pool Connection -> Property
@@ -153,25 +154,26 @@ prop_hier_insert_composite_fk pool = withTests 30 $ property do
       insJSON "root" conn inIns
     (fst -> (outSel1' :: ["id" := Int32 :. "mid2_root_fk" := [Mid2Rec] :. RootRec])) <-
       selSch "root" conn qpEmpty
-    (outUps' :: ["id" := Int32 :. "mid2_root_fk" := [Mid2Rec] :. RootRec], _txt) <-
+    (outUps' :: [Maybe ("id" := Int32 :. "mid2_root_fk" := [Mid2Rec] :. RootRec)], _txt) <-
       upsJSON "root" conn $ outIns' <&> \(ir :. PgTag ms) -> "mid2_root_fk" =:
         (ms <&> \m -> m { flag = not m.flag }) :. ir
-    -- T.putStrLn $ "\n\n" <> txt <> "\n\n"
     (fst -> (outSel2' :: ["id" := Int32 :. "mid2_root_fk" := [Mid2Rec] :. RootRec])) <-
       selSch "root" conn qpEmpty
     pure (outIns', outSel1', outUps', outSel2')
+  assert $ all isJust outUps && not (null outUps)
+  let outUpsBare = [x | Just x <- outUps]
   L.sort (inIns <&> \(ms :. _) -> L.length ms) ===
     L.sort (outIns <&> \(_ :. ms) -> L.length ms)
   L.length outIns === L.length outSel1
   L.length outIns === L.length outSel2
-  L.length outIns === L.length outUps
+  L.length outIns === L.length outUpsBare
   (L.sort outIns <&> \(ir :. ms) -> ir :. length ms)
     === (L.sort outSel2 <&> \(ir :. ms :. _) -> ir :. length ms)
   (L.sort outIns <&> \(ir :. ms) -> ir :. length ms)
-    === (L.sort outUps <&> \(ir :. ms :. _) -> ir :. length ms)
+    === (L.sort outUpsBare <&> \(ir :. ms :. _) -> ir :. length ms)
   (L.sort outIns <&> \(ir :. PgTag ms) -> ir :. length (filter (.flag) ms))
     === (L.sort outSel2 <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (not . (.flag)) ms))
-  (L.sort outUps <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (.flag) ms))
+  (L.sort outUpsBare <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (.flag) ms))
     === (L.sort outSel2 <&> \(ir :. PgTag ms :. _) -> ir :. length (filter (.flag) ms))
 
 prop_hier_select_child_with_parent :: Pool Connection -> Property

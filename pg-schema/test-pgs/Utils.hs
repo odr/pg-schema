@@ -102,6 +102,36 @@ upsJSON
   => Connection -> [r] -> IO ([r'], Text)
 upsJSON tn = upsertJSON (AnnSch tn)
 
+updJSON_
+  :: forall tn -> forall r. UpdateTreeNonReturning (AnnSch tn) r
+  => Connection -> [r] -> IO Text
+updJSON_ tn = updateJSON_ (AnnSch tn)
+
+updJSON
+  :: forall tn -> forall r r'. UpdateTreeReturning (AnnSch tn) r r'
+  => Connection -> [r] -> IO ([r'], Text)
+updJSON tn = updateJSON (AnnSch tn)
+
+upsByKey
+  :: forall tn -> forall r r'. UpsertByKeyReturning (AnnSch tn) r r'
+  => Connection -> [r] -> IO ([r'], Text)
+upsByKey tn = upsertByKey (AnnSch tn)
+
+upsByKey_
+  :: forall tn -> forall r. UpsertByKeyNonReturning (AnnSch tn) r
+  => Connection -> [r] -> IO (Int64, Text)
+upsByKey_ tn = upsertByKey_ (AnnSch tn)
+
+updByKey
+  :: forall tn -> forall r r'. UpdateByKeyReturning (AnnSch tn) r r'
+  => Connection -> [r] -> IO ([r'], Text)
+updByKey tn = updateByKey (AnnSch tn)
+
+updByKey_
+  :: forall tn -> forall r. UpdateByKeyNonReturning (AnnSch tn) r
+  => Connection -> [r] -> IO (Int64, Text)
+updByKey_ tn = updateByKey_ (AnnSch tn)
+
 genDay :: Gen Day
 genDay = ModifiedJulianDay . fromIntegral <$> Gen.int (Range.linear 50000 80000)
 

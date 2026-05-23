@@ -1,5 +1,20 @@
 # Changelog for pg-schema
 
+## 0.8.0.0
+
+- **Breaking:** compile-time returning rules: insert forbids `Maybe`; update
+  requires `Maybe` on every returning slot; upsert uses bare rows when all
+  mandatory columns are present on input, otherwise `Maybe` (extra `Maybe` is a
+  type error).
+- Flat DML: `upsertByKey` / `upsertByKey_` and `updateByKey` / `updateByKey_`
+  (key from row fields; update never inserts).
+- Tree DML: `updateJSON` / `updateJSON_` (update-only); `InsertMode` for the
+  JSON pipeline.
+- Tree returning: `array_append` keeps one JSON slot per input row (`null` when
+  a row was not updated on upsert/update paths).
+- `AllHasKeyTree`, `CheckHasKey`, `ReturningMatches{Insert,Upsert,Update}`,
+  `FromJSON` / `ToJSON` for `Maybe` rows and `null` in returning arrays.
+
 ## 0.7.1.2
 - Fix bug with aggregates (Min/Max/Sum/Avg)
 

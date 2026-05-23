@@ -7,6 +7,8 @@ import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Aeson.Key as Key
 import Data.Coerce
 import Data.Singletons.TH (genDefunSymbols)
+import Data.Type.Bool
+import Data.Type.Equality
 import Data.Typeable
 import Data.Text qualified as T
 import Data.Kind
@@ -95,6 +97,7 @@ type family MapRenPath (f :: Renamer) (xs :: [(Symbol, PathKind)]) :: [(Symbol, 
 data ColsCase = NonGenericCase | GenericCase
 
 type family ColsCaseOf (r :: Type) :: ColsCase where
+  ColsCaseOf (Maybe r)             = ColsCaseOf r
   ColsCaseOf (a :. b)              = 'NonGenericCase
   ColsCaseOf ((_ :: Symbol) := _) = 'NonGenericCase
   ColsCaseOf r = 'GenericCase
@@ -123,6 +126,7 @@ instance Generic r => CColsCase ann r 'GenericCase where
 --------------------------------------------------------------------------------
 
 type family ColsNonGeneric (ann :: Ann) r :: [ColInfo NameNSK] where
+  ColsNonGeneric ann (Maybe r) = ColsNonGeneric ann r
   ColsNonGeneric ann (a :. b) = Normalize (Cols ann a SP.++ Cols ann b)
   ColsNonGeneric ann (fld := t) = Col ann fld t
 
@@ -211,10 +215,23 @@ instance
     toJSON (PgTag r) = Object (KM.fromList (toPairs @ann @colsCase @cols r))
     toEncoding (PgTag r) = pairs (foldMap (uncurry (.=)) $ toPairs @ann @colsCase @cols r)
 
+type family RowNotMaybe (r :: Type) :: Constraint where
+  RowNotMaybe (Maybe _) = TypeError
+    ( Text "Use FromJSON (PgTag ann (Maybe r)) for optional top-level rows." )
+  RowNotMaybe _ = ()
+
 instance
-  (cols ~ Cols ann r, colsCase ~ ColsCaseOf r, FromJSONCols ann colsCase cols r)
+  ( cols ~ Cols ann r, colsCase ~ ColsCaseOf r, FromJSONCols ann colsCase cols r
+  , RowNotMaybe r )
   => FromJSON (PgTag ann r) where
    parseJSON v = PgTag <$> parseJSONCols @ann @colsCase @cols v
+
+instance {-# OVERLAPPING #-}
+  ( cols ~ Cols ann r, colsCase ~ ColsCaseOf r
+  , FromJSONCols ann colsCase cols r )
+  => FromJSON (PgTag ann (Maybe r)) where
+   parseJSON Null = pure $ PgTag Nothing
+   parseJSON v = PgTag . Just <$> parseJSONCols @ann @colsCase @cols v
 
 -- >>> type AnnRel = 'Ann RenamerId PgCatalog (PGC "pg_constraint")
 -- >>> rel = PgRelation{ constraint__namespace = PgTag "a", conname = "b", constraint__class = PgClassShort (PgTag "c") "d", constraint__fclass = PgClassShort (PgTag "e") "f", conkey = pgArr' [1,2], confkey = pgArr' [] }
@@ -254,6 +271,20 @@ instance
         Just v  -> coerce <$> parseJSON @tEff v        -- eff :: tEff
       where
         keyTxt = demote @(NameSymNat sn)
+
+instance
+  ( cols ~ Cols ann r, colsCase ~ ColsCaseOf r
+  , FromJSONCols ann colsCase cols r )
+  => FromJSONCols ann colsCase cols (Maybe r) where
+    parseJSONCols Null = pure Nothing
+    parseJSONCols v = Just <$> parseJSONCols @ann @colsCase @cols v
+
+instance
+  ( cols ~ Cols ann r, colsCase ~ ColsCaseOf r
+  , ToJSONCols ann colsCase cols r )
+  => ToJSONCols ann colsCase cols (Maybe r) where
+    toPairs Nothing = []
+    toPairs (Just r) = toPairs @ann @colsCase @cols r
 
 -- Note: we use "split ~" instead of " '(colsA, colsB) ~ " to avoid ambiguity.
 instance
@@ -357,9 +388,15 @@ instance
     toRow (PgTag r) = toRowCols @ann @colsCase @cols r
 
 instance
-  (cols ~ Cols ann r, colsCase ~ ColsCaseOf r, FromRowCols ann colsCase cols r)
+  ( cols ~ Cols ann r, colsCase ~ ColsCaseOf r, FromRowCols ann colsCase cols r
+  , RowNotMaybe r )
   => FromRow (PgTag ann r) where
     fromRow = PgTag <$> fromRowCols @ann @colsCase @cols
+
+instance {-# OVERLAPPING #-}
+  ( cols ~ Cols ann r, colsCase ~ ColsCaseOf r, FromRowCols ann colsCase cols r)
+  => FromRow (PgTag ann (Maybe r)) where
+    fromRow = PgTag . Just <$> fromRowCols @ann @colsCase @cols
 
 -- >>> type AnnRel = 'Ann RenamerId PgCatalog 1 (PGC "pg_constraint")
 -- >>> (r1 :: [PgTag AnnRel ( ("conkey" := Int16))]) <- query_ conn "select 1::int2"
@@ -690,7 +727,13 @@ type family HasAnyFullIdentity' (restKey :: [Symbol]) (rs :: [Symbol]) (ks :: [[
   HasAnyFullIdentity' '[] rs ks ann = ()
   HasAnyFullIdentity' (_ ': _) rs ks ann = HasAnyFullIdentity rs ks ann
 
-genDefunSymbols [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasKey]
+-- | Every node must include a full primary or eligible unique key.
+type family CheckHasKey (ann :: Ann) (rs :: [Symbol]) :: Constraint where
+  CheckHasKey ('Ann ren sch d tab) rs =
+    HasAnyFullIdentity rs (IdentityCandidates sch tab) ('Ann ren sch d tab)
+
+genDefunSymbols
+  [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasKey, ''CheckHasKey ]
 
 --------------------------------------------------------------------------------
 -- Recursive AllMandatory / PK for tree (JSON insert / upsert)
@@ -718,6 +761,12 @@ type family AllMandatoryOrHasKeyTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol]
   AllMandatoryOrHasKeyTree ann [r] rFlds = AllMandatoryOrHasKeyTree ann r rFlds
   AllMandatoryOrHasKeyTree ann r rFlds =
     WalkLevelAnn CheckAllMandatoryOrHasKeySym0 ann (TRecordInfo ann r) rFlds
+
+type family AllHasKeyTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
+  :: Constraint where
+  AllHasKeyTree ann [r] rFlds = AllHasKeyTree ann r rFlds
+  AllHasKeyTree ann r rFlds =
+    WalkLevelAnn CheckHasKeySym0 ann (TRecordInfo ann r) rFlds
 
 --------------------------------------------------------------------------------
 -- Returning tree must be subtree of input tree (with path)
@@ -754,3 +803,155 @@ type family CheckSubtreeAt (path :: [Symbol]) (fisIn :: [FieldInfo Symbol])
 type family ReturningIsSubtree (ann :: Ann) (rIn :: Type) (rOut :: Type) :: Constraint where
   ReturningIsSubtree ann rIn rOut =
     CheckSubtreeAt '[] (TRecordInfo ann rIn) (TRecordInfo ann rOut)
+
+--------------------------------------------------------------------------------
+-- Returning row optionality (Maybe) vs input mandatory coverage
+--------------------------------------------------------------------------------
+
+type family AnnChild (ann :: Ann) (childTab :: NameNSK) :: Ann where
+  AnnChild ('Ann ren sch _ _) childTab = 'Ann ren sch 0 childTab
+
+type family InnerRow (r :: Type) :: Type where
+  InnerRow (Maybe r) = r
+  InnerRow r = TypeError
+    ( Text "Update returning row must be wrapped in Maybe."
+    :$$: Text "Got: " :<>: ShowType r )
+
+-- | @Nothing@ for a returning row type @Maybe a@ (use @absentRow \@(InnerRow r')@).
+absentRow :: forall a. Maybe a
+absentRow = Nothing
+
+type family RequireMaybeRow (r :: Type) :: Constraint where
+  RequireMaybeRow (Maybe _) = ()
+  RequireMaybeRow r = TypeError
+    ( Text "Update returning row must be Maybe ..."
+    :$$: Text "Got: " :<>: ShowType r )
+
+type family ListElem (t :: Type) :: Type where
+  ListElem [e] = e
+  ListElem t = TypeError
+    ( Text "Expected a Haskell list type for a child branch."
+    :$$: Text "Got: " :<>: ShowType t )
+
+type family SymNatName (sn :: SymNat) :: Symbol where
+  SymNatName '(s, _) = s
+
+type family ColTypeByJsonName (name :: Symbol) (cols :: [ColInfo NameNSK]) :: Type where
+  ColTypeByJsonName name '[] = TypeError
+    ( Text "Returning field not found in output type: " :<>: ShowType name )
+  ColTypeByJsonName name ('ColInfo sn t _ _ ': xs) =
+    If (SymNatName sn == name) t (ColTypeByJsonName name xs)
+
+type family CoveredRs (ann :: Ann) (fis :: [FieldInfo Symbol]) :: [Symbol] where
+  CoveredRs ann '[] = '[]
+  CoveredRs ann ('FieldInfo _ db ('RFPlain _) ': xs) = db ': CoveredRs ann xs
+  CoveredRs ('Ann ren sch d tab)
+    ('FieldInfo _ _ ('RFToHere ('RecordInfo _ _) _) ': xs) =
+    CoveredRs ('Ann ren sch d tab) xs
+  CoveredRs ann (_ ': xs) = CoveredRs ann xs
+
+type family AssertNoMaybe (path :: [Symbol]) (tab :: NameNSK) (fld :: Symbol) (t :: Type)
+  :: Constraint where
+  AssertNoMaybe path tab fld (Maybe _) = TypeError
+    ( Text "Returning must not use Maybe here (insert or upsert insert-capable node)."
+    :$$: Text "At path: " :<>: ShowType path
+    :$$: Text "Table: " :<>: ShowType tab
+    :$$: Text "Field: " :<>: ShowType fld )
+  AssertNoMaybe path tab fld _ = ()
+
+type family AssertMustBeMaybe (path :: [Symbol]) (tab :: NameNSK) (fld :: Symbol)
+  (t :: Type) :: Constraint where
+  AssertMustBeMaybe path tab fld (Maybe _) = ()
+  AssertMustBeMaybe path tab fld t = TypeError
+    ( Text "Returning must use Maybe here (update or key-only upsert)."
+    :$$: Text "At path: " :<>: ShowType path
+    :$$: Text "Table: " :<>: ShowType tab
+    :$$: Text "Field: " :<>: ShowType fld
+    :$$: Text "Got: " :<>: ShowType t )
+
+type family CheckUpsertListElem (path :: [Symbol]) (tab :: NameNSK) (fld :: Symbol)
+  (restMandatory :: [Symbol]) (elemTy :: Type) :: Constraint where
+  CheckUpsertListElem path tab fld '[] elemTy =
+    AssertNoMaybe path tab fld (ListElem elemTy)
+  CheckUpsertListElem path tab fld (_ ': _) elemTy =
+    AssertMustBeMaybe path tab fld (ListElem elemTy)
+
+type family SkipOutField (db :: Symbol) (fis :: [FieldInfo Symbol])
+  :: [FieldInfo Symbol] where
+  SkipOutField db '[] = '[]
+  SkipOutField db ('FieldInfo _ db _ ': xs) = xs
+  SkipOutField db (_ ': xs) = SkipOutField db xs
+
+type family CheckReturningUpsertAt (path :: [Symbol]) (ann :: Ann) (rIn :: Type)
+  (rOut :: Type) (fisIn :: [FieldInfo Symbol]) (fisOut :: [FieldInfo Symbol])
+  :: Constraint where
+  CheckReturningUpsertAt path ann rIn rOut '[] '[] = ()
+  CheckReturningUpsertAt path ('Ann ren sch d tab) rIn rOut fisIn
+    ('FieldInfo jsonName db ('RFToHere ('RecordInfo childTab childFIsOut) _) ': outs) =
+    ( CheckUpsertListElem path tab jsonName
+        (RestMandatory sch tab (CoveredRs ('Ann ren sch d tab) fisIn))
+        (ColTypeByJsonName jsonName (Cols ('Ann ren sch d tab) rOut))
+    , CheckReturningUpsertAt (Snoc path db) (AnnChild ('Ann ren sch d tab) childTab) rIn rOut
+        (FindChildAt path db fisIn) childFIsOut
+    , CheckReturningUpsertAt path ('Ann ren sch d tab) rIn rOut fisIn (SkipOutField db outs) )
+  CheckReturningUpsertAt path ann rIn rOut
+    (_ ': ins) ('FieldInfo _ db _ ': outs) =
+    CheckReturningUpsertAt path ann rIn rOut ins (SkipOutField db outs)
+  CheckReturningUpsertAt path ann rIn rOut fisIn fisOut =
+    CheckSubtreeAt path fisIn fisOut
+
+type family CheckReturningUpdateAt (path :: [Symbol]) (ann :: Ann) (rIn :: Type)
+  (rOut :: Type) (fisIn :: [FieldInfo Symbol]) (fisOut :: [FieldInfo Symbol])
+  :: Constraint where
+  CheckReturningUpdateAt path ann rIn rOut '[] '[] = ()
+  CheckReturningUpdateAt path ('Ann ren sch d tab) rIn rOut fisIn
+    ('FieldInfo jsonName db ('RFToHere ('RecordInfo childTab childFIsOut) _) ': outs) =
+    ( AssertMustBeMaybe path tab jsonName
+        (ListElem (ColTypeByJsonName jsonName (Cols ('Ann ren sch d tab) rOut)))
+    , CheckReturningUpdateAt (Snoc path db) (AnnChild ('Ann ren sch d tab) childTab) rIn rOut
+        (FindChildAt path db fisIn) childFIsOut
+    , CheckReturningUpdateAt path ('Ann ren sch d tab) rIn rOut fisIn (SkipOutField db outs) )
+  CheckReturningUpdateAt path ann rIn rOut
+    (_ ': ins) ('FieldInfo _ db _ ': outs) =
+    CheckReturningUpdateAt path ann rIn rOut ins (SkipOutField db outs)
+  CheckReturningUpdateAt path ann rIn rOut fisIn fisOut =
+    CheckSubtreeAt path fisIn fisOut
+
+type family CheckReturningInsertAt (path :: [Symbol]) (ann :: Ann) (rIn :: Type)
+  (rOut :: Type) (fisIn :: [FieldInfo Symbol]) (fisOut :: [FieldInfo Symbol])
+  :: Constraint where
+  CheckReturningInsertAt path ann rIn rOut '[] '[] = ()
+  CheckReturningInsertAt path ('Ann ren sch d tab) rIn rOut fisIn
+    ('FieldInfo jsonName db ('RFToHere ('RecordInfo childTab childFIsOut) _) ': outs) =
+    ( AssertNoMaybe path tab jsonName
+        (ColTypeByJsonName jsonName (Cols ('Ann ren sch d tab) rOut))
+    , CheckReturningInsertAt (Snoc path db) (AnnChild ('Ann ren sch d tab) childTab) rIn rOut
+        (FindChildAt path db fisIn) childFIsOut
+    , CheckReturningInsertAt path ('Ann ren sch d tab) rIn rOut fisIn (SkipOutField db outs) )
+  CheckReturningInsertAt path ann rIn rOut
+    (_ ': ins) ('FieldInfo _ db _ ': outs) =
+    CheckReturningInsertAt path ann rIn rOut ins (SkipOutField db outs)
+  CheckReturningInsertAt path ann rIn rOut fisIn fisOut =
+    CheckSubtreeAt path fisIn fisOut
+
+type family ReturningMatchesInsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
+  :: Constraint where
+  ReturningMatchesInsert ann rIn rOut =
+    ( ReturningIsSubtree ann rIn rOut
+    , CheckReturningInsertAt '[] ann rIn rOut
+        (TRecordInfo ann rIn) (TRecordInfo ann rOut) )
+
+type family ReturningMatchesUpsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
+  :: Constraint where
+  ReturningMatchesUpsert ann rIn rOut =
+    ( ReturningIsSubtree ann rIn rOut
+    , CheckReturningUpsertAt '[] ann rIn rOut
+        (TRecordInfo ann rIn) (TRecordInfo ann rOut) )
+
+type family ReturningMatchesUpdate (ann :: Ann) (rIn :: Type) (rOut :: Type)
+  :: Constraint where
+  ReturningMatchesUpdate ann rIn rOut =
+    ( RequireMaybeRow rOut
+    , ReturningIsSubtree ann rIn (InnerRow rOut)
+    , CheckReturningUpdateAt '[] ann rIn (InnerRow rOut)
+        (TRecordInfo ann rIn) (TRecordInfo ann (InnerRow rOut)) )

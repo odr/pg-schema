@@ -1,6 +1,6 @@
 cabal-version:  3.12
 name:           pg-schema
-version:        0.7.1.2
+version:        0.8.0.0
 category:       Database
 author:         Dmitry Olshansky
 maintainer:     olshanskydr@gmail.com
@@ -130,6 +130,8 @@ library
     PgSchema.DML.Insert
     PgSchema.DML.InsertJSON
     PgSchema.DML.Insert.Types
+    PgSchema.DML.KeyedWrite
+    PgSchema.DML.UpsertByKey
     PgSchema.DML.Select
     PgSchema.DML.Select.Types
     PgSchema.DML.Update
@@ -270,6 +272,7 @@ test-suite test-pgs
     Tests.BaseConverts
     Tests.Conditions
     Tests.Hierarchy
+    Tests.KeyedDML
     Tests.InsertJSONTransaction
     Tests.UpsertUniqueKey
     Tests.Path

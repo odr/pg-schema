@@ -12,6 +12,7 @@ import Tests.BaseConverts
 import Tests.Hierarchy
 import Tests.InsertJSONTransaction
 import Tests.UpsertUniqueKey
+import Tests.KeyedDML
 import Tests.Conditions
 import Tests.Aggregates
 
@@ -47,6 +48,26 @@ main = do
           prop_insertJSON_begin_without_prior_writes pool
       , testProperty "Failure rolls back standalone transaction" $
           prop_insertJSON_rolls_back_on_failure pool
+      ]
+    , testGroup "Keyed DML (test_dml)"
+      [ testProperty "upsertByKey insert then key patch" $
+          prop_upsert_by_key_insert_then_update pool
+      , testProperty "upsertByKey composite unique" $
+          prop_upsert_by_key_composite_unique pool
+      , testProperty "updateByKey found" $ prop_update_by_key_found pool
+      , testProperty "updateByKey not found" $
+          prop_update_by_key_not_found pool
+      , testProperty "updateByKey never inserts" $
+          prop_update_by_key_never_inserts pool
+      , testProperty "updateJSON bad root id" $
+          prop_update_json_not_found_returns_nothing pool
+      , testProperty "updateJSON found" $ prop_update_json_found pool
+      , testProperty "upsertJSON returning positions" $
+          prop_upsert_json_returning_positions pool
+      , testProperty "upsertJSON full row bare returning" $
+          prop_upsert_json_full_row_bare_returning pool
+      , testProperty "updateJSON child key miss" $
+          prop_update_json_child_maybe pool
       ]
     , testGroup "Upsert by unique key (test_dml)"
       [ testProperty "upsertJSON on composite unique without PK in payload" $

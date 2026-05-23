@@ -61,11 +61,12 @@ prop_base_converts :: Pool Connection -> Property
 prop_base_converts pool = withTests 30 $ property do
   recs <- forAll (genData BaseConverts)
   (resSel, resIns, resUpd) <- evalIO $ withPool pool \conn -> do
+    void $ delByCond "base_converts" conn mempty
     void $ insSch_ "base_converts" conn recs
     (res, _) <- selSch "base_converts" conn qpEmpty
     res'' <- updByCond "base_converts" conn
       ("cint4" =: Just (10 :: Int32)) ("cboolean" =? Just False)
-    (res', _) <- insSch "base_converts" conn recs
+    (res' :: [BaseConverts], _) <- insSch "base_converts" conn recs
     pure (res, res', res'')
   L.sort resSel === L.sort recs
   resIns === recs
@@ -77,11 +78,12 @@ prop_base_arr_converts pool = withTests 30 $ property do
   recs <- forAll (genData BaseArrConverts)
   ds <- forAll $ Gen.list (Range.linear 0 20) genUTCTime
   (resSel, resIns, resUpd::[BaseArrConverts]) <- evalIO $ withPool pool \conn -> do
+    void $ delByCond "base_arr_converts" conn mempty
     void $ insSch_ "base_arr_converts" conn recs
     (res, _) <- selSch "base_arr_converts" conn qpEmpty
     res'' <- updByCond "base_arr_converts" conn
       ("ctimestamptz" =: Just (pgArr' ds)) mempty
-    (res', _) <- insSch "base_arr_converts" conn recs
+    (res' :: [BaseArrConverts], _) <- insSch "base_arr_converts" conn recs
     pure (res, res', res'')
   L.sort resSel === L.sort recs
   resIns === recs
@@ -91,11 +93,12 @@ prop_ext_converts :: Pool Connection -> Property
 prop_ext_converts pool = withTests 30 $ property do
   recs <- forAll (genData ExtConverts)
   (resSel, resIns, resUpd) <- evalIO $ withPool pool \conn -> do
+    void $ delByCond "ext_converts" conn mempty
     void $ insSch_ "ext_converts" conn recs
     (res, _) <- selSch "ext_converts" conn qpEmpty
     res'' <- updByCond "ext_converts" conn
       ("ccitext" =: Just ("CaSes" :: CI Text)) ("ccolor" =? Just Color_red)
-    (res', _) <- insSch "ext_converts" conn recs
+    (res' :: [ExtConverts], _) <- insSch "ext_converts" conn recs
     pure (res, res', res'')
   L.sort resSel === L.sort recs
   resIns === recs

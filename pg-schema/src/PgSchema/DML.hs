@@ -46,8 +46,11 @@
 -- children in the same way. 'insertJSON' / 'insertJSON_' require every mandatory
 -- column and emit plain @INSERT@ only (duplicates fail in the database).
 -- 'upsertJSON' / 'upsertJSON_' relax mandatory requirements and may @UPDATE@ or
--- @INSERT … ON CONFLICT …@ (see their Haddock). Plain 'insertSch' / 'insertSch_' follow the
--- same safety story for flat (non-tree) rows.
+-- @INSERT … ON CONFLICT …@ (see their Haddock).
+-- 'updateJSON' / 'updateJSON_' update existing rows only (never @INSERT@).
+-- Flat keyed writes: 'upsertByKey' / 'updateByKey' (see their Haddock for @Maybe@
+-- returning rules). Plain 'insertSch' / 'insertSch_' follow the same safety story
+-- for flat (non-tree) rows.
 --
 -- 'selectSch' decodes each row into a Haskell type @r@ whose fields describe the
 -- root table columns and nested data for relations (multiple list-shaped children
@@ -99,15 +102,27 @@ module PgSchema.DML
   -- ** Plain Insert
   , insertSch, insertSch_, insertText, insertText_, AllPlain
   , InsertNonReturning, InsertReturning
-  -- ** Update
+  -- ** Plain Upsert / Update by key
+  , upsertByKey, upsertByKey_, upsertByKeyText, upsertByKeyText_
+  , UpsertByKeyNonReturning, UpsertByKeyReturning
+  , updateByKey, updateByKey_, updateByKeyText, updateByKeyText_
+  , UpdateByKeyNonReturning, UpdateByKeyReturning
+  -- ** Update by condition
   , updateByCond, updateByCond_, updateText, updateText_
   , UpdateReturning, UpdateNonReturning, CRecInfo(..)
-  -- ** Tree-base Insert/Upsert
+  -- ** Tree Insert / Upsert / Update
+  , InsertMode(..)
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_
-  , insertJSONText, insertJSONText_, upsertJSONText, upsertJSONText_
-  , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasKeyTree, TreeSch
+  , updateJSON, updateJSON_, insertJSONText, insertJSONText_
+  , upsertJSONText, upsertJSONText_, updateJSONText, updateJSONText_
+  , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasKeyTree, AllHasKeyTree
+  , TreeSch
   , InsertTreeNonReturning, InsertTreeReturning
-  , UpsertTreeNonReturning, UpsertTreeReturning, TRecordInfo
+  , UpsertTreeNonReturning, UpsertTreeReturning
+  , UpdateTreeNonReturning, UpdateTreeReturning, TRecordInfo
+  -- ** Returning shape (compile-time)
+  , ReturningMatchesInsert, ReturningMatchesUpsert, ReturningMatchesUpdate
+  , absentRow
   -- ** Delete
   , deleteByCond, deleteText
   -- * Types
@@ -139,6 +154,7 @@ import PgSchema.DML.Select.Types as S
 import PgSchema.DML.Insert as I
 import PgSchema.DML.Insert.Types as I
 import PgSchema.DML.InsertJSON as I
+import PgSchema.DML.UpsertByKey as UBK
 import PgSchema.DML.Update as U
 import PgSchema.DML.Delete as D
 import PgSchema.Schema as S

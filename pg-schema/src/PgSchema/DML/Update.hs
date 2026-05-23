@@ -1,22 +1,112 @@
-module PgSchema.DML.Update where
+{-# LANGUAGE AllowAmbiguousTypes #-}
+module PgSchema.DML.Update
+  ( updateByKey, updateByKey_, updateByKeyText, updateByKeyText_
+  , updateByCond, updateByCond_, updateText, updateText_
+  , updateByKeyRowParams ) where
 
 import Data.String
 import Data.Text as T
 import Database.PostgreSQL.Simple
+import Database.PostgreSQL.Simple.ToField (Action)
+import Database.PostgreSQL.Simple.ToRow (ToRow(..))
+import Unsafe.Coerce (unsafeCoerce)
 import GHC.Int
 import PgSchema.Ann
 import PgSchema.DML.Select
 import PgSchema.DML.Select.Types
+import Control.Monad (forM)
+import Data.List as L
+import Data.Maybe
 import PgSchema.DML.Insert.Types
-import PgSchema.Schema
+import PgSchema.DML.KeyedWrite
+import Data.Map qualified as M
+import PgSchema.Schema (CSchema, qualName, tabInfoMap)
 import PgSchema.Types
 import PgSchema.Utils.Internal
 import Prelude as P
 
--- TODO:
--- updateByKey Connection -> [r] -> IO [r']
--- updateByKeyJSON Connection -> [r] -> IO [r']
--- updateExp (e.q. update t set a = a + c + 1 where b > 10)
+newtype KeyedUpdateParams = KeyedUpdateParams { keyedUpdateActions :: [Action] }
+
+instance ToRow KeyedUpdateParams where
+  toRow = keyedUpdateActions
+
+updateByKeyRowParams
+  :: forall ann r
+  . (CRecInfo ann r, CSchema (AnnSch ann), ToRow (PgTag ann r))
+  => r -> KeyedUpdateParams
+updateByKeyRowParams rec =
+  let
+    ri = getRecordInfo @ann @r
+    ti = tabInfoMap @(AnnSch ann) M.! ri.tabName
+    keyNames = fromMaybe [] $ pickKeyNames ti [fi.fieldDbName | fi <- ri.fields]
+    (fldKeys, fldOthers) =
+      L.partition ((`L.elem` keyNames) . (.fieldDbName)) ri.fields
+    allActs = toRow (PgTag @ann @r rec)
+    pick fi =
+      allActs
+        !! fromMaybe (error "updateByKeyRowParams: field")
+          (L.findIndex ((== fi.fieldDbName) . (.fieldDbName)) ri.fields)
+  in KeyedUpdateParams $ P.map pick (fldOthers ++ fldKeys)
+
+-- | Update rows by primary / unique key from record fields (never inserts).
+-- Returning list has one @Maybe@ per input row (@Nothing@ when no row matched).
+updateByKey
+  :: forall ann -> forall r r'. UpdateByKeyReturning ann r r'
+  => Connection -> [r] -> IO ([r'], Text)
+updateByKey ann @r @r' conn recs =
+  let sql = updateByKeyText ann @r @r' in
+  trace' (T.unpack sql) do
+    rs <- forM recs \rec -> do
+      rows <- query conn (fromString $ T.unpack sql) (updateByKeyRowParams @ann @r rec)
+      pure $ case rows of
+        [x] -> unPgTag @ann @r' x
+        _ -> unsafeCoerce (Nothing :: Maybe ())
+    pure (rs, sql)
+
+-- | Update rows by key without @RETURNING@.
+updateByKey_
+  :: forall ann -> forall r. UpdateByKeyNonReturning ann r
+  => Connection -> [r] -> IO (Int64, Text)
+updateByKey_ ann @r conn recs =
+  let sql = updateByKeyText_ ann @r in
+  trace' (T.unpack sql) do
+    n <- executeMany conn (fromString $ T.unpack sql)
+      $ fmap (updateByKeyRowParams @ann @r) recs
+    pure (n, sql)
+
+updateByKeyText
+  :: forall ann -> forall r r' s
+  . ( CRecInfo ann r, CRecInfo ann r', IsString s, Monoid s
+    , CSchema (AnnSch ann) ) => s
+updateByKeyText ann @r @r' =
+  updateByKeyText_ ann @r <> " returning " <> fs'
+  where
+    ri' = getRecordInfo @ann @r'
+    fs' = fromString $ T.unpack $ T.intercalate "," [fi.fieldDbName | fi <- ri'.fields]
+
+updateByKeyText_
+  :: forall ann -> forall r s
+  . (IsString s, Monoid s, CRecInfo ann r, CSchema (AnnSch ann)) => s
+updateByKeyText_ ann @r = fromString $ T.unpack $ updateByKeyStmt ann @r
+
+updateByKeyStmt
+  :: forall ann -> forall r. (CRecInfo ann r, CSchema (AnnSch ann)) => T.Text
+updateByKeyStmt ann @r =
+  let
+    ri = getRecordInfo @ann @r
+    ti = tabInfoMap @(AnnSch ann) M.! ri.tabName
+    plains = [ (fromText fi.fieldDbName, "?") | fi <- ri.fields ]
+    (plainsKey, plainsOthers) = keyedUpdateSetAndKeys ti plains
+    nameVal n v = n <> " = " <> v
+    setClause =
+      case plainsOthers of
+        [] -> case plainsKey of
+          (n, _) : _ -> n <> " = " <> n
+          [] -> "id = id"
+        xs -> T.intercalate ", " (uncurry nameVal <$> xs)
+  in "update " <> qualName ri.tabName
+    <> " set " <> setClause
+    <> keyWhereClause plainsKey
 
 -- | Update rows matching a condition; the result type selects which columns are returned.
 updateByCond :: forall ann -> forall r r'.
