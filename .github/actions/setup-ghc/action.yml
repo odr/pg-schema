@@ -22,13 +22,23 @@ runs:
         # Absolute paths: ~/.ghcup archives as ../../../.ghcup and restore fails.
         path: /home/runner/.ghcup/ghc/${{ inputs.ghc-version }}
         key: ghcup-v2-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
-        restore-keys: |
-          ghcup-v2-${{ runner.os }}-ghc-
 
     - name: Remove partial GHC tree after cache miss
       if: steps.ghc-cache.outputs.cache-hit != 'true'
       shell: bash
       run: rm -rf "/home/runner/.ghcup/ghc/${{ inputs.ghc-version }}"
+
+    - name: Seed GHC from runner image
+      shell: bash
+      run: |
+        set -euo pipefail
+        ver="${{ inputs.ghc-version }}"
+        home_ghc="$HOME/.ghcup/ghc/$ver"
+        image_ghc="/usr/local/.ghcup/ghc/$ver"
+        if [ ! -d "$home_ghc" ] && [ -d "$image_ghc" ]; then
+          mkdir -p "$(dirname "$home_ghc")"
+          cp -a "$image_ghc" "$home_ghc"
+        fi
 
     - uses: haskell-actions/setup@v2
       with:
