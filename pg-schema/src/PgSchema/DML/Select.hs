@@ -52,6 +52,11 @@ data QueryState = QueryState
 
 type MonadQuery ren sch t m = (MonadRWS (QueryRead ren sch t) [SomeToField] QueryState m)
 
+-- | Checks that @r@ describes a decodable @SELECT@ row for @ann@:
+--
+-- * 'CRecInfo': every field of @r@ maps to a plain column or relation edge of the
+--   root table in the schema (field names, kinds, and nesting match 'Cols').
+-- * 'FromRow': each mapped field can be read from a PostgreSQL result column.
 type Selectable ann r = (CRecInfo ann r, FromRow (PgTag ann r))
 
 -- | Run a single @SELECT@ for root table @tab@ (see annotation @ann@ with schema

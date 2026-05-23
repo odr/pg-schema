@@ -948,6 +948,12 @@ type family CheckReturningInsertAt (path :: [Symbol]) (ann :: Ann) (rIn :: Type)
   CheckReturningInsertAt path ann rIn rOut fisIn fisOut =
     CheckSubtreeAt path fisIn fisOut
 
+-- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after insert:
+--
+-- * Each relation branch in @rOut@ exists in @rIn@ at the same path; plain columns
+--   in @rOut@ need not appear in @rIn@ ('CheckSubtreeAt').
+-- * For every child list in @rOut@: the list element type must not be @Maybe@
+--   ('AssertNoMaybe').
 type family ReturningMatchesInsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
   :: Constraint where
   ReturningMatchesInsert ann rIn rOut =
@@ -955,6 +961,12 @@ type family ReturningMatchesInsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
     , CheckReturningInsertAt '[] ann rIn rOut
         (TRecordInfo ann rIn) (TRecordInfo ann rOut) )
 
+-- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after upsert:
+--
+-- * Same relation-subtree rules as 'ReturningMatchesInsert'.
+-- * For each child list in @rOut@: if @rIn@ still lacks mandatory plain columns at
+--   that node, the element type must be @Maybe@; otherwise it must be bare
+--   ('CheckUpsertListElem').
 type family ReturningMatchesUpsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
   :: Constraint where
   ReturningMatchesUpsert ann rIn rOut =
@@ -962,6 +974,13 @@ type family ReturningMatchesUpsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
     , CheckReturningUpsertAt '[] ann rIn rOut
         (TRecordInfo ann rIn) (TRecordInfo ann rOut) )
 
+-- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after update:
+--
+-- * @rOut@ must be @Maybe row@ ('RequireMaybeRow'); checks apply to 'InnerRow rOut'.
+-- * Each relation branch in that row exists in @rIn@ at the same path; plain columns
+--   in the returning row need not appear in @rIn@.
+-- * For every child list there: the element type must be @Maybe@
+--   ('AssertMustBeMaybe').
 type family ReturningMatchesUpdate (ann :: Ann) (rIn :: Type) (rOut :: Type)
   :: Constraint where
   ReturningMatchesUpdate ann rIn rOut =
