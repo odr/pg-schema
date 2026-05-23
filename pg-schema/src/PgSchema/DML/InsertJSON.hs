@@ -88,7 +88,7 @@ updateJSON_
 updateJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Update
 
 insertJSONImpl
-  :: forall ann -> forall r r'. (TreeSch ann, TreeIn ann r, TreeOut ann r')
+  :: forall ann -> forall r r'. (HasSchema ann, TreeIn ann r, TreeOut ann r')
   => Connection -> [r] -> InsertMode -> IO ([r'], Text)
 insertJSONImpl ann @r @r' conn rs mode = withTransactionIfNot conn do
   let sql' = T.unpack sql in trace' sql' $ void $ execute_ conn $ fromString sql'
@@ -116,7 +116,7 @@ withTransactionIfNot conn act = do
         \unknown transaction status"
 
 insertJSONImpl_
-  :: forall ann -> forall r. (TreeSch ann, TreeIn ann r)
+  :: forall ann -> forall r. (HasSchema ann, TreeIn ann r)
   => Connection -> [r] -> InsertMode -> IO Text
 insertJSONImpl_ ann @r conn rs mode = withTransactionIfNot conn do
   void $ trace' (T.unpack sql) $ execute_ conn $ fromString $ T.unpack sql
@@ -127,39 +127,39 @@ insertJSONImpl_ ann @r conn rs mode = withTransactionIfNot conn do
       (getRecordInfo @ann @r) []
 
 insertJSONText_ :: forall ann -> forall r s.
-  (IsString s, Monoid s, Ord s, TreeSch ann, CRecInfo ann r) => s
+  (IsString s, Monoid s, Ord s, HasSchema ann, CRecInfo ann r) => s
 insertJSONText_ ann @r =
   insertJSONText' Insert (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) []
 
 insertJSONText :: forall ann -> forall r r'.
-  ( TreeSch ann, CRecInfo ann r, CRecInfo ann r'
+  ( HasSchema ann, CRecInfo ann r, CRecInfo ann r'
   , IsString s, Monoid s, Ord s ) => s
 insertJSONText ann @r @r' =
   insertJSONText' Insert (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
 
 upsertJSONText_ :: forall ann -> forall r s.
-  (IsString s, Monoid s, Ord s, TreeSch ann, CRecInfo ann r) => s
+  (IsString s, Monoid s, Ord s, HasSchema ann, CRecInfo ann r) => s
 upsertJSONText_ ann @r =
   insertJSONText' Upsert (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) []
 
 upsertJSONText :: forall ann -> forall r r'.
-  ( TreeSch ann, CRecInfo ann r, CRecInfo ann r'
+  ( HasSchema ann, CRecInfo ann r, CRecInfo ann r'
   , IsString s, Monoid s, Ord s ) => s
 upsertJSONText ann @r @r' =
   insertJSONText' Upsert (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) (getRecordInfo @ann @r').fields
 
 updateJSONText_ :: forall ann -> forall r s.
-  (IsString s, Monoid s, Ord s, TreeSch ann, CRecInfo ann r) => s
+  (IsString s, Monoid s, Ord s, HasSchema ann, CRecInfo ann r) => s
 updateJSONText_ ann @r =
   insertJSONText' Update (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))
     (getRecordInfo @ann @r) []
 
 updateJSONText :: forall ann -> forall r r'.
-  ( TreeSch ann, CRecInfo ann r, CRecInfo ann r'
+  ( HasSchema ann, CRecInfo ann r, CRecInfo ann r'
   , IsString s, Monoid s, Ord s ) => s
 updateJSONText ann @r @r' =
   insertJSONText' Update (typDefMap @(AnnSch ann)) (tabInfoMap @(AnnSch ann))

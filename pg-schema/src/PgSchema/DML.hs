@@ -111,18 +111,16 @@ module PgSchema.DML
   , updateByCond, updateByCond_, updateText, updateText_
   , UpdateReturning, UpdateNonReturning, CRecInfo(..)
   -- ** Tree Insert / Upsert / Update
-  , InsertMode(..)
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_
   , updateJSON, updateJSON_, insertJSONText, insertJSONText_
   , upsertJSONText, upsertJSONText_, updateJSONText, updateJSONText_
   , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasKeyTree, AllHasKeyTree
-  , TreeSch
+  , HasSchema
   , InsertTreeNonReturning, InsertTreeReturning
   , UpsertTreeNonReturning, UpsertTreeReturning
   , UpdateTreeNonReturning, UpdateTreeReturning, TRecordInfo
   -- ** Returning shape (compile-time)
   , ReturningMatchesInsert, ReturningMatchesUpsert, ReturningMatchesUpdate
-  , absentRow
   -- ** Delete
   , deleteByCond, deleteText
   -- * Types

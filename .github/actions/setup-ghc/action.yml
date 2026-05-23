@@ -1,7 +1,8 @@
 name: Setup GHC with cache
 description: >-
-  Restore GHC from Actions cache when possible; otherwise install via
-  haskell-actions/setup. Always runs cabal update (on cache hit explicitly).
+  Restore installed GHC from Actions cache when possible, then run
+  haskell-actions/setup (cabal update on every job). GHC install is skipped
+  when the restored tree is already present.
 inputs:
   ghc-version:
     description: GHC version (e.g. 9.12.4)
@@ -18,43 +19,26 @@ runs:
       uses: actions/cache/restore@v5
       id: ghc-cache
       with:
-        path: |
-          ~/.ghcup/cache
-          ~/.ghcup/ghc/${{ inputs.ghc-version }}
-        key: ghcup-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
+        # Absolute paths: ~/.ghcup archives as ../../../.ghcup and restore fails.
+        path: /home/runner/.ghcup/ghc/${{ inputs.ghc-version }}
+        key: ghcup-v2-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
         restore-keys: |
-          ghcup-${{ runner.os }}-ghc-
+          ghcup-v2-${{ runner.os }}-ghc-
+
+    - name: Remove partial GHC tree after cache miss
+      if: steps.ghc-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: rm -rf "/home/runner/.ghcup/ghc/${{ inputs.ghc-version }}"
 
     - uses: haskell-actions/setup@v2
-      if: steps.ghc-cache.outputs.cache-hit != 'true'
       with:
         ghc-version: ${{ inputs.ghc-version }}
         cabal-version: ${{ inputs.cabal-version }}
         cabal-update: true
 
-    - name: Setup Haskell from GHC cache
-      if: steps.ghc-cache.outputs.cache-hit == 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
-        echo "$HOME/.ghcup/bin" >> "$GITHUB_PATH"
-        echo "$HOME/.cabal/bin" >> "$GITHUB_PATH"
-        mkdir -p "$HOME/.cabal/bin"
-        ghcup set ghc "${{ inputs.ghc-version }}"
-        ghcup install cabal "${{ inputs.cabal-version }}" || true
-        ghcup set cabal "${{ inputs.cabal-version }}"
-        cabal user-config init 2>/dev/null || true
-        config=$(cabal help 2>&1 | tail -1 | tr -d ' <>')
-        if ! grep -q '^store-dir:' "$config" 2>/dev/null; then
-          echo "store-dir: $HOME/.cabal/store" >> "$config"
-        fi
-        cabal update
-
     - name: Save GHC cache
       if: success() && steps.ghc-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v5
       with:
-        path: |
-          ~/.ghcup/cache
-          ~/.ghcup/ghc/${{ inputs.ghc-version }}
-        key: ghcup-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
+        path: /home/runner/.ghcup/ghc/${{ inputs.ghc-version }}
+        key: ghcup-v2-${{ runner.os }}-ghc-${{ inputs.ghc-version }}

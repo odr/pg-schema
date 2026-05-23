@@ -13,8 +13,10 @@ import PgSchema.Schema
 -- Plain Insert / Upsert / Update
 --------------------------------------------------------------------------------
 
+-- | Check that (input) record corresponds to annotation, can be converted to Row and contains only plain fields.
 type PlainIn ann r = (CRecInfo ann r, AllPlain ann r, ToRow (PgTag ann r))
 
+-- | Check that (output) record corresponds to annotation, can be converted from Row and contains only plain fields.
 type PlainOut ann r' = (CRecInfo ann r', AllPlain ann r', FromRow (PgTag ann r'))
 
 -- | Plain insert without @RETURNING@.
@@ -37,8 +39,9 @@ type UpdateReturning ann r r' = (UpdateNonReturning ann r, PlainOut ann r')
 type UpdateNonReturning ann r = PlainIn ann r
 
 -- | Upsert one table row by primary / unique key (@ToRow@, no JSON).
+-- We check that all mandatory fields are present (to insert) or we have some key (to update).
 type UpsertByKeyNonReturning ann r =
-  ( PlainIn ann r, CSchema (AnnSch ann)
+  ( PlainIn ann r, HasSchema ann
   , CheckAllMandatoryOrHasKey ann (ColsDbNames (Cols ann r)) )
 
 type UpsertByKeyReturning ann r r' =
@@ -54,10 +57,13 @@ type UpdateByKeyReturning ann r r' =
   ( UpdateByKeyNonReturning ann r, PlainOut ann r'
   , ReturningMatchesUpdate ann r r' )
 
-type TreeSch ann = CSchema (AnnSch ann)
+-- | Check that annotation contains a schema.
+type HasSchema ann = CSchema (AnnSch ann)
 
+-- | Check that (input) record corresponds to annotation and can be converted to JSON.
 type TreeIn ann r = (CRecInfo ann r, ToJSON (PgTag ann r))
 
+-- | Check that (output) record corresponds to annotation and can be converted from JSON.
 type TreeOut ann r' = (CRecInfo ann r', FromJSON (PgTag ann r'),
   Typeable ann, Typeable r')
 
@@ -66,7 +72,7 @@ type TreeOut ann r' = (CRecInfo ann r', FromJSON (PgTag ann r'),
 -- Check that all mandatory fields are present in all tables in tree.
 -- Reference fields in the child tables are not checked - they are inserted automatically.
 type InsertTreeNonReturning ann r =
-  (TreeSch ann, TreeIn ann r, AllMandatoryTree ann r '[])
+  (HasSchema ann, TreeIn ann r, AllMandatoryTree ann r '[])
 
 -- | Insert tree with @RETURNING@.
 --
@@ -83,7 +89,7 @@ type InsertTreeReturning ann r r' =
 -- present at each tree node.
 -- Reference fields in the child tables are not checked - they are inserted automatically.
 type UpsertTreeNonReturning ann r =
-  (TreeSch ann, TreeIn ann r, AllMandatoryOrHasKeyTree ann r '[])
+  (HasSchema ann, TreeIn ann r, AllMandatoryOrHasKeyTree ann r '[])
 
 -- | Upsert tree with @RETURNING@.
 --
@@ -97,7 +103,7 @@ type UpsertTreeReturning ann r r' =
 
 -- | Update tree without @RETURNING@ (key required at every node).
 type UpdateTreeNonReturning ann r =
-  (TreeSch ann, TreeIn ann r, AllHasKeyTree ann r '[])
+  (HasSchema ann, TreeIn ann r, AllHasKeyTree ann r '[])
 
 -- | Update tree with @RETURNING@ ('Maybe' on every list row in @r'@).
 type UpdateTreeReturning ann r r' =
