@@ -101,18 +101,56 @@ module PgSchema.DML
   -- *** Order By and others
   , ordf, ascf, descf, defLO, lo1
   , OrdDirection(..), OrdFld(..), Dist(..), LO(..)
-  -- ** Plain Insert
+  -- ** Plain DML
+  -- | You can insert, update or upsert data.
+  --
+  -- For insert you need all mandatory fields.
+  --
+  -- For key-based update you need a full primary or unique key.
+  --
+  -- For upsert you need all mandatory fields _and_ some key.
+  --
+  -- You can get in return any subset of the columns of the table which was affected by the operation.
+  -- All rows returned in the same order as the input tree.
+  -- For update you get `Maybe t`. It is `Nothing` if the row was not found by the key.
+  --
+  -- All these constraints are checked at compile time.
+  --
+  -- There is also a way to update data by a condition.
+  --
   , insertSch, insertSch_, insertText, insertText_, AllPlain
   , InsertNonReturning, InsertReturning
-  -- ** Plain Upsert / Update by key
   , upsertByKey, upsertByKey_, upsertByKeyText, upsertByKeyText_
   , UpsertByKeyNonReturning, UpsertByKeyReturning
   , updateByKey, updateByKey_, updateByKeyText, updateByKeyText_
   , UpdateByKeyNonReturning, UpdateByKeyReturning
-  -- ** Update by condition
   , updateByCond, updateByCond_, updateText, updateText_
   , UpdateReturning, UpdateNonReturning, CRecInfo(..)
-  -- ** Tree Insert / Upsert / Update
+  -- ** Tree-based DML
+  -- | You can insert, update or upsert data right into the tree structure
+  -- (to the several related tables at once).
+  --
+  -- For insert you need all mandatory fields at every node.
+  --
+  -- For update you need a full primary or unique key at every node.
+  --
+  -- For upsert you need all mandatory fields _or_ some key at every node.
+  -- For each node:
+  --
+  -- - the operation works like an insert if there is no key
+  -- - the operation works like an update if there is not all mandatory fields
+  -- - the operation works like an upsert if there is all mandatory fields and a key exists
+  --
+  -- You can get in return any subset of the columns of the tables which were affected by the operation.
+  -- All rows returned in the same order as the input tree.
+  -- For update or some nodes of upsert (where not all mandatory fields are present),
+  -- the returning type is `Maybe t`. It is 'Nothing' if the row was not found by the key.
+  --
+  -- All these constraints are checked at compile time.
+  --
+  -- For all these operations you should use types that can be converted to JSON (and from JSON for returning).
+  -- You don't need instances but all fields should be serializable into JSON.
+  -- I.e. you can't use 'Bytestring' for fields here.
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_
   , updateJSON, updateJSON_, insertJSONText, insertJSONText_
   , upsertJSONText, upsertJSONText_, updateJSONText, updateJSONText_
@@ -121,7 +159,6 @@ module PgSchema.DML
   , InsertTreeNonReturning, InsertTreeReturning
   , UpsertTreeNonReturning, UpsertTreeReturning
   , UpdateTreeNonReturning, UpdateTreeReturning, TRecordInfo
-  -- ** Returning shape (compile-time)
   , ReturningMatchesInsert, ReturningMatchesUpsert, ReturningMatchesUpdate
   -- ** Delete
   , deleteByCond, deleteText
