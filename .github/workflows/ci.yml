@@ -8,6 +8,12 @@ on:
   schedule:
     - cron: '0 6 1,7,13,19,25 * *'
 
+# Narrow token scope (repo default "read/write all" can still fail checkout
+# when org policy or scheduled runs restrict GITHUB_TOKEN).
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   build:
     name: build (${{ matrix.profile }}, GHC ${{ matrix.ghc }})
@@ -19,9 +25,9 @@ jobs:
         profile: [full, minimal]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: haskell-actions/setup@v2
+      - uses: haskell-actions/setup@v3
         id: haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -67,7 +73,7 @@ jobs:
           echo "hash=$(sha256sum cabal.project.freeze | cut -c1-16)" \
             >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         id: cache
         with:
           path: ${{ steps.haskell.outputs.cabal-store }}
@@ -92,7 +98,7 @@ jobs:
             --constraint="${{ steps.flags.outputs.constraint }}" \
             build pg-schema
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         if: success()
         with:
           path: ${{ steps.haskell.outputs.cabal-store }}
@@ -126,9 +132,9 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: haskell-actions/setup@v2
+      - uses: haskell-actions/setup@v3
         id: haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -154,7 +160,7 @@ jobs:
           echo "hash=$(sha256sum cabal.project.freeze | cut -c1-16)" \
             >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         id: cache
         with:
           path: ${{ steps.haskell.outputs.cabal-store }}
@@ -184,7 +190,7 @@ jobs:
           make test-run \
             CABAL='cabal --project-file=cabal.project.hackage --with-compiler=ghc-${{ matrix.ghc }}'
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         if: success()
         with:
           path: ${{ steps.haskell.outputs.cabal-store }}
