@@ -53,12 +53,14 @@ type UpsertByKeyReturning ann r r' =
 
 -- | Update one table row by primary / unique key (@ToRow@, no JSON).
 type UpdateByKeyNonReturning ann r =
-  ( PlainIn ann r, CSchema (AnnSch ann)
+  ( PlainIn ann r, HasSchema ann
   , CheckHasKey ann (ColsDbNames (Cols ann r)) )
 
+-- | Flat update by key: @r'@ is a bare returning row; the API returns
+-- @IO ([Maybe r'], Text)@ (@Nothing@ when no row matched the key).
 type UpdateByKeyReturning ann r r' =
   ( UpdateByKeyNonReturning ann r, PlainOut ann r'
-  , ReturningMatchesUpdate ann r r' )
+  , ReturningIsSubtree ann r r' )
 
 -- | Check that annotation contains a schema.
 type HasSchema ann = CSchema (AnnSch ann)

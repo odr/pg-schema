@@ -73,8 +73,9 @@ upsertJSON_
   => Connection -> [r] -> IO Text
 upsertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Upsert
 
--- | Update an existing forest (never @INSERT@). Every list row in the returning
--- type must be @Maybe@ ('ReturningMatchesUpdate').
+-- | Update an existing forest (never @INSERT@). Returning type @r'@ must satisfy
+-- 'ReturningMatchesUpdate' (@Maybe@ on each child list element). Flat
+-- 'updateByKey' instead uses bare @r'@ and returns @IO ([Maybe r'], Text)@.
 updateJSON
   :: forall ann -> forall r r'. UpdateTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)

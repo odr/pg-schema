@@ -8,7 +8,8 @@
   type error).
 - Flat DML: `upsertByKey` / `upsertByKey_` and `updateByKey` / `updateByKey_`
   (`upsertByKey` requires all mandatory columns and a full key — always
-  `INSERT … ON CONFLICT …`; `updateByKey` is key-only and never inserts).
+  `INSERT … ON CONFLICT …`; `updateByKey` is key-only, never inserts, bare
+  returning type `r'`, result `IO ([Maybe r'], Text)`).
 - Tree DML: `updateJSON` / `updateJSON_` (update-only); `InsertMode` for the
   JSON pipeline.
 - Tree returning: `array_append` keeps one JSON slot per input row (`null` when

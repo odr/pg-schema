@@ -9,7 +9,6 @@ import Data.Text as T
 import Database.PostgreSQL.Simple
 import Database.PostgreSQL.Simple.ToField (Action)
 import Database.PostgreSQL.Simple.ToRow (ToRow(..))
-import Unsafe.Coerce (unsafeCoerce)
 import GHC.Int
 import PgSchema.Ann
 import PgSchema.DML.Select
@@ -49,18 +48,20 @@ updateByKeyRowParams rec =
   in KeyedUpdateParams $ P.map pick (fldOthers ++ fldKeys)
 
 -- | Update rows by primary / unique key from record fields (never inserts).
--- Returning list has one @Maybe@ per input row (@Nothing@ when no row matched).
+--
+-- Returning type @r'@ is a bare row; the result is @IO ([Maybe r'], Text)@
+-- with @Nothing@ when no row matched the key.
 updateByKey
   :: forall ann -> forall r r'. UpdateByKeyReturning ann r r'
-  => Connection -> [r] -> IO ([r'], Text)
+  => Connection -> [r] -> IO ([Maybe r'], Text)
 updateByKey ann @r @r' conn recs =
   let sql = updateByKeyText ann @r @r' in
   trace' (T.unpack sql) do
     rs <- forM recs \rec -> do
       rows <- query conn (fromString $ T.unpack sql) (updateByKeyRowParams @ann @r rec)
       pure $ case rows of
-        [x] -> unPgTag @ann @r' x
-        _ -> unsafeCoerce (Nothing :: Maybe ())
+        [x] -> Just (unPgTag @ann @r' x)
+        _ -> Nothing
     pure (rs, sql)
 
 -- | Update rows by key without @RETURNING@.
@@ -76,8 +77,7 @@ updateByKey_ ann @r conn recs =
 
 updateByKeyText
   :: forall ann -> forall r r' s
-  . ( CRecInfo ann r, CRecInfo ann r', IsString s, Monoid s
-    , CSchema (AnnSch ann) ) => s
+  . ( CRecInfo ann r, CRecInfo ann r', IsString s, Monoid s, HasSchema ann ) => s
 updateByKeyText ann @r @r' =
   updateByKeyText_ ann @r <> " returning " <> fs'
   where
@@ -86,11 +86,11 @@ updateByKeyText ann @r @r' =
 
 updateByKeyText_
   :: forall ann -> forall r s
-  . (IsString s, Monoid s, CRecInfo ann r, CSchema (AnnSch ann)) => s
+  . (IsString s, Monoid s, CRecInfo ann r, HasSchema ann) => s
 updateByKeyText_ ann @r = fromString $ T.unpack $ updateByKeyStmt ann @r
 
 updateByKeyStmt
-  :: forall ann -> forall r. (CRecInfo ann r, CSchema (AnnSch ann)) => T.Text
+  :: forall ann -> forall r. (CRecInfo ann r, HasSchema ann) => T.Text
 updateByKeyStmt ann @r =
   let
     ri = getRecordInfo @ann @r

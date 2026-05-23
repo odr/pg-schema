@@ -27,7 +27,7 @@ type RootRetBare = "id" := Int32 :. RootRec
 type RootKeyPatch =
   "code" := Text :. "grp" := Int32 :. "name" := Text :. "someEmpty" := ()
 
-type RootKeyRet = Maybe ("id" := Int32 :. "name" := Text)
+type RootKeyRet = "id" := Int32 :. "name" := Text
 
 type RootSel = "code" := Text :. "grp" := Int32 :. "name" := Text
 
@@ -39,7 +39,7 @@ type NullableKeyPatch =
   "code" := Text :. "suffix" := Maybe Text :. "note" := Maybe Text
     :. "someEmpty" := ()
 
-type NullableKeyRet = Maybe ("id" := Int32 :. "note" := Maybe Text)
+type NullableKeyRet = "id" := Int32 :. "note" := Maybe Text
 
 type RootPatchOnly =
   "id" := Int32 :. "code" := Text :. "grp" := Int32 :. "name" := Text
@@ -63,7 +63,7 @@ type RootInsWithMid =
 
 type Mid1KeyPatch = "id" := Int32 :. Mid1Rec
 
-type Mid1KeyRet = Maybe ("id" := Int32 :. "flag" := Bool)
+type Mid1KeyRet = "id" := Int32 :. "flag" := Bool
 
 expectAbsent :: Show a => [Maybe a] -> IO ()
 expectAbsent [Nothing] = pure ()
@@ -98,9 +98,9 @@ prop_upsert_by_key_insert_then_update pool = withTests 10 $ property do
     (ret, sql2) <- upsertByKey (AnnSch "root") @RootRec @RootKeyRet conn [row2]
     expectUpsertSql sql2
     case ret of
-      [Just (_ :. n)] -> when (unPgTag n /= name2) $
+      [_ :. n] -> when (unPgTag n /= name2) $
         fail $ "expected name " <> show name2
-      _ -> fail "expected [Just] from upsertByKey on conflict update"
+      _ -> fail "expected one row from upsertByKey on conflict update"
     (rows :: [RootSel], _) <- selSch "root" conn $
       qRoot $ qWhere $ "code" =? code &&& "grp" =? grp
     case rows of

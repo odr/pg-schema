@@ -124,7 +124,7 @@ upsByKey_ tn = upsertByKey_ (AnnSch tn)
 
 updByKey
   :: forall tn -> forall r r'. UpdateByKeyReturning (AnnSch tn) r r'
-  => Connection -> [r] -> IO ([r'], Text)
+  => Connection -> [r] -> IO ([Maybe r'], Text)
 updByKey tn = updateByKey (AnnSch tn)
 
 updByKey_
