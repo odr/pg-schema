@@ -1,5 +1,7 @@
 cabal.project.freeze
 cabal.project.local
+cabal.project.hackage.freeze
+cabal.project.hackage.local
 .stack-work/
 *~
 *.bak

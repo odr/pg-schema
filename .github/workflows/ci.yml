@@ -8,8 +8,6 @@ on:
   schedule:
     - cron: '0 6 1,7,13,19,25 * *'
 
-# Narrow token scope (repo default "read/write all" can still fail checkout
-# when org policy or scheduled runs restrict GITHUB_TOKEN).
 permissions:
   contents: read
   actions: write
@@ -23,6 +21,11 @@ jobs:
       matrix:
         ghc: ['9.10.3', '9.12.4', '9.14.1']
         profile: [full, minimal]
+
+    env:
+      PROJECT_FILE: cabal.project.hackage
+      PROJECT_LOCAL: cabal.project.hackage.local
+      FREEZE_FILE: cabal.project.hackage.freeze
 
     steps:
       - uses: actions/checkout@v6
@@ -41,17 +44,16 @@ jobs:
         run: |
           {
             printf '%s\n' "with-compiler: ghc-${{ matrix.ghc }}"
-            # GHC 9.14 ships base 4.22; postgresql-simple 0.7.x still has base <4.22.
+            # postgresql-simple 0.7.x: base <4.22, template-haskell <2.24 (GHC 9.14)
             if [ "${{ matrix.ghc }}" = "9.14.1" ]; then
-              printf '%s\n' 'allow-newer: postgresql-simple:base'
+              printf '%s\n' 'allow-newer: all'
             fi
-          } > cabal.project.local
+          } > "$PROJECT_LOCAL"
 
       - name: Set package flag constraints
         id: flags
         shell: bash
         run: |
-          cat cabal.project.local
           case "${{ matrix.profile }}" in
             full)
               echo 'constraint=pg-schema +time +uuid +case-insensitive +arbitrary +flat +hashable' \
@@ -72,11 +74,11 @@ jobs:
         shell: bash
         run: |
           cabal \
-            --project-file=cabal.project.hackage \
+            --project-file="$PROJECT_FILE" \
             --with-compiler="ghc-${{ matrix.ghc }}" \
             --constraint="${{ steps.flags.outputs.constraint }}" \
             freeze
-          echo "hash=$(sha256sum cabal.project.freeze | cut -c1-16)" \
+          echo "hash=$(sha256sum "$FREEZE_FILE" | cut -c1-16)" \
             >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@v5
@@ -94,12 +96,12 @@ jobs:
         shell: bash
         run: |
           cabal \
-            --project-file=cabal.project.hackage \
+            --project-file="$PROJECT_FILE" \
             --with-compiler="ghc-${{ matrix.ghc }}" \
             --constraint="${{ steps.flags.outputs.constraint }}" \
             build --only-dependencies pg-schema
           cabal \
-            --project-file=cabal.project.hackage \
+            --project-file="$PROJECT_FILE" \
             --with-compiler="ghc-${{ matrix.ghc }}" \
             --constraint="${{ steps.flags.outputs.constraint }}" \
             build pg-schema
@@ -118,11 +120,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ['9.10.3', '9.12.4', '9.14.1']
+        # 9.10.3: test-gen uses MultilineStrings (GHC 9.12+); build-only on 9.10.3
+        ghc: ['9.12.4', '9.14.1']
 
     env:
       PG_CONN: >-
         dbname=schema_test host=localhost user=postgres password=postgres
+      PROJECT_FILE: cabal.project.hackage
+      PROJECT_LOCAL: cabal.project.hackage.local
+      FREEZE_FILE: cabal.project.hackage.freeze
 
     services:
       postgres:
@@ -155,21 +161,20 @@ jobs:
           {
             printf '%s\n' "with-compiler: ghc-${{ matrix.ghc }}"
             if [ "${{ matrix.ghc }}" = "9.14.1" ]; then
-              printf '%s\n' 'allow-newer: postgresql-simple:base'
+              printf '%s\n' 'allow-newer: all'
             fi
-          } > cabal.project.local
+          } > "$PROJECT_LOCAL"
 
       - name: Freeze dependencies fingerprint
         id: plan
         shell: bash
         run: |
-          cat cabal.project.local
           cabal \
-            --project-file=cabal.project.hackage \
+            --project-file="$PROJECT_FILE" \
             --with-compiler="ghc-${{ matrix.ghc }}" \
             --enable-tests \
             freeze
-          echo "hash=$(sha256sum cabal.project.freeze | cut -c1-16)" \
+          echo "hash=$(sha256sum "$FREEZE_FILE" | cut -c1-16)" \
             >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@v5
@@ -187,7 +192,7 @@ jobs:
         shell: bash
         run: |
           cabal \
-            --project-file=cabal.project.hackage \
+            --project-file="$PROJECT_FILE" \
             --with-compiler="ghc-${{ matrix.ghc }}" \
             --enable-tests \
             build --only-dependencies all
