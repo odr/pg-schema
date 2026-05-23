@@ -24,11 +24,10 @@ type PlainOut ann r' = (CRecInfo ann r', AllPlain ann r', FromRow (PgTag ann r')
 type InsertNonReturning ann r =
   (PlainIn ann r, CheckAllMandatory ann (ColsDbNames (Cols ann r)))
 
--- | Plain insert with @RETURNING@.
--- Check that all inserted and returned fields belong to the root table
--- and all mandatory fields are present.
+-- | Plain insert with @RETURNING@: @r'@ is any bare plain column subset of the
+-- table ('PlainOut'); tree 'ReturningMatchesInsert' is for 'insertJSON' only.
 type InsertReturning ann r r' =
-  ( InsertNonReturning ann r, PlainOut ann r', ReturningMatchesInsert ann r r' )
+  ( InsertNonReturning ann r, PlainOut ann r', RequireBareRow r' )
 
 -- | Plain update with @RETURNING@.
 -- Check that all updated and returned fields belong to the root table.
@@ -48,19 +47,16 @@ type UpsertByKeyNonReturning ann r =
   , CheckAllMandatoryAndHasKey ann (ColsDbNames (Cols ann r)) )
 
 type UpsertByKeyReturning ann r r' =
-  ( UpsertByKeyNonReturning ann r, PlainOut ann r'
-  , ReturningMatchesUpsert ann r r' )
+  ( UpsertByKeyNonReturning ann r, PlainOut ann r', RequireBareRow r' )
 
 -- | Update one table row by primary / unique key (@ToRow@, no JSON).
 type UpdateByKeyNonReturning ann r =
   ( PlainIn ann r, HasSchema ann
   , CheckHasKey ann (ColsDbNames (Cols ann r)) )
 
--- | Flat update by key: @r'@ is a bare returning row; the API returns
--- @IO ([Maybe r'], Text)@ (@Nothing@ when no row matched the key).
+-- | Flat update by key: bare @r'@; the API returns @IO ([Maybe r'], Text)@.
 type UpdateByKeyReturning ann r r' =
-  ( UpdateByKeyNonReturning ann r, PlainOut ann r'
-  , ReturningIsSubtree ann r r' )
+  ( UpdateByKeyNonReturning ann r, PlainOut ann r', RequireBareRow r' )
 
 -- | Check that annotation contains a schema.
 type HasSchema ann = CSchema (AnnSch ann)

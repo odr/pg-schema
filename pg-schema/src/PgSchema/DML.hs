@@ -48,12 +48,11 @@
 -- 'upsertJSON' / 'upsertJSON_' relax mandatory requirements and may @UPDATE@ or
 -- @INSERT … ON CONFLICT …@ (see their Haddock).
 -- 'updateJSON' / 'updateJSON_' update existing rows only (never @INSERT@).
--- Flat keyed writes: 'upsertByKey' requires every mandatory column and a full key
--- (always @INSERT … ON CONFLICT …@); 'updateByKey' requires a full key only
--- (never inserts) and returns @IO ([Maybe r'], Text)@ with bare returning type
--- @r'@. Unlike 'upsertJSON', flat upsert does not accept mandatory OR key.
--- Tree 'updateJSON' uses 'ReturningMatchesUpdate' (@Maybe@ on list branches).
--- Plain 'insertSch' / 'insertSch_' require all mandatory fields for flat rows.
+-- Flat 'insertSch', 'upsertByKey', and 'updateByKey' use 'PlainOut' for @RETURNING@
+-- (any plain columns of the table; 'RequireBareRow' forbids @Maybe@ on the whole
+-- row). Tree @*JSON@ uses 'ReturningMatches{Insert,Upsert,Update}' instead.
+-- 'upsertByKey' requires mandatory columns and a full key; 'updateByKey' is
+-- key-only and returns @IO ([Maybe r'], Text)@.
 --
 -- 'selectSch' decodes each row into a Haskell type @r@ whose fields describe the
 -- root table columns and nested data for relations (multiple list-shaped children

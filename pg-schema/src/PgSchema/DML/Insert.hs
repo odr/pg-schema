@@ -14,9 +14,10 @@ import PgSchema.Utils.Internal
 
 
 -- | Insert records into a table.
--- You can request any subset of columns from the inserted row via the result type.
 --
--- All mandatory fields having no defaults should be present.
+-- Returning type @r'@ may name any plain columns of the table ('PlainOut');
+-- they need not appear in the input row (e.g. @RETURNING id@ without @id@ in @r@).
+-- All mandatory fields having no defaults should be present in @r@.
 --
 insertSch
   :: forall ann -> forall r r'. InsertReturning ann r r'

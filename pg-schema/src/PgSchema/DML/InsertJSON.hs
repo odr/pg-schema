@@ -39,10 +39,9 @@ data InsertMode = Insert | Upsert | Update deriving (Eq, Show)
 --
 -- Uses the same SQL pipeline as 'upsertJSON', but each row is a plain @INSERT@
 -- (no @UPDATE@, no @INSERT … ON CONFLICT …@). Any duplicate primary or unique key
--- raises a PostgreSQL error.
---
--- Requires all mandatory columns at every node (see 'InsertTreeReturning').
-
+-- raises a PostgreSQL error. Requires all mandatory columns at every node
+-- ('InsertTreeReturning'; 'ReturningMatchesInsert' on @r'@). Flat 'insertSch'
+-- uses 'PlainOut' only.
 insertJSON
   :: forall ann -> forall r r'. InsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)

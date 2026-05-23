@@ -803,7 +803,9 @@ type family CheckSubtreeAt (path :: [Symbol]) (fisIn :: [FieldInfo Symbol])
       , CheckSubtreeAt path fisIn xs )
   CheckSubtreeAt path fisIn (_ ': xs) = CheckSubtreeAt path fisIn xs
 
--- | Check that returning tree is a subtree of input tree
+-- | Returning shape must be reachable from the input tree: each relation branch
+-- in @rOut@ must exist in @rIn@. Plain columns in @rOut@ are not compared to @rIn@
+-- (see 'CheckSubtreeAt'). Used by tree @*JSON@ returning rules, not flat DML.
 type family ReturningIsSubtree (ann :: Ann) (rIn :: Type) (rOut :: Type) :: Constraint where
   ReturningIsSubtree ann rIn rOut =
     CheckSubtreeAt '[] (TRecordInfo ann rIn) (TRecordInfo ann rOut)
@@ -826,6 +828,18 @@ type family RequireMaybeRow (r :: Type) :: Constraint where
   RequireMaybeRow r = TypeError
     ( Text "Update returning row must be Maybe ..."
     :$$: Text "Got: " :<>: ShowType r )
+
+-- | Flat @RETURNING@ row must not be wrapped in @Maybe@ (use @IO [Maybe r']@ on
+-- 'updateByKey' for per-row absence). Nullable columns may still be @Maybe@ fields.
+type family RequireBareRow (r :: Type) :: Constraint where
+  RequireBareRow r = RequireBareRow' r
+
+type family RequireBareRow' (r :: Type) :: Constraint where
+  RequireBareRow' (Maybe x) = TypeError
+    ( Text "Flat returning row must not be wrapped in Maybe."
+    :$$: Text "Use IO [Maybe r'] on updateByKey when a row may be absent."
+    :$$: Text "Got: " :<>: ShowType (Maybe x) )
+  RequireBareRow' _ = ()
 
 type family ListElem (t :: Type) :: Type where
   ListElem [e] = e
