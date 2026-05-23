@@ -151,9 +151,10 @@ type family AppendPK (pk :: [Symbol]) (uks :: [[Symbol]]) :: [[Symbol]] where
   AppendPK '[] uks = uks
   AppendPK pk uks = pk ': uks
 
--- | Keys accepted by 'CheckAllMandatoryOrHasKey': PK plus every unique
+-- | Keys accepted by 'CheckAllMandatoryOrHasKey' (tree upsert) and
+-- 'CheckHasKey' (flat 'updateByKey' / 'upsertByKey'): PK plus every unique
 -- constraint from the schema (catalog order). Runtime key choice uses
--- 'PgSchema.DML.InsertJSON.identityCandidatesFromTab' and its priority rules.
+-- 'PgSchema.DML.KeyedWrite.identityCandidatesFromTab' and its priority rules.
 type family IdentityCandidates sch tab :: [[Symbol]] where
   IdentityCandidates sch tab =
     AppendPK (TdKey (TTabDef sch tab)) (TdUniq (TTabDef sch tab))

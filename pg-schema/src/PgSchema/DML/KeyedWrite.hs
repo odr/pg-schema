@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 module PgSchema.DML.KeyedWrite
-  ( resolveKeyedOp, KeyedOp(..)
-  , mandatoryDbNames, identityCandidatesFromTab, pickKeyNames
+  ( mandatoryDbNames, identityCandidatesFromTab, pickKeyNames
   , keyWhereClause, upsertOnConflict
   , keyedUpdateSetAndKeys ) where
 
@@ -12,8 +11,6 @@ import Data.Text as T
 import PgSchema.Schema
 import Prelude as P
 
-
-data KeyedOp = KeyedIns | KeyedUpd | KeyedUps deriving (Eq, Show)
 
 -- | Runtime conflict/update targets (same order as 'InsertJSON').
 identityCandidatesFromTab :: TabInfo -> [[Text]]
@@ -26,13 +23,6 @@ identityCandidatesFromTab ti =
 mandatoryDbNames :: TabInfo -> [Text]
 mandatoryDbNames ti =
   M.keys $ M.filter (\fd -> not $ fd.fdNullable || fd.fdHasDefault) ti.tiFlds
-
-resolveKeyedOp
-  :: TabInfo -> [Text] -> [Text] -> KeyedOp
-resolveKeyedOp ti srcFlds keyNames
-  | not $ P.null $ mandatoryDbNames ti L.\\ srcFlds = KeyedUpd
-  | not $ P.null keyNames = KeyedUps
-  | otherwise = KeyedIns
 
 pickKeyNames :: TabInfo -> [Text] -> Maybe [Text]
 pickKeyNames ti srcFlds =

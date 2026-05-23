@@ -54,6 +54,8 @@ main = do
           prop_upsert_by_key_insert_then_update pool
       , testProperty "upsertByKey composite unique" $
           prop_upsert_by_key_composite_unique pool
+      , testProperty "upsertByKey always INSERT ON CONFLICT SQL" $
+          prop_upsert_by_key_never_pure_update pool
       , testProperty "updateByKey found" $ prop_update_by_key_found pool
       , testProperty "updateByKey not found" $
           prop_update_by_key_not_found pool

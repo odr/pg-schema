@@ -732,6 +732,10 @@ type family CheckHasKey (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckHasKey ('Ann ren sch d tab) rs =
     HasAnyFullIdentity rs (IdentityCandidates sch tab) ('Ann ren sch d tab)
 
+-- | All mandatory fields and a full primary or eligible unique key (flat upsert).
+type CheckAllMandatoryAndHasKey ann rs =
+  (CheckAllMandatory ann rs, CheckHasKey ann rs)
+
 genDefunSymbols
   [ ''CheckAllMandatory, ''CheckAllMandatoryOrHasKey, ''CheckHasKey ]
 
@@ -816,10 +820,6 @@ type family InnerRow (r :: Type) :: Type where
   InnerRow r = TypeError
     ( Text "Update returning row must be wrapped in Maybe."
     :$$: Text "Got: " :<>: ShowType r )
-
--- | @Nothing@ for a returning row type @Maybe a@ (use @absentRow \@(InnerRow r')@).
-absentRow :: forall a. Maybe a
-absentRow = Nothing
 
 type family RequireMaybeRow (r :: Type) :: Constraint where
   RequireMaybeRow (Maybe _) = ()

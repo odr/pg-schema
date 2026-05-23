@@ -39,10 +39,13 @@ type UpdateReturning ann r r' = (UpdateNonReturning ann r, PlainOut ann r')
 type UpdateNonReturning ann r = PlainIn ann r
 
 -- | Upsert one table row by primary / unique key (@ToRow@, no JSON).
--- We check that all mandatory fields are present (to insert) or we have some key (to update).
+--
+-- Requires all mandatory fields and a full primary or eligible unique key so
+-- the operation is always @INSERT … ON CONFLICT …@. Use 'InsertNonReturning' or
+-- 'UpdateByKeyNonReturning' for insert-only or update-only flat writes.
 type UpsertByKeyNonReturning ann r =
   ( PlainIn ann r, HasSchema ann
-  , CheckAllMandatoryOrHasKey ann (ColsDbNames (Cols ann r)) )
+  , CheckAllMandatoryAndHasKey ann (ColsDbNames (Cols ann r)) )
 
 type UpsertByKeyReturning ann r r' =
   ( UpsertByKeyNonReturning ann r, PlainOut ann r'

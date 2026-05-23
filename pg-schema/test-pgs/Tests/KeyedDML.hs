@@ -1,4 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
+-- |
+-- Flat keyed DML: 'upsertByKey' needs mandatory fields and a full key
+-- ('INSERT … ON CONFLICT'); key-only patches use 'updateByKey' only.
 module Tests.KeyedDML where
 
 import Control.Monad (void, when, unless)
@@ -7,6 +10,7 @@ import Data.List qualified as L
 import Data.Maybe (Maybe(..))
 import Data.Pool as Pool
 import Data.Text (Text)
+import Data.Text qualified as T
 import Database.PostgreSQL.Simple (Connection)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
@@ -65,6 +69,16 @@ expectAbsent :: Show a => [Maybe a] -> IO ()
 expectAbsent [Nothing] = pure ()
 expectAbsent xs = fail $ "expected [Nothing], got " <> show xs
 
+expectUpsertSql :: Text -> IO ()
+expectUpsertSql sql = do
+  let lower = T.toLower sql
+  unless ("insert into" `T.isInfixOf` lower) $
+    fail $ "expected INSERT upsert SQL, got: " <> T.unpack sql
+  unless ("on conflict" `T.isInfixOf` lower) $
+    fail $ "expected ON CONFLICT in upsert SQL, got: " <> T.unpack sql
+  when (T.stripPrefix "update " (T.stripStart lower) == Just "") $
+    fail $ "upsertByKey must not emit UPDATE-only SQL: " <> T.unpack sql
+
 prop_upsert_by_key_insert_then_update :: Pool Connection -> Property
 prop_upsert_by_key_insert_then_update pool = withTests 10 $ property do
   code <- forAll (Gen.text (Range.linear 3 20) Gen.alphaNum)
@@ -77,14 +91,16 @@ prop_upsert_by_key_insert_then_update pool = withTests 10 $ property do
     let
       full :: RootRec
       full = "code" =: code :. "grp" =: grp :. "name" =: name1 :. "someEmpty" =: ()
-      patch :: RootKeyPatch
-      patch = "code" =: code :. "grp" =: grp :. "name" =: name2 :. "someEmpty" =: ()
-    ([_ :. _], _) <- upsertByKey (AnnSch "root") @RootRec @RootRetBare conn [full]
-    (ret, _) <- upsertByKey (AnnSch "root") @RootKeyPatch @RootKeyRet conn [patch]
+      row2 :: RootRec
+      row2 = "code" =: code :. "grp" =: grp :. "name" =: name2 :. "someEmpty" =: ()
+    ([_ :. _], sql1) <- upsertByKey (AnnSch "root") @RootRec @RootRetBare conn [full]
+    expectUpsertSql sql1
+    (ret, sql2) <- upsertByKey (AnnSch "root") @RootRec @RootKeyRet conn [row2]
+    expectUpsertSql sql2
     case ret of
       [Just (_ :. n)] -> when (unPgTag n /= name2) $
         fail $ "expected name " <> show name2
-      _ -> fail "expected [Just] from upsertByKey update path"
+      _ -> fail "expected [Just] from upsertByKey on conflict update"
     (rows :: [RootSel], _) <- selSch "root" conn $
       qRoot $ qWhere $ "code" =? code &&& "grp" =? grp
     case rows of
@@ -105,8 +121,10 @@ prop_upsert_by_key_composite_unique pool = withTests 5 $ property do
       row1 = "code" =: code :. "grp" =: grp :. "name" =: name1 :. "someEmpty" =: ()
       row2 :: RootRec
       row2 = "code" =: code :. "grp" =: grp :. "name" =: name2 :. "someEmpty" =: ()
-    void $ upsByKey_ "root" conn [row1]
-    void $ upsByKey_ "root" conn [row2]
+    (_, sql1) <- upsByKey_ "root" conn [row1]
+    expectUpsertSql sql1
+    (_, sql2) <- upsByKey_ "root" conn [row2]
+    expectUpsertSql sql2
     (rows :: [RootSel], _) <- selSch "root" conn $
       qRoot $ qWhere $ "code" =? code &&& "grp" =? grp
     case rows of
@@ -114,6 +132,21 @@ prop_upsert_by_key_composite_unique pool = withTests 5 $ property do
         when (unPgTag n /= name2) $
           fail $ "expected updated name " <> show name2
       _ -> fail $ "expected 1 row, got " <> show (L.length rows)
+
+prop_upsert_by_key_never_pure_update :: Pool Connection -> Property
+prop_upsert_by_key_never_pure_update pool = withTests 3 $ property do
+  code <- forAll (Gen.text (Range.linear 3 20) Gen.alphaNum)
+  grp <- forAll (Gen.int32 (Range.linear 1 10000))
+  name <- forAll (Gen.text (Range.linear 1 20) Gen.alphaNum)
+  evalIO $ Pool.withResource pool \conn -> do
+    void $ delByCond "root" conn ("code" =? code)
+    let
+      row :: RootRec
+      row = "code" =: code :. "grp" =: grp :. "name" =: name :. "someEmpty" =: ()
+    (_, sqlExec) <- upsByKey_ "root" conn [row]
+    expectUpsertSql sqlExec
+    let sqlText = upsertByKeyText_ (AnnSch "root") @RootRec
+    expectUpsertSql sqlText
 
 prop_update_by_key_found :: Pool Connection -> Property
 prop_update_by_key_found pool = withTests 10 $ property do
