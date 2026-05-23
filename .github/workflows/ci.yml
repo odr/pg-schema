@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           {
-            printf '%s\n' "with-compiler: ghc-${{ matrix.ghc }}"
+            printf '%s\n' "with-compiler: ghc"
             # postgresql-simple 0.7.x: base <4.22, template-haskell <2.24 (GHC 9.14)
             if [ "${{ matrix.ghc }}" = "9.14.1" ]; then
               printf '%s\n' 'allow-newer: all'
@@ -74,7 +74,7 @@ jobs:
         run: |
           cabal \
             --project-file="$PROJECT_FILE" \
-            --with-compiler="ghc-${{ matrix.ghc }}" \
+            --with-compiler=ghc \
             --constraint="${{ steps.flags.outputs.constraint }}" \
             freeze
           echo "hash=$(sha256sum "$FREEZE_FILE" | cut -c1-16)" \
@@ -96,12 +96,12 @@ jobs:
         run: |
           cabal \
             --project-file="$PROJECT_FILE" \
-            --with-compiler="ghc-${{ matrix.ghc }}" \
+            --with-compiler=ghc \
             --constraint="${{ steps.flags.outputs.constraint }}" \
             build --only-dependencies pg-schema
           cabal \
             --project-file="$PROJECT_FILE" \
-            --with-compiler="ghc-${{ matrix.ghc }}" \
+            --with-compiler=ghc \
             --constraint="${{ steps.flags.outputs.constraint }}" \
             build pg-schema
 
@@ -157,7 +157,7 @@ jobs:
         shell: bash
         run: |
           {
-            printf '%s\n' "with-compiler: ghc-${{ matrix.ghc }}"
+            printf '%s\n' "with-compiler: ghc"
             if [ "${{ matrix.ghc }}" = "9.14.1" ]; then
               printf '%s\n' 'allow-newer: all'
             fi
@@ -169,7 +169,7 @@ jobs:
         run: |
           cabal \
             --project-file="$PROJECT_FILE" \
-            --with-compiler="ghc-${{ matrix.ghc }}" \
+            --with-compiler=ghc \
             --enable-tests \
             freeze
           echo "hash=$(sha256sum "$FREEZE_FILE" | cut -c1-16)" \
@@ -191,7 +191,7 @@ jobs:
         run: |
           cabal \
             --project-file="$PROJECT_FILE" \
-            --with-compiler="ghc-${{ matrix.ghc }}" \
+            --with-compiler=ghc \
             --enable-tests \
             build --only-dependencies all
 
@@ -204,7 +204,7 @@ jobs:
         shell: bash
         run: |
           make test-run \
-            CABAL='cabal --project-file=cabal.project.hackage --with-compiler=ghc-${{ matrix.ghc }} --enable-tests'
+            CABAL='cabal --project-file=cabal.project.hackage --with-compiler=ghc --enable-tests'
 
       - uses: actions/cache/save@v5
         if: success()

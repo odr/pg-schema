@@ -1,8 +1,7 @@
 name: Setup GHC with cache
 description: >-
   Restore installed GHC from Actions cache when possible, then run
-  haskell-actions/setup (cabal update on every job). GHC install is skipped
-  when the restored tree is already present.
+  haskell-actions/setup (cabal update on every job).
 inputs:
   ghc-version:
     description: GHC version (e.g. 9.12.4)
@@ -19,25 +18,40 @@ runs:
       uses: actions/cache/restore@v5
       id: ghc-cache
       with:
-        # Absolute paths: ~/.ghcup archives as ../../../.ghcup and restore fails.
         path: /home/runner/.ghcup/ghc/${{ inputs.ghc-version }}
-        key: ghcup-v2-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
+        key: ghcup-v3-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
 
-    - name: Remove partial GHC tree after cache miss
-      if: steps.ghc-cache.outputs.cache-hit != 'true'
+    - name: Validate GHC cache
+      id: ghc-valid
       shell: bash
-      run: rm -rf "/home/runner/.ghcup/ghc/${{ inputs.ghc-version }}"
+      run: |
+        set -euo pipefail
+        ver="${{ inputs.ghc-version }}"
+        bindir="$HOME/.ghcup/ghc/$ver/bin"
+        valid=true
+        if [ "${{ steps.ghc-cache.outputs.cache-hit }}" = "true" ]; then
+          if [ ! -x "$bindir/ghc" ]; then
+            valid=false
+          elif ! "$bindir/ghc" --numeric-version | grep -q "^${ver}"; then
+            valid=false
+          fi
+          if [ "$valid" = "false" ]; then
+            echo "Discarding invalid GHC cache for $ver"
+            rm -rf "$HOME/.ghcup/ghc/$ver"
+          fi
+        fi
+        echo "valid=$valid" >> "$GITHUB_OUTPUT"
 
-    - name: Seed GHC from runner image
+    - name: Link runner GHC into ghcup home
       shell: bash
       run: |
         set -euo pipefail
         ver="${{ inputs.ghc-version }}"
         home_ghc="$HOME/.ghcup/ghc/$ver"
         image_ghc="/usr/local/.ghcup/ghc/$ver"
-        if [ ! -d "$home_ghc" ] && [ -d "$image_ghc" ]; then
+        if [ ! -e "$home_ghc" ] && [ -d "$image_ghc" ]; then
           mkdir -p "$(dirname "$home_ghc")"
-          cp -a "$image_ghc" "$home_ghc"
+          ln -sfn "$image_ghc" "$home_ghc"
         fi
 
     - uses: haskell-actions/setup@v2
@@ -46,9 +60,25 @@ runs:
         cabal-version: ${{ inputs.cabal-version }}
         cabal-update: true
 
+    - name: Expose GHC on PATH
+      shell: bash
+      run: |
+        set -euo pipefail
+        ver="${{ inputs.ghc-version }}"
+        bindir="$HOME/.ghcup/ghc/$ver/bin"
+        if [ ! -x "$bindir/ghc" ]; then
+          echo "GHC $ver is not installed under $bindir" >&2
+          exit 1
+        fi
+        echo "$bindir" >> "$GITHUB_PATH"
+        ghc --version
+
     - name: Save GHC cache
-      if: success() && steps.ghc-cache.outputs.cache-hit != 'true'
+      if: >-
+        success() &&
+        (steps.ghc-cache.outputs.cache-hit != 'true' ||
+        steps.ghc-valid.outputs.valid != 'true')
       uses: actions/cache/save@v5
       with:
         path: /home/runner/.ghcup/ghc/${{ inputs.ghc-version }}
-        key: ghcup-v2-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
+        key: ghcup-v3-${{ runner.os }}-ghc-${{ inputs.ghc-version }}
