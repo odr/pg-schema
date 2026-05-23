@@ -26,15 +26,14 @@ jobs:
       PROJECT_FILE: cabal.project.hackage
       PROJECT_LOCAL: cabal.project.hackage.local
       FREEZE_FILE: cabal.project.hackage.freeze
+      CABAL_STORE: ~/.cabal/store
 
     steps:
       - uses: actions/checkout@v6
 
-      - uses: haskell-actions/setup@v2
-        id: haskell
+      - uses: ./.github/actions/setup-ghc
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: '3.16'
 
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libpq-dev libgmp-dev
@@ -84,7 +83,7 @@ jobs:
       - uses: actions/cache/restore@v5
         id: cache
         with:
-          path: ${{ steps.haskell.outputs.cabal-store }}
+          path: ${{ env.CABAL_STORE }}
           key: >-
             ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.profile }}-plan-${{
             steps.plan.outputs.hash }}
@@ -109,7 +108,7 @@ jobs:
       - uses: actions/cache/save@v5
         if: success()
         with:
-          path: ${{ steps.haskell.outputs.cabal-store }}
+          path: ${{ env.CABAL_STORE }}
           key: >-
             ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-${{ matrix.profile }}-plan-${{
             steps.plan.outputs.hash }}
@@ -129,6 +128,7 @@ jobs:
       PROJECT_FILE: cabal.project.hackage
       PROJECT_LOCAL: cabal.project.hackage.local
       FREEZE_FILE: cabal.project.hackage.freeze
+      CABAL_STORE: ~/.cabal/store
 
     services:
       postgres:
@@ -146,11 +146,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: haskell-actions/setup@v2
-        id: haskell
+      - uses: ./.github/actions/setup-ghc
         with:
           ghc-version: ${{ matrix.ghc }}
-          cabal-version: '3.16'
 
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libpq-dev libgmp-dev
@@ -180,7 +178,7 @@ jobs:
       - uses: actions/cache/restore@v5
         id: cache
         with:
-          path: ${{ steps.haskell.outputs.cabal-store }}
+          path: ${{ env.CABAL_STORE }}
           key: >-
             ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-hackage-plan-${{
             steps.plan.outputs.hash }}
@@ -211,7 +209,7 @@ jobs:
       - uses: actions/cache/save@v5
         if: success()
         with:
-          path: ${{ steps.haskell.outputs.cabal-store }}
+          path: ${{ env.CABAL_STORE }}
           key: >-
             ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-hackage-plan-${{
             steps.plan.outputs.hash }}
