@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: haskell-actions/setup@v3
+      - uses: haskell-actions/setup@v2
         id: haskell
         with:
           ghc-version: ${{ matrix.ghc }}
@@ -134,7 +134,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: haskell-actions/setup@v3
+      - uses: haskell-actions/setup@v2
         id: haskell
         with:
           ghc-version: ${{ matrix.ghc }}
