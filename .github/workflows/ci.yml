@@ -37,10 +37,15 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpq-dev libgmp-dev
 
       - name: Configure project for CI
+        shell: bash
         run: |
-          printf '%s\n' \
-            "with-compiler: ghc-${{ matrix.ghc }}" \
-            > cabal.project.local
+          {
+            printf '%s\n' "with-compiler: ghc-${{ matrix.ghc }}"
+            # GHC 9.14 ships base 4.22; postgresql-simple 0.7.x still has base <4.22.
+            if [ "${{ matrix.ghc }}" = "9.14.1" ]; then
+              printf '%s\n' 'allow-newer: postgresql-simple:base'
+            fi
+          } > cabal.project.local
 
       - name: Set package flag constraints
         id: flags
@@ -144,10 +149,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpq-dev libgmp-dev
 
       - name: Configure project for CI
+        shell: bash
         run: |
-          printf '%s\n' \
-            "with-compiler: ghc-${{ matrix.ghc }}" \
-            > cabal.project.local
+          {
+            printf '%s\n' "with-compiler: ghc-${{ matrix.ghc }}"
+            if [ "${{ matrix.ghc }}" = "9.14.1" ]; then
+              printf '%s\n' 'allow-newer: postgresql-simple:base'
+            fi
+          } > cabal.project.local
 
       - name: Freeze dependencies fingerprint
         id: plan
@@ -156,6 +165,7 @@ jobs:
           cabal \
             --project-file=cabal.project.hackage \
             --with-compiler="ghc-${{ matrix.ghc }}" \
+            --enable-tests \
             freeze
           echo "hash=$(sha256sum cabal.project.freeze | cut -c1-16)" \
             >> "$GITHUB_OUTPUT"
@@ -177,7 +187,8 @@ jobs:
           cabal \
             --project-file=cabal.project.hackage \
             --with-compiler="ghc-${{ matrix.ghc }}" \
-            build --only-dependencies pg-schema
+            --enable-tests \
+            build --only-dependencies all
 
       - name: Create test database
         run: |
@@ -188,7 +199,7 @@ jobs:
         shell: bash
         run: |
           make test-run \
-            CABAL='cabal --project-file=cabal.project.hackage --with-compiler=ghc-${{ matrix.ghc }}'
+            CABAL='cabal --project-file=cabal.project.hackage --with-compiler=ghc-${{ matrix.ghc }} --enable-tests'
 
       - uses: actions/cache/save@v5
         if: success()
