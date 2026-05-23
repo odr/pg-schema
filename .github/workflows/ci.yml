@@ -51,6 +51,7 @@ jobs:
         id: flags
         shell: bash
         run: |
+          cat cabal.project.local
           case "${{ matrix.profile }}" in
             full)
               echo 'constraint=pg-schema +time +uuid +case-insensitive +arbitrary +flat +hashable' \
@@ -162,6 +163,7 @@ jobs:
         id: plan
         shell: bash
         run: |
+          cat cabal.project.local
           cabal \
             --project-file=cabal.project.hackage \
             --with-compiler="ghc-${{ matrix.ghc }}" \
