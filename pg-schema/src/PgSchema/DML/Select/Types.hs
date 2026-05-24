@@ -123,7 +123,7 @@ type family ResolvePathKind
 
 type PathCheck pathKind p ren sch t path path' path'' tabPath p' k =
   ( p' ~ ApplyRenamer ren p
-  , tabPath ~ TabOnDPath sch t (MapRenPath ren path)
+  , tabPath ~ TabOnDPathRen ren sch t path
   , k ~ ResolvePathKind pathKind (HasFromStep sch tabPath p') (HasToStep sch tabPath p') tabPath p'
   , path' ~ (path ++ '[ '(p, k)])
   , path'' ~ MapRenPath ren (path ++ '[ '(p, k)])
@@ -131,7 +131,7 @@ type PathCheck pathKind p ren sch t path path' path'' tabPath p' k =
 -- | Add @WHERE@ condition for the current table.
 --
 -- If several 'qWhere' exist they are composed according to the 'Monoid' instance for 'Cond', i.e. with '(&&&)'
-qWhere :: forall ren sch t path. Cond ren sch (TabOnDPath sch t (MapRenPath ren path)) -> MonadQP ren sch t path
+qWhere :: forall ren sch t path. Cond ren sch (TabOnDPathRen ren sch t path) -> MonadQP ren sch t path
 qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 
 -- | Add @ORDER BY@ condition for the current table
@@ -149,7 +149,7 @@ qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 --
 -- we get @ORDER BY t1.f1, t2.f2 DESC, t1.f3@
 --
-qOrderBy :: forall ren sch t path. [OrdFld ren sch (TabOnDPath sch t (MapRenPath ren path))] -> MonadQP ren sch t path
+qOrderBy :: forall ren sch t path. [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> MonadQP ren sch t path
 qOrderBy ofs = modify \qp -> qp { qpOrds = OrdWithPath @path ofs : qp.qpOrds }
 
 -- | Add `DISTINCT` condition for the current table.
@@ -176,7 +176,7 @@ qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpD
 --
 -- we get @DISTINCT ON (t1.f1, t2.f2, t1.f3) ... ORDER BY t1.f1, t2.f2 DESC, t1.f3, t1.f0 DESC@
 --
-qDistinctOn :: forall ren sch t path. [OrdFld ren sch (TabOnDPath sch t (MapRenPath ren path))] -> MonadQP ren sch t path
+qDistinctOn :: forall ren sch t path. [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> MonadQP ren sch t path
 qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn ofs) : qp.qpDistinct }
 
 -- | Add `LIMIT` condition for the current table.
@@ -212,17 +212,17 @@ qOffset n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
 -- | GADT to safely set `where` condition
 data CondWithPath ren sch t where
   CondWithPath ::  forall (path :: [(Symbol, PathKind)]) ren sch t. ToStar (MapRenPath ren path)
-    => Cond ren sch (TabOnDPath sch t (MapRenPath ren path)) -> CondWithPath ren sch t
+    => Cond ren sch (TabOnDPathRen ren sch t path) -> CondWithPath ren sch t
 
 -- | GADT to safely set `order by` clauses
 data OrdWithPath ren sch t where
   OrdWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. ToStar (MapRenPath ren path)
-    => [OrdFld ren sch (TabOnDPath sch t (MapRenPath ren path))] -> OrdWithPath ren sch t
+    => [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> OrdWithPath ren sch t
 
 -- | GADT to safely set `distinct/distinct on` clauses
 data DistWithPath ren sch t where
   DistWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. ToStar (MapRenPath ren path)
-    => Dist ren sch (TabOnDPath sch t (MapRenPath ren path)) -> DistWithPath ren sch t
+    => Dist ren sch (TabOnDPathRen ren sch t path) -> DistWithPath ren sch t
 
 -- | GADT to safely set `limit/offset` clauses
 data LimOffWithPath ren sch t where
@@ -352,7 +352,7 @@ data TabParam ren sch tab = TabParam
   , order :: [OrdFld ren sch tab]
   , lo :: LO }
 
--- | Default empty 'TabParam'.
+-- | Default empty 'TabParam': no conditions, no ordering, no limits.
 defTabParam :: TabParam ren sch tab
 defTabParam = TabParam mempty mempty defLO
 
@@ -465,17 +465,20 @@ data Dist ren sch tab where
   DistinctOn :: [OrdFld ren sch tab] -> Dist ren sch tab
 
 {-# INLINE ordf #-}
+-- | Sort by field in the given direction.
 ordf
   :: forall fld -> forall sch tab. CDBField sch tab (ApplyRenamer ren fld)
   => OrdDirection -> OrdFld ren sch tab
 ordf fld = OrdFld @fld
 
 {-# INLINE ascf #-}
+-- | Sort ascending by field.
 ascf :: forall fld -> forall sch tab. CDBField sch tab (ApplyRenamer ren fld)
   => OrdFld ren sch tab
 ascf fld = ordf fld Asc
 
 {-# INLINE descf #-}
+-- | Sort descending by field.
 descf :: forall fld -> forall sch tab. CDBField sch tab (ApplyRenamer ren fld)
   => OrdFld ren sch tab
 descf fld = ordf fld Desc
@@ -485,8 +488,10 @@ data LO = LO
   , offset :: Maybe Natural }
   deriving Show
 
+-- | No limit and no offset.
 defLO :: LO
 defLO = LO Nothing Nothing
 
+-- | Limit 1 and no offset.
 lo1 :: LO
 lo1 = LO (Just 1) Nothing

@@ -90,6 +90,8 @@ type family MapRenPath (f :: Renamer) (xs :: [(Symbol, PathKind)]) :: [(Symbol, 
   MapRenPath f '[] = '[]
   MapRenPath f ('(x, k) ': xs) = '(ApplyRenamer f x, k) ': MapRenPath f xs
 
+type TabOnDPathRen ren sch t path = TabOnDPath sch t (MapRenPath ren path)
+
 --------------------------------------------------------------------------------
 -- Case dispatch
 --------------------------------------------------------------------------------

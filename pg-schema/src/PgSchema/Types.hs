@@ -66,9 +66,10 @@ import Data.Hashable
 #endif
 
 
--- | Introduce `enum` database types.
+-- | Representation of `enum` database types.
+--
 -- Data instances are produced by schema generation.
--- You can use these data instances in you records to @SELECT@/@INSERT@/@UPSERT@ data
+-- You can use these data instances in your records to @SELECT@ | @INSERT@ | @UPSERT@ data.
 data family PGEnum sch (name :: NameNSK) :: Type
 
 instance
@@ -111,9 +112,9 @@ instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
   size = F.size . P.show
 #endif
 
--- | Introduce aggregate functions.
+-- | Representation of aggregate functions.
 --
--- I.e. @"fld" := Aggr AMin (Maybe Int32)@ means "minimum value of the field `fld`"
+-- E.g. @\"fld\" := Aggr AMin (Maybe Int32)@ means "minimum value of the field `fld`"
 --
 -- 'Aggr' requires a 'Maybe' argument for all functions except @count@.
 --

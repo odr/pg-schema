@@ -383,9 +383,9 @@ withCondsWithPath :: forall ren sch t r. (forall t'. Cond ren sch t' -> r) ->
   [(Text, PathKind)] -> [CondWithPath ren sch t] -> Maybe r
 withCondsWithPath f p = join . L.find isJust . L.map (withCondWithPath f p)
 
-cwp :: forall path -> forall ren sch t t1.
-  (t1 ~ TabOnDPath sch t (MapRenPath ren path), ToStar (MapRenPath ren path))
-  => Cond ren sch t1 -> CondWithPath ren sch t
+cwp :: forall path -> forall ren sch t.
+  (ToStar (MapRenPath ren path))
+  => Cond ren sch (TabOnDPathRen ren sch t path) -> CondWithPath ren sch t
 cwp p = CondWithPath @p
 
 rootCond :: Cond ren sch t -> CondWithPath ren sch t
@@ -418,7 +418,7 @@ withDistsWithPath :: forall ren sch t r . (forall t'. Dist ren sch t' -> r) ->
 withDistsWithPath f p = join . L.find isJust . L.map (withDistWithPath f p)
 
 owp :: forall path -> forall sch t t'.
-  (ToStar (MapRenPath ren path), TabOnDPath sch t (MapRenPath ren path) ~ t') =>
+  (ToStar (MapRenPath ren path), TabOnDPathRen ren sch t path ~ t') =>
   [OrdFld ren sch t'] -> OrdWithPath ren sch t
 owp p = OrdWithPath @p
 

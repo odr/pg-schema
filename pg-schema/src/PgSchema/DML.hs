@@ -73,18 +73,13 @@
 --
 module PgSchema.DML
   (
-  -- * DML
-  -- ** Select
-  -- *** Execute SQL
-    selectSch, selectText, Selectable
-  -- *** Monad to set Query Params
-  , MonadQP, qpEmpty
+  -- * Select
+    selectSch, selectText
+  -- ** Query Params
+  , QueryParamAnn, qpEmpty
   , qRoot, qPath, qPathFromHere, qPathToHere, qWhere, qOrderBy
   , qDistinct, qDistinctOn, qLimit, qOffset
-  -- **** Internals
-  , QueryParam(..), QueryParamAnn, CondWithPath(..), OrdWithPath(..)
-  , LimOffWithPath(..), DistWithPath(..)
-  -- *** Conditions
+  -- ** Conditions
   -- | Example: @"name" =? "John"@
   , (<?),(>?),(<=?),(>=?),(=?)
   -- | Null-safe equality on nullable columns (@IS NOT DISTINCT FROM@).
@@ -93,22 +88,25 @@ module PgSchema.DML
   -- | Example: @"name" ~~? "%joh%"@
   ,(~=?),(~~?)
   , (|||), (&&&), pnot, pnull, pin, pinArr
-  , pparent, pchild, TabParam(..), defTabParam
-  , pUnsafeCond, UnsafeCol(..)
-  , Cond(..), CondAnn, Cmp(..), BoolOp(..)
+  , pparent, pchild
+  , pUnsafeCond
+  -- ** Order By and Limit/Offset
+  , ordf, ascf, descf, defLO, lo1
+  -- ** Internals
+  , Selectable, CRecInfo(..)
+  , MonadQP, QueryParam(..), CondWithPath(..), OrdWithPath(..)
+  , Cond(..), CondAnn, Cmp(..), BoolOp(..), TabParam(..), defTabParam
   , CondMonad, SomeToField(..), showCmp, tabPref, qual
   , CDBField, CDBValue, CDBFieldNullable, CRelDef
-  -- *** Order By and others
-  , ordf, ascf, descf, defLO, lo1
+  , LimOffWithPath(..), DistWithPath(..)
   , OrdDirection(..), OrdFld(..), Dist(..), LO(..)
+  -- * DML
   -- ** Plain DML
   -- | You can insert, update or upsert data.
   --
-  -- For insert you need all mandatory fields.
-  --
-  -- For key-based update you need a full primary or unique key.
-  --
-  -- For upsert you need all mandatory fields _and_ some key.
+  -- - For insert you need all mandatory fields.
+  -- - For key-based update you need a full primary or unique key.
+  -- - For upsert you need all mandatory fields _and_ some key.
   --
   -- You can get in return any subset of the columns of the table which was affected by the operation.
   -- All rows returned in the same order as the input tree.
@@ -116,30 +114,34 @@ module PgSchema.DML
   --
   -- All these constraints are checked at compile time.
   --
-  -- There is also a way to update data by a condition.
+  -- There is also operations to update or delete data by a condition.
   --
-  , insertSch, insertSch_, insertText, insertText_, AllPlain
-  , InsertNonReturning, InsertReturning
+  , insertSch, insertSch_, insertText, insertText_
   , upsertByKey, upsertByKey_, upsertByKeyText, upsertByKeyText_
-  , UpsertByKeyNonReturning, UpsertByKeyReturning
   , updateByKey, updateByKey_, updateByKeyText, updateByKeyText_
-  , UpdateByKeyNonReturning, UpdateByKeyReturning
   , updateByCond, updateByCond_, updateText, updateText_
-  , UpdateReturning, UpdateNonReturning, CRecInfo(..)
+  , deleteByCond, deleteText
+  -- *** Constraints
+  , AllPlain, InsertNonReturning, InsertReturning
+  , UpsertByKeyNonReturning, UpsertByKeyReturning
+  , UpdateByKeyNonReturning, UpdateByKeyReturning
+  , UpdateReturning, UpdateNonReturning
   -- ** Tree-based DML
   -- | You can insert, update or upsert data right into the tree structure
   -- (to the several related tables at once).
   --
-  -- For insert you need all mandatory fields at every node.
+  -- - For insert you need all mandatory fields at every node.
+  -- - For update you need a full primary or unique key at every node.
+  -- - For upsert you need all mandatory fields _or_ some key at every node.
   --
-  -- For update you need a full primary or unique key at every node.
+  --     At each node:
   --
-  -- For upsert you need all mandatory fields _or_ some key at every node.
-  -- For each node:
+  --     - the operation works like an insert if there is no key
+  --     - the operation works like an update if there is not all mandatory fields
+  --     - the operation works like an upsert if there is all mandatory fields and a key exists
   --
-  -- - the operation works like an insert if there is no key
-  -- - the operation works like an update if there is not all mandatory fields
-  -- - the operation works like an upsert if there is all mandatory fields and a key exists
+  -- You don't need foreign keys for children in your data (and often even keys for parents).
+  -- They will be determined automatically.
   --
   -- You can get in return any subset of the columns of the tables which were affected by the operation.
   -- All rows returned in the same order as the input tree.
@@ -154,14 +156,13 @@ module PgSchema.DML
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_
   , updateJSON, updateJSON_, insertJSONText, insertJSONText_
   , upsertJSONText, upsertJSONText_, updateJSONText, updateJSONText_
+  -- *** Constraints
   , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasKeyTree, AllHasKeyTree
   , HasSchema
   , InsertTreeNonReturning, InsertTreeReturning
   , UpsertTreeNonReturning, UpsertTreeReturning
   , UpdateTreeNonReturning, UpdateTreeReturning, TRecordInfo
   , ReturningMatchesInsert, ReturningMatchesUpsert, ReturningMatchesUpdate
-  -- ** Delete
-  , deleteByCond, deleteText
   -- * Types
   , Ann(..), ToStar
   -- ** Renamers
@@ -173,7 +174,9 @@ module PgSchema.DML
   -- ** Enum
   , PGEnum
   -- ** Aggregates
-  , Aggr'(..), Aggr(..), AggrFun(..)
+  , Aggr(..), Aggr'(..), AggrFun(..)
+  -- ** Unsafe
+  , UnsafeCol(..)
   -- ** Arrays
   , PgArr(..), pgArr', unPgArr'
   -- ** Conversion checks
