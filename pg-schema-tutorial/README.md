@@ -116,7 +116,12 @@ Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", a
 -- all orders sorted decendant by field `num` and with filtered positions.
 -- Included only top 2 positions (by cnt) with cnt > 5
 
-ghci> mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn qpEmpty { qpConds = [cwp @'["opos_order"] (pcmp @"cnt" >? (5::Int32))], qpOrds = [ rootOrd [descf @"num"], owp @'["opos_order"] [descf @"cnt"] ], qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
+ghci> mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn $ qRoot do
+  qOrderBy [descf @"num"]
+  qPathToHere "opos_order" do
+    qWhere $ pcmp @"cnt" >? (5::Int32)
+    qOrderBy [descf @"cnt"]
+    qLimit 2
 
 Order {day = 2018-11-13, num = "n22", ord_seller = Company {name = "company3", address_id = Nothing}, opos_order = SchList {getSchList = [OrdPos {num = 3, opos_article = Article {name = "article4", code = Just "a4"}, cnt = 7, price = 28.00}]}, state = Nothing}
 Order {day = 2018-11-13, num = "n21", ord_seller = Company {name = "company5", address_id = Nothing}, opos_order = SchList {getSchList = []}, state = Nothing}
@@ -126,7 +131,12 @@ Order {day = 2018-11-13, num = "n1", ord_seller = Company {name = "company1", ad
 
 -- query text for the last query (formatted by hand...):
 
-ghci> selectText @Tutorial @('NameNS "sch" "orders") @Order qpEmpty { qpConds = [cwp @'["opos_order"] (pcmp @"cnt" >? (5::Int32))], qpOrds =[ rootOrd [descf @"num"], owp @'["opos_order"] [descf @"cnt"] ], qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
+ghci> selectText @Tutorial @('NameNS "sch" "orders") @Order $ qRoot do
+  qOrderBy [descf @"num"]
+  qPathToHere "opos_order" do
+    qWhere $ pcmp @"cnt" >? (5::Int32)
+    qOrderBy [descf @"cnt"]
+    qLimit 2
 
 ("select t0.day \"day\", t0.num \"num\"
   , jsonb_build_object('name',t1.name,'address_id',t1.address_id) \"ord_seller\"
@@ -574,13 +584,13 @@ We can add different `where` conditions and orders and limits/offsets on each pa
 
 ```haskell
 ghci> :{
-  mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn qpEmpty
-  { qpConds = [cwp @'["opos_order"] (#cnt >? (5::Int))]
-  , qpOrds =
-    [ rootOrd [descf @"num"]
-    , owp @'["opos_order"] [descf @"cnt"] ]
-  , qpLOs = [lowp @'["opos_order"] (LO (Just 2) Nothing)] }
-  :}
+  mapM_ (print @Order) =<< selectSch @Tutorial @('NameNS "sch" "orders") conn $ qRoot do
+    qOrderBy [descf @"num"]
+    qPathToHere "opos_order" do
+      qWhere $ #cnt >? (5::Int)
+      qOrderBy [descf @"cnt"]
+      qLimit 2
+:}
 ```
 
 ### Generation of schema

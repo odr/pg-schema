@@ -164,7 +164,7 @@ module PgSchema.DML
   , UpdateTreeNonReturning, UpdateTreeReturning, TRecordInfo
   , ReturningMatchesInsert, ReturningMatchesUpsert, ReturningMatchesUpdate
   -- * Types
-  , Ann(..), ToStar
+  , Ann(..), ToStar, PathKind
   -- ** Renamers
   , RenamerId, CamelToSnake, Renamer, ApplyRenamer, ApplyRenamerNS
   -- ** PgTag types

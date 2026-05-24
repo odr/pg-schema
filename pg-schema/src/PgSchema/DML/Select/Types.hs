@@ -52,7 +52,7 @@ qpEmpty :: forall ren sch t. QueryParam ren sch t
 qpEmpty = QueryParam [] [] [] []
 
 type MonadQP ren sch t path
-  = PathCtx ren sch t path
+  = PathCtx sch t path
   => RWS (Proxy path) () (QueryParam ren sch t) ()
 
 -- | Execute 'MonadQP' and get 'QueryParam'.
@@ -93,15 +93,15 @@ qPathToHere _p m = put . fst . execRWS m Proxy =<< get
 
 type PathCheck pathKind p ren sch t path path' tabPath p' k =
   ( p' ~ ApplyRenamer ren p
-  , tabPath ~ TabOnDPathRen ren sch t path
+  , tabPath ~ TabAtPath sch t path
   , k ~ ResolvePathKind pathKind (HasFromStep sch tabPath p') (HasToStep sch tabPath p') tabPath p'
-  , path' ~ (path ++ '[ '(p, k)])
-  , PathCtx ren sch t path'
+  , path' ~ (path ++ '[ '(ApplyRenamer ren p, k)])
+  , PathCtx sch t path'
   )
 -- | Add @WHERE@ condition for the current table.
 --
 -- If several 'qWhere' exist they are composed according to the 'Monoid' instance for 'Cond', i.e. with '(&&&)'
-qWhere :: forall ren sch t path. Cond ren sch (TabOnDPathRen ren sch t path) -> MonadQP ren sch t path
+qWhere :: forall ren sch t path. Cond ren sch (TabAtPath sch t path) -> MonadQP ren sch t path
 qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 
 -- | Add @ORDER BY@ condition for the current table
@@ -119,12 +119,12 @@ qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 --
 -- we get @ORDER BY t1.f1, t2.f2 DESC, t1.f3@
 --
-qOrderBy :: forall ren sch t path. [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> MonadQP ren sch t path
+qOrderBy :: forall ren sch t path. [OrdFld ren sch (TabAtPath sch t path)] -> MonadQP ren sch t path
 qOrderBy ofs = modify \qp -> qp { qpOrds = OrdWithPath @path ofs : qp.qpOrds }
 
 -- | Add `DISTINCT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
-qDistinct :: forall ren sch t path. PathEndsMany sch t (EffPath ren path) =>
+qDistinct :: forall ren sch t path. PathEndsMany sch t path =>
   MonadQP ren sch t path
 qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpDistinct }
 
@@ -146,21 +146,21 @@ qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpD
 --
 -- we get @DISTINCT ON (t1.f1, t2.f2, t1.f3) ... ORDER BY t1.f1, t2.f2 DESC, t1.f3, t1.f0 DESC@
 --
-qDistinctOn :: forall ren sch t path. [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> MonadQP ren sch t path
+qDistinctOn :: forall ren sch t path. [OrdFld ren sch (TabAtPath sch t path)] -> MonadQP ren sch t path
 qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn ofs) : qp.qpDistinct }
 
 -- | Add `LIMIT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
 --
 -- If 'qLimit' is applied several times on the same path, only the last one is used
-qLimit :: forall ren sch t path. PathEndsMany sch t (EffPath ren path) =>
+qLimit :: forall ren sch t path. PathEndsMany sch t path =>
   Natural -> MonadQP ren sch t path
 qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
       (xs1, []) -> new : xs1
       (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
-    eq (LimOffWithPath @p _) = demote @(EffPath ren p) == demote @(EffPath ren path)
+    eq (LimOffWithPath @p _) = demote @p == demote @path
     upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{ limit = Just n }
     new = LimOffWithPath @path LO { limit = Just n, offset = Nothing }
 
@@ -168,36 +168,36 @@ qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
 -- It is applied only to "root" or "children" tables.
 --
 -- If 'qOffset' is applied several times on the same path, only the last one is used
-qOffset :: forall ren sch t path. PathEndsMany sch t (EffPath ren path) =>
+qOffset :: forall ren sch t path. PathEndsMany sch t path =>
   Natural -> MonadQP ren sch t path
 qOffset n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
       (xs1, []) -> new : xs1
       (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
-    eq (LimOffWithPath @p _) = demote @(EffPath ren p) == demote @(EffPath ren path)
+    eq (LimOffWithPath @p _) = demote @p == demote @path
     upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{offset = Just n}
     new = LimOffWithPath @path LO { offset = Just n, limit = Nothing }
 
 -- | GADT to safely set `where` condition
 data CondWithPath ren sch t where
-  CondWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx ren sch t path
-    => Cond ren sch (TabOnDPathRen ren sch t path) -> CondWithPath ren sch t
+  CondWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx sch t path
+    => Cond ren sch (TabAtPath sch t path) -> CondWithPath ren sch t
 
 -- | GADT to safely set `order by` clauses
 data OrdWithPath ren sch t where
-  OrdWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx ren sch t path
-    => [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> OrdWithPath ren sch t
+  OrdWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx sch t path
+    => [OrdFld ren sch (TabAtPath sch t path)] -> OrdWithPath ren sch t
 
 -- | GADT to safely set `distinct/distinct on` clauses
 data DistWithPath ren sch t where
-  DistWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx ren sch t path
-    => Dist ren sch (TabOnDPathRen ren sch t path) -> DistWithPath ren sch t
+  DistWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx sch t path
+    => Dist ren sch (TabAtPath sch t path) -> DistWithPath ren sch t
 
 -- | GADT to safely set `limit/offset` clauses
 data LimOffWithPath ren sch t where
   LimOffWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t.
-    ( PathCtx ren sch t path, PathEndsMany sch t (EffPath ren path) )
+    ( PathCtx sch t path, PathEndsMany sch t path )
     => LO -> LimOffWithPath ren sch t
 
 -- | Comparison constructors; each is paired with its corresponding operator

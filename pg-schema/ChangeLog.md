@@ -2,11 +2,13 @@
 
 ## 0.8.0.0
 
-- Fix `qDistinct`: cardinality check uses renamer-mapped path (`EffPath`), same as
-  `qLimit` / `qOffset`.
-- Internal SELECT path types: `EffPath`, `PathCtx`, `PathEndsMany`, `TabAtPath`;
-  removed unused `TabDPath`, undirected `TabOnPath*`, and duplicate `CheckStep`
-  (`ResolvePathKind` lives in `PgSchema.Schema`).
+- **Breaking:** type-level `path` in `CondWithPath` / `OrdWithPath` / … stores DB
+  fk constraint names (`PathCheck` applies renamer when extending the path).
+  Manual `@path` types must use DB names, not Haskell field names (when they
+  differ). Use `TabAtPath sch t path` instead of `TabOnDPathRen` / `EffPath`.
+- Internal SELECT path types: `PathCtx`, `PathEndsMany`, `TabAtPath`; removed
+  `EffPath`, unused `TabDPath`, undirected `TabOnPath*`, duplicate `CheckStep`
+  (`ResolvePathKind` in `PgSchema.Schema`).
 - **Breaking:** compile-time returning rules: insert forbids `Maybe`; update
   requires `Maybe` on every returning slot; upsert uses bare rows when all
   mandatory columns are present on input, otherwise `Maybe` (extra `Maybe` is a

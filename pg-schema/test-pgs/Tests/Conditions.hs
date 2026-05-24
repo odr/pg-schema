@@ -118,3 +118,17 @@ prop_cond_by_dup_path pool = withTests 30 $ property do
   L.sort [(m2, L.length ls) | (_ :. _ :. PgTag m2s :. _) <- sel, (PgTag ls :. m2) <- m2s]
     === L.sort [(m2, L.length $ L.filter ((>100) . (.leaf_no)) ls)
       | (_ :. PgTag m2s :. _) <- inIns, (PgTag ls :. m2) <- m2s, m2.flag]
+
+-- | 'qPath' accepts a Haskell 'Symbol'; renamer maps it to the DB fk name in
+-- the type-level path.
+prop_qpath_renamer_alias :: Pool Connection -> Property
+prop_qpath_renamer_alias pool = withTests 30 $ property do
+  inIns <- insData pool
+  (sel :: [OutData], _) <- evalIO $ withResource pool \conn ->
+    selSch "root" conn $ qRoot
+      $ qPath "mid2_root_fk" do
+        qWhere $ "flag" =? True
+        qPath "leaf_mid2_rev_fk" do
+          qWhere $ "leaf_no" >? (100::Int32)
+  L.sort [m2 | (PgTag m2s :. _) <- sel, m2 <- m2s]
+    === L.sort [m2 | (_ :. PgTag m2s :. _) <- inIns, (_ :. m2) <- m2s, m2.flag]
