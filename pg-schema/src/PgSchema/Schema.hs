@@ -2,7 +2,6 @@
 {-# LANGUAGE ParallelListComp #-}
 module PgSchema.Schema where
 
-import Data.Kind
 import Data.List as L
 import Data.Map as M
 import Data.Singletons

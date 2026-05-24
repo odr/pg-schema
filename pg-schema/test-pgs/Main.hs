@@ -84,6 +84,8 @@ main = do
     , testGroup "Query (test_dml)"
       [ testProperty "'Simple' queries" $ prop_cond_query pool
       , testProperty "Conditions by duplicated path" $ prop_cond_by_dup_path pool
+      , testProperty "Renamer: independent filters per aliased fk field" $
+          prop_renamer_alias_dual_fields pool
       ]
     , testGroup "Aggregates (test_dml)"
       [ testProperty "Aggr' on plain column is not in GROUP BY" $

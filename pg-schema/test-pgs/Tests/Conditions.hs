@@ -6,6 +6,7 @@
 
 module Tests.Conditions where
 
+import Control.Monad (forM_)
 import Control.Monad.IO.Class
 import Data.Functor
 import Data.Function
@@ -35,7 +36,7 @@ data Mid1I = MkMid1I
   , flag :: Bool
   , sort_key :: Int32
   , payload :: Maybe Text }
-  deriving (Show, Generic)
+  deriving (Show, Generic, Eq, Ord)
   deriving anyclass GenDefault
 
 data Mid2I = MkMid2I
@@ -101,6 +102,43 @@ prop_cond_query pool = withTests 30 $ property do
     inIns) === L.length res
 
 type OutData = "mid2_root_fk" := [Mid2I] :. InsData
+
+-- | Two edges in the result type that renamer maps to the same DB fk
+-- ('mid1_root_fk2' -> 'mid1_root_fk'); each branch gets its own 'qPath' filter.
+type RootDualMid1 =
+  "mid1_root_fk" := [Mid1I]
+  :. "mid1_root_fk2" := [Mid1I]
+  :. RootI
+
+-- | 'qPath' / 'qWhere' on 'mid1_root_fk' vs 'mid1_root_fk2' must not be merged
+-- just because both edges share one fk in the database.
+prop_renamer_alias_dual_fields :: Pool Connection -> Property
+prop_renamer_alias_dual_fields pool = withTests 30 $ property do
+  inIns <- insData pool
+  (sel :: [RootDualMid1], _) <- evalIO $ withResource pool \conn ->
+    selSch "root" conn $ qRoot do
+      qPath "mid1_root_fk" do
+        qWhere $ "flag" =? True
+      qPath "mid1_root_fk2" do
+        qWhere $ "pos" >? (5 :: Int32)
+  forM_ sel \case
+    PgTag viaFk :. PgTag viaFk2 :. root ->
+      let
+        expectFk = [ m1
+          | PgTag m1s :. _ :. r <- inIns
+          , eqRoot r root
+          , m1 <- m1s
+          , m1.flag
+          ]
+        expectFk2 = [ m1
+          | PgTag m1s :. _ :. r <- inIns
+          , eqRoot r root
+          , m1 <- m1s
+          , m1.pos > 5
+          ]
+      in do
+        L.sort viaFk === L.sort expectFk
+        L.sort viaFk2 === L.sort expectFk2
 
 -- We can have similar pathes in select.
 -- Params are applied for all branches with this path
