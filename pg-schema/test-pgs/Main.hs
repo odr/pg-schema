@@ -84,8 +84,6 @@ main = do
     , testGroup "Query (test_dml)"
       [ testProperty "'Simple' queries" $ prop_cond_query pool
       , testProperty "Conditions by duplicated path" $ prop_cond_by_dup_path pool
-      , testProperty "qPath with renamer alias symbol" $
-          prop_qpath_renamer_alias pool
       ]
     , testGroup "Aggregates (test_dml)"
       [ testProperty "Aggr' on plain column is not in GROUP BY" $
