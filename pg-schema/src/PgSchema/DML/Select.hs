@@ -27,7 +27,6 @@ import GHC.Generics
 import GHC.TypeLits
 import PgSchema.Types
 import PgSchema.Utils.Internal
-import PgSchema.Utils.TF
 import Prelude as P
 
 
@@ -124,7 +123,7 @@ selectM refTxt ri = do
   let
     basePath = L.reverse qrPath
     (unTextI -> condText, condPars) = F.fold $ L.reverse
-      $ mapMaybe (\(CondWithPath @path cond) -> let p = demote @(MapRenPath ren path) in
+      $ mapMaybe (\(CondWithPath @path cond) -> let p = demote @(EffPath ren path) in
         if
           | not (basePath `L.isPrefixOf` p) -> Nothing
           | p == basePath -> Just $ first TextI $ pgCond qrCurrTabNum cond
@@ -132,7 +131,7 @@ selectM refTxt ri = do
             <&> \pari -> first (TextI @" and ") $ pgCond pari.piToNum cond
         ) qrParam.qpConds
     (unTextI -> ordText, ordPars) = F.fold $ L.reverse
-      $ mapMaybe (\(OrdWithPath @path ord) -> let p = demote @(MapRenPath ren path) in
+      $ mapMaybe (\(OrdWithPath @path ord) -> let p = demote @(EffPath ren path) in
         if
           | not (basePath `L.isPrefixOf` p) -> Nothing
           | p == basePath -> Just $ pgOrd qrCurrTabNum ord
@@ -140,7 +139,7 @@ selectM refTxt ri = do
             <&> \pari -> pgOrd pari.piToNum ord
         ) qrParam.qpOrds
     (distTexts, distPars) = F.fold $ L.reverse
-      $ mapMaybe (\(DistWithPath @path dist) -> let p = demote @(MapRenPath ren path) in
+      $ mapMaybe (\(DistWithPath @path dist) -> let p = demote @(EffPath ren path) in
         if
           | not (basePath `L.isPrefixOf` p) -> Nothing
           | p == basePath -> Just $ pgDist qrCurrTabNum dist
@@ -268,15 +267,15 @@ refCond nFrom nTo = T.intercalate " and " . fmap compFlds
 withLOWithPath
   :: forall ren sch t r. (LO -> r) -> [(Text, PathKind)] -> LimOffWithPath ren sch t -> Maybe r
 withLOWithPath f p (LimOffWithPath @p lo) =
-  guard (p == demote @(MapRenPath ren p)) >> pure (f lo)
+  guard (p == demote @(EffPath ren p)) >> pure (f lo)
 
 withLOsWithPath
   :: forall ren sch t r. (LO -> r) -> [(Text, PathKind)] -> [LimOffWithPath ren sch t] -> Maybe r
 withLOsWithPath f p = join . L.find isJust . L.map (withLOWithPath f p)
 
-lowp :: forall ren sch t. forall (path::[(Symbol, PathKind)]) ->
-  (ToStar (MapRenPath ren path), TabDPath sch t (MapRenPath ren path)
-  , Snd (TabOnDPath2 sch t (MapRenPath ren path)) ~ RelMany) => LO -> LimOffWithPath ren sch t
+lowp :: forall ren sch t. forall (path :: [(Symbol, PathKind)]) ->
+  ( PathCtx ren sch t path, PathEndsMany sch t (EffPath ren path) ) =>
+  LO -> LimOffWithPath ren sch t
 lowp p = LimOffWithPath @p
 
 rootLO :: forall ren sch t. LO -> LimOffWithPath ren sch t
@@ -377,15 +376,15 @@ pgDist n dist = evalRWS (convDist dist) ("o", pure n) 0
 
 withCondWithPath :: forall ren sch t r. (forall t'. Cond ren sch t' -> r) ->
   [(Text, PathKind)] -> CondWithPath ren sch t -> Maybe r
-withCondWithPath f p (CondWithPath @p' cond) = f cond <$ guard (p == demote @(MapRenPath ren p'))
+withCondWithPath f p (CondWithPath @p' cond) = f cond <$ guard (p == demote @(EffPath ren p'))
 
 withCondsWithPath :: forall ren sch t r. (forall t'. Cond ren sch t' -> r) ->
   [(Text, PathKind)] -> [CondWithPath ren sch t] -> Maybe r
 withCondsWithPath f p = join . L.find isJust . L.map (withCondWithPath f p)
 
 cwp :: forall path -> forall ren sch t.
-  (ToStar (MapRenPath ren path))
-  => Cond ren sch (TabOnDPathRen ren sch t path) -> CondWithPath ren sch t
+  PathCtx ren sch t path =>
+  Cond ren sch (TabOnDPathRen ren sch t path) -> CondWithPath ren sch t
 cwp p = CondWithPath @p
 
 rootCond :: Cond ren sch t -> CondWithPath ren sch t
@@ -402,11 +401,11 @@ distByPath num p = F.fold . withDistsWithPath (pgDist num) p
 
 withOrdWithPath :: forall ren sch t r. (forall t'. [OrdFld ren sch t'] -> r) ->
   [(Text, PathKind)] -> OrdWithPath ren sch t -> Maybe r
-withOrdWithPath f p (OrdWithPath @p ord) = f ord <$ guard (p == demote @(MapRenPath ren p))
+withOrdWithPath f p (OrdWithPath @p ord) = f ord <$ guard (p == demote @(EffPath ren p))
 
 withDistWithPath :: forall ren sch t r. (forall t'. Dist ren sch t' -> r) ->
   [(Text, PathKind)] -> DistWithPath ren sch t -> Maybe r
-withDistWithPath f p (DistWithPath @p dist) = f dist <$ guard (p == demote @(MapRenPath ren p))
+withDistWithPath f p (DistWithPath @p dist) = f dist <$ guard (p == demote @(EffPath ren p))
 
 --
 withOrdsWithPath :: forall ren sch t r . (forall t'. [OrdFld ren sch t'] -> r) ->
@@ -418,16 +417,16 @@ withDistsWithPath :: forall ren sch t r . (forall t'. Dist ren sch t' -> r) ->
 withDistsWithPath f p = join . L.find isJust . L.map (withDistWithPath f p)
 
 owp :: forall path -> forall sch t t'.
-  (ToStar (MapRenPath ren path), TabOnDPathRen ren sch t path ~ t') =>
+  ( PathCtx ren sch t path, TabOnDPathRen ren sch t path ~ t' ) =>
   [OrdFld ren sch t'] -> OrdWithPath ren sch t
 owp p = OrdWithPath @p
 
 rootOrd :: forall ren sch t. [OrdFld ren sch t] -> OrdWithPath ren sch t
 rootOrd = owp []
 
-dwp :: forall path -> forall ren sch t t'.
-  (ToStar (MapRenPath ren path), TabOnDPath2 sch t (MapRenPath ren path) ~ '(t', 'RelMany)) =>
-  Dist ren sch t' -> DistWithPath ren sch t
+dwp :: forall path -> forall ren sch t.
+  ( PathCtx ren sch t path, PathEndsMany sch t (EffPath ren path) ) =>
+  Dist ren sch (TabOnDPathRen ren sch t path) -> DistWithPath ren sch t
 dwp p = DistWithPath @p
 
 rootDist :: forall ren sch t. Dist ren sch t -> DistWithPath ren sch t

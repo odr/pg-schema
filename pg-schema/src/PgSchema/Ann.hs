@@ -90,7 +90,18 @@ type family MapRenPath (f :: Renamer) (xs :: [(Symbol, PathKind)]) :: [(Symbol, 
   MapRenPath f '[] = '[]
   MapRenPath f ('(x, k) ': xs) = '(ApplyRenamer f x, k) ': MapRenPath f xs
 
-type TabOnDPathRen ren sch t path = TabOnDPath sch t (MapRenPath ren path)
+-- | Type-level SELECT path with 'ApplyRenamer' applied (DB fk names).
+type EffPath ren path = MapRenPath ren path
+
+-- | End table after walking @path@ from @t@ (with renamer).
+type TabOnDPathRen ren sch t path = TabAtPath sch t (EffPath ren path)
+
+-- | 'ToStar' for demotion and forced 'TabOnDPath2' walk (invalid edges error here).
+type PathCtx ren sch t path =
+  ( ToStar (EffPath ren path)
+  , TabAtPath sch t (EffPath ren path) ~ TabAtPath sch t (EffPath ren path)
+  )
+
 
 --------------------------------------------------------------------------------
 -- Case dispatch

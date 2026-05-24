@@ -2,6 +2,11 @@
 
 ## 0.8.0.0
 
+- Fix `qDistinct`: cardinality check uses renamer-mapped path (`EffPath`), same as
+  `qLimit` / `qOffset`.
+- Internal SELECT path types: `EffPath`, `PathCtx`, `PathEndsMany`, `TabAtPath`;
+  removed unused `TabDPath`, undirected `TabOnPath*`, and duplicate `CheckStep`
+  (`ResolvePathKind` lives in `PgSchema.Schema`).
 - **Breaking:** compile-time returning rules: insert forbids `Maybe`; update
   requires `Maybe` on every returning slot; upsert uses bare rows when all
   mandatory columns are present on input, otherwise `Maybe` (extra `Maybe` is a

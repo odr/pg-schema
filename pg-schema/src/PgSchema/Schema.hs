@@ -113,14 +113,6 @@ type ns ->> name = 'NameNS ns name
 
 type SimpleType c = 'TypDef c 'Nothing '[]
 
-type family GetRelTab (froms :: [(NameNSK, RelDefK)])
-  (tos :: [(NameNSK, RelDefK)]) (s :: Symbol) :: (NameNSK, RelType) where
-    GetRelTab '[] '[] s = TypeError ('Text "No relation by name" ':$$: 'ShowType s)
-    GetRelTab ('(a,b) ':xs) ys s =
-      If (NnsName a == s) '(RdTo b, RelOne) (GetRelTab xs ys s)
-    GetRelTab '[] ('(c,d) ':ys) s =
-      If (NnsName c == s) '(RdFrom d, RelMany) (GetRelTab '[] ys s)
-
 type IsMandatory fd = Not (FdNullable fd || FdHasDefault fd)
 type IsMandatory' sch tab fld = IsMandatory (GetFldDef sch tab fld)
 
@@ -289,10 +281,6 @@ typDefMap :: forall sch. CSchema sch => M.Map NameNS TypDef
 typDefMap = M.fromList $ L.zip
   (demote @(TTypes sch)) (demote @(Map1 (TTypDefSym1 sch) (TTypes sch)))
 
-type TRelTab sch t name = GetRelTab
-  (Map2 (TRelDefSym1 sch) (TFrom sch t)) (Map2 (TRelDefSym1 sch) (TTo sch t))
-  name
-
 type family GetRelDef (rels :: [(NameNSK, RelDefK)]) (s :: Symbol) :: RelDefK where
   GetRelDef '[] s = TypeError ('Text "No relation by name" ':$$: 'ShowType s)
   GetRelDef ('(a, b) ': xs) s = If (NnsName a == s) b (GetRelDef xs s)
@@ -303,18 +291,10 @@ type family TRelFromTab sch t name :: NameNSK where
 type family TRelToTab sch t name :: NameNSK where
   TRelToTab sch t name = RdFrom (GetRelDef (Map2 (TRelDefSym1 sch) (TTo sch t)) name)
 
-type family TabOnPath2 sch (t :: NameNSK) (path :: [Symbol]) :: (NameNSK, RelType) where
-  TabOnPath2 sch t '[] = '(t, 'RelMany)
-  TabOnPath2 sch t '[x] = TRelTab sch t x
-  TabOnPath2 sch t (x ': xs) = TabOnPath2 sch (Fst (TRelTab sch t x)) xs
-
-type TabOnPath sch (t :: NameNSK) (path :: [Symbol]) = Fst (TabOnPath2 sch t path)
-
+-- | Walk a directed @path@ from root table @t@.
 --
-type family TabPath sch (t :: NameNSK) (path :: [Symbol]) :: Constraint where
-  TabPath sch t '[] = ()
-  TabPath sch t (x ': xs) = TabPath sch (Fst (TRelTab sch t x)) xs
-
+-- Each step is @(relationName, 'FromHere | 'ToHere)@. Result: end table and its
+-- cardinality ('RelOne' for a single parent step, 'RelMany' for a single child).
 type family TabOnDPath2 sch (t :: NameNSK) (path :: [(Symbol, PathKind)]) :: (NameNSK, RelType) where
   TabOnDPath2 sch t '[] = '(t, 'RelMany)
   TabOnDPath2 sch t '[ '(name, 'FromHere)] = '(TRelFromTab sch t name, 'RelOne)
@@ -322,13 +302,11 @@ type family TabOnDPath2 sch (t :: NameNSK) (path :: [(Symbol, PathKind)]) :: (Na
   TabOnDPath2 sch t ('(name, 'FromHere) ': xs) = TabOnDPath2 sch (TRelFromTab sch t name) xs
   TabOnDPath2 sch t ('(name, 'ToHere) ': xs) = TabOnDPath2 sch (TRelToTab sch t name) xs
 
-type family TabOnDPath sch (t :: NameNSK) (path :: [(Symbol, PathKind)]) :: NameNSK where
-  TabOnDPath sch t path = Fst (TabOnDPath2 sch t path)
+-- | Table reached after walking directed @path@ from @t@ ('Fst' of 'TabOnDPath2').
+type TabAtPath sch t path = Fst (TabOnDPath2 sch t path)
 
-type family TabDPath sch (t :: NameNSK) (path :: [(Symbol, PathKind)]) :: Constraint where
-  TabDPath sch t '[] = ()
-  TabDPath sch t ('(name, 'FromHere) ': xs) = TabDPath sch (TRelFromTab sch t name) xs
-  TabDPath sch t ('(name, 'ToHere) ': xs) = TabDPath sch (TRelToTab sch t name) xs
+-- | Current position has child cardinality ('RelMany'): root or child table.
+type PathEndsMany sch t path = Snd (TabOnDPath2 sch t path) ~ 'RelMany
 
 type RecField = RecField' Text
 type Ref = Ref' Text
@@ -356,26 +334,30 @@ type family HasRelName (rels :: [NameNSK]) (name :: Symbol) :: Bool where
 type HasFromStep sch tab name = HasRelName (TFrom sch tab) name
 type HasToStep   sch tab name = HasRelName (TTo sch tab) name
 
-type family CheckStep (pathKind :: (Maybe PathKind)) (hasFrom :: Bool) (hasTo :: Bool) sch tab name :: Constraint where
-  CheckStep ('Just FromHere) 'True _ sch tab name = ()
-  CheckStep ('Just 'ToHere)   _ 'True sch tab name = ()
-  CheckStep 'Nothing 'True 'False sch tab name = ()
-  CheckStep 'Nothing 'False 'True sch tab name = ()
-  CheckStep ('Just 'FromHere) _ _ sch tab name = TypeError
+-- | Resolve 'PathKind' for 'qPath' / 'qPathFromHere' / 'qPathToHere'.
+type family ResolvePathKind
+  (pathKind :: Maybe PathKind) (hasFrom :: Bool) (hasTo :: Bool) (tab :: NameNSK)
+  (name :: Symbol)
+  :: PathKind where
+  ResolvePathKind ('Just 'FromHere) 'True _ _ _ = 'FromHere
+  ResolvePathKind ('Just 'ToHere) _ 'True _ _ = 'ToHere
+  ResolvePathKind 'Nothing 'True 'False _ _ = 'FromHere
+  ResolvePathKind 'Nothing 'False 'True _ _ = 'ToHere
+  ResolvePathKind ('Just 'FromHere) _ _ tab name = TypeError
     ( TL.Text "Relation is not available in from-here direction."
     :$$: TL.Text "Use qPathToHere or qPath."
     :$$: TL.Text ""
     :$$: TL.Text "Table: " :<>: ShowType tab
     :$$: TL.Text "Relation: " :<>: ShowType name
     :$$: TL.Text "" )
-  CheckStep ('Just 'ToHere) _ _ sch tab name = TypeError
+  ResolvePathKind ('Just 'ToHere) _ _ tab name = TypeError
     ( TL.Text "Relation is not available in to-here direction."
     :$$: TL.Text "Use qPathFromHere or qPath."
     :$$: TL.Text ""
     :$$: TL.Text "Table: " :<>: ShowType tab
     :$$: TL.Text "Relation: " :<>: ShowType name
     :$$: TL.Text "" )
-  CheckStep 'Nothing _ _ sch tab name = TypeError
+  ResolvePathKind 'Nothing _ _ tab name = TypeError
     ( TL.Text "qPath cannot be used for self-reference relation."
     :$$: TL.Text "Use qPathFromHere or qPathToHere."
     :$$: TL.Text ""
