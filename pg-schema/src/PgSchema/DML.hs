@@ -184,6 +184,8 @@ module PgSchema.DML
   -- ** Other types
   , PgChar(..), PgOid(..)
   , NameNS'(..), type (->>), NameNSK, (->>)
+  , PathElem'(..), PathElem, PathElemK
+  , mkPathStep, pathStepMatches, pathsEqual, pathIsPrefixOf, pathStepBroadcast
   , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable, CTabDef(..)
   ) where
 

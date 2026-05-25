@@ -86,6 +86,8 @@ main = do
       , testProperty "Conditions by duplicated path" $ prop_cond_by_dup_path pool
       , testProperty "Renamer: independent filters per aliased fk field" $
           prop_renamer_alias_dual_fields pool
+      , testProperty "Renamer: broadcast qPath by shared db fk" $
+          prop_renamer_broadcast_dual_fields pool
       ]
     , testGroup "Aggregates (test_dml)"
       [ testProperty "Aggr' on plain column is not in GROUP BY" $

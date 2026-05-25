@@ -95,14 +95,14 @@ type PathCheck pathKind p ren sch t path path' tabPath p' k =
   ( p' ~ ApplyRenamer ren p
   , tabPath ~ TabOnDPathRen ren sch t path
   , k ~ ResolvePathKind pathKind (HasFromStep sch tabPath p') (HasToStep sch tabPath p') tabPath p'
-  , path' ~ (path ++ '[ '(p, k)])
+  , path' ~ (path ++ '[ 'PathElem p p' k ])
   , PathCtx ren sch t path'
   )
 -- | Add @WHERE@ condition for the current table.
 --
 -- If several 'qWhere' exist they are composed according to the 'Monoid' instance for 'Cond', i.e. with '(&&&)'
 qWhere :: forall ren sch t path. Cond ren sch (TabOnDPathRen ren sch t path) -> MonadQP ren sch t path
-qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
+qWhere c = modify \qp -> qp { qpConds = CondWithPath @path (demote @path) c : qp.qpConds }
 
 -- | Add @ORDER BY@ condition for the current table
 --
@@ -120,13 +120,13 @@ qWhere c = modify \qp -> qp { qpConds = CondWithPath @path c : qp.qpConds }
 -- we get @ORDER BY t1.f1, t2.f2 DESC, t1.f3@
 --
 qOrderBy :: forall ren sch t path. [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> MonadQP ren sch t path
-qOrderBy ofs = modify \qp -> qp { qpOrds = OrdWithPath @path ofs : qp.qpOrds }
+qOrderBy ofs = modify \qp -> qp { qpOrds = OrdWithPath @path (demote @path) ofs : qp.qpOrds }
 
 -- | Add `DISTINCT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
-qDistinct :: forall ren sch t path. PathEndsMany sch t (EffPath ren path) =>
+qDistinct :: forall ren sch t path. PathEndsMany sch t path =>
   MonadQP ren sch t path
-qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpDistinct }
+qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path (demote @path) Distinct : qp.qpDistinct }
 
 -- | Add @DISTINCT ON@ condition for the current table.
 --
@@ -147,58 +147,59 @@ qDistinct = modify \qp -> qp { qpDistinct = DistWithPath @path Distinct : qp.qpD
 -- we get @DISTINCT ON (t1.f1, t2.f2, t1.f3) ... ORDER BY t1.f1, t2.f2 DESC, t1.f3, t1.f0 DESC@
 --
 qDistinctOn :: forall ren sch t path. [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> MonadQP ren sch t path
-qDistinctOn ofs = modify \qp -> qp { qpDistinct = DistWithPath @path (DistinctOn ofs) : qp.qpDistinct }
+qDistinctOn ofs =
+  modify \qp -> qp { qpDistinct = DistWithPath @path (demote @path) (DistinctOn ofs) : qp.qpDistinct }
 
 -- | Add `LIMIT` condition for the current table.
 -- It is applied only to "root" or "children" tables.
 --
 -- If 'qLimit' is applied several times on the same path, only the last one is used
-qLimit :: forall ren sch t path. PathEndsMany sch t (EffPath ren path) =>
+qLimit :: forall ren sch t path. PathEndsMany sch t path =>
   Natural -> MonadQP ren sch t path
 qLimit n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
       (xs1, []) -> new : xs1
       (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
-    eq (LimOffWithPath @p _) = demote @(EffPath ren p) == demote @(EffPath ren path)
-    upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{ limit = Just n }
-    new = LimOffWithPath @path LO { limit = Just n, offset = Nothing }
+    eq (LimOffWithPath p _) = pathsEqual p (demote @path)
+    upd (LimOffWithPath @p' p lo) = LimOffWithPath @p' p lo{ limit = Just n }
+    new = LimOffWithPath @path (demote @path) LO { limit = Just n, offset = Nothing }
 
 -- | Add `OFFSET` condition for the current table.
 -- It is applied only to "root" or "children" tables.
 --
 -- If 'qOffset' is applied several times on the same path, only the last one is used
-qOffset :: forall ren sch t path. PathEndsMany sch t (EffPath ren path) =>
+qOffset :: forall ren sch t path. PathEndsMany sch t path =>
   Natural -> MonadQP ren sch t path
 qOffset n = modify \qp -> qp { qpLOs = mk qp.qpLOs }
   where
     mk xs = case L.break eq xs of
       (xs1, []) -> new : xs1
       (xs1, x:xs2) -> xs1 <> [upd x] <> xs2
-    eq (LimOffWithPath @p _) = demote @(EffPath ren p) == demote @(EffPath ren path)
-    upd (LimOffWithPath @p lo) = LimOffWithPath @p lo{offset = Just n}
-    new = LimOffWithPath @path LO { offset = Just n, limit = Nothing }
+    eq (LimOffWithPath p _) = pathsEqual p (demote @path)
+    upd (LimOffWithPath @p' p lo) = LimOffWithPath @p' p lo{offset = Just n}
+    new = LimOffWithPath @path (demote @path) LO { offset = Just n, limit = Nothing }
 
 -- | GADT to safely set `where` condition
 data CondWithPath ren sch t where
-  CondWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx ren sch t path
-    => Cond ren sch (TabOnDPathRen ren sch t path) -> CondWithPath ren sch t
+  CondWithPath :: forall (path :: [PathElemK]) ren sch t. PathCtx ren sch t path
+    => [PathElem] -> Cond ren sch (TabOnDPathRen ren sch t path) -> CondWithPath ren sch t
 
 -- | GADT to safely set `order by` clauses
 data OrdWithPath ren sch t where
-  OrdWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx ren sch t path
-    => [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> OrdWithPath ren sch t
+  OrdWithPath :: forall (path :: [PathElemK]) ren sch t. PathCtx ren sch t path
+    => [PathElem] -> [OrdFld ren sch (TabOnDPathRen ren sch t path)] -> OrdWithPath ren sch t
 
 -- | GADT to safely set `distinct/distinct on` clauses
 data DistWithPath ren sch t where
-  DistWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t. PathCtx ren sch t path
-    => Dist ren sch (TabOnDPathRen ren sch t path) -> DistWithPath ren sch t
+  DistWithPath :: forall (path :: [PathElemK]) ren sch t. PathCtx ren sch t path
+    => [PathElem] -> Dist ren sch (TabOnDPathRen ren sch t path) -> DistWithPath ren sch t
 
 -- | GADT to safely set `limit/offset` clauses
 data LimOffWithPath ren sch t where
-  LimOffWithPath :: forall (path :: [(Symbol, PathKind)]) ren sch t.
-    ( PathCtx ren sch t path, PathEndsMany sch t (EffPath ren path) )
-    => LO -> LimOffWithPath ren sch t
+  LimOffWithPath :: forall (path :: [PathElemK]) ren sch t.
+    ( PathCtx ren sch t path, PathEndsMany sch t path )
+    => [PathElem] -> LO -> LimOffWithPath ren sch t
 
 -- | Comparison constructors; each is paired with its corresponding operator
 -- (e.g. '(:=)' with '(=?)').

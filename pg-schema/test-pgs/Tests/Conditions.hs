@@ -122,7 +122,7 @@ prop_renamer_alias_dual_fields pool = withTests 30 $ property do
   inIns <- insData pool
   (sel :: [RootDualMid1], _) <- evalIO $ withResource pool \conn ->
     selSch "root" conn $ qRoot do
-      qPath "mid1_root_fk" do
+      qPath "mid1RootFk" do
         qWhere $ "flag" =? True
       qPath "mid1_root_fk2" do
         qWhere $ "pos" >? (5 :: Int32)
@@ -142,6 +142,25 @@ prop_renamer_alias_dual_fields pool = withTests 30 $ property do
         ]
     L.sort root.mid1RootFk === L.sort expectFk
     L.sort root.mid1_root_fk2 === L.sort expectFk2
+
+-- | 'qPath' by shared db fk name applies one 'qWhere' to every matching branch.
+prop_renamer_broadcast_dual_fields :: Pool Connection -> Property
+prop_renamer_broadcast_dual_fields pool = withTests 30 $ property do
+  inIns <- insData pool
+  (sel :: [RootDualMid1], _) <- evalIO $ withResource pool \conn ->
+    selSch "root" conn $ qRoot do
+      qPath "mid1_root_fk" do
+        qWhere $ "flag" =? True
+  forM_ sel \root -> do
+    let
+      expectFlag = [ m1
+        | PgTag m1s :. _ :. r <- inIns
+        , (r.code, r.grp) == (root.code, root.grp)
+        , m1 <- m1s
+        , m1.flag
+        ]
+    L.sort root.mid1RootFk === L.sort expectFlag
+    L.sort root.mid1_root_fk2 === L.sort expectFlag
 
 -- | Duplicate 'mid2_root_fk' in the result type: filters on the path
 -- and on nested 'leaf_mid2_fk' apply per branch and may diverge.

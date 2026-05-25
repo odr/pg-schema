@@ -60,6 +60,13 @@ data RelType = RelOne | RelMany deriving Show
 -- | Direction of one path step relative to the current table.
 data PathKind = FromHere | ToHere deriving (Show, Eq)
 
+-- | One step of a 'SELECT' query path: logical branch name, DB fk name, direction.
+data PathElem' s = PathElem
+  { peName   :: s
+  , peDbName :: s
+  , peKind   :: PathKind
+  } deriving (Show, Eq)
+
 -- | Field of a logical record: plain column, aggregate, or relation hop.
 data RecField' s p
   = RFEmpty s -- ^ Placeholder / unnamed slot (depending on schema codegen).
@@ -87,7 +94,7 @@ data Ref' s = Ref
 
 genSingletons
   [ ''AggrFun, ''NameNS', ''TypDef', ''FldDef', ''TabDef', ''RelDef', ''RelType
-  , ''PathKind
+  , ''PathKind, ''PathElem'
   , ''RecField', ''Ref' ]
 
 type NameNSK = NameNS' Symbol
@@ -103,6 +110,40 @@ type TypDef = TypDef' Text
 type FldDef = FldDef' Text
 type TabDef = TabDef' Text
 type RelDef = RelDef' Text
+type PathElemK = PathElem' Symbol
+type PathElem = PathElem' Text
+
+mkPathStep :: Text -> Text -> PathKind -> PathElem
+mkPathStep name db kind = PathElem{peName = name, peDbName = db, peKind = kind}
+
+-- | Broadcast step: 'peName' is the db/fk key from 'qPath', not a Haskell field.
+pathStepBroadcast :: PathElem -> Bool
+pathStepBroadcast s = s.peName == s.peDbName
+
+-- | Whether a query-path step applies to a runtime tree-path step.
+pathStepMatches :: PathElem -> PathElem -> Bool
+pathStepMatches cond rt =
+  cond.peKind == rt.peKind
+  && cond.peDbName == rt.peDbName
+  && ( cond.peName == rt.peName
+    || cond.peName == cond.peDbName
+    )
+
+pathsEqual :: [PathElem] -> [PathElem] -> Bool
+pathsEqual xs ys =
+  L.length xs == L.length ys
+  && and (L.zipWith pathStepMatches xs ys)
+
+pathIsPrefixOfBy :: (PathElem -> PathElem -> Bool) -> [PathElem] -> [PathElem] -> Bool
+pathIsPrefixOfBy _ [] _ = True
+pathIsPrefixOfBy f (x : xs) (y : ys) = f x y && pathIsPrefixOfBy f xs ys
+pathIsPrefixOfBy _ _ [] = False
+
+pathIsPrefixOf :: [PathElem] -> [PathElem] -> Bool
+pathIsPrefixOf = pathIsPrefixOfBy $ flip pathStepMatches
+
+parentPathMatches :: [PathElem] -> [PathElem] -> [PathElem] -> Bool
+parentPathMatches p basePath piPath = pathsEqual p (basePath <> piPath)
 
 infixr 9 ->>
 (->>) :: Text -> Text -> NameNS
@@ -292,14 +333,18 @@ type family TRelToTab sch t name :: NameNSK where
 
 -- | Walk a directed @path@ from root table @t@.
 --
--- Each step is @(relationName, 'FromHere | 'ToHere)@. Result: end table and its
--- cardinality ('RelOne' for a single parent step, 'RelMany' for a single child).
-type family TabOnDPath2 sch (t :: NameNSK) (path :: [(Symbol, PathKind)]) :: (NameNSK, RelType) where
+-- Each step is a 'PathElem' (schema walk uses 'peDbName'). Result: end table and
+-- its cardinality ('RelOne' for a single parent step, 'RelMany' for a single child).
+type family TabOnDPath2 sch (t :: NameNSK) (path :: [PathElemK]) :: (NameNSK, RelType) where
   TabOnDPath2 sch t '[] = '(t, 'RelMany)
-  TabOnDPath2 sch t '[ '(name, 'FromHere)] = '(TRelFromTab sch t name, 'RelOne)
-  TabOnDPath2 sch t '[ '(name, 'ToHere)] = '(TRelToTab sch t name, 'RelMany)
-  TabOnDPath2 sch t ('(name, 'FromHere) ': xs) = TabOnDPath2 sch (TRelFromTab sch t name) xs
-  TabOnDPath2 sch t ('(name, 'ToHere) ': xs) = TabOnDPath2 sch (TRelToTab sch t name) xs
+  TabOnDPath2 sch t '[ 'PathElem _ name 'FromHere] =
+    '(TRelFromTab sch t name, 'RelOne)
+  TabOnDPath2 sch t '[ 'PathElem _ name 'ToHere] =
+    '(TRelToTab sch t name, 'RelMany)
+  TabOnDPath2 sch t ('PathElem _ name 'FromHere ': xs) =
+    TabOnDPath2 sch (TRelFromTab sch t name) xs
+  TabOnDPath2 sch t ('PathElem _ name 'ToHere ': xs) =
+    TabOnDPath2 sch (TRelToTab sch t name) xs
 
 -- | Table reached after walking directed @path@ from @t@ ('Fst' of 'TabOnDPath2').
 type TabAtPath sch t path = Fst (TabOnDPath2 sch t path)

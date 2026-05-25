@@ -32,7 +32,7 @@ import Prelude as P
 
 data QueryRead ren sch t = QueryRead
   { qrCurrTabNum  :: Int
-  , qrPath        :: [(Text, PathKind)]
+  , qrPath        :: [PathElem]
   , qrParam       :: QueryParam ren sch t }
 
 data ParentInfo = ParentInfo
@@ -41,7 +41,7 @@ data ParentInfo = ParentInfo
   , piToNum       :: Int
   , piParentTab   :: NameNS
   , piRefs        :: [Ref' Text]
-  , piPath        :: [(Text, PathKind)] }
+  , piPath        :: [PathElem] }
   deriving Show
 
 data QueryState = QueryState
@@ -123,27 +123,27 @@ selectM refTxt ri = do
   let
     basePath = L.reverse qrPath
     (unTextI -> condText, condPars) = F.fold $ L.reverse
-      $ mapMaybe (\(CondWithPath @path cond) -> let p = demote @(EffPath ren path) in
+      $ mapMaybe (\(CondWithPath p cond) ->
         if
-          | not (basePath `L.isPrefixOf` p) -> Nothing
-          | p == basePath -> Just $ first TextI $ pgCond qrCurrTabNum cond
-          | otherwise -> L.find ((p ==) . (basePath <>) . (.piPath)) parents
+          | not (pathIsPrefixOf basePath p) -> Nothing
+          | pathsEqual p basePath -> Just $ first TextI $ pgCond qrCurrTabNum cond
+          | otherwise -> L.find (parentPathMatches p basePath . (.piPath)) parents
             <&> \pari -> first (TextI @" and ") $ pgCond pari.piToNum cond
         ) qrParam.qpConds
     (unTextI -> ordText, ordPars) = F.fold $ L.reverse
-      $ mapMaybe (\(OrdWithPath @path ord) -> let p = demote @(EffPath ren path) in
+      $ mapMaybe (\(OrdWithPath p ord) ->
         if
-          | not (basePath `L.isPrefixOf` p) -> Nothing
-          | p == basePath -> Just $ pgOrd qrCurrTabNum ord
-          | otherwise -> L.find ((p ==) . (basePath <>) . (.piPath)) parents
+          | not (pathIsPrefixOf basePath p) -> Nothing
+          | pathsEqual p basePath -> Just $ pgOrd qrCurrTabNum ord
+          | otherwise -> L.find (parentPathMatches p basePath . (.piPath)) parents
             <&> \pari -> pgOrd pari.piToNum ord
         ) qrParam.qpOrds
     (distTexts, distPars) = F.fold $ L.reverse
-      $ mapMaybe (\(DistWithPath @path dist) -> let p = demote @(EffPath ren path) in
+      $ mapMaybe (\(DistWithPath p dist) ->
         if
-          | not (basePath `L.isPrefixOf` p) -> Nothing
-          | p == basePath -> Just $ pgDist qrCurrTabNum dist
-          | otherwise -> L.find ((p ==) . (basePath <>) . (.piPath)) parents
+          | not (pathIsPrefixOf basePath p) -> Nothing
+          | pathsEqual p basePath -> Just $ pgDist qrCurrTabNum dist
+          | otherwise -> L.find (parentPathMatches p basePath . (.piPath)) parents
             <&> \pari -> pgDist pari.piToNum dist
         ) qrParam.qpDistinct
     sel
@@ -223,10 +223,12 @@ fieldM fi = case fi.fieldKind of
         , piToNum     = n2
         , piParentTab = ri.tabName
         , piRefs      = refs
-        , piPath      = (fi.fieldDbName, FromHere) : qrPath } : qsParents }
+        , piPath      = mkPathStep fi.fieldName fi.fieldDbName FromHere : qrPath }
+        : qsParents }
     n2 <- gets qsLastTabNum
     (flds, pars) <- listen $ local
-      (\qr -> qr{ qrCurrTabNum = n2, qrPath = (fi.fieldDbName, FromHere) : qrPath })
+      (\qr -> qr{ qrCurrTabNum = n2
+        , qrPath = mkPathStep fi.fieldName fi.fieldDbName FromHere : qrPath })
       $ traverse fieldM ri.fields
     val <- if L.any (fdNullable . fromDef) refs
       then do
@@ -240,7 +242,8 @@ fieldM fi = case fi.fieldKind of
     QueryState {qsLastTabNum = (+1) -> tabNum, qsParents} <- get
     modify (const $ QueryState tabNum [])
     selText <- local
-      (\qr -> qr { qrCurrTabNum = tabNum, qrPath = (fi.fieldDbName, ToHere) : qrPath })
+      (\qr -> qr { qrCurrTabNum = tabNum
+        , qrPath = mkPathStep fi.fieldName fi.fieldDbName ToHere : qrPath })
       $ selectM (refCond tabNum qrCurrTabNum refs) ri
     modify (\qs -> qs { qsParents = qsParents })
     let
@@ -265,18 +268,18 @@ refCond nFrom nTo = T.intercalate " and " . fmap compFlds
         fldt n = (("t" <> show' n <> ".") <>)
 
 withLOWithPath
-  :: forall ren sch t r. (LO -> r) -> [(Text, PathKind)] -> LimOffWithPath ren sch t -> Maybe r
-withLOWithPath f p (LimOffWithPath @p lo) =
-  guard (p == demote @(EffPath ren p)) >> pure (f lo)
+  :: forall ren sch t r. (LO -> r) -> [PathElem] -> LimOffWithPath ren sch t -> Maybe r
+withLOWithPath f p (LimOffWithPath p' lo) =
+  guard (pathsEqual p p') >> pure (f lo)
 
 withLOsWithPath
-  :: forall ren sch t r. (LO -> r) -> [(Text, PathKind)] -> [LimOffWithPath ren sch t] -> Maybe r
+  :: forall ren sch t r. (LO -> r) -> [PathElem] -> [LimOffWithPath ren sch t] -> Maybe r
 withLOsWithPath f p = join . L.find isJust . L.map (withLOWithPath f p)
 
-lowp :: forall ren sch t. forall (path :: [(Symbol, PathKind)]) ->
-  ( PathCtx ren sch t path, PathEndsMany sch t (EffPath ren path) ) =>
+lowp :: forall ren sch t. forall (path :: [PathElemK]) ->
+  ( PathCtx ren sch t path, PathEndsMany sch t path ) =>
   LO -> LimOffWithPath ren sch t
-lowp p = LimOffWithPath @p
+lowp p = LimOffWithPath @p (demote @p)
 
 rootLO :: forall ren sch t. LO -> LimOffWithPath ren sch t
 rootLO = lowp []
@@ -286,7 +289,7 @@ convLO (LO ml mo) =
   maybe "" ((" limit " <>) . show') ml
    <> maybe "" ((" offset " <>) . show') mo
 
-loByPath :: forall ren sch t. [(Text, PathKind)] -> [LimOffWithPath ren sch t] -> Text
+loByPath :: forall ren sch t. [PathElem] -> [LimOffWithPath ren sch t] -> Text
 loByPath p = fromMaybe mempty . withLOsWithPath convLO p
 
 runCond :: Int -> CondMonad a -> (a,[SomeToField])
@@ -375,59 +378,62 @@ pgDist :: forall ren sch t. Int -> Dist ren sch t -> (DistTexts, [SomeToField])
 pgDist n dist = evalRWS (convDist dist) ("o", pure n) 0
 
 withCondWithPath :: forall ren sch t r. (forall t'. Cond ren sch t' -> r) ->
-  [(Text, PathKind)] -> CondWithPath ren sch t -> Maybe r
-withCondWithPath f p (CondWithPath @p' cond) = f cond <$ guard (p == demote @(EffPath ren p'))
+  [PathElem] -> CondWithPath ren sch t -> Maybe r
+withCondWithPath f p (CondWithPath p' cond) =
+  f cond <$ guard (pathsEqual p p')
 
 withCondsWithPath :: forall ren sch t r. (forall t'. Cond ren sch t' -> r) ->
-  [(Text, PathKind)] -> [CondWithPath ren sch t] -> Maybe r
+  [PathElem] -> [CondWithPath ren sch t] -> Maybe r
 withCondsWithPath f p = join . L.find isJust . L.map (withCondWithPath f p)
 
 cwp :: forall path -> forall ren sch t.
   PathCtx ren sch t path =>
   Cond ren sch (TabOnDPathRen ren sch t path) -> CondWithPath ren sch t
-cwp p = CondWithPath @p
+cwp p = CondWithPath @p (demote @p)
 
 rootCond :: Cond ren sch t -> CondWithPath ren sch t
 rootCond = cwp []
 
-condByPath :: Int -> [(Text, PathKind)] -> [CondWithPath ren sch t] -> (Text, [SomeToField])
+condByPath :: Int -> [PathElem] -> [CondWithPath ren sch t] -> (Text, [SomeToField])
 condByPath num p = F.fold . withCondsWithPath (pgCond num) p
 
-ordByPath :: Int -> [(Text, PathKind)] -> [OrdWithPath ren sch t] -> (TextI ",", [SomeToField])
+ordByPath :: Int -> [PathElem] -> [OrdWithPath ren sch t] -> (TextI ",", [SomeToField])
 ordByPath num p = F.fold . withOrdsWithPath (pgOrd num) p
 
-distByPath :: Int -> [(Text, PathKind)] -> [DistWithPath ren sch t] -> (DistTexts, [SomeToField])
+distByPath :: Int -> [PathElem] -> [DistWithPath ren sch t] -> (DistTexts, [SomeToField])
 distByPath num p = F.fold . withDistsWithPath (pgDist num) p
 
 withOrdWithPath :: forall ren sch t r. (forall t'. [OrdFld ren sch t'] -> r) ->
-  [(Text, PathKind)] -> OrdWithPath ren sch t -> Maybe r
-withOrdWithPath f p (OrdWithPath @p ord) = f ord <$ guard (p == demote @(EffPath ren p))
+  [PathElem] -> OrdWithPath ren sch t -> Maybe r
+withOrdWithPath f p (OrdWithPath p' ord) =
+  f ord <$ guard (pathsEqual p p')
 
 withDistWithPath :: forall ren sch t r. (forall t'. Dist ren sch t' -> r) ->
-  [(Text, PathKind)] -> DistWithPath ren sch t -> Maybe r
-withDistWithPath f p (DistWithPath @p dist) = f dist <$ guard (p == demote @(EffPath ren p))
+  [PathElem] -> DistWithPath ren sch t -> Maybe r
+withDistWithPath f p (DistWithPath p' dist) =
+  f dist <$ guard (pathsEqual p p')
 
 --
 withOrdsWithPath :: forall ren sch t r . (forall t'. [OrdFld ren sch t'] -> r) ->
-  [(Text, PathKind)] -> [OrdWithPath ren sch t] -> Maybe r
+  [PathElem] -> [OrdWithPath ren sch t] -> Maybe r
 withOrdsWithPath f p = join . L.find isJust . L.map (withOrdWithPath f p)
 
 withDistsWithPath :: forall ren sch t r . (forall t'. Dist ren sch t' -> r) ->
-  [(Text, PathKind)] -> [DistWithPath ren sch t] -> Maybe r
+  [PathElem] -> [DistWithPath ren sch t] -> Maybe r
 withDistsWithPath f p = join . L.find isJust . L.map (withDistWithPath f p)
 
 owp :: forall path -> forall sch t t'.
   ( PathCtx ren sch t path, TabOnDPathRen ren sch t path ~ t' ) =>
   [OrdFld ren sch t'] -> OrdWithPath ren sch t
-owp p = OrdWithPath @p
+owp p = OrdWithPath @p (demote @p)
 
 rootOrd :: forall ren sch t. [OrdFld ren sch t] -> OrdWithPath ren sch t
 rootOrd = owp []
 
 dwp :: forall path -> forall ren sch t.
-  ( PathCtx ren sch t path, PathEndsMany sch t (EffPath ren path) ) =>
+  ( PathCtx ren sch t path, PathEndsMany sch t path ) =>
   Dist ren sch (TabOnDPathRen ren sch t path) -> DistWithPath ren sch t
-dwp p = DistWithPath @p
+dwp p = DistWithPath @p (demote @p)
 
 rootDist :: forall ren sch t. Dist ren sch t -> DistWithPath ren sch t
 rootDist = dwp []

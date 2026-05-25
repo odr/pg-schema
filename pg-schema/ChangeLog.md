@@ -2,28 +2,20 @@
 
 ## 0.8.0.0
 
-- Fix `qDistinct`: cardinality check uses renamer-mapped path (`EffPath`), same as
-  `qLimit` / `qOffset`.
-- Internal SELECT path types: `EffPath`, `PathCtx`, `PathEndsMany`, `TabAtPath`;
-  removed unused `TabDPath`, undirected `TabOnPath*`, and duplicate `CheckStep`
-  (`ResolvePathKind` lives in `PgSchema.Schema`).
-- **Breaking:** compile-time returning rules: insert forbids `Maybe`; update
-  requires `Maybe` on every returning slot; upsert uses bare rows when all
-  mandatory columns are present on input, otherwise `Maybe` (extra `Maybe` is a
-  type error).
+- Fix SELECT path matching after renamer: promoted `PathElem'` (`peName`,
+  `peDbName`, `peKind`) replaces `(Text, PathKind)`; runtime `pathStepMatches`
+  supports point paths and broadcast by shared db fk name; independent filters
+  on aliased sibling fields (e.g. `mid1RootFk` vs `mid1_root_fk2`).
+- Internal SELECT paths: `[PathElemK]` in `PathCtx` / `TabOnDPathRen`; removed
+  `EffPath` on renamer-only pairs; `TabOnDPath2` walks `peDbName`.
 - Flat DML: `upsertByKey` / `upsertByKey_` and `updateByKey` / `updateByKey_`
   (`upsertByKey` requires all mandatory columns and a full key — always
   `INSERT … ON CONFLICT …`; `updateByKey` is key-only, never inserts, bare
   returning type `r'`, result `IO ([Maybe r'], Text)`).
-- Flat `RETURNING` constraints: `insertSch` / `upsertByKey` / `updateByKey` use
-  `PlainOut` + `RequireBareRow` only (no `ReturningMatches*` / `ReturningIsSubtree`;
-  tree `*JSON` keeps `ReturningMatches*`; `ReturningIsSubtree` checks relation
-  branches in the input tree, not plain columns).
 - Tree DML: `updateJSON` / `updateJSON_` (update-only); `InsertMode` for the
   JSON pipeline.
-- Tree returning: `array_append` keeps one JSON slot per input row (`null` when
-  a row was not updated on upsert/update paths).
-- `AllHasKeyTree`, `CheckHasKey`, `ReturningMatches{Insert,Upsert,Update}`,
+- Tree returning: Maybe or Bare for `upsertJSON`.
+- New constraints: `AllHasKeyTree`, `CheckHasKey`, `ReturningMatches{Insert,Upsert,Update}`,
   `FromJSON` / `ToJSON` for `Maybe` rows and `null` in returning arrays.
 - Rename `TreeSch` to `HasSchema`
 
