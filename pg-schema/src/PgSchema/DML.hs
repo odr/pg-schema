@@ -76,7 +76,7 @@ module PgSchema.DML
   -- * Select
     selectSch, selectText
   -- ** Query Params
-  , QueryParamAnn, qpEmpty
+  , QueryParamAnn, QueryParam(..), qpEmpty
   , qRoot, qPath, qPathFromHere, qPathToHere, qWhere, qOrderBy
   , qDistinct, qDistinctOn, qLimit, qOffset
   -- ** Conditions
@@ -94,14 +94,13 @@ module PgSchema.DML
   , ordf, ascf, descf, defLO, lo1
   -- ** Internals
   , Selectable, CRecInfo(..)
-  , MonadQP, QueryParam(..), CondWithPath(..), OrdWithPath(..)
+  , MonadQP, CondWithPath(..), OrdWithPath(..)
   , Cond(..), CondAnn, Cmp(..), BoolOp(..), TabParam(..), defTabParam
   , CondMonad, SomeToField(..), showCmp, tabPref, qual
   , CDBField, CDBValue, CDBFieldNullable, CRelDef
   , LimOffWithPath(..), DistWithPath(..)
   , OrdDirection(..), OrdFld(..), Dist(..), LO(..)
-  -- * DML
-  -- ** Plain DML
+  -- * Plain DML
   -- | You can insert, update or upsert data.
   --
   -- - For insert you need all mandatory fields.
@@ -121,12 +120,12 @@ module PgSchema.DML
   , updateByKey, updateByKey_, updateByKeyText, updateByKeyText_
   , updateByCond, updateByCond_, updateText, updateText_
   , deleteByCond, deleteText
-  -- *** Constraints
+  -- ** Constraints
   , AllPlain, InsertNonReturning, InsertReturning
   , UpsertByKeyNonReturning, UpsertByKeyReturning
   , UpdateByKeyNonReturning, UpdateByKeyReturning
   , UpdateReturning, UpdateNonReturning
-  -- ** Tree-based DML
+  -- * Tree-based DML
   -- | You can insert, update or upsert data right into the tree structure
   -- (to the several related tables at once).
   --
@@ -156,7 +155,7 @@ module PgSchema.DML
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_
   , updateJSON, updateJSON_, insertJSONText, insertJSONText_
   , upsertJSONText, upsertJSONText_, updateJSONText, updateJSONText_
-  -- *** Constraints
+  -- ** Constraints
   , TreeIn, TreeOut, AllMandatoryTree, AllMandatoryOrHasKeyTree, AllHasKeyTree
   , HasSchema
   , InsertTreeNonReturning, InsertTreeReturning
@@ -184,8 +183,7 @@ module PgSchema.DML
   -- ** Other types
   , PgChar(..), PgOid(..)
   , NameNS'(..), type (->>), NameNSK, (->>)
-  , PathElem'(..), PathElem, PathElemK
-  , mkPathStep, pathStepMatches, pathsEqual, pathIsPrefixOf, pathStepBroadcast
+  , PathElem'(..), PathElem, PathElemK, PathKind(..)
   , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable, CTabDef(..)
   ) where
 
