@@ -1,6 +1,6 @@
 # pg-schema
 
-*pg-schema* is a Haskell library that lifts a PostgreSQL schema description to the type level and gives you type-safe, compile-time-checked access to data.
+[*pg-schema*](https://hackage-content.haskell.org/package/pg-schema) is a Haskell library that lifts a PostgreSQL schema description to the type level and gives you type-safe, compile-time-checked access to data.
 
 The core idea is a type provider: from a live database (tables, primary and unique keys, foreign keys, column types—including arrays and enums) a schema representation is built that you then use with ordinary GHC types. You can have any number of such schemas; each may include any subset of tables.
 
