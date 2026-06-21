@@ -1,7 +1,7 @@
 # Changelog for pg-schema
 
 ## 0.8.0.1
-- Build all with -Wall -Werror
+- Build all with -Wall
 - Small fixes in doc
 
 ## 0.8.0.0

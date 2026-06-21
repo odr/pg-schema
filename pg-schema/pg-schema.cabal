@@ -146,7 +146,6 @@ common shared
     ViewPatterns
   ghc-options:
     -Wall
-    -Werror
     -Wunused-packages
 
 library
