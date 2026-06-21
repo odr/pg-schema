@@ -1,25 +1,17 @@
 {-# LANGUAGE BlockArguments #-}
 module Tests.BaseConverts where
 
-import Control.Exception
 import Data.Aeson as A (Value(..))
-import qualified Data.Aeson.Key as Key
-import qualified Data.Aeson.KeyMap as KeyMap
 import Data.ByteString.Char8 qualified as BS
-import Data.ByteString.Lazy qualified as BSL
 import Data.CaseInsensitive
 import Data.Functor
 import Data.Int
 import Data.List qualified as L
 import Data.Pool as Pool
-import Data.Scientific
-import Data.String as S
 import Data.Text as T
 import Data.Time
 import Data.UUID.Types
-import qualified Data.Vector as Vec
 import Database.PostgreSQL.Simple
-import Database.PostgreSQL.Simple.Types (PGArray(..))
 import Hedgehog as H
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -70,7 +62,7 @@ prop_base_converts pool = withTests 30 $ property do
     pure (res, res', res'')
   L.sort resSel === L.sort recs
   resIns === recs
-  L.sort resUpd === L.sort ((\(a:.b:.c) -> a:. "cint4" =: Just (10::Int32) :.c)
+  L.sort resUpd === L.sort ((\(a:._:.c) -> a:. "cint4" =: Just (10::Int32) :.c)
     <$> L.filter (\(PgTag a:._) -> a == Just False) recs)
 
 prop_base_arr_converts :: Pool Connection -> Property
@@ -102,7 +94,7 @@ prop_ext_converts pool = withTests 30 $ property do
     pure (res, res', res'')
   L.sort resSel === L.sort recs
   resIns === recs
-  L.sort resUpd === L.sort ((\(a:.b) -> "ccitext" =: Just ("cAses" :: CI Text) :.b)
+  L.sort resUpd === L.sort ((\(_:.b) -> "ccitext" =: Just ("cAses" :: CI Text) :.b)
     <$> L.filter (\(_ :. PgTag a :. _) -> a == Just Color_red) recs)
 
 prop_ext_arr_converts :: Pool Connection -> Property
@@ -114,7 +106,7 @@ prop_ext_arr_converts pool = withTests 30 $ property do
 prop_ext_converts_json_string_via_upsertjson :: Pool Connection -> Property
 prop_ext_converts_json_string_via_upsertjson pool = withTests 1 $ property do
   (sql, outSel) <- evalIO $ withPool pool \conn -> do
-    delByCond "ext_converts" conn mempty
+    void $ delByCond "ext_converts" conn mempty
     sql' <- upsJSON_ "ext_converts" conn recs
     (xs, _) <- selSch "ext_converts" conn qpEmpty
     pure (sql', xs)

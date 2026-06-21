@@ -3,7 +3,6 @@ module Tests.UpsertUniqueKey where
 
 import Control.Monad (void, when)
 import Data.Int (Int32)
-import Data.Maybe (Maybe(..))
 import Data.List qualified as L
 import Data.Pool as Pool
 import Data.Text (Text)

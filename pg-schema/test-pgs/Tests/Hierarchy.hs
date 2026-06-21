@@ -5,25 +5,18 @@
 {-# LANGUAGE NoFieldSelectors #-}
 module Tests.Hierarchy where
 
-import Control.Monad (void)
 import Data.Coerce (coerce)
 import Data.Function (on)
 import Data.Functor
-import Data.Int (Int32, Int64)
+import Data.Int (Int32)
 import Data.List qualified as L
-import Data.Maybe (fromMaybe, isJust, mapMaybe, catMaybes)
+import Data.Maybe (isJust, catMaybes)
 import Data.Pool as Pool
-import Data.Proxy (Proxy(..))
 import Data.Text (Text)
-import Data.Text.IO as T
-import Data.Time (UTCTime, getCurrentTime)
 import Database.PostgreSQL.Simple
 import GHC.Generics
 import Hedgehog
-import Hedgehog.Gen qualified as Gen
-import Hedgehog.Range qualified as Range
 import PgSchema.DML
-import Sch
 import Utils
 
 
@@ -73,7 +66,7 @@ data Leaf = MkLeaf
 -- RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "leaf"}, fields = [FieldInfo {fieldName = "leaf_no", fieldDbName = "leaf_no", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "value", fieldDbName = "value", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "float4"}, fdNullable = False, fdHasDefault = False})}]}
 
 eqRoot :: RootRec -> RootRec -> Bool
-eqRoot (a1 :. b1 :. c1) (a2 :. b2 :. c2) = (a1, b1) == (a2, b2)
+eqRoot (a1 :. b1 :. _) (a2 :. b2 :. _) = (a1, b1) == (a2, b2)
 
 rootKey :: RootRec -> (Text, Int32)
 rootKey (c :. g :. _ :. _) = (coerce c, coerce g)
@@ -114,8 +107,8 @@ prop_hier_insert_simple_fk pool = withTests 30 $ property do
   mid1In <- forAll (genData' Mid1Rec 0 20)
   let inIns = rootsIn <&> ("mid1RootFk" =: mid1In :.)
   (outIns, outSel1, outUps, outSel2) <- evalIO $ withPool pool \conn -> do
-    delByCond "mid1" conn mempty
-    delByCond "root" conn mempty
+    void $ delByCond "mid1" conn mempty
+    void $ delByCond "root" conn mempty
     (fst -> (outIns' :: ["id" := Int32 :. "mid1RootFk" := ["id" := Int32 :. Mid1Rec]])) <-
       insJSON "root" conn inIns
     (fst -> (outSel1' :: ["id" := Int32 :. "mid1RootFk" := [Mid1Rec] :. RootRec])) <-
@@ -148,8 +141,8 @@ prop_hier_insert_composite_fk pool = withTests 30 $ property do
   mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genData' Mid2Rec 0 20)
   let inIns = rootsIn <&> (("mid2_root_fk" =: mid2In) :.)
   (outIns, outSel1, outUps, outSel2) <- evalIO $ withPool pool \conn -> do
-    delByCond "mid2" conn mempty
-    delByCond "root" conn mempty
+    void $ delByCond "mid2" conn mempty
+    void $ delByCond "root" conn mempty
     (fst -> (outIns' :: ["id" := Int32 :. "mid2_root_fk" := [Mid2Rec]])) <-
       insJSON "root" conn inIns
     (fst -> (outSel1' :: ["id" := Int32 :. "mid2_root_fk" := [Mid2Rec] :. RootRec])) <-
@@ -181,8 +174,8 @@ prop_hier_select_child_with_parent pool = withTests 30 $ property do
   rootsIn <- forAll (L.nubBy eqRoot <$> genData' RootRec 1 200)
   mid2In <- forAll (L.nubBy ((==) `on` (.seq)) <$> genData' Mid2Rec 0 20)
   (outIns, outSel) <- evalIO $ withPool pool \conn -> do
-    delByCond "mid2" conn mempty
-    delByCond "root" conn mempty
+    void $ delByCond "mid2" conn mempty
+    void $ delByCond "root" conn mempty
     (fst -> (outIns' :: ["mid2_root_fk" := [Mid2Rec] :. RootRec])) <-
       insJSON "root" conn $ rootsIn <&> (("mid2_root_fk" =: mid2In) :.)
     (fst -> (outSel' :: [Mid2Rec :. "mid2_root_fk" := RootRec])) <-
@@ -198,9 +191,9 @@ prop_hier_duplicate_names_root_nested pool = withTests 30 $ property do
   leafIn <- forAll (L.nubBy ((==) `on` (.leafNo)) <$> genData' LeafI 0 10)
   let inIns = rootsIn <&> (("mid2_root_fk" =: (mid2In <&> (("leaf_mid2_fk" =: leafIn) :.))) :.)
   (outSel', outSel'') <- evalIO $ withPool pool \conn -> do
-    delByCond "leaf" conn mempty
-    delByCond "mid2" conn mempty
-    delByCond "root" conn mempty
+    void $ delByCond "leaf" conn mempty
+    void $ delByCond "mid2" conn mempty
+    void $ delByCond "root" conn mempty
     void $ insJSON_ "root" conn inIns
     (fst -> (outSel' :: [Leaf])) <- selSch "leaf" conn qpEmpty
     (fst -> (outSel'' :: [LeafI :. "leaf_mid2_fk" := Mid2Rec])) <- selSch "leaf" conn qpEmpty

@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 -- | JSON encode/decode checks for `PgTag ann r` (replaces legacy HList doctest tests).
 module PgTagJsonSpec (runTests) where
 

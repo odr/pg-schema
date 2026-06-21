@@ -7,7 +7,6 @@ module Tests.KeyedDML where
 import Control.Monad (void, when, unless)
 import Data.Int (Int32)
 import Data.List qualified as L
-import Data.Maybe (Maybe(..))
 import Data.Pool as Pool
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -16,7 +15,6 @@ import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import PgSchema.DML
-import Sch
 import Utils
 
 type RootRec =

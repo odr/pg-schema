@@ -108,7 +108,6 @@ module PgSchema.DML
   -- - For upsert you need all mandatory fields _and_ some key.
   --
   -- You can get in return any subset of the columns of the table which was affected by the operation.
-  -- All rows returned in the same order as the input tree.
   -- For update you get `Maybe t`. It is `Nothing` if the row was not found by the key.
   --
   -- All these constraints are checked at compile time.

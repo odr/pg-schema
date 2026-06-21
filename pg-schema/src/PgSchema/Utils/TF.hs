@@ -1,8 +1,9 @@
 {-# LANGUAGE UndecidableInstances #-}
+-- {-# LANGUAGE Safe #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module PgSchema.Utils.TF where
 
-import Data.Singletons
+import Data.Singletons ( Apply, type (~>) )
 import GHC.TypeLits
 
 

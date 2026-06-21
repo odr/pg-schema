@@ -16,7 +16,7 @@ main = do
   connStr <- maybe "dbname=schema_test" BS.pack <$> lookupEnv "PG_CONN"
   bracket (connectPostgreSQL connStr) close $ \conn -> do
     putStrLn "Setting up schema..."
-    execute_ conn """
+    void $ execute_ conn """
       CREATE EXTENSION IF NOT EXISTS citext SCHEMA public VERSION \"1.6\";
       CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA public VERSION \"1.1\";
       DROP SCHEMA IF EXISTS test_pgs CASCADE; 

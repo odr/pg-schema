@@ -13,7 +13,6 @@ import Data.ByteString.Lazy qualified as BSL
 import Data.CaseInsensitive
 import Data.Functor
 import Data.Int
-import Data.List qualified as L
 import Data.Pool as Pool
 import Data.Scientific
 import Data.String as S
@@ -22,7 +21,6 @@ import Data.Time
 import Data.UUID.Types
 import qualified Data.Vector as Vec
 import Database.PostgreSQL.Simple
-import Database.PostgreSQL.Simple.Types (PGArray(..))
 import GHC.Generics
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -30,7 +28,6 @@ import qualified Hedgehog.Range as Range
 import Prelude as P
 import PgSchema.DML
 import Sch
-import GHC.TypeLits (KnownSymbol)
 
 
 type TS tab = "test_pgs" ->> tab
@@ -144,8 +141,8 @@ genLocalTime = LocalTime <$> genDay <*> genTime
 genUTCTime :: Gen UTCTime
 genUTCTime = do
   day <- genDay
-  diff <- fromIntegral <$> Gen.int (Range.linear 0 86399)
-  pure $ UTCTime day diff
+  dt <- fromIntegral <$> Gen.int (Range.linear 0 86399)
+  pure $ UTCTime day dt
 
 class GenDefault a where
   defGen :: Gen a
@@ -228,22 +225,4 @@ instance GenDefault a => GenDefault [a] where
   defGen = genData' a 0 10
 
 genData' :: forall a -> Int -> Int -> GenDefault a => Gen [a]
-genData' a n1 n2 = Gen.list (Range.linear n1 n2) defGen
-
-
---genIsoHList
---  :: forall tn r -> forall h.
---    ( IsoHList RenamerSch Sch (TS tn) r
---    , h ~ HList (HListRep RenamerSch Sch (TS tn) r)
---    , GenDefault h )
---  => Gen r
---genIsoHList tn r @h =
---  fromHList @RenamerSch @Sch @(TS tn) @r <$> (defGen :: Gen h)
---
---genDataH
---  :: forall tn r -> forall h
---  . ( IsoHList RenamerSch Sch (TS tn) r
---    , h ~ HList (HListRep RenamerSch Sch (TS tn) r)
---    , GenDefault h )
---  => Int -> Int -> Gen [r]
---genDataH tn r n1 n2 = Gen.list (Range.linear n1 n2) $ genIsoHList tn r
+genData' _a n1 n2 = Gen.list (Range.linear n1 n2) defGen

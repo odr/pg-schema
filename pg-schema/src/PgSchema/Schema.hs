@@ -1,5 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ParallelListComp #-}
+{-# LANGUAGE TemplateHaskell #-}
 module PgSchema.Schema where
 
 import Data.List as L

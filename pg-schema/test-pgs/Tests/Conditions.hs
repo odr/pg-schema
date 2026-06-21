@@ -17,7 +17,6 @@ import Data.Text as T
 import Database.PostgreSQL.Simple
 import GHC.Generics (Generic)
 import GHC.Int
-import GHC.Stack (HasCallStack)
 import Hedgehog
 import PgSchema.DML
 import Utils
@@ -84,10 +83,10 @@ insData pool = do
       :. "mid2_root_fk" =: (mid2In <&> \m2 -> "leaf_mid2_fk" =: leafIn :. m2)
       :. r
   evalIO $ withResource pool \conn -> do
-    delByCond "leaf" conn mempty
-    delByCond "mid1" conn mempty
-    delByCond "mid2" conn mempty
-    delByCond "root" conn mempty
+    void $ delByCond "leaf" conn mempty
+    void $ delByCond "mid1" conn mempty
+    void $ delByCond "mid2" conn mempty
+    void $ delByCond "root" conn mempty
     void $ insJSON_ "root" conn inIns
   pure inIns
 

@@ -119,7 +119,38 @@ flag hashable
   manual:      True
   default:     False
 
+common shared
+  build-depends:
+      base >= 4.20 && < 5
+    , bytestring >= 0.10 && < 0.13
+  default-language: GHC2021
+  default-extensions:
+    AllowAmbiguousTypes
+    BlockArguments
+    ExplicitNamespaces
+    DataKinds
+    -- ^^^ added in GHC2024
+    DerivingStrategies
+    FunctionalDependencies
+    LambdaCase
+    -- ^^^ added in GHC2024
+    MultiWayIf
+    OverloadedRecordDot
+    OverloadedStrings
+    PatternSynonyms
+    RecordWildCards
+    RequiredTypeArguments
+    -- TemplateHaskell
+    TypeAbstractions
+    TypeFamilies
+    ViewPatterns
+  ghc-options:
+    -Wall
+    -Werror
+    -Wunused-packages
+
 library
+  import: shared
   exposed-modules:
     -- PgSchema
     PgSchema.DML
@@ -154,15 +185,13 @@ library
     PackageInfo_pg_schema
   hs-source-dirs: src
   build-depends:
-      base >= 4.20 && < 5
-    , aeson >= 2.0 && < 2.3
-    , bytestring >= 0.10 && < 0.13
+      aeson >= 2.0 && < 2.3
     , containers >= 0.7 && < 0.9
     , directory >= 1.3 && < 1.5
     , exceptions >= 0.9 && < 0.11
     , mtl >= 2.0 && < 2.4
-    , postgresql-libpq >= 0.11 && < 0.12
     , postgresql-simple >= 0.6 && < 0.8
+    , postgresql-libpq >= 0.11 && < 0.12
     , scientific >= 0.2 && < 0.4
     , singletons >= 3.0.3 && < 3.1
     , singletons-th >= 3.4 && < 3.6
@@ -192,37 +221,13 @@ library
     cpp-options: -DMK_HASHABLE
   if flag(debug)
     cpp-options: -DDEBUG
-  ghc-options:
-    -Wall
-    -Wunused-packages
-  default-language: GHC2021
-  default-extensions:
-    AllowAmbiguousTypes
-    BlockArguments
-    ExplicitNamespaces
-    DataKinds
-    -- ^^^ added in GHC2024
-    DerivingStrategies
-    FunctionalDependencies
-    LambdaCase
-    -- ^^^ added in GHC2024
-    MultiWayIf
-    OverloadedRecordDot
-    OverloadedStrings
-    PatternSynonyms
-    RecordWildCards
-    RequiredTypeArguments
-    TemplateHaskell
-    TypeAbstractions
-    TypeFamilies
-    ViewPatterns
 
 test-suite json-spec
+  import: shared
   type: exitcode-stdio-1.0
   main-is: json-spec.hs
   other-modules:
     PgTagJsonSpec
-    -- Paths and PackageInfo
     Paths_pg_schema
     PackageInfo_pg_schema
   autogen-modules:
@@ -230,25 +235,14 @@ test-suite json-spec
     PackageInfo_pg_schema
   hs-source-dirs: test
   build-depends:
-      base
-    , aeson
-    , bytestring
+      aeson
     , pg-schema
-    , postgresql-libpq >= 0.11 && < 0.12
-    , postgresql-simple >= 0.6 && < 0.8
     , text
-  default-language: GHC2021
-  default-extensions:
-    DataKinds
-    OverloadedStrings
-    RequiredTypeArguments
-    TypeAbstractions
-    TypeFamilies
-    UndecidableInstances
-  ghc-options: -Wall
 
 test-suite test-gen
+  import: shared
   type:             exitcode-stdio-1.0
+  hs-source-dirs:   test-gen
   main-is:          Main.hs
   other-modules:
     -- Paths and PackageInfo
@@ -258,17 +252,13 @@ test-suite test-gen
     Paths_pg_schema
     PackageInfo_pg_schema
   build-depends:
-      base >= 4.20 && < 5
-    , bytestring >= 0.12.2 && < 0.13
-    , directory >= 1.3.9 && < 1.4
-    , pg-schema
-    , postgresql-libpq >= 0.11 && < 0.12
+      pg-schema
     , postgresql-simple >= 0.6 && < 0.8
-  hs-source-dirs:   test-gen
-  default-language: GHC2021
 
 test-suite test-pgs
+  import: shared
   type:             exitcode-stdio-1.0
+  hs-source-dirs:   test-pgs
   main-is:          Main.hs
   other-modules:
     Sch
@@ -287,47 +277,21 @@ test-suite test-pgs
   autogen-modules:
     Paths_pg_schema
     PackageInfo_pg_schema
-  hs-source-dirs:   test-pgs
-  default-extensions:
-    AllowAmbiguousTypes
-    BlockArguments
-    ExplicitNamespaces
-    DataKinds
-    -- ^^^ added in GHC2024
-    DerivingStrategies
-    FunctionalDependencies
-    LambdaCase
-    -- ^^^ added in GHC2024
-    MultiWayIf
-    OverloadedRecordDot
-    OverloadedStrings
-    PatternSynonyms
-    RecordWildCards
-    RequiredTypeArguments
-    TemplateHaskell
-    TypeAbstractions
-    TypeFamilies
-    ViewPatterns
   build-depends:
-    base,
     aeson,
-    pg-schema,
-    bytestring,
-    singletons,
     case-insensitive,
     hedgehog >= 1.1,
-    postgresql-simple,
+    pg-schema,
+    postgresql-simple >= 0.6 && < 0.8,
     resource-pool,
     scientific,
     tasty >= 1.4,
     tasty-hedgehog >= 1.2,
     text,
     time,
-    unordered-containers,
     uuid-types,
     vector,
     -- they can be excluded by flags
-    hashable,
-    deepseq
+    deepseq,
+    hashable
     ---------------
-  default-language: GHC2021

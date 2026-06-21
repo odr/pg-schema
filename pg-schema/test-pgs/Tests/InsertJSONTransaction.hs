@@ -3,7 +3,6 @@ module Tests.InsertJSONTransaction where
 
 import Control.Exception (SomeException, try)
 import Control.Monad (void, when)
-import Data.Functor
 import Data.Int (Int32, Int64)
 import Data.List qualified as L
 import Data.Pool as Pool
@@ -18,7 +17,7 @@ type RootRec = "code" := Text :. "grp" := Int32 :. "name" := Text :. "someEmpty"
 type RootSel = "code" := Text :. "grp" := Int32 :. "name" := Text
 
 eqRoot :: RootRec -> RootRec -> Bool
-eqRoot (a1 :. b1 :. c1) (a2 :. b2 :. c2) = (a1, b1) == (a2, b2)
+eqRoot (a1 :. b1 :. _) (a2 :. b2 :. _) = (a1, b1) == (a2, b2)
 
 countRoots :: Connection -> IO Int64
 countRoots conn = do
@@ -50,7 +49,7 @@ prop_insertJSON_respects_outer_transaction pool = property do
   evalIO do
     Pool.withResource pool clearRoots
     Pool.withResource pool \conn -> do
-      execute_ conn "begin"
+      void $ execute_ conn "begin"
       void $ insJSON_ "root" conn rootsIn
       n <- countRoots conn
       when (n /= fromIntegral (length rootsIn)) $
@@ -72,7 +71,7 @@ prop_insertJSON_begin_without_prior_writes pool = property do
   evalIO do
     Pool.withResource pool clearRoots
     Pool.withResource pool \conn -> do
-      execute_ conn "begin"
+      void $ execute_ conn "begin"
       void $ insJSON_ "root" conn rootsIn
       rollback conn
     Pool.withResource pool \conn -> do
