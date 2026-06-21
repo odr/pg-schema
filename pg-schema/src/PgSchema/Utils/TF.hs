@@ -1,5 +1,4 @@
 {-# LANGUAGE UndecidableInstances #-}
--- {-# LANGUAGE Safe #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module PgSchema.Utils.TF where
 
