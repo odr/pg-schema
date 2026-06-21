@@ -1,4 +1,5 @@
 {- HLINT ignore -}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -10,7 +11,9 @@ module Sch where
 -- This file is generated and can't be edited.
 
 import Control.DeepSeq
+#ifdef MK_HASHABLE
 import Data.Hashable
+#endif
 import GHC.Generics
 import GHC.TypeError qualified as TE
 import GHC.TypeLits qualified as TL
@@ -21,7 +24,9 @@ data instance PGEnum Sch ( "test_pgs" ->> "color" )
   = Color_red | Color_green | Color_blue
   deriving (Show, Read, Ord, Eq, Generic, Bounded, Enum)
 
+#ifdef MK_HASHABLE
 instance Hashable (PGEnum Sch ( "test_pgs" ->> "color" ))
+#endif
 
 instance NFData (PGEnum Sch ( "test_pgs" ->> "color" ))
 
@@ -388,4 +393,3 @@ instance CSchema Sch where
     ,( "pg_catalog" ->> "timestamptz" ),( "pg_catalog" ->> "uuid" )
     ,( "public" ->> "_citext" ),( "public" ->> "citext" )
     ,( "test_pgs" ->> "_color" ),( "test_pgs" ->> "color" ) ]
-

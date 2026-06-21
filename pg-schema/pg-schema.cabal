@@ -292,6 +292,9 @@ test-suite test-pgs
     uuid-types,
     vector,
     -- they can be excluded by flags
-    deepseq,
-    hashable
+    deepseq
     ---------------
+  if flag(hashable)
+    build-depends:
+      hashable >= 1.5.1 && < 1.6
+    cpp-options: -DMK_HASHABLE
