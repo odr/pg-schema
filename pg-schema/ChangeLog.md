@@ -1,5 +1,11 @@
 # Changelog for pg-schema
 
+## 0.8.1.0
+- upsertJSON: require `Maybe` on child returning when upsert uses
+  `ON CONFLICT DO NOTHING` with parent FK columns outside the conflict key
+  (`NeedsFkKeyOnlyMaybe` in `ReturningMatchesUpsert`)
+
+
 ## 0.8.0.1
 - Build all with -Wall
 - Small fixes in doc

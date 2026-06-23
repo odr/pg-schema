@@ -889,12 +889,66 @@ type family AssertMustBeMaybe (path :: [Symbol]) (tab :: NameNSK) (fld :: Symbol
     :$$: Text "Field: " :<>: ShowType fld
     :$$: Text "Got: " :<>: ShowType t )
 
-type family CheckUpsertListElem (path :: [Symbol]) (tab :: NameNSK) (fld :: Symbol)
-  (restMandatory :: [Symbol]) (elemTy :: Type) :: Constraint where
-  CheckUpsertListElem path tab fld '[] elemTy =
-    AssertNoMaybe path tab fld (ListElem elemTy)
-  CheckUpsertListElem path tab fld (_ ': _) elemTy =
-    AssertMustBeMaybe path tab fld (ListElem elemTy)
+type family RefFromNames (refs :: [RefK]) :: [Symbol] where
+  RefFromNames '[] = '[]
+  RefFromNames ('Ref fn _ _ _ ': rs) = fn ': RefFromNames rs
+
+type family FilterNotIn (xs :: [Symbol]) (ys :: [Symbol]) :: [Symbol] where
+  FilterNotIn '[] _ = '[]
+  FilterNotIn (x ': xs) ys = FilterNotInB (Elem' x ys) x xs ys
+
+type family FilterNotInB (b :: Bool) (x :: Symbol) (xs :: [Symbol]) (ys :: [Symbol]) :: [Symbol] where
+  FilterNotInB 'True _ xs ys = FilterNotIn xs ys
+  FilterNotInB 'False x xs ys = x ': FilterNotIn xs ys
+
+type family PickFirstKey (src :: [Symbol]) (cands :: [[Symbol]]) :: [Symbol] where
+  PickFirstKey src '[] = '[]
+  PickFirstKey src (k ': ks) = PickFirstKeyB (Null (RestKey src k)) src k ks
+
+type family PickFirstKeyB (b :: Bool) (src :: [Symbol]) (cand :: [Symbol]) (cands :: [[Symbol]]) :: [Symbol] where
+  PickFirstKeyB 'True _ cand _ = cand
+  PickFirstKeyB 'False src _ cands = PickFirstKey src cands
+
+type family FkOutsideKey (fk :: [Symbol]) (key :: [Symbol]) :: Bool where
+  FkOutsideKey '[] _ = 'False
+  FkOutsideKey (f ': fs) key = FkOutsideKeyB (Elem' f key) fs key
+
+type family FkOutsideKeyB (b :: Bool) (fs :: [Symbol]) (key :: [Symbol]) :: Bool where
+  FkOutsideKeyB 'False _ _ = 'True
+  FkOutsideKeyB 'True fs key = FkOutsideKey fs key
+
+-- | Upsert child uses @ON CONFLICT DO NOTHING@ when JSON carries only key
+-- columns while parent FK columns are injected separately.
+type family NeedsFkKeyOnlyMaybe (plain :: [Symbol]) (fk :: [Symbol])
+  (key :: [Symbol]) :: Bool where
+  NeedsFkKeyOnlyMaybe plain fk key = Not (Null fk)
+    && Not (Null (FilterNotIn plain key)) && FkOutsideKey fk key
+
+type family CheckUpsertChildListElem (path :: [Symbol]) (ann :: Ann)
+  (jsonName :: Symbol) (refs :: [RefK]) (childFIs :: [FieldInfo Symbol])
+  (elemTy :: Type) :: Constraint where
+  CheckUpsertChildListElem path ('Ann ren sch d childTab) jsonName refs childFIs
+    elemTy =
+    CheckUpsertChildElem' path sch childTab jsonName
+      (CoveredRs ('Ann ren sch d childTab) childFIs)
+      (RefFromNames refs)
+      (PickFirstKey
+        (RefFromNames refs ++ CoveredRs ('Ann ren sch d childTab) childFIs)
+        (IdentityCandidates sch childTab))
+      elemTy
+
+type family InnerPgTag (t :: Type) :: Type where
+  InnerPgTag (PgTag _ r) = r
+  InnerPgTag r = r
+
+type family CheckUpsertChildElem' (path :: [Symbol]) (sch :: k)
+  (tab :: NameNSK) (jsonName :: Symbol) (plainDb :: [Symbol])
+  (fkDb :: [Symbol]) (key :: [Symbol]) (elemTy :: Type) :: Constraint where
+  CheckUpsertChildElem' path sch tab jsonName plainDb fkDb key elemTy =
+    If (NeedsFkKeyOnlyMaybe plainDb fkDb key
+      || Not (Null (RestMandatory sch tab plainDb)))
+      (AssertMustBeMaybe path tab jsonName (InnerPgTag (ListElem elemTy)))
+      (AssertNoMaybe path tab jsonName (InnerPgTag (ListElem elemTy)))
 
 type family SkipOutField (db :: Symbol) (fis :: [FieldInfo Symbol])
   :: [FieldInfo Symbol] where
@@ -907,9 +961,10 @@ type family CheckReturningUpsertAt (path :: [Symbol]) (ann :: Ann) (rIn :: Type)
   :: Constraint where
   CheckReturningUpsertAt path ann rIn rOut '[] '[] = ()
   CheckReturningUpsertAt path ('Ann ren sch d tab) rIn rOut fisIn
-    ('FieldInfo jsonName db ('RFToHere ('RecordInfo childTab childFIsOut) _) ': outs) =
-    ( CheckUpsertListElem path tab jsonName
-        (RestMandatory sch tab (CoveredRs ('Ann ren sch d tab) fisIn))
+    ('FieldInfo jsonName db
+      ('RFToHere ('RecordInfo childTab childFIsOut) refs) ': outs) =
+    ( CheckUpsertChildListElem path ('Ann ren sch d childTab) jsonName refs
+        childFIsOut
         (ColTypeByJsonName jsonName (Cols ('Ann ren sch d tab) rOut))
     , CheckReturningUpsertAt (Snoc path db) (AnnChild ('Ann ren sch d tab) childTab) rIn rOut
         (FindChildAt path db fisIn) childFIsOut
@@ -970,9 +1025,10 @@ type family ReturningMatchesInsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
 -- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after upsert:
 --
 -- * Same relation-subtree rules as 'ReturningMatchesInsert'.
--- * For each child list in @rOut@: if @rIn@ still lacks mandatory plain columns at
---   that node, the element type must be @Maybe@; otherwise it must be bare
---   ('CheckUpsertListElem').
+-- * For each child list in @rOut@: if @rIn@ still lacks mandatory plain columns
+--   at the child node, or upsert would use @ON CONFLICT DO NOTHING@ with parent FK
+--   columns outside the conflict key ('NeedsFkKeyOnlyMaybe'), the element type must
+--   be @Maybe@; otherwise it must be bare ('CheckUpsertChildListElem').
 type family ReturningMatchesUpsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
   :: Constraint where
   ReturningMatchesUpsert ann rIn rOut =
