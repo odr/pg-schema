@@ -142,8 +142,8 @@
   name "mail" is not defined.
 
   Valid values are:
-    Fields: id, name, email, created_at.
-    Foreign key constraints: projects_owner_id_fkey.
+    Fields: id, name, email, manager_id, created_at.
+    Foreign key constraints: users_manager_id_fkey, projects_owner_id_fkey.
 
   Your source or target type or renaimer is probably invalid.
 ```
@@ -203,19 +203,19 @@
 ```
 
 Обратите внимание, здесь мы получаем результат вставки (`insert ... returning`). Причем набор полей в ответе определяется типом результата.
-Также можно заметить, что мы пишем `createdAt`, а не `created_at`. Имена полей преобразуются ренеймером. (Т.е. с нашим ренеймером мы можем использовать любой вариант).
+Также можно заметить, что мы пишем `managerId`, а не `manager_id`. Имена полей преобразуются ренеймером. (Т.е. с нашим ренеймером мы можем использовать любой вариант).
 
-:thinking_face: A что будет, если написать `createdAt1`?
+:thinking_face: A что будет, если написать `managerId1`?
 
 Ошибка:
 ```
 • In schema Sch
   for table "tut" ->> "users"
-  name "created_at1" is not defined.
+  name "manager_id1" is not defined.
 
   Valid values are:
-    Fields: id, name, email, created_at.
-    Foreign key constraints: projects_owner_id_fkey.
+    Fields: id, name, email, manager_id, created_at.
+    Foreign key constraints: users_manager_id_fkey, projects_owner_id_fkey.
 
   Your source or target type or renaimer is probably invalid.
 ```
