@@ -1,5 +1,8 @@
 # Changelog for pg-schema
 
+## 0.8.1.1
+- aeson upper version is changed
+
 ## 0.8.1.0
 - upsertJSON: require `Maybe` on child returning when upsert uses
   `ON CONFLICT DO NOTHING` with parent FK columns outside the conflict key

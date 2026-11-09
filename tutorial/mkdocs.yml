@@ -17,9 +17,15 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.snippets:
+      # пути считаются от каталога tutorial/ (mkdocs запускается оттуда):
+      #   docs/...           — вспомогательные md-фрагменты
+      #   app/..., sql/...   — исходники примеров (секции -- --8<-- [start:name])
+      #   out/tutorial.txt   — вывод примеров (make tut-run)
       base_path:
         - docs
+        - .
       check_paths: true
+      dedent_subsections: true
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.inlinehilite
@@ -28,6 +34,13 @@ markdown_extensions:
       # emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 docs_dir: docs
+
+# перестраивать сайт в mkdocs serve при изменении примеров и их вывода
+watch:
+  - app/app
+  - app/generator
+  - sql
+  - out
 
 nav:
   - Русский:

@@ -15,7 +15,9 @@
 
 ### Запуск генерации
 
---8<-- "source/snippets/hs/generator-main.md"
+```haskell
+--8<-- "app/generator/Main.hs"
+```
 
 Для генерации описания мы делаем отдельное приложение. Мы можем сгенерировать одну или несколько схем. Каждая схема генерируется функцией `updateSchemaFile`.
 Состав схемы определяется последним параметром:
@@ -79,7 +81,9 @@
 
 Ренеймер преобразует имена, используемые в приложении в имена БД. Ренеймер делается по такому шаблону:
 
---8<-- "source/snippets/hs/MyRenamer.md"
+```haskell
+--8<-- "app/app/Tut/Common.hs:renamer"
+```
 
 (Для удобства `pg-schema` реализует type family `CamelToSnake`).
 
@@ -91,36 +95,28 @@
 
 Часто удобно сделать одну или несколько аннотаций для схемы, зафиксировав ренеймер, схему, глубину и, возможно, схему БД. Оставив только имя таблицы в качестве параметра. В нашем случае:
 
---8<-- "source/snippets/hs/MyAnn.md"
+```haskell
+--8<-- "app/app/Tut/Common.hs:ann"
+```
 
 ### DML
 
 Простейший пример добавления и чтения данных:
 
 ```haskell
-data User = MkUser
-  { name :: Text
-  , email :: Maybe Text
-  } deriving (Show, Generic)
-...
-
-do
-  conn <- connectPostgreSQL "dbname=tutorial"
-  (cnt, tIns) <- insertSch_ (MyAnn "users") conn [MkUser "Benjy" Nothing]
-  (res, (tSel, selParams)) <- selectSch (MyAnn "users") @User conn qpEmpty
-  putStrLn $ "\ninsert text: " <> T.unpack tIns
-  putStrLn $ "inserted " <> show cnt <> " rows"
-  putStrLn $ "select text: " <> T.unpack tSel
-  putStrLn $ "select params: " <> show selParams
-  putStrLn $ "selected rows: " <> show res
+--8<-- "app/app/Tut/Common.hs:user"
 ```
 
+Здесь `conn` — обычное соединение `postgresql-simple` (`connectPostgreSQL "dbname=tutorial"`).
+
+```haskell
+--8<-- "app/app/Tut/Basics.hs:users-generic"
 ```
-insert text: insert into tut.users(name,email) values (?,?)
-inserted 1 rows
-select text: select t0.name "name",t0.email "email" from tut.users t0
-select params: []
-selected rows: [MkUser {name = "Benjy", email = Nothing}]
+
+Вывод:
+
+```text
+--8<-- "out/tutorial.txt:users-generic"
 ```
 
 В результате мы получаем ту же запись, которую добавили в БД. Кроме результата операции мы получаем текст запроса и список параметров запроса (пустой в данном случае).
@@ -198,23 +194,11 @@ selected rows: [MkUser {name = "Benjy", email = Nothing}]
 При помощи тегов мы описываем поля и соединяем их при помощи оператора `(:.)` из пакета `postgresql-simple`. Мы также можем использовать `PgTag`-подход вместе с `Generic`-подходом.
 
 ```haskell
-  (res2 :: ["id" := Int64 :. "createdAt" := UTCTime :. User], tIns2) <-
-    insertSch (MyAnn "users") conn
-      [ MkUser "Quentin" (Just "quentin@example.com")
-      , MkUser "Jason" (Just "jason@example.com") ]
-  (res3 :: ["name" := Text], (tSel3, selParams3)) <- selectSch (MyAnn "users") conn qpEmpty
-  putStrLn $ "\ninsert text: " <> T.unpack tIns2
-  putStrLn $ "inserted: " <> show res2
-  putStrLn $ "select text: " <> T.unpack tSel3
-  putStrLn $ "select params: " <> show selParams3
-  putStrLn $ "selected rows: " <> show res3
-{-
-insert text: insert into tut.users(name,email) values (?,?) returning id,created_at,name,email
-inserted: ["id" =: 2 :. ("createdAt" =: 2026-05-02 12:23:32.344437 UTC :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),"id" =: 3 :. ("createdAt" =: 2026-05-02 12:23:32.344437 UTC :. MkUser {name = "Jason", email = Just "jason@example.com"})]
-select text: select t0.name "name" from tut.users t0
-select params: []
-selected rows: ["name" =: "Benjy","name" =: "Quentin","name" =: "Jason"]
--}
+--8<-- "app/app/Tut/Basics.hs:users-pgtag"
+```
+
+```text
+--8<-- "out/tutorial.txt:users-pgtag"
 ```
 
 Обратите внимание, здесь мы получаем результат вставки (`insert ... returning`). Причем набор полей в ответе определяется типом результата.
