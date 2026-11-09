@@ -46,7 +46,7 @@ nav:
   - Русский:
       - Введение: ru/index.md
       - Зачем pg-schema: ru/00-why-pg-schema.md
-      - Pg-schema за 15 минут: ru/01-wow.md
+      - Быстрый старт: ru/01-wow.md
       - Рабочая модель pg-schema: ru/02-core-workflow.md
       - DML операции: ru/03-dml-operations.md
       - Select: ru/04-select.md

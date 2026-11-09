@@ -25,7 +25,7 @@
 ## Структура
 
 1. [Зачем pg-schema](00-why-pg-schema.md) — зачем нужен подход schema-as-types.
-2. [Pg-schema за 15 минут](01-wow.md) — быстрый результат с нуля.
+2. [Быстрый старт](01-wow.md) — от пустой БД до вставки и чтения дерева данных.
 3. [Рабочая модель pg-schema](02-core-workflow.md) — генерация схемы, первые insert и select.
 4. [DML операции](03-dml-operations.md) — insert, update, upsert, delete, в том числе для связанных таблиц.
 5. [Select](04-select.md) — запросы с условиями, связи между таблицами.
