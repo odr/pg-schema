@@ -1,3 +1,53 @@
+--8<-- [start:wow-owner]
+--8<-- [end:wow-owner]
+--8<-- [start:wow-insert]
+ProjectKey {id = 1, tasks_project_id_fkey = [TaskKey {project_id = 1, seq = 1},TaskKey {project_id = 1, seq = 2},TaskKey {project_id = 1, seq = 3}]}
+ProjectKey {id = 2, tasks_project_id_fkey = [TaskKey {project_id = 2, seq = 1}]}
+create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  project_id1 int8; 
+  seq1 int4; 
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    insert into tut.projects(owner_id, title, status)
+      values ((row_0.value->>'owner_id')::int8, (row_0.value->>'title')::text, (row_0.value->>'status')::tut.project_status)
+      returning id into id0;
+      found_0 := found;
+    data_1 := row_0.value->'tasks_project_id_fkey';
+    arr_1:= '{}';
+    for row_1 in select * from jsonb_array_elements(data_1)
+    loop
+      insert into tut.tasks(project_id, seq, title, priority)
+        values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text, (row_1.value->>'priority')::int4)
+        returning project_id, seq into project_id1, seq1;
+          found_1 := found;
+      arr_1 := array_append(arr_1, jsonb_build_object('project_id', project_id1, 'seq', seq1));
+    end loop;
+    arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'tasks_project_id_fkey', to_jsonb(arr_1)));
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+--8<-- [end:wow-insert]
+--8<-- [start:wow-select]
+Project {owner_id = 1, title = "Website", status = Project_status_active, tasks_project_id_fkey = [Task {seq = 1, title = "Design", priority = 10},Task {seq = 2, title = "Backend", priority = 30}]}
+select t0.owner_id "owner_id",t0.title "title",t0.status "status",array_to_json(array(select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority) from tut.tasks t1  where t1.project_id=t0.id and t1.priority < ? order by t1.seq Asc nulls last)) "tasks_project_id_fkey" from tut.projects t0  where t0.status = ?
+[SomeToField 50,SomeToField Project_status_active]
+--8<-- [end:wow-select]
+--8<-- [start:wow-select-text]
+select t0.owner_id "owner_id",t0.title "title",t0.status "status",array_to_json(array(select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority) from tut.tasks t1  where t1.project_id=t0.id and t1.priority < ? order by t1.seq Asc nulls last)) "tasks_project_id_fkey" from tut.projects t0  where t0.status = ?
+[SomeToField 50,SomeToField Project_status_active]
+--8<-- [end:wow-select-text]
 --8<-- [start:users-generic]
 insert text: insert into tut.users(name,email) values (?,?)
 inserted 1 rows

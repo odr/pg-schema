@@ -39,6 +39,7 @@ executable tutorial
         Tut.FlatDml
         Tut.Output
         Tut.TreeDml
+        Tut.Wow
     -- other-extensions:
     build-depends:
         base ^>=4.21.0.0,
