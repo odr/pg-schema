@@ -1,0 +1,233 @@
+--8<-- [start:users-generic]
+insert text: insert into tut.users(name,email) values (?,?)
+inserted 1 rows
+select text: select t0.name "name",t0.email "email" from tut.users t0 
+select params: []
+selected rows: [MkUser {name = "Benjy", email = Nothing}]
+--8<-- [end:users-generic]
+--8<-- [start:users-pgtag]
+insert text: insert into tut.users(name,email) values (?,?) returning id,created_at,name,email
+inserted: ["id" =: 2 :. ("createdAt" =: 2026-11-09 16:43:09.852715 UTC :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),"id" =: 3 :. ("createdAt" =: 2026-11-09 16:43:09.852715 UTC :. MkUser {name = "Jason", email = Just "jason@example.com"})]
+select text: select t0.name "name" from tut.users t0 
+select params: []
+selected rows: ["name" =: "Benjy","name" =: "Quentin","name" =: "Jason"]
+--8<-- [end:users-pgtag]
+--8<-- [start:insert-projects]
+insert text: insert into tut.projects(owner_id,title,status,tags) values (?,?,?,?) returning id
+inserted: ["id" =: 1,"id" =: 2]
+--8<-- [end:insert-projects]
+--8<-- [start:update-text]
+update text: update tut.projects t0 set status = ? where t0.id = ?
+update params: [SomeToField 2]
+--8<-- [end:update-text]
+--8<-- [start:delete-by-cond]
+delete text: delete from tut.projects t0  where t0.id = ?
+delete params: [SomeToField 2]
+deleted: 1 rows
+--8<-- [end:delete-by-cond]
+--8<-- [start:insert-json-nr]
+insertJSON_ text: create or replace procedure pg_temp.__ins(data_0 jsonb) as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  project_id1 int8; 
+  seq1 int4; 
+  data_2 jsonb;
+  found_2 boolean;
+  row_2 record;
+begin
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    insert into tut.projects(owner_id, title, status, tags)
+      values ((row_0.value->>'ownerId')::int8, (row_0.value->>'title')::text, (row_0.value->>'status')::tut.project_status, case when jsonb_typeof(row_0.value->'tags') = 'array' then (select coalesce(array_agg(__x)::text[], '{}') from jsonb_array_elements_text(row_0.value->'tags') __x) else null end)
+      returning id into id0;
+      found_0 := found;
+    data_1 := row_0.value->'tasksProjectIdFkey';
+    for row_1 in select * from jsonb_array_elements(data_1)
+    loop
+      insert into tut.tasks(project_id, seq, title, priority)
+        values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text, (row_1.value->>'priority')::int4)
+        returning project_id, seq into project_id1, seq1;
+          found_1 := found;
+      data_2 := row_1.value->'taskEventsProjectIdSeqFkey';
+      for row_2 in select * from jsonb_array_elements(data_2)
+      loop
+        insert into tut.task_events(project_id, seq, event_no, kind)
+          values (project_id1, seq1, (row_2.value->>'eventNo')::int4, (row_2.value->>'kind')::text);
+              found_2 := found;
+      end loop;
+    end loop;
+  end loop;
+
+end; 
+$$ language plpgsql;
+--8<-- [end:insert-json-nr]
+--8<-- [start:insert-json]
+insertJSON text: create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  project_id1 int8; 
+  seq1 int4; 
+  data_2 jsonb;
+  found_2 boolean;
+  row_2 record;
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    insert into tut.projects(owner_id, title, status, tags)
+      values ((row_0.value->>'ownerId')::int8, (row_0.value->>'title')::text, (row_0.value->>'status')::tut.project_status, case when jsonb_typeof(row_0.value->'tags') = 'array' then (select coalesce(array_agg(__x)::text[], '{}') from jsonb_array_elements_text(row_0.value->'tags') __x) else null end)
+      returning id into id0;
+      found_0 := found;
+    data_1 := row_0.value->'tasksProjectIdFkey';
+    arr_1:= '{}';
+    for row_1 in select * from jsonb_array_elements(data_1)
+    loop
+      insert into tut.tasks(project_id, seq, title, priority)
+        values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text, (row_1.value->>'priority')::int4)
+        returning project_id, seq into project_id1, seq1;
+          found_1 := found;
+      data_2 := row_1.value->'taskEventsProjectIdSeqFkey';
+      for row_2 in select * from jsonb_array_elements(data_2)
+      loop
+        insert into tut.task_events(project_id, seq, event_no, kind)
+          values (project_id1, seq1, (row_2.value->>'eventNo')::int4, (row_2.value->>'kind')::text);
+              found_2 := found;
+      end loop;
+      arr_1 := array_append(arr_1, jsonb_build_object('projectId', project_id1, 'seq', seq1));
+    end loop;
+    arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'tasksProjectIdFkey', to_jsonb(arr_1)));
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+insertJSON result: ["id" =: 4 :. "tasksProjectIdFkey" =: ["projectId" =: 4 :. "seq" =: 1]]
+--8<-- [end:insert-json]
+--8<-- [start:upsert-json-nr]
+upsertJSON_ text: create or replace procedure pg_temp.__ins(data_0 jsonb) as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  project_id1 int8; 
+  seq1 int4; 
+  data_2 jsonb;
+  found_2 boolean;
+  row_2 record;
+begin
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    update tut.projects
+      set id = (row_0.value->>'id')::int8
+      where id IS NOT DISTINCT FROM (row_0.value->>'id')::int8
+      returning id into id0;
+      found_0 := found;
+    if found then
+      data_1 := row_0.value->'tasksProjectIdFkey';
+      for row_1 in select * from jsonb_array_elements(data_1)
+      loop
+        insert into tut.tasks(project_id, seq, title)
+          values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text)
+          on conflict (project_id, seq)
+            do update set title = EXCLUDED.title
+          returning project_id, seq into project_id1, seq1;
+              found_1 := found;
+        data_2 := row_1.value->'taskEventsProjectIdSeqFkey';
+        for row_2 in select * from jsonb_array_elements(data_2)
+        loop
+          insert into tut.task_events(project_id, seq, event_no, kind)
+            values (project_id1, seq1, (row_2.value->>'eventNo')::int4, (row_2.value->>'kind')::text)
+            on conflict (project_id, seq, event_no)
+              do update set kind = EXCLUDED.kind;
+                  found_2 := found;
+        end loop;
+      end loop;
+    end if;
+  end loop;
+
+end; 
+$$ language plpgsql;
+--8<-- [end:upsert-json-nr]
+--8<-- [start:upsert-json]
+upsertJSON text: create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  project_id1 int8; 
+  seq1 int4; 
+  title1 text; 
+  data_2 jsonb;
+  found_2 boolean;
+  row_2 record;
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    update tut.projects
+      set id = (row_0.value->>'id')::int8
+      where id IS NOT DISTINCT FROM (row_0.value->>'id')::int8
+      returning id into id0;
+      found_0 := found;
+    if found then
+      data_1 := row_0.value->'tasksProjectIdFkey';
+      arr_1:= '{}';
+      for row_1 in select * from jsonb_array_elements(data_1)
+      loop
+        insert into tut.tasks(project_id, seq, title)
+          values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text)
+          on conflict (project_id, seq)
+            do update set title = EXCLUDED.title
+          returning project_id, seq, title into project_id1, seq1, title1;
+              found_1 := found;
+        data_2 := row_1.value->'taskEventsProjectIdSeqFkey';
+        for row_2 in select * from jsonb_array_elements(data_2)
+        loop
+          insert into tut.task_events(project_id, seq, event_no, kind)
+            values (project_id1, seq1, (row_2.value->>'eventNo')::int4, (row_2.value->>'kind')::text)
+            on conflict (project_id, seq, event_no)
+              do update set kind = EXCLUDED.kind;
+                  found_2 := found;
+        end loop;
+        arr_1 := array_append(arr_1, jsonb_build_object('seq', seq1, 'title', title1));
+      end loop;
+    end if;
+    if found_0 then
+      arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'tasksProjectIdFkey', to_jsonb(arr_1)));
+    else
+      arr_0 := array_append(arr_0, 'null'::jsonb);
+    end if;
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+upsertJSON result: ["id" =: 1 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "title" =: "task-1-updated"]]
+--8<-- [end:upsert-json]
+--8<-- [start:tree-compare]
+insertJSON ok: create or replace procedure pg_temp.__ins(data_0 jsonb) as $
+insertJSON again (expect PG duplicate error):
+  caught: SqlError {sqlState = "23505", sqlExecStatus = FatalError, sqlErrorMsg = "duplicate key value violates unique constraint \"projects_pkey\"", sqlErrorDetail = "Key (id)=(100) already exists.", sqlErrorHint = ""}
+upsertJSON patch ok: create or replace procedure pg_temp.__ins(data_0 jsonb) as $
+updateJSON patch ok: create or replace procedure pg_temp.__ins(data_0 jsonb) as $
+upsertJSON bad id (no new row): create or replace procedure pg_temp.__ins(data_0 jsonb) as $
+updateJSON bad id: create or replace procedure pg_temp.__ins(data_0 jsonb) as $
+--8<-- [end:tree-compare]
