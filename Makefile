@@ -50,13 +50,6 @@ TUTORIAL_GEN_MAIN     := tutorial/app/generator/Main.hs
 TUTORIAL_GEN_SCH      := tutorial/app/app/Sch.hs
 # console output of the tutorial app with snippet markers (included by the docs)
 TUTORIAL_OUT          := tutorial/out/tutorial.txt
-DOCS_ROOT             := tutorial/docs
-DOCS_SOURCE_ROOT      := $(DOCS_ROOT)/source
-DOCS_SOURCE_SQL       := $(DOCS_SOURCE_ROOT)/sql
-DOCS_SOURCE_APP       := $(DOCS_SOURCE_ROOT)/app
-DOCS_SQL_MD           := $(DOCS_SOURCE_SQL)/00-create-schema.md
-DOCS_SCH_MD           := $(DOCS_SOURCE_APP)/Sch.md
-DOCS_GEN_MAIN_MD      := $(DOCS_SOURCE_APP)/generator-Main.md
 DOCS_VENV_DIR         := tutorial/.venv
 MKDOCS_BIN            := $(DOCS_VENV_DIR)/bin/mkdocs
 
@@ -71,13 +64,12 @@ help:
 	@echo "  test-run-debug  (same with pg-schema +debug)"
 	@echo "  old-tutorial-run    (generate app/Sch.hs, build, run pgs-tutorial)"
 	@echo "  old-tutorial-run-debug"
-	@echo "  tut-from-scratch   (db + schema + generator + app + docs sync + docs build)"
+	@echo "  tut-from-scratch   (db + schema + generator + app + docs build)"
 	@echo "  run-all            (test-run + old-tutorial-run + tut-from-scratch)"
 	@echo "  tut-db-init        (create DB if needed, apply tutorial schema)"
 	@echo "  tut-run            (reset DB, run generator and app; app output -> $(TUTORIAL_OUT))"
-	@echo "  tut-sync-docs-source (generate docs/source/*.md wrappers from source files)"
 	@echo "  tut-docs-venv      (create tutorial/.venv and install mkdocs deps)"
-	@echo "  tut-docs-build     (mkdocs build via tutorial/.venv)"
+	@echo "  tut-docs-build     (mkdocs build --strict via tutorial/.venv)"
 	@echo "  tut-docs-serve     (mkdocs serve via tutorial/.venv)"
 	@echo "  local-docs      Haddock $(PKG) -> $(BUILDDIR_IDE) (cabal.project; for HLS hover)"
 	@echo "  hackage-docs  -> $(HACKAGE_DOCS_TAR)"
@@ -147,36 +139,9 @@ tut-run: tut-db-init
 	@grep -v -e '--8<--' "$(TUTORIAL_OUT)"
 	@echo "Output with snippet markers: $(TUTORIAL_OUT)"
 
-.PHONY: tut-sync-docs-source
-tut-sync-docs-source:
-	mkdir -p "$(DOCS_SOURCE_SQL)" "$(DOCS_SOURCE_APP)"
-	rm -f "$(DOCS_SOURCE_SQL)"/*.sql "$(DOCS_SOURCE_APP)"/*.hs
-	@{ \
-		printf '%s\n\n' '# SQL schema: `00-create-schema.sql`'; \
-		printf '%s\n\n' 'Source path: `$(TUTORIAL_SQL_SCHEMA)`'; \
-		printf '%s\n' '```sql'; \
-		cat "$(TUTORIAL_SQL_SCHEMA)"; \
-		printf '\n%s\n' '```'; \
-	} > "$(DOCS_SQL_MD)"
-	@test -f "$(TUTORIAL_GEN_SCH)" || { printf '%s\n' "Missing $(TUTORIAL_GEN_SCH) — run: $(MAKE) tut-run"; exit 1; }
-	@{ \
-		printf '%s\n\n' '# Haskell schema module: `Sch.hs`'; \
-		printf '%s\n\n' 'Source path: `$(TUTORIAL_GEN_SCH)`'; \
-		printf '%s\n' '```haskell'; \
-		cat "$(TUTORIAL_GEN_SCH)"; \
-		printf '\n%s\n' '```'; \
-	} > "$(DOCS_SCH_MD)"
-	@{ \
-		printf '%s\n\n' '# Tutorial generator: `Main.hs`'; \
-		printf '%s\n\n' 'Source path: `$(TUTORIAL_GEN_MAIN)`'; \
-		printf '%s\n' '```haskell'; \
-		cat "$(TUTORIAL_GEN_MAIN)"; \
-		printf '\n%s\n' '```'; \
-	} > "$(DOCS_GEN_MAIN_MD)"
-
 .PHONY: tut-docs-build
 tut-docs-build: tut-docs-venv
-	cd tutorial && ../$(MKDOCS_BIN) build
+	cd tutorial && ../$(MKDOCS_BIN) build --strict
 
 .PHONY: tut-docs-serve
 tut-docs-serve: tut-docs-venv
@@ -194,7 +159,7 @@ tut-docs-venv:
 	}
 
 .PHONY: tut-from-scratch
-tut-from-scratch: tut-db-init tut-run tut-sync-docs-source tut-docs-build
+tut-from-scratch: tut-run tut-docs-build
 
 .PHONY: run-all
 run-all: test-run old-tutorial-run tut-from-scratch
