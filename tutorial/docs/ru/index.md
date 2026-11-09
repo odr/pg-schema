@@ -8,13 +8,27 @@
 - Копируйте команды целиком из блоков `bash`.
 - После каждой главы проходите checklist в конце.
 
+## Требования
+
+- GHC ≥ 9.10: библиотека использует видимые аргументы типов
+  (`selectSch (MyAnn "users") …`). Tutorial проверяется на GHC 9.12.4
+  (см. `cabal.project`).
+- PostgreSQL и `psql`/`createdb` в `PATH`.
+- Расширения GHC. Примеры написаны на `GHC2024`, в который уже входят
+  `DataKinds` и `TypeApplications`. Дополнительно нужны:
+    - `OverloadedStrings` — имена полей и связей задаются строками;
+    - `BlockArguments` — для `qRoot do …` и `qPath "…" do …`;
+    - `TypeFamilies` и `UndecidableInstances` — для своего ренеймера;
+    - `DuplicateRecordFields` — если у нескольких record-типов есть
+      поля с одинаковыми именами (например, `title` у проекта и задачи).
+
 ## Структура
 
-1. `00-why-pg-schema` — зачем нужен подход schema-as-types.
-2. `01-wow` — быстрый результат за 15 минут.
-3. `02-core-workflow` — рабочая модель и pipeline библиотеки.
-4. `03-read-with-conditions` — запросы и conditions в Generic-стиле.
-5. `04-generic-vs-pgtag` — `PgTag` и смешивание двух нотаций.
+1. [Зачем pg-schema](00-why-pg-schema.md) — зачем нужен подход schema-as-types.
+2. [Pg-schema за 15 минут](01-wow.md) — быстрый результат с нуля.
+3. [Рабочая модель pg-schema](02-core-workflow.md) — генерация схемы, первые insert и select.
+4. [DML операции](03-dml-operations.md) — insert, update, upsert, delete, в том числе для связанных таблиц.
+5. [Select](04-select.md) — запросы с условиями, связи между таблицами.
 
 ## Мини-checklist перед стартом
 

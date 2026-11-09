@@ -25,24 +25,29 @@
 - Вставка/апдейт дерева данных (`insertJSON`/`upsertJSON`) за один запрос
 - Поддержка enum, json/jsonb, массивов (`PgArr`) и составных ключей
 
-## Минимальный пример (концептуально)
+## Минимальный пример
 
 1. Генерируем модуль схемы `Sch`.
 2. Описываем `Ann` для корневой таблицы.
 3. Выполняем типобезопасный `selectSch`:
 
 ```haskell
--- условный пример
-type MyAnn tab = 'Ann CamelToSnake Sch 5 ("tut" ->> tab)
+type MyAnn tab = 'Ann RenamerId Sch 5 ("tut" ->> tab)
 
-rows <- selectSch (MyAnn "projects") conn $ qRoot do
-  qWhere $ "status" =? (ProjectStatus_active)
-  qPath "tasks_project_fk" do
-    qWhere $ "priority" <? (50 :: Int32)
+(rows :: ["title" := Text :. "tasks_project_id_fkey" := ["title" := Text :. "priority" := Int32]], (sql, params)) <-
+  selectSch (MyAnn "projects") conn $ qRoot do
+    qWhere $ "status" =? Project_status_active
+    qPath "tasks_project_id_fkey" do
+      qWhere $ "priority" <? (50 :: Int32)
 ```
+
+Тип результата задаёт, какие поля и связи читаются: здесь это проекты
+со списком их задач. `qRoot` задаёт условия для корневой таблицы `projects`,
+а `qPath` — для ветки задач. Кроме строк `selectSch` возвращает текст
+SQL-запроса и его параметры: `(rows, (sql, params))`.
 
 ## Что дальше
 
 - Что уже понятно: зачем нужен `pg-schema` и какую боль он снимает.
 - Что пока не сделано: мы еще не проверили это на реальном проекте и команде.
-- Дальше: в `01-wow` соберем минимальный рабочий сценарий, чтобы получить результат за 15 минут.
+- Дальше: в главе [«Pg-schema за 15 минут»](01-wow.md) соберем минимальный рабочий сценарий.

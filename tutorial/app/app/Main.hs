@@ -6,14 +6,17 @@
 -- см. @tutorial/README.md@.
 module Main (main) where
 
+import Data.ByteString.Char8 qualified as BS
 import Database.PostgreSQL.Simple (connectPostgreSQL)
+import System.Environment (lookupEnv)
 import Tut.Basics (basics)
 import Tut.FlatDml (flatDml)
 import Tut.TreeDml (treeCompare, treeDml)
 
 main :: IO ()
 main = do
-  conn <- connectPostgreSQL "dbname=tutorial"
+  connStr <- maybe "dbname=tutorial" BS.pack <$> lookupEnv "PG_CONN"
+  conn <- connectPostgreSQL connStr
   basics conn      -- 02-core-workflow
   flatDml conn     -- 03-dml-operations: плоские операции
   treeDml conn     -- 03-dml-operations: операции со связанными таблицами
