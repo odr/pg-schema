@@ -48,6 +48,8 @@ TUTORIAL_DB           ?= tutorial
 TUTORIAL_SQL_SCHEMA   := tutorial/sql/00-create-schema.sql
 TUTORIAL_GEN_MAIN     := tutorial/app/generator/Main.hs
 TUTORIAL_GEN_SCH      := tutorial/app/app/Sch.hs
+# console output of the tutorial app with snippet markers (included by the docs)
+TUTORIAL_OUT          := tutorial/out/tutorial.txt
 DOCS_ROOT             := tutorial/docs
 DOCS_SOURCE_ROOT      := $(DOCS_ROOT)/source
 DOCS_SOURCE_SQL       := $(DOCS_SOURCE_ROOT)/sql
@@ -72,7 +74,7 @@ help:
 	@echo "  tut-from-scratch   (db + schema + generator + app + docs sync + docs build)"
 	@echo "  run-all            (test-run + old-tutorial-run + tut-from-scratch)"
 	@echo "  tut-db-init        (create DB if needed, apply tutorial schema)"
-	@echo "  tut-run            (run tutorial generator and app executables)"
+	@echo "  tut-run            (reset DB, run generator and app; app output -> $(TUTORIAL_OUT))"
 	@echo "  tut-sync-docs-source (generate docs/source/*.md wrappers from source files)"
 	@echo "  tut-docs-venv      (create tutorial/.venv and install mkdocs deps)"
 	@echo "  tut-docs-build     (mkdocs build via tutorial/.venv)"
@@ -133,10 +135,17 @@ tut-db-init:
 		|| createdb "$(TUTORIAL_DB)"
 	psql "dbname=$(TUTORIAL_DB)" -f "$(TUTORIAL_SQL_SCHEMA)"
 
+# The app expects a fresh DB (ids in the output depend on it), hence tut-db-init.
+# TUT_SNIPPETS=1 makes the app wrap each example's output in
+# `--8<-- [start:name]` / `--8<-- [end:name]` markers for pymdownx.snippets.
 .PHONY: tut-run
-tut-run:
+tut-run: tut-db-init
 	$(CABAL_REL) run $(TUTORIAL_GEN_EXE)
-	$(CABAL_REL) run $(TUTORIAL_APP_EXE)
+	$(CABAL_REL) build $(TUTORIAL_APP_EXE)
+	@mkdir -p "$(dir $(TUTORIAL_OUT))"
+	TUT_SNIPPETS=1 "$$($(CABAL_REL) list-bin $(TUTORIAL_APP_EXE))" > "$(TUTORIAL_OUT)"
+	@grep -v -e '--8<--' "$(TUTORIAL_OUT)"
+	@echo "Output with snippet markers: $(TUTORIAL_OUT)"
 
 .PHONY: tut-sync-docs-source
 tut-sync-docs-source:
@@ -174,9 +183,13 @@ tut-docs-serve: tut-docs-venv
 	cd tutorial && ../$(MKDOCS_BIN) serve
 
 .PHONY: tut-docs-venv
+# Recreate the venv when it is missing or broken (e.g. the system Python was
+# upgraded and .venv/bin/python now points to a version without our packages).
 tut-docs-venv:
-	@test -x "$(MKDOCS_BIN)" || { \
-		python3 -m venv "$(DOCS_VENV_DIR)"; \
+	@"$(DOCS_VENV_DIR)/bin/python" -c 'import mkdocs, material, pymdownx' 2>/dev/null || { \
+		echo "Creating $(DOCS_VENV_DIR)"; \
+		rm -rf "$(DOCS_VENV_DIR)"; \
+		python3 -m venv "$(DOCS_VENV_DIR)" && \
 		"$(DOCS_VENV_DIR)/bin/pip" install mkdocs mkdocs-material pymdown-extensions; \
 	}
 

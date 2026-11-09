@@ -64,6 +64,9 @@
   children were still processed. Now such a child is returned as `null`
   (`Nothing`) and its children are skipped, as for a row not found by `UPDATE`.
 
+## 0.8.1.1
+- aeson upper version is changed
+
 ## 0.8.1.0
 - upsertJSON: require `Maybe` on child returning when upsert uses
   `ON CONFLICT DO NOTHING` with parent FK columns outside the conflict key

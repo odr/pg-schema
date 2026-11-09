@@ -34,6 +34,11 @@ executable tutorial
     main-is:          Main.hs
     other-modules:
         Sch
+        Tut.Basics
+        Tut.Common
+        Tut.FlatDml
+        Tut.Output
+        Tut.TreeDml
     -- other-extensions:
     build-depends:
         base ^>=4.21.0.0,
