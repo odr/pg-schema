@@ -22,6 +22,10 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "")
 
 ...
+  TDBFieldInfoSch ( "tut" ->> "users" ) "manager_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False)
+  TDBFieldInfoSch ( "tut" ->> "users" ) "users_manager_id_fkey" = 'RFSelfRef ( "tut" ->> "users" )
+      '[ 'Ref "manager_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
+...
 
 instance (ToStar (TDBFieldInfo Sch t f), ToStar t, ToStar f) => CDBFieldInfo Sch t f where
   type TDBFieldInfo Sch t f = TDBFieldInfoSch t f

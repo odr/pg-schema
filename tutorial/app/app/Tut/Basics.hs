@@ -6,7 +6,6 @@ module Tut.Basics (basics) where
 import Data.Int (Int64)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Time (UTCTime)
 import Database.PostgreSQL.Simple (Connection)
 import PgSchema.DML
 import Sch ()
@@ -28,7 +27,7 @@ basics conn = do
 
   section "users-pgtag" $ do
     -- --8<-- [start:users-pgtag]
-    (res2 :: ["id" := Int64 :. "createdAt" := UTCTime :. User], tIns2) <-
+    (res2 :: ["id" := Int64 :. "managerId" := Maybe Int64 :. User], tIns2) <-
       insertSch (MyAnn "users") conn
         [ MkUser "Quentin" (Just "quentin@example.com")
         , MkUser "Jason" (Just "jason@example.com") ]
