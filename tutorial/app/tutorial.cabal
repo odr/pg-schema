@@ -42,6 +42,7 @@ executable tutorial
     -- other-extensions:
     build-depends:
         base ^>=4.21.0.0,
+        bytestring,
         deepseq,
         hashable,
         pg-schema,

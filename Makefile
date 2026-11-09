@@ -45,6 +45,9 @@ TUTORIAL_PKG          := tutorial
 TUTORIAL_GEN_EXE      := $(TUTORIAL_PKG):generator
 TUTORIAL_APP_EXE      := $(TUTORIAL_PKG):tutorial
 TUTORIAL_DB           ?= tutorial
+# connection string for the generator and the app (they read PG_CONN)
+PG_CONN               ?= dbname=$(TUTORIAL_DB)
+export PG_CONN
 TUTORIAL_SQL_SCHEMA   := tutorial/sql/00-create-schema.sql
 TUTORIAL_GEN_MAIN     := tutorial/app/generator/Main.hs
 TUTORIAL_GEN_SCH      := tutorial/app/app/Sch.hs
@@ -125,7 +128,7 @@ old-tutorial-run-debug:
 tut-db-init:
 	@psql -Atqc "SELECT 1 FROM pg_database WHERE datname='$(TUTORIAL_DB)'" postgres | grep -q 1 \
 		|| createdb "$(TUTORIAL_DB)"
-	psql "dbname=$(TUTORIAL_DB)" -f "$(TUTORIAL_SQL_SCHEMA)"
+	psql "$(PG_CONN)" -f "$(TUTORIAL_SQL_SCHEMA)"
 
 # The app expects a fresh DB (ids in the output depend on it), hence tut-db-init.
 # TUT_SNIPPETS=1 makes the app wrap each example's output in

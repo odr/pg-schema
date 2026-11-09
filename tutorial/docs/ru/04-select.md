@@ -1,4 +1,4 @@
-# DML операции
+# Select
 
 Цель главы: показать, как писать запросы с условиями через Generic-рекорды, включая `parent` и `child` условия.
 
@@ -24,30 +24,44 @@ data ProjectOut = ProjectOut
 ```
 
 ```haskell
-qp = qRoot do
-  qWhere $ "title" ~~? "%Demo%"
+(rows :: [ProjectOut], (sql, params)) <- selectSch (MyAnn "projects") conn $ qRoot do
+  qWhere $ "title" ~~? ("%Demo%" :: Text)
   qPath "tasks_project_id_fkey" do
     qWhere $ "priority" <? (50 :: Int32)
     qOrderBy [ascf "seq"]
 ```
 
+Для двух record-типов с полем `title` нужно расширение `DuplicateRecordFields`,
+а для `qRoot do` и `qPath "…" do` — `BlockArguments`.
+
 ## Условия по детям и родителям
 
 `pchild` и `pparent` позволяют фильтровать по соседнему уровню relation-графа.
-
-Пример (идея):
+Связь для них задаётся полным именем FK вместе со схемой БД (`NameNSK`).
+Оператор `->>` есть и на уровне значений, поэтому внутри выражения такое имя
+удобно записывать через синоним типа:
 
 ```haskell
-qWhere $
-     pchild "tasks_project_id_fkey" defTabParam ("priority" <? (20 :: Int32))
- &&& "status" =? activeStatus
+type Tut name = "tut" ->> name
+
+activeStatus :: PGEnum Sch ("tut" ->> "project_status")
+activeStatus = Project_status_active
 ```
 
-И обратный проход через родителя:
+Проекты, у которых есть задача с приоритетом меньше 20:
 
 ```haskell
-qWhere $
-  pparent "tasks_project_id_fkey" ("status" =? activeStatus)
+(rows :: [ProjectOut], _) <- selectSch (MyAnn "projects") conn $ qRoot do
+  qWhere $
+       pchild (Tut "tasks_project_id_fkey") defTabParam ("priority" <? (20 :: Int32))
+   &&& "status" =? activeStatus
+```
+
+И обратный проход через родителя — задачи активных проектов:
+
+```haskell
+(rows :: [TaskOut], _) <- selectSch (MyAnn "tasks") conn $ qRoot do
+  qWhere $ pparent (Tut "tasks_project_id_fkey") ("status" =? activeStatus)
 ```
 
 ## JOIN vs вложенная ветка: в чем разница
@@ -72,5 +86,4 @@ qWhere $
 ## Что дальше
 
 - Что уже умеем: писать запросы и conditions в Generic-стиле.
-- Что пока ограничивает: не показана альтернативная `PgTag`-нотация.
-- Дальше: в `04-generic-vs-pgtag` разбираем `PgTag` и смешивание `Generic + PgTag`.
+- Дальше: вставка и изменение связанных данных одним запросом (`insertJSON`, `upsertJSON`) — во второй части главы [«DML операции»](03-dml-operations.md).
