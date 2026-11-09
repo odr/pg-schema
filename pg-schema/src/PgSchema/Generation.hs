@@ -372,7 +372,7 @@ textClosedFieldInfoTF schName (mfld, mtab, mrel) =
       "  " <> tfName <> " " <> tabStr <> " f = " <> typeErrorMsg schName tabStr fieldNames relNames <> "\n"
     tableBlocks =
       [ mconcat [ eqnLine tab fld rhs | (t, fld, rhs) <- allEntries, t == tab ]
-        <> perTableDefault tab (showType tab) (tdFlds td) ((nnsName <$> froms) <> (nnsName <$> tos))
+        <> perTableDefault tab (showType tab) (tdFlds td) (L.nub (nnsName <$> froms <> tos))
       | (tab, (td, froms, tos)) <- M.toList mtab ]
     equations = mconcat tableBlocks <> "  " <> tfName <> " t f = "
       <> typeErrorMsgFinal <> "\n"

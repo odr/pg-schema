@@ -47,7 +47,7 @@ type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
   TTabDefSch ( "tut" ->> "projects" ) = 'TabDef '[ "id","owner_id","title","status","tags","created_at" ] '[ "id" ] '[  ]
   TTabDefSch ( "tut" ->> "task_events" ) = 'TabDef '[ "project_id","seq","event_no","kind","meta","created_at" ] '[ "project_id","seq","event_no" ] '[  ]
   TTabDefSch ( "tut" ->> "tasks" ) = 'TabDef '[ "project_id","seq","title","priority","payload","watchers" ] '[ "project_id","seq" ] '[  ]
-  TTabDefSch ( "tut" ->> "users" ) = 'TabDef '[ "id","name","email","created_at" ] '[ "id" ] '[ '[ "email" ] ]
+  TTabDefSch ( "tut" ->> "users" ) = 'TabDef '[ "id","name","email","manager_id","created_at" ] '[ "id" ] '[ '[ "email" ] ]
   TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
@@ -60,10 +60,11 @@ type family TRelDefSch (ref :: NameNSK) :: RelDef' TL.Symbol where
   TRelDefSch ( "tut" ->> "projects_owner_id_fkey" ) = 'RelDef ( "tut" ->> "projects" ) ( "tut" ->> "users" ) '[ '( "owner_id","id" ) ]
   TRelDefSch ( "tut" ->> "task_events_project_id_seq_fkey" ) = 'RelDef ( "tut" ->> "task_events" ) ( "tut" ->> "tasks" ) '[ '( "project_id","project_id" ),'( "seq","seq" ) ]
   TRelDefSch ( "tut" ->> "tasks_project_id_fkey" ) = 'RelDef ( "tut" ->> "tasks" ) ( "tut" ->> "projects" ) '[ '( "project_id","id" ) ]
+  TRelDefSch ( "tut" ->> "users_manager_id_fkey" ) = 'RelDef ( "tut" ->> "users" ) ( "tut" ->> "users" ) '[ '( "manager_id","id" ) ]
   TRelDefSch ref = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "relation " TE.:<>: TE.ShowType ref TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Relations: tut.projects_owner_id_fkey, tut.task_events_project_id_seq_fkey, tut.tasks_project_id_fkey."
+    TE.:$$: TE.Text "  Relations: tut.projects_owner_id_fkey, tut.task_events_project_id_seq_fkey, tut.tasks_project_id_fkey, tut.users_manager_id_fkey."
     TE.:$$: TE.Text "")
 instance ( ToStar (TRelDef Sch ref)
          , CTabDef Sch (RdFrom (TRelDef Sch ref))
@@ -78,7 +79,7 @@ type family TFromSch (tab :: NameNSK) :: [NameNSK] where
 
   TFromSch ( "tut" ->> "tasks" ) = '[ ( "tut" ->> "tasks_project_id_fkey" ) ]
 
-  TFromSch ( "tut" ->> "users" ) = '[  ]
+  TFromSch ( "tut" ->> "users" ) = '[ ( "tut" ->> "users_manager_id_fkey" ) ]
 
   TFromSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TFrom for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -93,7 +94,8 @@ type family TToSch (tab :: NameNSK) :: [NameNSK] where
 
   TToSch ( "tut" ->> "tasks" ) = '[ ( "tut" ->> "task_events_project_id_seq_fkey" ) ]
 
-  TToSch ( "tut" ->> "users" ) = '[ ( "tut" ->> "projects_owner_id_fkey" ) ]
+  TToSch ( "tut" ->> "users" ) = '[ ( "tut" ->> "projects_owner_id_fkey" )
+    ,( "tut" ->> "users_manager_id_fkey" ) ]
 
   TToSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TTo for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -168,16 +170,19 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
   TDBFieldInfoSch ( "tut" ->> "users" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "users" ) "email" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "users" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True)
+  TDBFieldInfoSch ( "tut" ->> "users" ) "manager_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "users" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
   TDBFieldInfoSch ( "tut" ->> "users" ) "projects_owner_id_fkey" = 'RFToHere ( "tut" ->> "projects" )
       '[ 'Ref "owner_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
+  TDBFieldInfoSch ( "tut" ->> "users" ) "users_manager_id_fkey" = 'RFSelfRef ( "tut" ->> "users" )
+      '[ 'Ref "manager_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
   TDBFieldInfoSch ( "tut" ->> "users" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "tut" ->> "users" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, name, email, created_at."
-    TE.:$$: TE.Text "  Foreign key constraints: projects_owner_id_fkey."
+    TE.:$$: TE.Text "  Fields: id, name, email, manager_id, created_at."
+    TE.:$$: TE.Text "  Foreign key constraints: users_manager_id_fkey, projects_owner_id_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
     TE.:$$: TE.Text "")

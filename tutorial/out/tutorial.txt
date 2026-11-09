@@ -6,8 +6,8 @@ select params: []
 selected rows: [MkUser {name = "Benjy", email = Nothing}]
 --8<-- [end:users-generic]
 --8<-- [start:users-pgtag]
-insert text: insert into tut.users(name,email) values (?,?) returning id,created_at,name,email
-inserted: ["id" =: 2 :. ("createdAt" =: 2026-11-09 16:43:09.852715 UTC :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),"id" =: 3 :. ("createdAt" =: 2026-11-09 16:43:09.852715 UTC :. MkUser {name = "Jason", email = Just "jason@example.com"})]
+insert text: insert into tut.users(name,email) values (?,?) returning id,manager_id,name,email
+inserted: ["id" =: 2 :. ("managerId" =: Nothing :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),"id" =: 3 :. ("managerId" =: Nothing :. MkUser {name = "Jason", email = Just "jason@example.com"})]
 select text: select t0.name "name" from tut.users t0 
 select params: []
 selected rows: ["name" =: "Benjy","name" =: "Quentin","name" =: "Jason"]

@@ -9,6 +9,7 @@ create table users (
   id          bigserial primary key,
   name        text not null,
   email       text unique,
+  manager_id  bigint references users(id),          -- nullable self-FK
   created_at  timestamptz not null default now()
 );
 
