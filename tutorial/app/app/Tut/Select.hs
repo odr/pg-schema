@@ -5,6 +5,7 @@
 -- | Глава «Select»: формы результата, условия, связи, сортировка, агрегаты.
 module Tut.Select (select) where
 
+import Control.Monad.RWS (tell)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Int (Int32, Int64)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -139,13 +140,13 @@ select conn = do
   run "sel-pchild" do
     -- --8<-- [start:sel-pchild]
     selectSch (MyAnn "projects") @("title" := Text) conn $ qRoot do
-      qWhere $ pchild (Tut "tasks_project_id_fkey") defTabParam ("priority" <? (20 :: Int32))
+      qWhere $ pchild (Tut "tasksProjectIdFkey") defTabParam ("priority" <? (20 :: Int32))
     -- --8<-- [end:sel-pchild]
 
   run "sel-pchild-first" do
     -- --8<-- [start:sel-pchild-first]
     selectSch (MyAnn "projects") @("title" := Text) conn $ qRoot do
-      qWhere $ pchild (Tut "tasks_project_id_fkey")
+      qWhere $ pchild (Tut "tasksProjectIdFkey")
         defTabParam { order = [descf "priority"], lo = lo1 }
         ("priority" <? (50 :: Int32))
     -- --8<-- [end:sel-pchild-first]
@@ -153,7 +154,7 @@ select conn = do
   run "sel-pparent" do
     -- --8<-- [start:sel-pparent]
     selectSch (MyAnn "tasks") @("title" := Text :. "priority" := Int32) conn $ qRoot do
-      qWhere $ pparent (Tut "tasks_project_id_fkey") ("status" =? Project_status_active)
+      qWhere $ pparent (Tut "tasksProjectIdFkey") ("status" =? Project_status_active)
         &&& "priority" >=? (30 :: Int32)
       qOrderBy [ascf "priority"]
     -- --8<-- [end:sel-pparent]
@@ -230,8 +231,10 @@ select conn = do
       @("title" := Text :. "titleLength" := UnsafeCol '["title"] "length(?)" Int32)
       conn $ qRoot do
         qWhere $ pUnsafeCond do
-          watchers <- qual @"watchers"
-          pure $ "cardinality(" <> watchers <> ") > 1"
+          sq <- qual @"seq"
+          priority <- qual @"priority"
+          tell [SomeToField (40 :: Int32)]
+          pure $ sq <> " + " <> priority <> " > ?"
         qOrderBy
           [ UnsafeOrd do
               title <- qual @"title"

@@ -48,6 +48,7 @@ executable tutorial
         bytestring,
         deepseq,
         hashable,
+        mtl,
         pg-schema,
         postgresql-simple,
         text,
