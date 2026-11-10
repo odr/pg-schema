@@ -262,6 +262,7 @@ test-suite test-pgs
   main-is:          Main.hs
   other-modules:
     Sch
+    Tests.AggregateErrors
     Tests.Aggregates
     Tests.BaseConverts
     Tests.Conditions

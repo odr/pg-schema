@@ -100,6 +100,18 @@ main = do
         constraint nullable_uq_row_code_suffix_uq unique (code, suffix)
       );
 
+      -- Numeric columns of different types (aggregate result types).
+      create table aggr_nums (
+        id   serial primary key,
+        grp  integer not null,
+        i2   int2 not null,
+        i4   integer,
+        i8   int8 not null,
+        n    numeric,
+        f4   float4 not null,
+        f8   float8
+      );
+
       -- Table for array types (nullable elements, no 2D arrays).
       create table arrays (
         id             serial primary key,

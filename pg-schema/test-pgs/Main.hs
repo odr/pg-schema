@@ -15,6 +15,7 @@ import Tests.UpsertUniqueKey
 import Tests.KeyedDML
 import Tests.Conditions
 import Tests.Aggregates
+import Tests.AggregateErrors
 import Tests.PathErrors
 import Tests.Named
 import Tests.NamedErrors
@@ -105,6 +106,22 @@ main = do
     , testGroup "Aggregates (test_dml)"
       [ testProperty "Aggr' on plain column is not in GROUP BY" $
           prop_selectText_aggr_plain_not_in_group_by pool
+      , testProperty "sum: Haskell types follow SQL result types" $
+          prop_aggr_sum_result_types pool
+      , testProperty "avg: Haskell types follow SQL result types" $
+          prop_aggr_avg_result_types pool
+      , testProperty "Aggr' with GROUP BY: Maybe for nullable fields only" $
+          prop_aggr_grouped_result_types pool
+      ]
+    , testGroup "Aggregate compile-time errors (deferred type errors)"
+      [ testProperty "avg(int4) as Double" prop_aggr_avg_int_double
+      , testProperty "sum(int8) as Int64" prop_aggr_sum_int8_int64
+      , testProperty "sum(int4) as Int32" prop_aggr_sum_int4_int32
+      , testProperty "avg(numeric) as Double" prop_aggr_avg_numeric_double
+      , testProperty "sum(text)" prop_aggr_sum_text
+      , testProperty "Aggr without Maybe" prop_aggr_without_maybe
+      , testProperty "Aggr' on nullable field without Maybe" prop_aggr'_nullable_without_maybe
+      , testProperty "Aggr' on mandatory field with Maybe" prop_aggr'_mandatory_with_maybe
       ]
     , testGroup "Path compile-time errors (deferred type errors)"
       [ testProperty "qPath: unknown relation" prop_qpath_unknown_rel
