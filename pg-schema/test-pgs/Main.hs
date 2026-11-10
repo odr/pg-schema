@@ -11,6 +11,7 @@ import Test.Tasty.Hedgehog
 import Tests.BaseConverts
 import Tests.Hierarchy
 import Tests.InsertJSONTransaction
+import Tests.JsonNull
 import Tests.UpsertUniqueKey
 import Tests.KeyedDML
 import Tests.Conditions
@@ -33,6 +34,12 @@ main = do
       , testProperty "Extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
       , testProperty "Array of extra types" $ prop_ext_arr_converts pool
       , testProperty "InsertJSON: json/jsonb string values use -> operator" $ prop_ext_converts_json_string_via_upsertjson pool
+      ]
+    , testGroup "json/jsonb Nothing is SQL NULL in tree DML"
+      [ testProperty "insertJSON/upsertJSON/updateJSON on jsonb child column" $
+          prop_json_null_tree pool
+      , testProperty "insertJSON on json and jsonb columns (vs insertSch)" $
+          prop_json_null_json_and_jsonb pool
       ]
     , testGroup "named (test_dml)"
       [ testProperty "Insert rows built with named" $ prop_named_insert pool
