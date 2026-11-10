@@ -1,8 +1,8 @@
---8<-- [start:wow-owner]
---8<-- [end:wow-owner]
 --8<-- [start:wow-insert]
 ProjectKey {id = 1, tasks_project_id_fkey = [TaskKey {project_id = 1, seq = 1},TaskKey {project_id = 1, seq = 2},TaskKey {project_id = 1, seq = 3}]}
 ProjectKey {id = 2, tasks_project_id_fkey = [TaskKey {project_id = 2, seq = 1}]}
+--8<-- [end:wow-insert]
+--8<-- [start:wow-insert-sql]
 create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
 declare
   found_0 boolean;
@@ -38,7 +38,7 @@ begin
   return to_jsonb(arr_0);
 end; 
 $$ language plpgsql;
---8<-- [end:wow-insert]
+--8<-- [end:wow-insert-sql]
 --8<-- [start:wow-select]
 Project {owner_id = 1, title = "Website", status = Project_status_active, tasks_project_id_fkey = [Task {seq = 1, title = "Design", priority = 10},Task {seq = 2, title = "Backend", priority = 30}]}
 select t0.owner_id "owner_id",t0.title "title",t0.status "status",array_to_json(array(select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority) from tut.tasks t1  where t1.project_id=t0.id and t1.priority < ? order by t1.seq Asc nulls last)) "tasks_project_id_fkey" from tut.projects t0  where t0.status = ?
