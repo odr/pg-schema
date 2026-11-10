@@ -132,12 +132,12 @@
 
 - Поменяем `MyAnn "users"` на `MyAnn "Users"`
 ```
-• In schema Sch the table NameNS "tut" "Users" is not defined.
+• In schema Sch.Sch the table NameNS "tut" "Users" is not defined.
 ```
 
 - Поменяем `email` на `mail`
 ```
-• In schema Sch
+• In schema Sch.Sch
   for table "tut" ->> "users"
   name "mail" is not defined.
 
@@ -171,7 +171,7 @@
 - Сделаем `email :: Maybe Int`
 ```
 • Could not solve: ‘CanConvert1
-                      Sch
+                      Sch.Sch
                       (NameNS "tut" "users")
                       "email"
                       (NameNS "pg_catalog" "text")
@@ -209,7 +209,7 @@
 
 Ошибка:
 ```
-• In schema Sch
+• In schema Sch.Sch
   for table "tut" ->> "users"
   name "manager_id1" is not defined.
 
