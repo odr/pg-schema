@@ -80,10 +80,10 @@ selected rows: ["name" =: "Benjy","name" =: "Quentin","name" =: "Jason"]
 --8<-- [end:users-pgtag]
 --8<-- [start:insert-projects]
 insert text: insert into tut.projects(owner_id,title,status,tags) values (?,?,?,?) returning id
-inserted: ["id" =: 1,"id" =: 2]
+inserted ids: [1,2]
 --8<-- [end:insert-projects]
 --8<-- [start:update-by-cond]
-updated: ["id" =: 2 :. ("title" =: "tutorial" :. "status" =: Project_status_archived)]
+updated: [2 :. ("tutorial" :. Project_status_archived)]
 --8<-- [end:update-by-cond]
 --8<-- [start:update-text]
 update text: update tut.projects t0 set status = ? where t0.id = ? returning id,title,status
@@ -100,11 +100,11 @@ updated: [Just ("id" =: 2 :. "name" =: "Quentin T."),Nothing]
 --8<-- [end:update-by-key]
 --8<-- [start:upsert-by-pk]
 upsert text: insert into tut.users(id, name) values (?, ?) on conflict (id) do update set name = EXCLUDED.name returning id,name
-upserted: ["id" =: 3 :. "name" =: "Jason B.","id" =: 100 :. "name" =: "Margo"]
+upserted: [3 :. "Jason B.",100 :. "Margo"]
 --8<-- [end:upsert-by-pk]
 --8<-- [start:upsert-by-uk]
 upsert text: insert into tut.users(name, email) values (?, ?) on conflict (email) do update set name = EXCLUDED.name returning id,name,email
-upserted: ["id" =: 2 :. ("name" =: "Quentin Tarantino" :. "email" =: Just "quentin@example.com"),"id" =: 5 :. ("name" =: "Mia" :. "email" =: Just "mia@example.com")]
+upserted: [2 :. ("Quentin Tarantino" :. Just "quentin@example.com"),5 :. ("Mia" :. Just "mia@example.com")]
 --8<-- [end:upsert-by-uk]
 --8<-- [start:insert-json-nr]
 insertJSON_ text: create or replace procedure pg_temp.__ins(data_0 jsonb) as $$
@@ -193,7 +193,7 @@ begin
   return to_jsonb(arr_0);
 end; 
 $$ language plpgsql;
-insertJSON result: ["id" =: 4 :. "tasksProjectIdFkey" =: ["projectId" =: 4 :. "seq" =: 1]]
+insertJSON result: [4 :. [4 :. 1]]
 --8<-- [end:insert-json]
 --8<-- [start:upsert-json-nr]
 upsertJSON_ text: create or replace procedure pg_temp.__ins(data_0 jsonb) as $$
@@ -301,7 +301,7 @@ begin
   return to_jsonb(arr_0);
 end; 
 $$ language plpgsql;
-upsertJSON result: ["id" =: 1 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "title" =: "task-1-updated"]]
+upsertJSON result: [1 :. [1 :. "task-1-updated"]]
 --8<-- [end:upsert-json]
 --8<-- [start:tree-compare]
 insertJSON ok: create or replace procedure pg_temp.__ins(data_0 jsonb) as $

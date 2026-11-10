@@ -2,13 +2,13 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- | Общие определения для всех глав: ренеймер, аннотация, базовый тип.
-module Tut.Common (MyRenamer, MyAnn, User(..)) where
+module Tut.Common (MyRenamer, MyAnn, ProjectStatus, User(..)) where
 
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import GHC.TypeLits (Symbol)
 import PgSchema.DML
-import Sch (Sch)
+import Sch
 
 -- --8<-- [start:renamer]
 data MyRenamer :: Renamer
@@ -23,6 +23,10 @@ type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
 -- --8<-- [start:ann]
 type MyAnn t = 'Ann MyRenamer Sch 3 ("tut" ->> t)
 -- --8<-- [end:ann]
+
+-- --8<-- [start:project-status]
+type ProjectStatus = PGEnum Sch ("tut" ->> "project_status")
+-- --8<-- [end:project-status]
 
 -- --8<-- [start:user]
 data User = MkUser
