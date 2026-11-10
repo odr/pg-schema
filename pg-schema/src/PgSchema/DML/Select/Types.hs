@@ -94,7 +94,8 @@ qPathToHere _p m = put . fst . execRWS m Proxy =<< get
 type PathCheck pathKind p ren sch t path path' tabPath p' k =
   ( p' ~ ApplyRenamer ren p
   , tabPath ~ TabOnDPathRen ren sch t path
-  , k ~ ResolvePathKind pathKind (HasFromStep sch tabPath p') (HasToStep sch tabPath p') tabPath p'
+  , k ~ ResolvePathKind pathKind (HasFromStep sch tabPath p') (HasToStep sch tabPath p')
+      sch tabPath p p'
   , path' ~ (path ++ '[ 'PathElem p p' k ])
   , PathCtx ren sch t path'
   )

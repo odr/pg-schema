@@ -1,5 +1,10 @@
 # Changelog for pg-schema
 
+## Unreleased
+- `qPath` / `qPathFromHere` / `qPathToHere` with an unknown relation name now
+  report `relation "..." is not defined` with the valid relations of the table
+  (previously `qPath` reported a misleading self-reference error).
+
 ## 0.8.1.0
 - upsertJSON: require `Maybe` on child returning when upsert uses
   `ON CONFLICT DO NOTHING` with parent FK columns outside the conflict key
