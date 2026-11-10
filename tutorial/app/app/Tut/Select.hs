@@ -180,6 +180,18 @@ select conn = do
       qOrderBy [ascf "priority"]
     -- --8<-- [end:sel-distinct-on]
 
+  run "sel-distinct-on-parent" do
+    -- --8<-- [start:sel-distinct-on-parent]
+    selectSch (MyAnn "tasks")
+      @( "seq" := Int32 :. "title" := Text :. "priority" := Int32
+      :. "tasksProjectIdFkey" := ("title" := Text :. "status" := ProjectStatus) )
+      conn $ qRoot do
+        qDistinctOn [ascf "seq"]
+        qPath "tasksProjectIdFkey" do
+          qDistinctOn [ascf "status"]
+        qOrderBy [descf "priority"]
+    -- --8<-- [end:sel-distinct-on-parent]
+
   run "sel-self-path" do
     -- --8<-- [start:sel-self-path]
     selectSch (MyAnn "users") @Person conn $ qRoot do
@@ -220,6 +232,10 @@ select conn = do
         qWhere $ pUnsafeCond do
           watchers <- qual @"watchers"
           pure $ "cardinality(" <> watchers <> ") > 1"
+        qOrderBy
+          [ UnsafeOrd do
+              title <- qual @"title"
+              pure ("length(" <> title <> ")", Desc) ]
     -- --8<-- [end:sel-unsafe]
 
 -- --8<-- [start:sel-tut]
