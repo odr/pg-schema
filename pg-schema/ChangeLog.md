@@ -1,6 +1,15 @@
 # Changelog for pg-schema
 
 ## Unreleased
+- Fix: tree DML (`insertJSON`, `upsertJSON`, `updateJSON` and their `_`
+  variants) stored `Nothing` for a nullable `json` / `jsonb` column as the JSON
+  value `null` instead of SQL `NULL` (so `pnull` did not find the row and
+  selecting into `Maybe T` failed with "expected Object, but encountered
+  Null"). Now `Nothing` gives SQL `NULL`, as with flat `insertSch`; this covers
+  `INSERT`, the `SET` of `UPDATE` and `ON CONFLICT … DO UPDATE`. A JSON `null`
+  value (e.g. `Just Aeson.Null` in a `Maybe Value` field) can't be told apart
+  from `Nothing` in the JSON sent to PostgreSQL, so it is stored as SQL `NULL`
+  too; use `insertSch` / `updateByCond` to store the JSON value `null` itself.
 - `named` (and type family `Named`): give field names once for a whole list of
   plain rows (`named ["ownerId", "title"] [1 :. "a", 2 :. "b"]`) instead of
   `"field" =: value` in every row. Values (e.g. enum constructors, `Nothing`)

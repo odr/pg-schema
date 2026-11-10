@@ -42,6 +42,16 @@ data InsertMode = Insert | Upsert | Update deriving (Eq, Show)
 -- raises a PostgreSQL error. Requires all mandatory columns at every node
 -- ('InsertTreeReturning'; 'ReturningMatchesInsert' on @r'@). Flat 'insertSch'
 -- uses 'PlainOut' only.
+--
+-- /@json@ \/ @jsonb@ columns/: 'Nothing' is stored as SQL @NULL@ (as in
+-- 'insertSch'). Rows travel to PostgreSQL as one JSON document, where
+-- 'Nothing' and a JSON @null@ value (e.g. @Just 'A.Null'@ in a
+-- @Maybe 'A.Value'@ field) are both encoded as @null@, so a JSON @null@ value
+-- is stored as SQL @NULL@ too and is read back as 'Nothing'. The same holds
+-- for 'upsertJSON' and 'updateJSON' (including the @SET@ part of an update or
+-- upsert). Use 'PgSchema.DML.Insert.insertSch' \/
+-- 'PgSchema.DML.Update.updateByCond' if you need to store the JSON
+-- value @null@ itself.
 insertJSON
   :: forall ann -> forall r r'. InsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
@@ -60,6 +70,9 @@ insertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Insert
 -- See Haddock on previous versions for input/output shape and per-row @INSERT@ /
 -- @UPDATE@ / @UPSERT@ selection. Returning list elements use bare rows where the
 -- input node has all mandatory fields, and @Maybe@ otherwise ('ReturningMatchesUpsert').
+--
+-- 'Nothing' (and a JSON @null@ value) for a @json@ \/ @jsonb@ column is
+-- stored as SQL @NULL@; see 'insertJSON'.
 upsertJSON
   :: forall ann -> forall r r'. UpsertTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
@@ -75,6 +88,9 @@ upsertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Upsert
 -- | Update an existing forest (never @INSERT@). Returning type @r'@ must satisfy
 -- 'ReturningMatchesUpdate' (@Maybe@ on each child list element). Flat
 -- 'updateByKey' instead uses bare @r'@ and returns @IO ([Maybe r'], Text)@.
+--
+-- 'Nothing' (and a JSON @null@ value) for a @json@ \/ @jsonb@ column sets it
+-- to SQL @NULL@; see 'insertJSON'.
 updateJSON
   :: forall ann -> forall r r'. UpdateTreeReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
@@ -236,7 +252,12 @@ insertJSONTextM mode mapTypes mapTabs ri qfs fromFields toVars parentDbKeys = do
             <> " then (select coalesce(array_agg(__x)::" <> fromText (qualName t) <> "[], '{}')"
             <> " from jsonb_array_elements_text(" <> rowN <> ".value->'" <> fld <> "') __x) else null end"
           _
-            | tn == "json" || tn == "jsonb" -> "(" <> rowN <> ".value->'" <> fld <> "')"
+            -- @->@ gives the jsonb value @'null'@ for @"fld": null@ (how
+            -- 'Nothing' is encoded); turn it into SQL @NULL@. @row_N.value@
+            -- is always @jsonb@, so the comparison works for @json@ columns
+            -- too (stored via the jsonb -> json assignment cast).
+            | tn == "json" || tn == "jsonb" ->
+              "nullif(" <> rowN <> ".value->'" <> fld <> "', 'null'::jsonb)"
             | otherwise                     -> "(" <> rowN <> ".value->>'" <> fld <> "')::" <> ty
           where
             fld = fromText ip.jsonName
