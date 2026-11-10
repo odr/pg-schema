@@ -16,6 +16,8 @@ import Tests.KeyedDML
 import Tests.Conditions
 import Tests.Aggregates
 import Tests.PathErrors
+import Tests.Named
+import Tests.NamedErrors
 
 prop_not_implemented :: Property
 prop_not_implemented = property $ fail "not implemented"
@@ -31,6 +33,16 @@ main = do
       , testProperty "Extra types (bytea, jsonb, enums, uuid)" $ prop_ext_converts pool
       , testProperty "Array of extra types" $ prop_ext_arr_converts pool
       , testProperty "InsertJSON: json/jsonb string values use -> operator" $ prop_ext_converts_json_string_via_upsertjson pool
+      ]
+    , testGroup "named (test_dml)"
+      [ testProperty "Insert rows built with named" $ prop_named_insert pool
+      , testProperty "Insert tree built with named" $ prop_named_insert_tree pool
+      , testProperty "Insert tree built with rowsOf, returning/select with plains" $ prop_rows_of_tree pool
+      , testProperty "rowsOf with Generic records" $ prop_rows_of_generic pool
+      , testProperty "named: empty list of names" prop_named_empty
+      , testProperty "named: fewer names than fields" prop_named_fewer_names
+      , testProperty "named: more names than fields" prop_named_more_names
+      , testProperty "rowsOf: not a product type" prop_rows_of_not_product
       ]
     , testGroup "Hierarchy (test_dml)"
       [ testProperty "Insert/Upsert/Select root with children (simple FK)" $ prop_hier_insert_simple_fk pool

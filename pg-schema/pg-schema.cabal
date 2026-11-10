@@ -169,6 +169,7 @@ library
     PgSchema.DML.Select
     PgSchema.DML.Select.Types
     PgSchema.DML.Update
+    PgSchema.Plain
     PgSchema.Schema
     PgSchema.Types
     PgSchema.Utils.CamelToSnake
@@ -267,6 +268,8 @@ test-suite test-pgs
     Tests.Hierarchy
     Tests.KeyedDML
     Tests.InsertJSONTransaction
+    Tests.Named
+    Tests.NamedErrors
     Tests.UpsertUniqueKey
     Tests.Path
     Tests.PathErrors

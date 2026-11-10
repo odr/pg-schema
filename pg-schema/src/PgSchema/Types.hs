@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP #-}
 module PgSchema.Types(
   -- * PgTag types
-  type (:=), (=:), (:.)(..), PgTag(..)
+  type (:=), (=:), (:.)(..), PgTag(..), named, Named
   -- * Enum
   , PGEnum
   -- * Aggregates
@@ -469,6 +469,60 @@ infixr 5 :=
 (=:) :: forall b. forall a -> b -> a := b
 (=:) _ = coerce
 infixr 5 =:
+
+-- | Attach field names to a list of plain rows at once.
+--
+-- Rows are ordinary values chained with '(:.)' (no 'PgTag' on each field);
+-- the names are given only once, for the whole list:
+--
+-- > insertSch (MyAnn "projects") conn
+-- >   $ named ["ownerId", "title", "status", "tags"]
+-- >   [ (1 :: Int64) :. ("pg-schema" :: Text) :. Project_status_active :. pgArr' ["db" :: Text, "haskell"]
+-- >   , 1 :. "tutorial" :. Project_status_draft :. pgArr' ["learning"] ]
+--
+-- is the same as
+--
+-- > insertSch (MyAnn "projects") conn
+-- >   [ "ownerId" =: (1 :: Int64) :. "title" =: ("pg-schema" :: Text)
+-- >     :. "status" =: Project_status_active :. "tags" =: pgArr' ["db" :: Text, "haskell"]
+-- >   , "ownerId" =: 1 :. "title" =: "tutorial"
+-- >     :. "status" =: Project_status_draft :. "tags" =: pgArr' ["learning"] ]
+--
+-- The n-th name is attached to the n-th field; the last name takes the whole
+-- rest of the row. The number of names must be equal to the number of fields,
+-- otherwise there is a compile-time error.
+--
+-- Values are just 'coerce'd, so 'named' costs nothing at runtime. The result
+-- has exactly the same type as rows built with '(=:)', so it can be used
+-- wherever such rows are accepted, including nested rows (a child list is just
+-- another 'named' call).
+--
+-- >>> named ["a", "b"] [1 :. "x", 2 :. ("y" :: String)] :: ["a" := Int :. "b" := String]
+-- ["a" =: 1 :. "b" =: "x","a" =: 2 :. "b" =: "y"]
+named :: forall (ns :: [Symbol]) -> forall r. Coercible [r] [Named ns r] => [r] -> [Named ns r]
+named _ = coerce
+
+-- | Type of a row with field names @ns@ attached to the fields of plain row @r@
+-- (see 'named').
+--
+-- >>> :kind! Named ["a", "b", "c"] (Int :. Bool :. Char)
+-- Named ["a", "b", "c"] (Int :. Bool :. Char) :: *
+-- = PgTag "a" Int :. (PgTag "b" Bool :. PgTag "c" Char)
+type family Named (ns :: [Symbol]) (r :: Type) :: Type where
+  Named '[] r = TE.TypeError
+    ( TE.Text "named: the list of field names is empty."
+    TE.:$$: TE.Text "  The row: " TE.:<>: TE.ShowType r )
+  Named '[n] (a :. b) = TE.TypeError
+    ( TE.Text "named: there are fewer field names than fields in the row."
+    TE.:$$: TE.Text "  The last name " TE.:<>: TE.ShowType n
+      TE.:<>: TE.Text " is given to more than one field: " TE.:<>: TE.ShowType (a :. b) )
+  Named '[n] r = PgTag n r
+  Named (n ': ns) (a :. b) = PgTag n a :. Named ns b
+  Named (n ': ns) r = TE.TypeError
+    ( TE.Text "named: there are more field names than fields in the row."
+    TE.:$$: TE.Text "  Field " TE.:<>: TE.ShowType n TE.:<>: TE.Text " gets the last field "
+      TE.:<>: TE.ShowType r
+    TE.:$$: TE.Text "  Names without fields: " TE.:<>: TE.ShowType ns )
 
 newtype UnsafeCol (flds :: [Symbol]) (expr :: Symbol) res = UnsafeCol
   { getUnsafeCol :: res }
