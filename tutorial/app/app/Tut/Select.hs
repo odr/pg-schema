@@ -63,7 +63,7 @@ seed conn = do
   pure ()
 
 -- --8<-- [start:sel-tree-types]
-data Owner = Owner { name :: Text } deriving (Show, Generic)
+type Owner = "name" := Text
 
 data Task = Task { seq :: Int32, title :: Text, priority :: Int32 }
   deriving (Show, Generic)

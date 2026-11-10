@@ -379,10 +379,10 @@ upsertJSON bad id (no new row): create or replace procedure pg_temp.__ins(data_0
 updateJSON bad id: create or replace procedure pg_temp.__ins(data_0 jsonb) as $
 --8<-- [end:tree-compare]
 --8<-- [start:sel-tree]
-Project {title = "Website", status = Project_status_active, projectOwner = Owner {name = "Alice"}, tasksProjectIdFkey = [Task {seq = 1, title = "Design", priority = 10},Task {seq = 2, title = "Frontend", priority = 30},Task {seq = 3, title = "Polish", priority = 100}]}
-Project {title = "API", status = Project_status_active, projectOwner = Owner {name = "Bob"}, tasksProjectIdFkey = [Task {seq = 1, title = "Schema", priority = 20},Task {seq = 2, title = "Endpoints", priority = 40}]}
-Project {title = "Docs", status = Project_status_draft, projectOwner = Owner {name = "Carol"}, tasksProjectIdFkey = [Task {seq = 1, title = "Outline", priority = 50}]}
-Project {title = "Legacy", status = Project_status_archived, projectOwner = Owner {name = "Dave"}, tasksProjectIdFkey = []}
+Project {title = "Website", status = Project_status_active, projectOwner = "name" =: "Alice", tasksProjectIdFkey = [Task {seq = 1, title = "Design", priority = 10},Task {seq = 2, title = "Frontend", priority = 30},Task {seq = 3, title = "Polish", priority = 100}]}
+Project {title = "API", status = Project_status_active, projectOwner = "name" =: "Bob", tasksProjectIdFkey = [Task {seq = 1, title = "Schema", priority = 20},Task {seq = 2, title = "Endpoints", priority = 40}]}
+Project {title = "Docs", status = Project_status_draft, projectOwner = "name" =: "Carol", tasksProjectIdFkey = [Task {seq = 1, title = "Outline", priority = 50}]}
+Project {title = "Legacy", status = Project_status_archived, projectOwner = "name" =: "Dave", tasksProjectIdFkey = []}
 params: []
 --8<-- [end:sel-tree]
 --8<-- [start:sel-tree-sql]
@@ -397,10 +397,10 @@ from tut.projects t0
 join tut.users t1 on t0.owner_id=t1.id;
 --8<-- [end:sel-tree-sql]
 --8<-- [start:sel-self]
-Person {name = "Alice", manager = Nothing, subordinates = [Owner {name = "Bob"},Owner {name = "Carol"}]}
-Person {name = "Bob", manager = Just (Owner {name = "Alice"}), subordinates = [Owner {name = "Dave"}]}
-Person {name = "Carol", manager = Just (Owner {name = "Alice"}), subordinates = []}
-Person {name = "Dave", manager = Just (Owner {name = "Bob"}), subordinates = []}
+Person {name = "Alice", manager = Nothing, subordinates = ["name" =: "Bob","name" =: "Carol"]}
+Person {name = "Bob", manager = Just ("name" =: "Alice"), subordinates = ["name" =: "Dave"]}
+Person {name = "Carol", manager = Just ("name" =: "Alice"), subordinates = []}
+Person {name = "Dave", manager = Just ("name" =: "Bob"), subordinates = []}
 params: []
 --8<-- [end:sel-self]
 --8<-- [start:sel-self-sql]
@@ -438,8 +438,8 @@ from tut.users t0
 where ((t0.email is null or t0.email is not distinct from ?) or t0.name = any(?::text[]));
 --8<-- [end:sel-null-sql]
 --8<-- [start:sel-path]
-Project {title = "Website", status = Project_status_active, projectOwner = Owner {name = "Alice"}, tasksProjectIdFkey = [Task {seq = 2, title = "Frontend", priority = 30}]}
-Project {title = "API", status = Project_status_active, projectOwner = Owner {name = "Bob"}, tasksProjectIdFkey = [Task {seq = 2, title = "Endpoints", priority = 40}]}
+Project {title = "Website", status = Project_status_active, projectOwner = "name" =: "Alice", tasksProjectIdFkey = [Task {seq = 2, title = "Frontend", priority = 30}]}
+Project {title = "API", status = Project_status_active, projectOwner = "name" =: "Bob", tasksProjectIdFkey = [Task {seq = 2, title = "Endpoints", priority = 40}]}
 params: [SomeToField 50,SomeToField Project_status_active]
 --8<-- [end:sel-path]
 --8<-- [start:sel-path-sql]
@@ -546,9 +546,9 @@ from tut.tasks t0
 order by t0.project_id Asc nulls last,t0.priority Asc nulls last;
 --8<-- [end:sel-distinct-on-sql]
 --8<-- [start:sel-self-path]
-Person {name = "Alice", manager = Nothing, subordinates = [Owner {name = "Bob"},Owner {name = "Carol"}]}
-Person {name = "Bob", manager = Just (Owner {name = "Alice"}), subordinates = []}
-Person {name = "Carol", manager = Just (Owner {name = "Alice"}), subordinates = []}
+Person {name = "Alice", manager = Nothing, subordinates = ["name" =: "Bob","name" =: "Carol"]}
+Person {name = "Bob", manager = Just ("name" =: "Alice"), subordinates = []}
+Person {name = "Carol", manager = Just ("name" =: "Alice"), subordinates = []}
 params: [SomeToField "%o%",SomeToField (Just 1)]
 --8<-- [end:sel-self-path]
 --8<-- [start:sel-self-path-sql]
