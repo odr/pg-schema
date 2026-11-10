@@ -168,7 +168,7 @@ module PgSchema.DML
   -- ** PgTag types
   , type (:=), (=:), PgTag(..), named, Named,
   -- ** Plain values of rows
-  rowsOf, rowOf, plain, plain1, Plain, PlainRow,
+  rowsOf, rowOf, plains, plain, Plain, PlainRow,
   -- | Re-export from postgresql-simple
   (:.)(..)
   -- ** Enum

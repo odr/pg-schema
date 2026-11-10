@@ -1,7 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 -- | Rows built with 'named' (names given once for the whole list)
--- and with 'rowsOf' / 'plain' (names taken from the type).
+-- and with 'rowsOf' / 'plains' (names taken from the type).
 module Tests.Named where
 
 import Control.Monad
@@ -76,7 +76,7 @@ data RootG = RootG { code :: Text, grp :: Int32 }
 
 -- | 'rowsOf': names and types are taken from the type; no parentheses are
 -- needed for groups (RootN), Generic records are flattened, children are plain.
--- 'plain': selected rows (child with parent) as plain values.
+-- 'plains': selected rows (child with parent) as plain values.
 prop_rows_of_tree :: Pool Connection -> Property
 prop_rows_of_tree pool = withTests 1 $ property do
   (outIns, outSel) <- evalIO $ withPool pool \conn -> do
@@ -87,10 +87,10 @@ prop_rows_of_tree pool = withTests 1 $ property do
       , "r2" :. 2 :. "second" :. [20 :. True :. 3] ]
     (outSel', _) <- selSch "mid1" conn qpEmpty
     pure (outIns' :: [RootG :. "mid1RootFk" := ["pos" := Int32]], outSel')
-  plain outIns ===
+  plains outIns ===
     [ "r1" :. 1 :. [10, 11]
     , "r2" :. 2 :. [20] ]
-  L.sort (plain (outSel :: [Mid1N :. "mid1RootFk" := (RootG :. "name" := Text)])) ===
+  L.sort (plains (outSel :: [Mid1N :. "mid1RootFk" := (RootG :. "name" := Text)])) ===
     [ 10 :. True :. 1 :. ("r1" :. 1 :. "first")
     , 11 :. False :. 2 :. ("r1" :. 1 :. "first")
     , 20 :. True :. 3 :. ("r2" :. 2 :. "second") ]

@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
--- | Plain (untagged, flat) values of rows: 'rowsOf' and 'plain'.
+-- | Plain (untagged, flat) values of rows: 'rowsOf' / 'rowOf' and 'plains' / 'plain'.
 --
 -- A row is flattened the same way as for 'Database.PostgreSQL.Simple.ToRow' /
 -- 'Database.PostgreSQL.Simple.FromRow' (see 'PgSchema.Ann.Cols'):
@@ -8,7 +8,7 @@
 --
 -- Here we have just structures: no schema is used.
 module PgSchema.Plain
-  ( Plain, PlainCols, PlainVal, PlainRow, rowsOf, plain, rowOf, plain1 ) where
+  ( Plain, PlainCols, PlainVal, PlainRow, rowsOf, plains, rowOf, plain ) where
 
 import Data.Kind
 import GHC.Generics
@@ -148,7 +148,7 @@ instance
 -- Maybe (optional group of fields)
 instance (PlainRow r, v ~ Maybe (Plain r))
   => ToPlainCols 'PCMaybe '[v] (Maybe r) where
-  toPlainCols x = fmap plain1 x :& HNil
+  toPlainCols x = fmap plain x :& HNil
 
 instance (PlainRow r, v ~ Maybe (Plain r))
   => FromPlainCols 'PCMaybe '[v] (Maybe r) rest where
@@ -229,7 +229,7 @@ instance (CPlainVal (ValCaseOf t) t, PlainVal (Maybe t) ~ Maybe (PlainVal t))
   fromPlainVal = fmap (fromPlainVal @(ValCaseOf t))
 
 instance (PlainRow r, PlainVal r ~ Plain r) => CPlainVal 'VCRow r where
-  toPlainVal = plain1
+  toPlainVal = plain
   fromPlainVal = rowOf r
 
 instance PlainVal t ~ t => CPlainVal 'VCOther t where
@@ -257,9 +257,9 @@ instance
 rowOf :: forall r -> PlainRow r => Plain r -> r
 rowOf r = fst . fromPlainCols @(PlainCaseOf r) @(PlainCols r) @r @'[] . fromChain
 
--- | Plain value of a row.
-plain1 :: forall r. PlainRow r => r -> Plain r
-plain1 = toChain . toPlainCols @(PlainCaseOf r) @(PlainCols r)
+-- | Plain value of a row. The inverse of 'rowOf'.
+plain :: forall r. PlainRow r => r -> Plain r
+plain = toChain . toPlainCols @(PlainCaseOf r) @(PlainCols r)
 
 -- | Make rows of type @r@ from plain values: field names (and field types)
 -- are taken from @r@, so values don't need names or type annotations.
@@ -287,7 +287,7 @@ rowsOf r = fmap (rowOf r)
 -- | Plain values of rows (e.g. to pattern match on selected rows without
 -- 'PgTag'). The inverse of 'rowsOf'.
 --
--- >>> plain ["a" =: (1 :: Int) :. "b" =: True]
+-- >>> plains ["a" =: (1 :: Int) :. "b" =: True]
 -- [1 :. True]
-plain :: forall r. PlainRow r => [r] -> [Plain r]
-plain = fmap plain1
+plains :: forall r. PlainRow r => [r] -> [Plain r]
+plains = fmap plain

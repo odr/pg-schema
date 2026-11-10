@@ -6,7 +6,7 @@
   `"field" =: value` in every row. Values (e.g. enum constructors, `Nothing`)
   are used as is; the result has the same type as rows built with `(=:)`.
   Wrong number of names is reported at compile time.
-- `rowsOf` / `plain` (and `rowOf`, `plain1`, `Plain`): rows from / to plain
+- `rowsOf` / `plains` (and `rowOf` / `plain` for one row, `Plain`): rows from / to plain
   values with field names and types taken from the row type
   (`rowsOf Root ["r1" :. 1 :. [10 :. True]]`). Rows are flattened as for
   `ToRow`/`FromRow`: parts joined with `(:.)` and Generic records give their
