@@ -68,8 +68,9 @@
 -- The @INSERT@ and @SELECT@ shown here each run as a single, fast database round-trip (JSON inside PostgreSQL).
 --
 -- We use a 'Renamer' (e.g. 'CamelToSnake') to map Haskell field names to @snake_case@ in the database.
--- In conditions and 'QueryParams', column names are the original database names.
--- It can be changed in the future.
+-- The renamer is applied to all names: record fields, column names in conditions
+-- and ordering, relation names in 'qPath' / 'pchild' / 'pparent'. So with a renamer
+-- like 'CamelToSnake' you can write either @"ownerId"@ or @"owner_id"@.
 --
 module PgSchema.DML
   (
