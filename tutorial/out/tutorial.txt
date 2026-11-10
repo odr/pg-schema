@@ -2,6 +2,11 @@
 insert into tut.users(name) values (?) returning id
 1
 --8<-- [end:wow-owner]
+--8<-- [start:wow-owner-sql]
+insert into tut.users(name)
+values (?)
+returning id;
+--8<-- [end:wow-owner-sql]
 --8<-- [start:wow-insert]
 ProjectKey {id = 1, tasks_project_id_fkey = [TaskKey {project_id = 1, seq = 1},TaskKey {project_id = 1, seq = 2},TaskKey {project_id = 1, seq = 3}]}
 ProjectKey {id = 2, tasks_project_id_fkey = [TaskKey {project_id = 2, seq = 1}]}
@@ -58,12 +63,24 @@ select t0.owner_id "owner_id",
            where t1.project_id=t0.id and t1.priority < ?
            order by t1.seq Asc nulls last)) "tasks_project_id_fkey"
 from tut.projects t0
-where t0.status = ?
+where t0.status = ?;
 --8<-- [end:wow-select-sql]
 --8<-- [start:wow-select-text]
 select t0.owner_id "owner_id",t0.title "title",t0.status "status",array_to_json(array(select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority) from tut.tasks t1  where t1.project_id=t0.id and t1.priority < ? order by t1.seq Asc nulls last)) "tasks_project_id_fkey" from tut.projects t0  where t0.status = ?
 [SomeToField 50,SomeToField Project_status_active]
 --8<-- [end:wow-select-text]
+--8<-- [start:wow-select-text-sql]
+select t0.owner_id "owner_id",
+       t0.title "title",
+       t0.status "status",
+       array_to_json(array(
+           select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority)
+           from tut.tasks t1
+           where t1.project_id=t0.id and t1.priority < ?
+           order by t1.seq Asc nulls last)) "tasks_project_id_fkey"
+from tut.projects t0
+where t0.status = ?;
+--8<-- [end:wow-select-text-sql]
 --8<-- [start:users-generic]
 insert text: insert into tut.users(name,email) values (?,?)
 inserted 1 rows
@@ -71,6 +88,14 @@ select text: select t0.name "name",t0.email "email" from tut.users t0
 select params: []
 selected rows: [MkUser {name = "Benjy", email = Nothing}]
 --8<-- [end:users-generic]
+--8<-- [start:users-generic-sql]
+insert into tut.users(name,email)
+values (?,?);
+
+select t0.name "name",
+       t0.email "email"
+from tut.users t0;
+--8<-- [end:users-generic-sql]
 --8<-- [start:users-pgtag]
 insert text: insert into tut.users(name,email) values (?,?) returning id,manager_id,name,email
 inserted: ["id" =: 2 :. ("managerId" =: Nothing :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),"id" =: 3 :. ("managerId" =: Nothing :. MkUser {name = "Jason", email = Just "jason@example.com"})]
@@ -78,10 +103,23 @@ select text: select t0.name "name" from tut.users t0
 select params: []
 selected rows: ["name" =: "Benjy","name" =: "Quentin","name" =: "Jason"]
 --8<-- [end:users-pgtag]
+--8<-- [start:users-pgtag-sql]
+insert into tut.users(name,email)
+values (?,?)
+returning id,manager_id,name,email;
+
+select t0.name "name"
+from tut.users t0;
+--8<-- [end:users-pgtag-sql]
 --8<-- [start:insert-projects]
 insert text: insert into tut.projects(owner_id,title,status,tags) values (?,?,?,?) returning id
 inserted ids: [1,2]
 --8<-- [end:insert-projects]
+--8<-- [start:insert-projects-sql]
+insert into tut.projects(owner_id,title,status,tags)
+values (?,?,?,?)
+returning id;
+--8<-- [end:insert-projects-sql]
 --8<-- [start:update-by-cond]
 updated: [2 :. ("tutorial" :. Project_status_archived)]
 --8<-- [end:update-by-cond]
@@ -89,23 +127,51 @@ updated: [2 :. ("tutorial" :. Project_status_archived)]
 update text: update tut.projects t0 set status = ? where t0.id = ? returning id,title,status
 update params: [SomeToField 2]
 --8<-- [end:update-text]
+--8<-- [start:update-text-sql]
+update tut.projects t0
+set status = ?
+where t0.id = ?
+returning id,title,status;
+--8<-- [end:update-text-sql]
 --8<-- [start:delete-by-cond]
 delete text: delete from tut.projects t0  where t0.id = ?
 delete params: [SomeToField 2]
 deleted: 1 rows
 --8<-- [end:delete-by-cond]
+--8<-- [start:delete-by-cond-sql]
+delete from tut.projects t0
+where t0.id = ?;
+--8<-- [end:delete-by-cond-sql]
 --8<-- [start:update-by-key]
 update text: update tut.users set name = ? where id IS NOT DISTINCT FROM ? returning id,name
 updated: [Just ("id" =: 2 :. "name" =: "Quentin T."),Nothing]
 --8<-- [end:update-by-key]
+--8<-- [start:update-by-key-sql]
+update tut.users
+set name = ?
+where id IS NOT DISTINCT FROM ?
+returning id,name;
+--8<-- [end:update-by-key-sql]
 --8<-- [start:upsert-by-pk]
 upsert text: insert into tut.users(id, name) values (?, ?) on conflict (id) do update set name = EXCLUDED.name returning id,name
 upserted: [3 :. "Jason B.",100 :. "Margo"]
 --8<-- [end:upsert-by-pk]
+--8<-- [start:upsert-by-pk-sql]
+insert into tut.users(id, name)
+values (?, ?)
+on conflict (id) do update set name = EXCLUDED.name
+returning id,name;
+--8<-- [end:upsert-by-pk-sql]
 --8<-- [start:upsert-by-uk]
 upsert text: insert into tut.users(name, email) values (?, ?) on conflict (email) do update set name = EXCLUDED.name returning id,name,email
 upserted: [2 :. ("Quentin Tarantino" :. Just "quentin@example.com"),5 :. ("Mia" :. Just "mia@example.com")]
 --8<-- [end:upsert-by-uk]
+--8<-- [start:upsert-by-uk-sql]
+insert into tut.users(name, email)
+values (?, ?)
+on conflict (email) do update set name = EXCLUDED.name
+returning id,name,email;
+--8<-- [end:upsert-by-uk-sql]
 --8<-- [start:insert-json-nr]
 insertJSON_ text: create or replace procedure pg_temp.__ins(data_0 jsonb) as $$
 declare

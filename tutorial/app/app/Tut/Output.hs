@@ -9,7 +9,7 @@
 --
 -- Без переменной окружения печатается только заголовок секции,
 -- чтобы вывод было удобно читать в консоли.
-module Tut.Output (section, formatSql) where
+module Tut.Output (section, formatSql, sqlSection) where
 
 import Control.Exception (finally)
 import Data.Char (isSpace, toLower)
@@ -28,14 +28,19 @@ section name act = do
       putStrLn $ "\n--- " <> name
       act
 
--- | Отформатировать @select@, который генерирует pg-schema, для чтения
--- человеком: каждая часть запроса (@select@, @from@, @where@, @order by@, …)
--- и каждая колонка списка @select@ — с новой строки, подзапросы — с отступом.
+-- | Отформатировать SQL, который генерирует pg-schema, для чтения человеком.
+--
+-- Каждая часть запроса (@select@, @from@, @where@, @order by@, @values@,
+-- @set@, @on conflict@, @returning@, …) — с новой строки, колонки списка
+-- @select@ и присваивания в @set@ — по одной в строке, подзапросы — с отступом.
 --
 -- Это простой форматтер для примеров в документации, а не разбор SQL:
--- он учитывает только скобки, кавычки и ключевые слова.
+-- он учитывает только скобки, кавычки и ключевые слова. Текст, в котором уже
+-- есть переводы строк (например, функции plpgsql для @*JSON@), не меняется.
 formatSql :: Text -> Text
-formatSql = T.pack . render . tokens . T.unpack
+formatSql sql
+  | T.any (== '\n') (T.strip sql) = sql
+  | otherwise = T.pack $ render $ tokens $ T.unpack sql
   where
     -- Лексемы: строки в кавычках, скобки, запятые, пробелы и прочие слова.
     tokens :: String -> [String]
@@ -50,44 +55,64 @@ formatSql = T.pack . render . tokens . T.unpack
           let (w, rest) = break (\x -> isSpace x || x `elem` ("()',\"" :: String)) (c : cs)
           in w : tokens rest
 
-    -- Состояние: глубина скобок, стек открытых select (глубина, отступ),
-    -- отступ текущей строки.
     render :: [String] -> String
-    render = go 0 [] 0
+    render = go 0 [] "" 0
+
+    -- Состояние: глубина скобок, стек открытых операторов (глубина, отступ,
+    -- текущая часть оператора), предыдущее слово и отступ текущей строки.
+    go :: Int -> [(Int, Int, String)] -> String -> Int -> [String] -> String
+    go _ _ _ _ [] = ""
+    go d sts prev ind (t : ts)
+      | t == " " = case ts of
+          (n : _) | startsStmt sts (lower n) || breaks d sts prev (lower n) -> go d sts prev ind ts
+          _ -> " " <> go d sts prev ind ts
+      | startsStmt sts w =
+          let ind' = if null sts then 0 else ind + 4
+              pre = if null sts then "" else nl ind'
+          in pre <> t <> go d ((d, ind', w) : sts) w ind' ts
+      | breaks d sts prev w, ((sd, si, _) : rest) <- sts =
+          nl si <> t <> go d ((sd, si, w) : rest) w si ts
+      | t == ",", ((sd, si, cl) : _) <- sts, sd == d, Just k <- lookup cl listIndent =
+          "," <> nl (si + k) <> go d sts prev (si + k) (dropWhile (== " ") ts)
+      | t == "(" = t <> go (d + 1) sts prev ind ts
+      | t == ")" =
+          let sts' = case sts of
+                ((sd, _, _) : rest) | sd == d -> rest
+                _ -> sts
+          in t <> go (d - 1) sts' prev ind ts
+      | otherwise = t <> go d sts (if all isSpace t then prev else w) ind ts
       where
-        go :: Int -> [(Int, Int)] -> Int -> [String] -> String
-        go _ _ _ [] = ""
-        go d sels ind (t : ts)
-          | t == " " = case ts of
-              (n : _) | breaksBefore d sels (lower n) || lower n == "select" -> go d sels ind ts
-              _ -> " " <> go d sels ind ts
-          | lower t == "select" =
-              let ind' = if null sels then 0 else ind + 4
-                  pre = if null sels then "" else nl ind'
-              in pre <> t <> go d ((d, ind') : sels) ind' ts
-          | breaksBefore d sels (lower t) =
-              let ind' = maybe ind snd (topSel sels)
-              in nl ind' <> t <> go d sels ind' ts
-          | t == "," , Just (sd, si) <- topSel sels, sd == d =
-              "," <> nl (si + 7) <> go d sels (si + 7) (dropWhile (== " ") ts)
-          | t == "(" = t <> go (d + 1) sels ind ts
-          | t == ")" =
-              let sels' = case sels of
-                    ((sd, _) : rest) | sd == d -> rest
-                    _ -> sels
-              in t <> go (d - 1) sels' ind ts
-          | otherwise = t <> go d sels ind ts
+        w = lower t
 
-        topSel = \case
-          (s : _) -> Just s
-          [] -> Nothing
+    startsStmt sts w = w `elem` ["select", "insert", "update", "delete"]
+      && not (w == "update" && inClause "on" sts)
 
-        breaksBefore d sels w = case topSel sels of
-          Just (sd, _) -> sd == d && w `elem` clauses
-          Nothing -> False
+    -- Перенос перед частью оператора на его же уровне скобок.
+    breaks d sts prev w = case sts of
+      ((sd, _, cl) : _) -> sd == d && w `elem` clauses
+        && not (w == "from" && prev `elem` ["delete", "distinct"])
+        && not (w == "set" && cl == "on")
+      [] -> False
 
-        clauses = ["from", "where", "order", "group", "having", "limit", "offset"]
+    inClause c = \case
+      ((_, _, cl) : _) -> cl == c
+      [] -> False
 
-        nl n = "\n" <> replicate n ' '
+    clauses =
+      [ "from", "where", "order", "group", "having", "limit", "offset"
+      , "values", "set", "on", "returning" ]
+
+    -- Отступ элементов списка относительно начала оператора.
+    listIndent = [("select", 7), ("set", 4)]
+
+    nl n = "\n" <> replicate n ' '
 
     lower = map toLower
+
+-- | Отформатированный SQL примера: отдельная секция @<name>-sql@.
+-- Глава показывает её в сворачиваемом блоке сразу после вывода примера.
+sqlSection :: String -> [Text] -> IO ()
+sqlSection name sqls = section (name <> "-sql") $
+  putStrLn $ T.unpack $ T.intercalate (T.pack "\n\n") (terminate . formatSql . T.strip <$> sqls)
+  where
+    terminate q = if T.isSuffixOf (T.pack ";") q then q else q <> T.pack ";"

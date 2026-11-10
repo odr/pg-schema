@@ -14,7 +14,7 @@ import Tut.Output
 
 flatDml :: Connection -> IO ()
 flatDml conn = do
-  section "insert-projects" $ do
+  sql0 <- section "insert-projects" $ do
     -- --8<-- [start:insert-projects]
     (res, tIns) <- insertSch (MyAnn "projects") conn $
       named ["ownerId", "title", "status", "tags"]
@@ -23,6 +23,8 @@ flatDml conn = do
     putStrLn $ "insert text: " <> T.unpack tIns
     putStrLn $ "inserted ids: " <> show (plains @("id" := Int64) res)
     -- --8<-- [end:insert-projects]
+    pure [tIns]
+  sqlSection "insert-projects" sql0
 
   section "update-by-cond" $ do
     -- --8<-- [start:update-by-cond]
@@ -32,7 +34,7 @@ flatDml conn = do
     putStrLn $ "updated: " <> show (plains @("id" := Int64 :. "title" := Text :. "status" := ProjectStatus) res)
     -- --8<-- [end:update-by-cond]
 
-  section "update-text" $ do
+  sql1 <- section "update-text" $ do
     -- --8<-- [start:update-text]
     let
       (tUpd :: Text, updParams) = updateText (MyAnn "projects")
@@ -42,16 +44,20 @@ flatDml conn = do
     putStrLn $ "update text: " <> T.unpack tUpd
     putStrLn $ "update params: " <> show updParams
     -- --8<-- [end:update-text]
+    pure [tUpd]
+  sqlSection "update-text" sql1
 
-  section "delete-by-cond" $ do
+  sql2 <- section "delete-by-cond" $ do
     -- --8<-- [start:delete-by-cond]
     (cnt5, tDel5) <- deleteByCond (MyAnn "projects") conn $ "id" =? (2 :: Int64)
     putStrLn $ "delete text: " <> T.unpack (fst tDel5)
     putStrLn $ "delete params: " <> show (snd tDel5)
     putStrLn $ "deleted: " <> show cnt5 <> " rows"
     -- --8<-- [end:delete-by-cond]
+    pure [fst tDel5]
+  sqlSection "delete-by-cond" sql2
 
-  section "update-by-key" $ do
+  sql3 <- section "update-by-key" $ do
     -- --8<-- [start:update-by-key]
     (res :: [Maybe ("id" := Int64 :. "name" := Text)], tUpd) <-
       updateByKey (MyAnn "users") conn $ named ["id", "name"]
@@ -60,8 +66,10 @@ flatDml conn = do
     putStrLn $ "update text: " <> T.unpack tUpd
     putStrLn $ "updated: " <> show res
     -- --8<-- [end:update-by-key]
+    pure [tUpd]
+  sqlSection "update-by-key" sql3
 
-  section "upsert-by-pk" $ do
+  sql4 <- section "upsert-by-pk" $ do
     -- --8<-- [start:upsert-by-pk]
     (res, tUps) <- upsertByKey (MyAnn "users") conn $ named ["id", "name"]
       [ (3 :: Int64) :. ("Jason B." :: Text)
@@ -69,8 +77,10 @@ flatDml conn = do
     putStrLn $ "upsert text: " <> T.unpack tUps
     putStrLn $ "upserted: " <> show (plains @("id" := Int64 :. "name" := Text) res)
     -- --8<-- [end:upsert-by-pk]
+    pure [tUps]
+  sqlSection "upsert-by-pk" sql4
 
-  section "upsert-by-uk" $ do
+  sql5 <- section "upsert-by-uk" $ do
     -- --8<-- [start:upsert-by-uk]
     (res, tUps) <- upsertByKey (MyAnn "users") conn $ named ["name", "email"]
       [ ("Quentin Tarantino" :: Text) :. Just ("quentin@example.com" :: Text)
@@ -78,3 +88,5 @@ flatDml conn = do
     putStrLn $ "upsert text: " <> T.unpack tUps
     putStrLn $ "upserted: " <> show (plains @("id" := Int64 :. "name" := Text :. "email" := Maybe Text) res)
     -- --8<-- [end:upsert-by-uk]
+    pure [tUps]
+  sqlSection "upsert-by-uk" sql5

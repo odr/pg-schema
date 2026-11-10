@@ -165,6 +165,12 @@ camelCase.
 --8<-- "out/tutorial.txt:wow-owner"
 ```
 
+??? note "SQL, отформатированный для чтения"
+
+    ```sql
+    --8<-- "out/tutorial.txt:wow-owner-sql"
+    ```
+
 Обратите внимание, что `TutAnn "users"` — это тип, а передаётся он как
 обычный первый аргумент. Функции `pg-schema` объявлены с видимым аргументом
 типа (для этого и нужен GHC 9.10 или новее), поэтому аннотацию можно писать
@@ -256,7 +262,7 @@ tut.users(name) values (?) returning id`. Мы вставили одного п�
 --8<-- "out/tutorial.txt:wow-select"
 ```
 
-??? note "Тот же запрос, отформатированный для чтения"
+??? note "SQL, отформатированный для чтения"
 
     ```sql
     --8<-- "out/tutorial.txt:wow-select-sql"
@@ -285,6 +291,12 @@ tut.users(name) values (?) returning id`. Мы вставили одного п�
 ```text
 --8<-- "out/tutorial.txt:wow-select-text"
 ```
+
+??? note "SQL, отформатированный для чтения"
+
+    ```sql
+    --8<-- "out/tutorial.txt:wow-select-text-sql"
+    ```
 
 Это тот же самый запрос, который `selectSch` выполнил в предыдущем разделе. Тип
 результата здесь указан явно (`@Project`), потому что строки мы не получаем и

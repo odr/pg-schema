@@ -66,13 +66,15 @@ activeProjects = qRoot do
 
 wow :: Connection -> IO ()
 wow conn = do
-  ownerId <- section "wow-owner" $ do
+  (ownerId, sqlOwner) <- section "wow-owner" $ do
     -- --8<-- [start:wow-owner]
     ([UserKey ownerId], sqlOwner) <- insertSch (TutAnn "users") conn [Owner "Alice"]
     putStrLn $ T.unpack sqlOwner
     print ownerId
     -- --8<-- [end:wow-owner]
-    pure ownerId
+    pure (ownerId, sqlOwner)
+
+  sqlSection "wow-owner" [sqlOwner]
 
   sqlIns <- section "wow-insert" $ do
     -- --8<-- [start:wow-insert]
@@ -89,7 +91,7 @@ wow conn = do
     -- --8<-- [end:wow-insert]
     pure sqlIns
 
-  section "wow-insert-sql" $ putStrLn (T.unpack sqlIns)
+  sqlSection "wow-insert" [sqlIns]
 
   sqlSel <- section "wow-select" $ do
     -- --8<-- [start:wow-select]
@@ -100,11 +102,13 @@ wow conn = do
     -- --8<-- [end:wow-select]
     pure sql
 
-  section "wow-select-sql" $ putStrLn (T.unpack $ formatSql sqlSel)
+  sqlSection "wow-select" [sqlSel]
 
-  section "wow-select-text" $ do
+  sqlText <- section "wow-select-text" $ do
     -- --8<-- [start:wow-select-text]
     let (sql, params) = selectText (TutAnn "projects") @Project activeProjects
     putStrLn $ T.unpack sql
     print params
     -- --8<-- [end:wow-select-text]
+    pure sql
+  sqlSection "wow-select-text" [sqlText]

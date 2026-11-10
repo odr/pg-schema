@@ -14,7 +14,7 @@ import Tut.Output
 
 basics :: Connection -> IO ()
 basics conn = do
-  section "users-generic" $ do
+  sqls1 <- section "users-generic" $ do
     -- --8<-- [start:users-generic]
     (cnt, tIns) <- insertSch_ (MyAnn "users") conn [MkUser "Benjy" Nothing]
     (res, (tSel, selParams)) <- selectSch (MyAnn "users") @User conn qpEmpty
@@ -24,8 +24,10 @@ basics conn = do
     putStrLn $ "select params: " <> show selParams
     putStrLn $ "selected rows: " <> show res
     -- --8<-- [end:users-generic]
+    pure [tIns, tSel]
+  sqlSection "users-generic" sqls1
 
-  section "users-pgtag" $ do
+  sqls2 <- section "users-pgtag" $ do
     -- --8<-- [start:users-pgtag]
     (res2 :: ["id" := Int64 :. "managerId" := Maybe Int64 :. User], tIns2) <-
       insertSch (MyAnn "users") conn
@@ -38,3 +40,5 @@ basics conn = do
     putStrLn $ "select params: " <> show selParams3
     putStrLn $ "selected rows: " <> show res3
     -- --8<-- [end:users-pgtag]
+    pure [tIns2, tSel3]
+  sqlSection "users-pgtag" sqls2
