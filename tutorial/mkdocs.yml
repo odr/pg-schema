@@ -49,8 +49,9 @@ nav:
       - Зачем pg-schema: ru/00-why-pg-schema.md
       - Быстрый старт: ru/01-wow.md
       - Рабочая модель pg-schema: ru/02-core-workflow.md
-      - DML операции: ru/03-dml-operations.md
+      - Изменение данных в одной таблице: ru/03-flat-dml.md
       - Select: ru/04-select.md
+      - Изменение связанных данных: ru/05-tree-dml.md
       - Справочник: ru/appendix-reference.md
   - English:
       - Introduction: en/index.md

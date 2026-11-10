@@ -27,8 +27,9 @@
 1. [Зачем pg-schema](00-why-pg-schema.md) — зачем нужен подход schema-as-types.
 2. [Быстрый старт](01-wow.md) — от пустой БД до вставки и чтения дерева данных.
 3. [Рабочая модель pg-schema](02-core-workflow.md) — генерация схемы, первые insert и select.
-4. [DML операции](03-dml-operations.md) — insert, update, upsert, delete, в том числе для связанных таблиц.
+4. [Изменение данных в одной таблице](03-flat-dml.md) — insert, update, upsert и delete.
 5. [Select](04-select.md) — запросы с условиями, связи между таблицами.
+6. [Изменение связанных данных](05-tree-dml.md) — запись дерева данных одной операцией: `insertJSON`, `upsertJSON`, `updateJSON`.
 
 В [справочнике](appendix-reference.md) собраны правила, которые в главах показаны на примерах.
 

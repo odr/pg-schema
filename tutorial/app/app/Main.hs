@@ -15,7 +15,7 @@ import System.Environment (lookupEnv)
 import Tut.Basics (basics)
 import Tut.FlatDml (flatDml)
 import Tut.Select (select)
-import Tut.TreeDml (treeCompare, treeDml)
+import Tut.TreeDml (treeDml)
 import Tut.Wow (wow)
 
 main :: IO ()
@@ -26,11 +26,11 @@ main = do
   wow conn         -- 01-wow
   resetDb conn
   basics conn      -- 02-core-workflow
-  flatDml conn     -- 03-dml-operations: плоские операции
-  treeDml conn     -- 03-dml-operations: операции со связанными таблицами
-  treeCompare conn -- 03-dml-operations: сравнение insert / upsert / update
+  flatDml conn     -- 03-flat-dml
   resetDb conn
   select conn      -- 04-select
+  resetDb conn
+  treeDml conn     -- 05-tree-dml
 
 -- | Пересоздать схему @tut@ (скрипт начинается с @drop schema if exists tut cascade@).
 resetDb :: Connection -> IO ()

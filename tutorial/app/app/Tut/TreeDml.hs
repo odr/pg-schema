@@ -1,15 +1,13 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Глава «DML операции», операции со связанными таблицами:
--- insertJSON / upsertJSON / updateJSON.
-module Tut.TreeDml (treeDml, treeCompare) where
+-- | Глава «Связанные таблицы»: insertJSON / upsertJSON / updateJSON и транзакции.
+module Tut.TreeDml (treeDml) where
 
-import Control.Exception (SomeException, catch)
-import Control.Monad (void)
+import Control.Exception (try)
 import Data.Int (Int32, Int64)
 import Data.Text (Text)
-import Data.Text qualified as T
-import Database.PostgreSQL.Simple (Connection)
+import Database.PostgreSQL.Simple (Connection, SqlError (..), withTransaction)
 import PgSchema.DML
 import Sch
 import Tut.Common
@@ -23,84 +21,103 @@ type TaskIn = "seq" := Int32 :. "title" := Text :. "priority" := Int32
 
 type ProjectIn = "ownerId" := Int64 :. "title" := Text :. "status" := ProjectStatus
   :. "tags" := PgArr Text :. "tasksProjectIdFkey" := [TaskIn]
+-- --8<-- [end:tree-types]
 
--- | Изменение: ключ проекта, ключи задач и новые значения.
+-- --8<-- [start:tree-keys]
+type ProjectKeys = "id" := Int64
+  :. "tasksProjectIdFkey" := [ "seq" := Int32 :. "taskEventsProjectIdSeqFkey" := ["eventNo" := Int32] ]
+-- --8<-- [end:tree-keys]
+
+-- --8<-- [start:tree-patch-types]
 type TaskPatch = "seq" := Int32 :. "title" := Text
   :. "taskEventsProjectIdSeqFkey" := [EventIn]
 
 type ProjectPatch = "id" := Int64 :. "tasksProjectIdFkey" := [TaskPatch]
--- --8<-- [end:tree-types]
+
+type PatchOut = Maybe ("id" := Int64 :. "tasksProjectIdFkey" := ["seq" := Int32 :. "title" := Text])
+-- --8<-- [end:tree-patch-types]
+
+-- --8<-- [start:tree-update-types]
+type TaskUpd = "seq" := Int32 :. "priority" := Int32
+
+type ProjectUpd = "id" := Int64 :. "status" := ProjectStatus
+  :. "tasksProjectIdFkey" := [TaskUpd]
+
+type UpdOut = Maybe ("id" := Int64 :. "status" := ProjectStatus
+  :. "tasksProjectIdFkey" := [Maybe ("seq" := Int32 :. "priority" := Int32)])
+-- --8<-- [end:tree-update-types]
+
+-- --8<-- [start:tree-count]
+-- | Сколько проектов с таким названием.
+countProjects :: Connection -> Text -> IO Int64
+countProjects conn title = do
+  (rows, _) <- selectSch (MyAnn "projects") conn $ qRoot $ qWhere $ "title" =? title
+  pure $ sum $ unAggr <$> plains @("cnt" := Aggr ACount Int64) rows
+-- --8<-- [end:tree-count]
 
 treeDml :: Connection -> IO ()
 treeDml conn = do
-  -- --8<-- [start:tree-in]
-  let
-    treeIn = rowsOf @ProjectIn
-      [ 1 :. "tree-demo" :. Project_status_active :. pgArr' ["nested"]
-        :. [ 1 :. "task-1" :. 10 :. [ 1 :. "created" ] ] ]
-  -- --8<-- [end:tree-in]
+  _ <- insertSch_ (MyAnn "users") conn $ named ["name"] ["Alice" :: Text]
 
-  section "insert-json-nr" $ do
-    -- --8<-- [start:insert-json-nr]
-    tInsJ0 <- insertJSON_ (MyAnn "projects") conn treeIn
-    putStrLn $ "insertJSON_ text: " <> T.unpack tInsJ0
-    -- --8<-- [end:insert-json-nr]
+  sqls1 <- section "tree-insert" $ do
+    -- --8<-- [start:tree-insert]
+    (keys, sqlIns) <- insertJSON (MyAnn "projects") conn $ rowsOf @ProjectIn
+      [ 1 :. "Website" :. Project_status_active :. pgArr' ["web"] :.
+          [ 1 :. "Design" :. 10 :. [ 1 :. "created", 2 :. "assigned" ]
+          , 2 :. "Frontend" :. 30 :. [] ]
+      , 1 :. "API" :. Project_status_draft :. pgArr' [] :.
+          [ 1 :. "Schema" :. 20 :. [ 1 :. "created" ] ] ]
+    mapM_ print (keys :: [ProjectKeys])
+    -- --8<-- [end:tree-insert]
+    pure [sqlIns]
+  sqlSection "tree-insert" sqls1
 
-  section "insert-json" $ do
-    -- --8<-- [start:insert-json]
-    (resJ1, tInsJ1) <- insertJSON (MyAnn "projects") conn treeIn
-    putStrLn $ "insertJSON text: " <> T.unpack tInsJ1
-    putStrLn $ "insertJSON result: "
-      <> show (plains @("id" := Int64 :. "tasksProjectIdFkey" := ["projectId" := Int64 :. "seq" := Int32]) resJ1)
-    -- --8<-- [end:insert-json]
+  sqls2 <- section "tree-insert-nr" $ do
+    -- --8<-- [start:tree-insert-nr]
+    sqlIns <- insertJSON_ (MyAnn "projects") conn $ rowsOf @ProjectIn
+      [ 1 :. "Docs" :. Project_status_draft :. pgArr' [] :. [] ]
+    -- --8<-- [end:tree-insert-nr]
+    putStrLn "ok"
+    pure [sqlIns]
+  sqlSection "tree-insert-nr" sqls2
 
-  -- --8<-- [start:tree-ups]
-  let
-    treeUps = rowsOf @ProjectPatch
-      [ 1 :. [ 1 :. "task-1-updated" :. [ 1 :. "updated" ] ] ]
-  -- --8<-- [end:tree-ups]
+  sqls3 <- section "tree-upsert" $ do
+    -- --8<-- [start:tree-upsert]
+    (res, sqlUps) <- upsertJSON (MyAnn "projects") conn $ rowsOf @ProjectPatch
+      [ 1 :.
+          [ 1 :. "Design v2" :. [ 3 :. "renamed" ]
+          , 3 :. "Backend" :. [] ] ]
+    mapM_ print (res :: [PatchOut])
+    -- --8<-- [end:tree-upsert]
+    pure [sqlUps]
+  sqlSection "tree-upsert" sqls3
 
-  section "upsert-json-nr" $ do
-    -- --8<-- [start:upsert-json-nr]
-    tUpsJ0 <- upsertJSON_ (MyAnn "projects") conn treeUps
-    putStrLn $ "upsertJSON_ text: " <> T.unpack tUpsJ0
-    -- --8<-- [end:upsert-json-nr]
+  section "tree-upsert-missing" $ do
+    -- --8<-- [start:tree-upsert-missing]
+    (res, _) <- upsertJSON (MyAnn "projects") conn $ rowsOf @ProjectPatch
+      [ 999 :. [ 1 :. "Ghost" :. [] ] ]
+    print (res :: [PatchOut])
+    -- --8<-- [end:tree-upsert-missing]
 
-  section "upsert-json" $ do
-    -- --8<-- [start:upsert-json]
-    (resUpsJ1, tUpsJ1) <- upsertJSON (MyAnn "projects") conn treeUps
-    putStrLn $ "upsertJSON text: " <> T.unpack tUpsJ1
-    putStrLn $ "upsertJSON result: "
-      <> show (plains @("id" := Int64 :. "tasksProjectIdFkey" := ["seq" := Int32 :. "title" := Text]) resUpsJ1)
-    -- --8<-- [end:upsert-json]
+  sqls4 <- section "tree-update" $ do
+    -- --8<-- [start:tree-update]
+    (res, sqlUpd) <- updateJSON (MyAnn "projects") conn $ rowsOf @ProjectUpd
+      [ 2 :. Project_status_active :. [ 1 :. 5, 9 :. 50 ]
+      , 999 :. Project_status_active :. [] ]
+    mapM_ print (res :: [UpdOut])
+    -- --8<-- [end:tree-update]
+    pure [sqlUpd]
+  sqlSection "tree-update" sqls4
 
--- | Один и тот же patch по проекту: insert / upsert / update.
-treeCompare :: Connection -> IO ()
-treeCompare conn = section "tree-compare" $ do
-  -- --8<-- [start:tree-compare]
-  let
-    -- явный id, чтобы повторная вставка дала конфликт по первичному ключу
-    treeFull = rowsOf @("id" := Int64 :. ProjectIn)
-      [ 100 :. 1 :. "tree-full" :. Project_status_active :. pgArr' ["demo"]
-        :. [ 1 :. "task-a" :. 10 :. [ 1 :. "created" ] ] ]
-    patch projectId = rowsOf @ProjectPatch
-      [ projectId :. [ 1 :. "task-patched" :. [ 1 :. "patched" ] ] ]
-    treePatch = patch 100
-    treePatchBad = patch 99999
-  tIns <- insertJSON_ (MyAnn "projects") conn treeFull
-  putStrLn $ "insertJSON ok: " <> T.unpack (T.take 60 tIns)
-  putStrLn "insertJSON again (expect PG duplicate error):"
-  void $
-    insertJSON_ (MyAnn "projects") conn treeFull `catch`
-      \(e :: SomeException) -> do
-        putStrLn $ "  caught: " <> show e
-        pure ""
-  tUps <- upsertJSON_ (MyAnn "projects") conn treePatch
-  putStrLn $ "upsertJSON patch ok: " <> T.unpack (T.take 60 tUps)
-  tUpd <- updateJSON_ (MyAnn "projects") conn treePatch
-  putStrLn $ "updateJSON patch ok: " <> T.unpack (T.take 60 tUpd)
-  tUpsBad <- upsertJSON_ (MyAnn "projects") conn treePatchBad
-  putStrLn $ "upsertJSON bad id (no new row): " <> T.unpack (T.take 60 tUpsBad)
-  tUpdBad <- updateJSON_ (MyAnn "projects") conn treePatchBad
-  putStrLn $ "updateJSON bad id: " <> T.unpack (T.take 60 tUpdBad)
-  -- --8<-- [end:tree-compare]
+  section "tree-tx" $ do
+    -- --8<-- [start:tree-tx]
+    let
+      docs = rowsOf @("id" := Int64 :. ProjectIn)
+        [ 100 :. 1 :. "Tx demo" :. Project_status_draft :. pgArr' [] :. [] ]
+    res <- try @SqlError $ withTransaction conn do
+      _ <- insertJSON_ (MyAnn "projects") conn docs
+      insertJSON_ (MyAnn "projects") conn docs  -- тот же id: ошибка
+    putStrLn $ either (("error: " <>) . show . sqlErrorMsg) (const "ok") res
+    cnt <- countProjects conn "Tx demo"
+    putStrLn $ "projects \"Tx demo\": " <> show cnt
+    -- --8<-- [end:tree-tx]
