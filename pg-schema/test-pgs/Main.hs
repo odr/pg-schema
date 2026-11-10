@@ -90,6 +90,10 @@ main = do
           prop_update_json_missing_grandchild pool
       , testProperty "upsertJSON key-only missing child returns null element" $
           prop_upsert_json_key_only_missing_child pool
+      , testProperty "upsertJSON DO NOTHING child of another parent returns null element" $
+          prop_upsert_json_do_nothing_other_parent pool
+      , testProperty "upsertJSON DO NOTHING child inserted or found" $
+          prop_upsert_json_do_nothing_insert_or_found pool
       ]
     , testGroup "Upsert by unique key (test_dml)"
       [ testProperty "upsertJSON on composite unique without PK in payload" $

@@ -10,6 +10,7 @@ import Data.List qualified as L
 import Data.Pool as Pool
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Time (Day, fromGregorian)
 import Database.PostgreSQL.Simple (Connection)
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
@@ -403,3 +404,87 @@ prop_upsert_json_key_only_missing_child pool = withTests 5 $ property do
       [Just (PgTag rid' :. PgTag [Just (PgTag mid' :. PgTag False), Nothing])]
         | rid' == rid && mid' == mid -> pure ()
       _ -> fail $ "expected [Just (_ :. [Just _, Nothing])], got " <> show ret
+
+type ArrDates = "dates_nullable" := Maybe (PgArr Day)
+
+type RootArrIns = "arrays_root_fk" := [ArrDates] :. RootRec
+
+type RootArrInsOut = "id" := Int32 :. "arrays_root_fk" := ["id" := Int32]
+
+-- | Key-only patch of @arrays@ children: the parent FK @root_id@ is outside the
+-- key @id@, so the child is upserted with @ON CONFLICT DO NOTHING@.
+type RootArrKeyPatch = "id" := Int32 :. "arrays_root_fk" := ["id" := Int32]
+
+-- | Returning a column that is not in the input: it is read from the table.
+type RootArrUpsOut =
+  Maybe ("id" := Int32 :. "arrays_root_fk" := [Maybe ("id" := Int32 :. ArrDates)])
+
+-- | Returning only columns from the input.
+type RootArrUpsOutKey =
+  Maybe ("id" := Int32 :. "arrays_root_fk" := [Maybe ("id" := Int32)])
+
+-- | Insert roots A and B with one @arrays@ child each; return
+-- @(rootA, childA, rootB, childB)@.
+insertRootsWithArrays :: Connection -> Text -> IO (Int32, Int32, Int32, Int32)
+insertRootsWithArrays conn code = do
+  let
+    root :: Int32 -> Day -> RootArrIns
+    root grp d = "arrays_root_fk" =: ["dates_nullable" =: Just (pgArr' [d])]
+      :. "code" =: code :. "grp" =: grp :. "name" =: "n" :. "someEmpty" =: ()
+  res <- insertJSON (AnnSch "root") @RootArrIns @RootArrInsOut conn
+    [root 1 dayA, root 2 dayB]
+  case res of
+    ( [ PgTag ra :. PgTag [PgTag ca], PgTag rb :. PgTag [PgTag cb] ], _ ) ->
+      pure (ra, ca, rb, cb)
+    _ -> fail $ "expected two roots with one child each, got " <> show (fst res)
+
+dayA, dayB :: Day
+dayA = fromGregorian 2020 1 1
+dayB = fromGregorian 2021 2 2
+
+-- | @ON CONFLICT DO NOTHING@ child whose key belongs to another parent is not
+-- found under this parent: @Nothing@, not a row of nulls.
+prop_upsert_json_do_nothing_other_parent :: Pool Connection -> Property
+prop_upsert_json_do_nothing_other_parent pool = withTests 3 $ property do
+  code <- forAll (Gen.text (Range.linear 3 16) Gen.alphaNum)
+  evalIO $ Pool.withResource pool \conn -> do
+    void $ delByCond "root" conn mempty
+    (_, ca, rb, cb) <- insertRootsWithArrays conn code
+    let
+      patch :: RootArrKeyPatch
+      patch = "id" =: rb :. "arrays_root_fk" =: ["id" =: cb, "id" =: ca]
+    (ret, _) <- upsertJSON (AnnSch "root") @RootArrKeyPatch @RootArrUpsOut conn [patch]
+    case ret of
+      [Just (PgTag rb' :. PgTag [Just (PgTag cb' :. PgTag (Just ds)), Nothing])]
+        | rb' == rb && cb' == cb && unPgArr' ds == [dayB] -> pure ()
+      _ -> fail $ "expected [Just (_ :. [Just _, Nothing])], got " <> show ret
+    (ret', _) <- upsertJSON (AnnSch "root") @RootArrKeyPatch @RootArrUpsOutKey conn [patch]
+    case ret' of
+      [Just (_ :. PgTag [Just (PgTag cb'), Nothing])] | cb' == cb -> pure ()
+      _ -> fail $ "expected [Just (_ :. [Just _, Nothing])], got " <> show ret'
+    -- the child of root A is not moved to root B
+    (rows :: ["id" := Int32 :. "root_id" := Maybe Int32], _) <-
+      selSch "arrays" conn $ qRoot $ qWhere $ "id" =? ca
+    case rows of
+      [_ :. PgTag rootId] | rootId /= Just rb -> pure ()
+      _ -> fail $ "unexpected arrays row: " <> show rows
+
+-- | @ON CONFLICT DO NOTHING@: a new child is inserted, an existing one under
+-- this parent is returned.
+prop_upsert_json_do_nothing_insert_or_found :: Pool Connection -> Property
+prop_upsert_json_do_nothing_insert_or_found pool = withTests 3 $ property do
+  code <- forAll (Gen.text (Range.linear 3 16) Gen.alphaNum)
+  evalIO $ Pool.withResource pool \conn -> do
+    void $ delByCond "root" conn mempty
+    (_, ca, rb, cb) <- insertRootsWithArrays conn code
+    let
+      newId = max ca cb + 1000
+      patch :: RootArrKeyPatch
+      patch = "id" =: rb :. "arrays_root_fk" =: ["id" =: newId, "id" =: cb]
+    (ret, _) <- upsertJSON (AnnSch "root") @RootArrKeyPatch @RootArrUpsOut conn [patch]
+    case ret of
+      [Just (_ :. PgTag
+        [ Just (PgTag n :. PgTag Nothing)
+        , Just (PgTag cb' :. PgTag (Just ds)) ])]
+        | n == newId && cb' == cb && unPgArr' ds == [dayB] -> pure ()
+      _ -> fail $ "unexpected upsertJSON result: " <> show ret

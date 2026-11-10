@@ -35,6 +35,12 @@
 - `NeedsFkKeyOnlyMaybe` matched the opposite case (a child with plain columns
   outside the conflict key, i.e. `ON CONFLICT … DO UPDATE`, which always
   returns the row); now it matches `ON CONFLICT DO NOTHING` as documented.
+- `upsertJSON`: a child upserted with `ON CONFLICT DO NOTHING` whose key
+  belongs to a row of another parent (parent FK outside the key) was returned
+  as an object of `null` columns (a JSON decoding error) or, when the returning
+  columns were all in the input, as if it were found under this parent; its own
+  children were still processed. Now such a child is returned as `null`
+  (`Nothing`) and its children are skipped, as for a row not found by `UPDATE`.
 
 ## 0.8.1.0
 - upsertJSON: require `Maybe` on child returning when upsert uses
