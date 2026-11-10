@@ -549,8 +549,14 @@ instance
 instance (ToStar fd, CanConvert (AnnSch ann) (AnnTab ann) fldDbName fd t) => CFldInfo ann fldDbName ('RFPlain fd) t where
   getFldInfo = RFPlain (demote @fd)
 
-instance (ToStar fd, ToStar af, ToStar b) =>
-  CFldInfo ann _fldDbName ('RFAggr fd af b) t where
+-- 'CheckAggr' is an equality: its (deferred) evidence is strict, unlike
+-- dictionaries, so a wrong aggregate type is reported even with
+-- @-fdefer-type-errors@ as soon as the field info is built.
+instance
+  ( ToStar fd, ToStar af, ToStar b
+  , CheckAggr (AnnSch ann) (AnnTab ann) fldDbName fd t ~ 'True
+  , CanConvert (AnnSch ann) (AnnTab ann) fldDbName fd t ) =>
+  CFldInfo ann fldDbName ('RFAggr fd af b) t where
   getFldInfo = RFAggr (demote @fd) (demote @af) (demote @b)
 
 instance (ToStar flds, ToStar expr) =>

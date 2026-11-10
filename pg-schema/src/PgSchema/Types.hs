@@ -12,7 +12,7 @@ module PgSchema.Types(
   -- * Other types
   , PgChar(..), PgOid(..)
   -- * Conversion checks
-  , CanConvert, CanConvert1
+  , CanConvert, CanConvert1, CheckAggr
   -- * UnsafeCol
   , UnsafeCol(..) )
   where
@@ -45,12 +45,11 @@ import Database.PostgreSQL.Simple.ToField
 import Database.PostgreSQL.Simple.Types
 import GHC.TypeLits as TL
 import GHC.TypeError as TE
-import Data.Type.Equality (type (==))
 import GHC.Int
 import Prelude as P
 import Type.Reflection
 import PgSchema.Schema.Catalog (PGC)
-import Data.Type.Bool (Not, type (&&), type (||))
+import Data.Type.Bool (If, Not)
 import PgSchema.Schema
 import PgSchema.Utils.Internal hiding (fromText)
 import PgSchema.Utils.TF
@@ -119,6 +118,17 @@ instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
 -- 'Aggr' requires a 'Maybe' argument for all functions except @count@.
 --
 -- Only a small set of aggregations are supported currently: @count@, @min@, @max@, @sum@, @avg@.
+--
+-- The Haskell type is checked at compile time against the SQL result type of
+-- the aggregate ('CheckAggr'):
+--
+-- * @count@ - @int8@: 'Int64';
+-- * @min@ / @max@ - type of the field (numeric, text, bool or date fields);
+-- * @sum(int2 | int4)@ - @int8@: 'Int64', 'Scientific' or 'Rational';
+-- * @sum(int8 | numeric)@, @avg(int2 | int4 | int8 | numeric)@ - @numeric@:
+--   'Scientific' or 'Rational';
+-- * @sum(float4)@, @sum(float8)@, @avg(float4 | float8)@ - @float4@ / @float8@:
+--   'Double', 'Scientific' or 'Rational'.
 newtype Aggr (f :: AggrFun) t = Aggr { unAggr :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
@@ -227,7 +237,11 @@ type ErrDesc tab fld tn t =
   :$$: TL.Text "Haskell Field type: " :<>: TL.ShowType t
   :$$: TL.Text "")
 
+type ErrWithHead :: forall k. Symbol -> NameNSK -> Symbol -> NameNSK -> Type -> k
 type ErrWithHead s tab fld tn t = TL.TypeError (TL.Text s :$$: ErrDesc tab fld tn t)
+
+type ErrWithHead' :: forall k. ErrorMessage -> NameNSK -> Symbol -> NameNSK -> Type -> k
+type ErrWithHead' msg tab fld tn t = TL.TypeError (msg :$$: ErrDesc tab fld tn t)
 
 type family GuardConvert (ok :: Bool) sch tab fld tn td t t' err :: Constraint where
   GuardConvert 'True  sch tab fld tn td t t' err = CanConvert1 sch tab fld tn td t'
@@ -244,79 +258,146 @@ type family CanConvertMaybe sch (tab::NameNSK) (fld::Symbol) (tn::NameNSK)
   CanConvertMaybe sch tab fld tn nullable td (Maybe t) = GuardConvert
     nullable sch tab fld tn td (Maybe t) t "You can't use Maybe for mandatory fields"
   -- aggregates --
-  -- ACount<=>int64; AMin/AMax<=>N,S,B,D; ASum<=>N+int*->Int64|Double; AAvg<=>N+float8
-  CanConvertMaybe sch tab fld tn nullable td (Aggr ACount Int64) = ()
-  CanConvertMaybe sch tab fld tn nullable td (Aggr ACount t) =
-    ErrWithHead "You have to use Int64 for Aggr ACount fields" tab fld tn t
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' ACount Int64) = ()
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' ACount t) =
-    ErrWithHead "You have to use Int64 for Aggr' ACount fields" tab fld tn t
-  CanConvertMaybe sch tab fld tn nullable td (Aggr AMin t) = GuardConvert
-    (IsMaybe t && Elem' (TypCategory td) '["N","S","B","D"])
-    sch tab fld tn td (Aggr AMin t) (UnMaybe t)
-    "'Aggr AMin' is possible only for 'Maybe' values and numeric, text, bool or date fields"
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' AMin t) = GuardConvert
-    (Elem' (TypCategory td) '["N","S","B","D"]) sch tab fld tn td (Aggr' AMin t) t
-      "'Aggr' AMin' is possible only for numeric, text, bool or date fields"
-  CanConvertMaybe sch tab fld tn nullable td (Aggr AMax t) = GuardConvert
-    (IsMaybe t && Elem' (TypCategory td) '["N","S","B","D"])
-    sch tab fld tn td (Aggr AMax t) (UnMaybe t)
-    "'Aggr AMax' is possible only for 'Maybe' values and numeric, text, bool or date fields"
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' AMax t) = GuardConvert
-    (Elem' (TypCategory td) '["N","S","B","D"])
-    sch tab fld tn td (Aggr' AMax t) t
-    "'Aggr' AMax' is possible only for numeric, text, bool or date fields"
-  CanConvertMaybe sch tab fld tn nullable td (Aggr AAvg (Maybe Scientific)) =
-    Assert (TypCategory td == "N") (ErrWithHead
-      "'Aggr AAvg' is possible only for numeric fields"
-      tab fld tn (Aggr AAvg (Maybe Scientific)))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr AAvg t) = ErrWithHead
-    "You have to use `Maybe Scientific` for `Aggr AAvg` fields"
-    tab fld tn (Aggr AAvg t)
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' AAvg (Maybe Scientific)) =
-    Assert (TypCategory td == "N" && nullable) (ErrWithHead
-      "'Aggr' AAvg (Maybe Scientific)' is possible only for nullable numeric fields"
-      tab fld tn (Aggr' AAvg (Maybe Scientific)))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' AAvg Scientific) =
-    Assert (TypCategory td == "N" && Not nullable) (ErrWithHead
-      "'Aggr' AAvg Scientific' is possible only for mandatory numeric fields"
-      tab fld tn (Aggr' AAvg Scientific))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' AAvg t) = ErrWithHead
-    "You have to use `Scientific` (or `Maybe Scientific`) for `Aggr' AAvg` fields"
-    tab fld tn (Aggr' AAvg t)
-  CanConvertMaybe sch tab fld tn nullable td (Aggr ASum (Maybe Int64)) =
-    ( Assert (TypCategory td == "N" && (NnsName tn == "int2" || NnsName tn == "int4"))
-      (ErrWithHead "'Aggr ASum (Maybe Int64)' is possible only for 'int2/int4' fields"
-        tab fld tn (Aggr ASum (Maybe Int64))))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr ASum (Maybe Scientific)) =
-    ( Assert (TypCategory td == "N")
-      (ErrWithHead "'Aggr ASum (Maybe Scientific)' is possible only for numeric fields"
-        tab fld tn (Aggr ASum (Maybe Scientific))))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr ASum t) = ErrWithHead
-    "You have to use `Maybe Int64` (or `Maybe Scientific`) for `Aggr ASum` fields"
-    tab fld tn (Aggr ASum t)
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum (Maybe Int64)) =
-    ( Assert (nullable && TypCategory td == "N" && (NnsName tn == "int2" || NnsName tn == "int4"))
-      (ErrWithHead "'Aggr' ASum (Maybe Int64)' is possible only for nullable 'int2/int4' fields"
-        tab fld tn (Aggr' ASum (Maybe Int64))))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum (Maybe Scientific)) =
-    ( Assert (nullable && TypCategory td == "N")
-      (ErrWithHead "'Aggr' ASum (Maybe Scientific)' is possible only for nullable numeric fields"
-        tab fld tn (Aggr' ASum (Maybe Scientific))))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum Int64) =
-    ( Assert (Not nullable && TypCategory td == "N" && (NnsName tn == "int2" || NnsName tn == "int4"))
-      (ErrWithHead "'Aggr' ASum Int64' is possible only for mandatory 'int2/int4' fields"
-        tab fld tn (Aggr' ASum Int64)))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum Scientific) =
-    ( Assert (Not nullable && TypCategory td == "N")
-      (ErrWithHead "'Aggr' ASum (Scientific)' is possible only for mandatory numeric fields"
-        tab fld tn (Aggr' ASum Scientific)))
-  CanConvertMaybe sch tab fld tn nullable td (Aggr' ASum t) = ErrWithHead
-    "You have to use `[Maybe] Int64` (or `[Maybe] Scientific`) for `Aggr' ASum` fields"
-    tab fld tn (Aggr' ASum t)
+  -- Shapes and SQL result types of aggregates are checked by 'CheckAggr'.
+  -- Here only values of min/max are converted (they have the type of the field).
+  CanConvertMaybe sch tab fld tn nullable td (Aggr fn t) =
+    CanConvertAggr sch tab fld fn tn td (UnMaybe t)
+  CanConvertMaybe sch tab fld tn nullable td (Aggr' fn t) =
+    CanConvertAggr sch tab fld fn tn td (UnMaybe t)
   -- end aggregates --
   CanConvertMaybe sch tab fld tn nullable td t = GuardConvert (Not nullable)
     sch tab fld tn td t t "You have to use Maybe for nullable fields"
+
+type family CanConvertAggr sch (tab::NameNSK) (fld::Symbol) (fn :: AggrFun)
+  (tn::NameNSK) (td::TypDefK) (t :: Type) :: Constraint where
+  CanConvertAggr sch tab fld 'AMin tn td t =
+    If (IsMinMaxCategory td) (CanConvert1 sch tab fld tn td t) (() :: Constraint)
+  CanConvertAggr sch tab fld 'AMax tn td t =
+    If (IsMinMaxCategory td) (CanConvert1 sch tab fld tn td t) (() :: Constraint)
+  CanConvertAggr sch tab fld fn tn td t = ()
+
+-- | Check the Haskell type @at@ of an aggregate field (e.g. @Aggr ASum (Maybe Int64)@)
+-- over the DB field @fld@ against the SQL result type of the aggregate function
+-- (see 'AggrResType'). Reduces to ''True' or to a 'TypeError'.
+--
+-- * 'Aggr' (except @count@) requires 'Maybe': the result is NULL on an empty set.
+-- * 'Aggr'' (with GROUP BY) requires 'Maybe' exactly for nullable fields.
+-- * @count@ is 'Int64'.
+-- * @sum@ / @avg@ results: @int8@ - 'Int64', 'Scientific' or 'Rational';
+--   @numeric@ - 'Scientific' or 'Rational'; @float4@ / @float8@ - 'Double',
+--   'Scientific' or 'Rational'.
+-- * @min@ / @max@ have the type of the field and are converted like the field
+--   ('CanConvert1').
+type family CheckAggr sch (tab::NameNSK) (fld::Symbol) (fd :: FldDefK) (at :: Type)
+  :: Bool where
+  CheckAggr sch tab fld fd at =
+    CheckAggr' tab fld (FdType fd) (FdNullable fd) (TTypDef sch (FdType fd)) at
+
+type family CheckAggr' (tab::NameNSK) (fld::Symbol) (tn::NameNSK) (nullable :: Bool)
+  (td :: TypDefK) (at :: Type) :: Bool where
+  CheckAggr' tab fld tn nullable td (Aggr 'ACount Int64) = 'True
+  CheckAggr' tab fld tn nullable td (Aggr 'ACount t) =
+    ErrWithHead "You have to use Int64 for Aggr ACount fields" tab fld tn (Aggr 'ACount t)
+  CheckAggr' tab fld tn nullable td (Aggr' 'ACount Int64) = 'True
+  CheckAggr' tab fld tn nullable td (Aggr' 'ACount t) =
+    ErrWithHead "You have to use Int64 for Aggr' ACount fields" tab fld tn (Aggr' 'ACount t)
+  CheckAggr' tab fld tn nullable td (Aggr fn (Maybe t)) =
+    CheckAggrRes tab fld fn tn (AggrResType fn tn td) (Aggr fn (Maybe t)) t
+  CheckAggr' tab fld tn nullable td (Aggr fn t) = ErrWithHead
+    "'Aggr' (except 'Aggr ACount') requires 'Maybe': the aggregate is NULL on an empty set. Use 'Aggr'' with GROUP BY to avoid 'Maybe' for mandatory fields"
+    tab fld tn (Aggr fn t)
+  CheckAggr' tab fld tn nullable td (Aggr' fn (Maybe t)) = If nullable
+    (CheckAggrRes tab fld fn tn (AggrResType fn tn td) (Aggr' fn (Maybe t)) t)
+    (ErrWithHead "You can't use Maybe in 'Aggr'' for mandatory fields"
+      tab fld tn (Aggr' fn (Maybe t)))
+  CheckAggr' tab fld tn nullable td (Aggr' fn t) = If nullable
+    (ErrWithHead "You have to use Maybe in 'Aggr'' for nullable fields"
+      tab fld tn (Aggr' fn t))
+    (CheckAggrRes tab fld fn tn (AggrResType fn tn td) (Aggr' fn t) t)
+  CheckAggr' tab fld tn nullable td at = ErrWithHead
+    "Aggregate field must have type 'Aggr fn t' or 'Aggr' fn t'" tab fld tn at
+
+-- | SQL result type of aggregate function @fn@ over a field of type @tn@
+-- (with type definition @td@).
+-- 'Nothing' if the aggregate is not supported for the field type.
+--
+-- * @count@ -> @int8@
+-- * @min@ / @max@ -> type of the field (numeric, text, bool or date fields)
+-- * @sum(int2 | int4)@ -> @int8@, @sum(int8 | numeric)@ -> @numeric@,
+--   @sum(float4)@ -> @float4@, @sum(float8)@ -> @float8@
+-- * @avg(int2 | int4 | int8 | numeric)@ -> @numeric@, @avg(float4 | float8)@ -> @float8@
+type family AggrResType (fn :: AggrFun) (tn :: NameNSK) (td :: TypDefK)
+  :: Maybe NameNSK where
+  AggrResType 'ACount tn td = 'Just (PGC "int8")
+  AggrResType 'AMin tn td = If (IsMinMaxCategory td) ('Just tn) 'Nothing
+  AggrResType 'AMax tn td = If (IsMinMaxCategory td) ('Just tn) 'Nothing
+  AggrResType 'ASum (PGC "int2") td = 'Just (PGC "int8")
+  AggrResType 'ASum (PGC "int4") td = 'Just (PGC "int8")
+  AggrResType 'ASum (PGC "int8") td = 'Just (PGC "numeric")
+  AggrResType 'ASum (PGC "float4") td = 'Just (PGC "float4")
+  AggrResType 'ASum (PGC "float8") td = 'Just (PGC "float8")
+  AggrResType 'ASum (PGC "numeric") td = 'Just (PGC "numeric")
+  AggrResType 'AAvg (PGC "int2") td = 'Just (PGC "numeric")
+  AggrResType 'AAvg (PGC "int4") td = 'Just (PGC "numeric")
+  AggrResType 'AAvg (PGC "int8") td = 'Just (PGC "numeric")
+  AggrResType 'AAvg (PGC "numeric") td = 'Just (PGC "numeric")
+  AggrResType 'AAvg (PGC "float4") td = 'Just (PGC "float8")
+  AggrResType 'AAvg (PGC "float8") td = 'Just (PGC "float8")
+  AggrResType fn tn td = 'Nothing
+
+-- | Type categories supported by @min@ / @max@
+-- (numeric, string, boolean and date/time).
+type family IsMinMaxCategory (td :: TypDefK) :: Bool where
+  IsMinMaxCategory td = Elem' (TypCategory td) '["N","S","B","D"]
+
+type family CheckAggrRes (tab::NameNSK) (fld::Symbol) (fn :: AggrFun) (tn::NameNSK)
+  (res :: Maybe NameNSK) (at :: Type) (t :: Type) :: Bool where
+  CheckAggrRes tab fld fn tn 'Nothing at t = ErrWithHead'
+    ( TL.Text "Aggregate '" :<>: TL.Text (AggrFunName fn)
+      :<>: TL.Text "' is not supported for fields of type '"
+      :<>: TL.Text (NnsName tn) :<>: TL.Text "'" )
+    tab fld tn at
+  -- min/max have the type of the field: values are checked by 'CanConvert1'
+  CheckAggrRes tab fld 'AMin tn ('Just tn) at t = 'True
+  CheckAggrRes tab fld 'AMax tn ('Just tn) at t = 'True
+  CheckAggrRes tab fld fn tn ('Just rt) at t = If (AggrResCompatible rt t) 'True
+    ( ErrWithHead'
+      ( TL.Text "Aggregate '" :<>: TL.Text (AggrFunName fn)
+        :<>: TL.Text "' over a field of type '" :<>: TL.Text (NnsName tn)
+        :<>: TL.Text "' returns SQL type '" :<>: TL.Text (NnsName rt) :<>: TL.Text "',"
+      :$$: TL.Text "but Haskell type " :<>: TL.ShowType t
+        :<>: TL.Text " is not compatible with it."
+      :$$: TL.Text "Use " :<>: TL.Text (AggrResHint rt) :<>: TL.Text " instead." )
+      tab fld tn at )
+
+type family AggrFunName (fn :: AggrFun) :: Symbol where
+  AggrFunName 'ACount = "count"
+  AggrFunName 'AMin = "min"
+  AggrFunName 'AMax = "max"
+  AggrFunName 'ASum = "sum"
+  AggrFunName 'AAvg = "avg"
+
+-- | Haskell types for SQL result types of @count@, @sum@ and @avg@.
+type family AggrResCompatible (rt :: NameNSK) (t :: Type) :: Bool where
+  AggrResCompatible (PGC "int8") Int64 = 'True
+  AggrResCompatible (PGC "int8") Scientific = 'True
+  AggrResCompatible (PGC "int8") Rational = 'True
+  AggrResCompatible (PGC "numeric") Scientific = 'True
+  AggrResCompatible (PGC "numeric") Rational = 'True
+  AggrResCompatible (PGC "float4") Double = 'True
+  AggrResCompatible (PGC "float4") Scientific = 'True
+  AggrResCompatible (PGC "float4") Rational = 'True
+  AggrResCompatible (PGC "float8") Double = 'True
+  AggrResCompatible (PGC "float8") Scientific = 'True
+  AggrResCompatible (PGC "float8") Rational = 'True
+  AggrResCompatible rt t = 'False
+
+type family AggrResHint (rt :: NameNSK) :: Symbol where
+  AggrResHint (PGC "int8") = "Int64, Scientific or Rational"
+  AggrResHint (PGC "numeric") = "Scientific or Rational"
+  AggrResHint (PGC "float4") = "Double, Scientific or Rational"
+  AggrResHint (PGC "float8") = "Double, Scientific or Rational"
+  AggrResHint rt = "?"
 
 -- | Open mapping from a PostgreSQL type (non-nullable) to a Haskell type.
 -- Add your own equations to this family to support extra pairings.

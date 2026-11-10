@@ -45,10 +45,12 @@ type family TTypDefSch (name :: NameNSK) :: TypDef' TL.Symbol where
   TTypDefSch ( "pg_catalog" ->> "date" ) = 'TypDef "D" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "float4" ) = 'TypDef "N" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "float8" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "int2" ) = 'TypDef "N" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "int4" ) = 'TypDef "N" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "int8" ) = 'TypDef "N" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "json" ) = 'TypDef "U" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "jsonb" ) = 'TypDef "U" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "numeric" ) = 'TypDef "N" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "text" ) = 'TypDef "S" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "time" ) = 'TypDef "D" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "timestamp" ) = 'TypDef "D" 'Nothing '[  ]
@@ -61,12 +63,13 @@ type family TTypDefSch (name :: NameNSK) :: TypDef' TL.Symbol where
   TTypDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "type " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Types: pg_catalog._bool, pg_catalog._bytea, pg_catalog._date, pg_catalog._float8, pg_catalog._int4, pg_catalog._jsonb, pg_catalog._text, pg_catalog._timestamptz, pg_catalog._uuid, pg_catalog.bool, pg_catalog.bytea, pg_catalog.date, pg_catalog.float4, pg_catalog.float8, pg_catalog.int4, pg_catalog.int8, pg_catalog.json, pg_catalog.jsonb, pg_catalog.text, pg_catalog.time, pg_catalog.timestamp, pg_catalog.timestamptz, pg_catalog.uuid, public._citext, public.citext, test_pgs._color, test_pgs.color."
+    TE.:$$: TE.Text "  Types: pg_catalog._bool, pg_catalog._bytea, pg_catalog._date, pg_catalog._float8, pg_catalog._int4, pg_catalog._jsonb, pg_catalog._text, pg_catalog._timestamptz, pg_catalog._uuid, pg_catalog.bool, pg_catalog.bytea, pg_catalog.date, pg_catalog.float4, pg_catalog.float8, pg_catalog.int2, pg_catalog.int4, pg_catalog.int8, pg_catalog.json, pg_catalog.jsonb, pg_catalog.numeric, pg_catalog.text, pg_catalog.time, pg_catalog.timestamp, pg_catalog.timestamptz, pg_catalog.uuid, public._citext, public.citext, test_pgs._color, test_pgs.color."
     TE.:$$: TE.Text "")
 instance (ToStar (TTypDef Sch name), ToStar name) => CTypDef Sch name where
   type TTypDef Sch name = TTypDefSch name
 
 type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
+  TTabDefSch ( "test_pgs" ->> "aggr_nums" ) = 'TabDef '[ "id","grp","i2","i4","i8","n","f4","f8" ] '[ "id" ] '[  ]
   TTabDefSch ( "test_pgs" ->> "arrays" ) = 'TabDef '[ "id","root_id","dates_nullable","jsons" ] '[ "id" ] '[  ]
   TTabDefSch ( "test_pgs" ->> "base_arr_converts" ) = 'TabDef '[ "cboolean","cint4","cfloat8","ctimestamptz","ctext" ] '[  ] '[  ]
   TTabDefSch ( "test_pgs" ->> "base_converts" ) = 'TabDef '[ "cboolean","cint4","cfloat8","cdate","ctime","ctimestamp","ctimestamptz","ctext" ] '[  ] '[  ]
@@ -81,7 +84,7 @@ type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
   TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
+    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
     TE.:$$: TE.Text "")
 instance (ToStar (TTabDef Sch name), ToStar name) => CTabDef Sch name where
   type TTabDef Sch name = TTabDefSch name
@@ -105,6 +108,8 @@ instance ( ToStar (TRelDef Sch ref)
   type TRelDef Sch ref = TRelDefSch ref
 
 type family TFromSch (tab :: NameNSK) :: [NameNSK] where
+  TFromSch ( "test_pgs" ->> "aggr_nums" ) = '[  ]
+
   TFromSch ( "test_pgs" ->> "arrays" ) = '[ ( "test_pgs" ->> "arrays_root_fk" ) ]
 
   TFromSch ( "test_pgs" ->> "base_arr_converts" ) = '[  ]
@@ -131,10 +136,12 @@ type family TFromSch (tab :: NameNSK) :: [NameNSK] where
   TFromSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TFrom for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
+    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
     TE.:$$: TE.Text "")
 
 type family TToSch (tab :: NameNSK) :: [NameNSK] where
+  TToSch ( "test_pgs" ->> "aggr_nums" ) = '[  ]
+
   TToSch ( "test_pgs" ->> "arrays" ) = '[  ]
 
   TToSch ( "test_pgs" ->> "base_arr_converts" ) = '[  ]
@@ -162,13 +169,31 @@ type family TToSch (tab :: NameNSK) :: [NameNSK] where
   TToSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TTo for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
+    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
     TE.:$$: TE.Text "")
 instance CTabRels Sch tab where
   type TFrom Sch tab = TFromSch tab
   type TTo Sch tab = TToSch tab
 
 type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) "f4" = 'RFPlain ('FldDef ( "pg_catalog" ->> "float4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) "f8" = 'RFPlain ('FldDef ( "pg_catalog" ->> "float8" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) "grp" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) "i2" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int2" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) "i4" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) "i8" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) "n" = 'RFPlain ('FldDef ( "pg_catalog" ->> "numeric" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "aggr_nums" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+    TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "aggr_nums" )
+    TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Fields: id, grp, i2, i4, i8, n, f4, f8."
+    TE.:$$: TE.Text "  Foreign key constraints: ."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "dates_nullable" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_date" ) 'True 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
   TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "jsons" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_jsonb" ) 'True 'False)
@@ -372,7 +397,8 @@ instance (ToStar (TDBFieldInfo Sch t f), ToStar t, ToStar f) => CDBFieldInfo Sch
   type TDBFieldInfo Sch t f = TDBFieldInfoSch t f
 
 instance CSchema Sch where
-  type TTabs Sch = '[ ( "test_pgs" ->> "arrays" ),( "test_pgs" ->> "base_arr_converts" )
+  type TTabs Sch = '[ ( "test_pgs" ->> "aggr_nums" )
+    ,( "test_pgs" ->> "arrays" ),( "test_pgs" ->> "base_arr_converts" )
     ,( "test_pgs" ->> "base_converts" )
     ,( "test_pgs" ->> "dim" ),( "test_pgs" ->> "ext_arr_converts" )
     ,( "test_pgs" ->> "ext_converts" ),( "test_pgs" ->> "leaf" )
@@ -386,10 +412,12 @@ instance CSchema Sch where
     ,( "pg_catalog" ->> "_timestamptz" ),( "pg_catalog" ->> "_uuid" )
     ,( "pg_catalog" ->> "bool" ),( "pg_catalog" ->> "bytea" )
     ,( "pg_catalog" ->> "date" ),( "pg_catalog" ->> "float4" )
-    ,( "pg_catalog" ->> "float8" ),( "pg_catalog" ->> "int4" )
-    ,( "pg_catalog" ->> "int8" ),( "pg_catalog" ->> "json" )
-    ,( "pg_catalog" ->> "jsonb" ),( "pg_catalog" ->> "text" )
+    ,( "pg_catalog" ->> "float8" ),( "pg_catalog" ->> "int2" )
+    ,( "pg_catalog" ->> "int4" ),( "pg_catalog" ->> "int8" )
+    ,( "pg_catalog" ->> "json" ),( "pg_catalog" ->> "jsonb" )
+    ,( "pg_catalog" ->> "numeric" ),( "pg_catalog" ->> "text" )
     ,( "pg_catalog" ->> "time" ),( "pg_catalog" ->> "timestamp" )
     ,( "pg_catalog" ->> "timestamptz" ),( "pg_catalog" ->> "uuid" )
     ,( "public" ->> "_citext" ),( "public" ->> "citext" )
     ,( "test_pgs" ->> "_color" ),( "test_pgs" ->> "color" ) ]
+

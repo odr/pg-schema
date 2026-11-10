@@ -21,6 +21,19 @@
   `ToRow`/`FromRow`: parts joined with `(:.)` and Generic records give their
   fields in order, `fld := ()` gives no field; nested rows in field values
   (children, parents, optional parents) are plain too.
+- Aggregate fields (`Aggr` / `Aggr'`) are now type-checked against the SQL
+  result type of the aggregate function. Previously the check was not applied
+  at all, so e.g. `"priority" := Aggr AAvg (Maybe Double)` over an `integer`
+  field compiled but failed at runtime (`avg(integer)` is `numeric`).
+  Result types: `count` - `int8`; `min`/`max` - the field type;
+  `sum(int2/int4)` - `int8`; `sum(int8/numeric)` and `avg(int2/int4/int8/numeric)`
+  - `numeric`; `sum(float4)` - `float4`; `sum(float8)` and `avg(float4/float8)` -
+  `float8`. Use `Int64` for `int8`, `Scientific` or `Rational` for `numeric`,
+  `Double` (or `Scientific`/`Rational`) for `float4`/`float8`. `Double` is now
+  allowed for `sum`/`avg` over float fields, `Rational` for `sum`/`avg`.
+  `Aggr` requires `Maybe` (except `count`); `Aggr'` requires `Maybe` exactly for
+  nullable fields. Mismatches give a type error naming the aggregate, the field
+  type and the SQL result type. New type family `CheckAggr`.
 - `qPath` / `qPathFromHere` / `qPathToHere` with an unknown relation name now
   report `relation "..." is not defined` with the valid relations of the table
   (previously `qPath` reported a misleading self-reference error).
