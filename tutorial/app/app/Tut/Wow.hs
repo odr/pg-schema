@@ -7,6 +7,7 @@
 -- | Глава «Быстрый старт»: вставка и чтение дерева «проект → задачи».
 module Tut.Wow (wow) where
 
+-- --8<-- [start:imports]
 import Data.Int (Int32, Int64)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -14,6 +15,7 @@ import Database.PostgreSQL.Simple (Connection)
 import GHC.Generics (Generic)
 import PgSchema.DML
 import Sch
+-- --8<-- [end:imports]
 import Tut.Output
 
 -- --8<-- [start:ann]
