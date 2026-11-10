@@ -478,9 +478,6 @@ begin
 end; 
 $$ language plpgsql;
 --8<-- [end:tree-insert-sql]
---8<-- [start:tree-insert-nr]
-ok
---8<-- [end:tree-insert-nr]
 --8<-- [start:tree-insert-nr-sql]
 create or replace procedure pg_temp.__ins(data_0 jsonb) as $$
 declare

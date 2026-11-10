@@ -72,14 +72,11 @@ treeDml conn = do
     pure [sqlIns]
   sqlSection "tree-insert" sqls1
 
-  sqls2 <- section "tree-insert-nr" $ do
-    -- --8<-- [start:tree-insert-nr]
-    sqlIns <- insertJSON_ (MyAnn "projects") conn $ rowsOf @ProjectIn
-      [ 1 :. "Docs" :. Project_status_draft :. pgArr' [] :. [] ]
-    -- --8<-- [end:tree-insert-nr]
-    putStrLn "ok"
-    pure [sqlIns]
-  sqlSection "tree-insert-nr" sqls2
+  -- --8<-- [start:tree-insert-nr]
+  sqlInsNr <- insertJSON_ (MyAnn "projects") conn $ rowsOf @ProjectIn
+    [ 1 :. "Docs" :. Project_status_draft :. pgArr' [] :. [] ]
+  -- --8<-- [end:tree-insert-nr]
+  sqlSection "tree-insert-nr" [sqlInsNr]
 
   sqls3 <- section "tree-upsert" $ do
     -- --8<-- [start:tree-upsert]
