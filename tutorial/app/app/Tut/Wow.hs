@@ -17,7 +17,7 @@ import Sch
 import Tut.Output
 
 -- --8<-- [start:ann]
-type WowAnn tab = 'Ann RenamerId Sch 3 ("tut" ->> tab)
+type TutAnn tab = 'Ann RenamerId Sch 3 ("tut" ->> tab)
 -- --8<-- [end:ann]
 
 -- --8<-- [start:types]
@@ -52,7 +52,7 @@ newtype Owner = Owner { name :: Text } deriving (Show, Generic)
 -- --8<-- [end:owner-type]
 
 -- --8<-- [start:query]
-activeProjects :: QueryParamAnn (WowAnn "projects")
+activeProjects :: QueryParamAnn (TutAnn "projects")
 activeProjects = qRoot do
   qWhere $ "status" =? Project_status_active
   qPath "tasks_project_id_fkey" do
@@ -63,10 +63,10 @@ activeProjects = qRoot do
 wow :: Connection -> IO ()
 wow conn = do
   -- --8<-- [start:wow-owner]
-  _ <- insertSch_ (WowAnn "users") conn [Owner "Alice"]
+  _ <- insertSch_ (TutAnn "users") conn [Owner "Alice"]
   -- --8<-- [end:wow-owner]
 
-  section "wow-insert" $ do
+  sqlIns <- section "wow-insert" $ do
     -- --8<-- [start:wow-insert]
     let
       projects =
@@ -76,14 +76,16 @@ wow conn = do
           , Task 3 "Nice to have" 100 ]
         , Project 1 "Mobile app" Project_status_draft
           [ Task 1 "Research" 20 ] ]
-    (keys :: [ProjectKey], sqlIns) <- insertJSON (WowAnn "projects") conn projects
+    (keys :: [ProjectKey], sqlIns) <- insertJSON (TutAnn "projects") conn projects
     mapM_ print keys
-    putStrLn $ T.unpack sqlIns
     -- --8<-- [end:wow-insert]
+    pure sqlIns
+
+  section "wow-insert-sql" $ putStrLn (T.unpack sqlIns)
 
   section "wow-select" $ do
     -- --8<-- [start:wow-select]
-    (rows :: [Project], (sql, params)) <- selectSch (WowAnn "projects") conn activeProjects
+    (rows :: [Project], (sql, params)) <- selectSch (TutAnn "projects") conn activeProjects
     mapM_ print rows
     putStrLn $ T.unpack sql
     print params
@@ -91,7 +93,7 @@ wow conn = do
 
   section "wow-select-text" $ do
     -- --8<-- [start:wow-select-text]
-    let (sql, params) = selectText (WowAnn "projects") @Project activeProjects
+    let (sql, params) = selectText (TutAnn "projects") @Project activeProjects
     putStrLn $ T.unpack sql
     print params
     -- --8<-- [end:wow-select-text]

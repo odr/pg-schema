@@ -14,6 +14,7 @@ theme:
 
 markdown_extensions:
   - admonition
+  - pymdownx.details
   - toc:
       permalink: true
   - pymdownx.snippets:
