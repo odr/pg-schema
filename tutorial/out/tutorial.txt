@@ -698,6 +698,7 @@ order by t0.id Asc nulls last;
 "seq" =: 1 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthor" =: Just ("name" =: "Alice")))
 "seq" =: 1 :. ("eventNo" =: 2 :. ("kind" =: "reviewed" :. "taskEventsAuthor" =: Just ("name" =: "Bob")))
 "seq" =: 2 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthor" =: Nothing))
+"seq" =: 2 :. ("eventNo" =: 2 :. ("kind" =: "edited" :. "taskEventsAuthor" =: Nothing))
 --8<-- [end:prac-addrel]
 --8<-- [start:prac-addrel-sql]
 select t0.seq "seq",
@@ -721,3 +722,19 @@ select t0.name "name",
 from tut.users t0
 order by t0.name Asc nulls last;
 --8<-- [end:prac-addrel-children-sql]
+--8<-- [start:prac-addrel-parent]
+"seq" =: 1 :. ("eventNo" =: 1 :. "kind" =: "created")
+--8<-- [end:prac-addrel-parent]
+--8<-- [start:prac-addrel-parent-sql]
+select t0.seq "seq",
+       t0.event_no "eventNo",
+       t0.kind "kind"
+from tut.task_events t0
+where exists (
+    select 1
+    from (
+        select *
+        from tut.users t0q1
+        where t0q1.id = t0.author_id) t0q1
+    where t0q1.name = ?);
+--8<-- [end:prac-addrel-parent-sql]

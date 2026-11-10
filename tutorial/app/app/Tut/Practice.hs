@@ -54,9 +54,11 @@ practice conn = do
     pure [sql]
   sqlSection "prac-audit-select" sqls2
 
+  -- --8<-- [start:prac-events-insert]
   _ <- insertJSON_ (MyAnn "tasks") conn $ rowsOf @("projectId" := Int64 :. TaskIn)
     [ 1 :. 1 :. "Design" :. [ 1 :. "created" :. Just 1, 2 :. "reviewed" :. Just 2 ]
-    , 1 :. 2 :. "Backend" :. [ 1 :. "created" :. Nothing ] ]
+    , 1 :. 2 :. "Backend" :. [ 1 :. "created" :. Nothing, 2 :. "edited" :. Just 99 ] ]
+  -- --8<-- [end:prac-events-insert]
 
   sqls3 <- section "prac-addrel" $ do
     -- --8<-- [start:prac-addrel]
@@ -80,3 +82,17 @@ practice conn = do
     -- --8<-- [end:prac-addrel-children]
     pure [sql]
   sqlSection "prac-addrel-children" sqls4
+
+  sqls5 <- section "prac-addrel-parent" $ do
+    -- --8<-- [start:prac-addrel-parent]
+    (rows, (sql, _)) <- selectSch (MyAnn "task_events")
+      @("seq" := Int32 :. "eventNo" := Int32 :. "kind" := Text) conn $ qRoot do
+        qWhere $ pparent (Add "taskEventsAuthor") ("name" =? ("Alice" :: Text))
+    mapM_ print rows
+    -- --8<-- [end:prac-addrel-parent]
+    pure [sql]
+  sqlSection "prac-addrel-parent" sqls5
+
+-- --8<-- [start:prac-add]
+type Add name = "_add" ->> name
+-- --8<-- [end:prac-add]
