@@ -166,7 +166,7 @@ module PgSchema.DML
   -- ** Renamers
   , RenamerId, CamelToSnake, Renamer, ApplyRenamer, ApplyRenamerNS
   -- ** PgTag types
-  , type (:=), (=:), PgTag(..),
+  , type (:=), (=:), PgTag(..), named, Named,
   -- | Re-export from postgresql-simple
   (:.)(..)
   -- ** Enum

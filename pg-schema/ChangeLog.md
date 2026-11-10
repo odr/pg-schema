@@ -1,6 +1,11 @@
 # Changelog for pg-schema
 
 ## Unreleased
+- `named` (and type family `Named`): give field names once for a whole list of
+  plain rows (`named ["ownerId", "title"] [1 :. "a", 2 :. "b"]`) instead of
+  `"field" =: value` in every row. Values (e.g. enum constructors, `Nothing`)
+  are used as is; the result has the same type as rows built with `(=:)`.
+  Wrong number of names is reported at compile time.
 - `qPath` / `qPathFromHere` / `qPathToHere` with an unknown relation name now
   report `relation "..." is not defined` with the valid relations of the table
   (previously `qPath` reported a misleading self-reference error).
