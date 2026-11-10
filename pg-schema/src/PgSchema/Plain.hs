@@ -288,6 +288,13 @@ rowsOf = fmap (rowOf @r)
 -- | Plain values of rows (e.g. to pattern match on selected rows without
 -- 'PgTag'). The inverse of 'rowsOf'.
 --
+-- As for 'rowsOf', the row type can be given with a type application.
+-- For @SELECT@ or @RETURNING@ it is then the only place where the type of the
+-- result is written:
+--
+-- > rows <- plains @(Mid1 :. "mid1RootFk" := Root) . fst <$> selectSch (MyAnn "mid1") conn qpEmpty
+-- > for_ rows \(pos :. flag :. (code :. _)) -> ...
+--
 -- >>> plains ["a" =: (1 :: Int) :. "b" =: True]
 -- [1 :. True]
 plains :: forall r. PlainRow r => [r] -> [Plain r]

@@ -76,21 +76,24 @@ data RootG = RootG { code :: Text, grp :: Int32 }
 
 -- | 'rowsOf': names and types are taken from the type; no parentheses are
 -- needed for groups (RootN), Generic records are flattened, children are plain.
--- 'plains': selected rows (child with parent) as plain values.
+-- 'plains': returned and selected rows (child with parent) as plain values;
+-- the type of the result is given only as @plains \@T@.
 prop_rows_of_tree :: Pool Connection -> Property
 prop_rows_of_tree pool = withTests 1 $ property do
   (outIns, outSel) <- evalIO $ withPool pool \conn -> do
     void $ delByCond "mid1" conn mempty
     void $ delByCond "root" conn mempty
-    (outIns', _) <- insJSON "root" conn $ rowsOf @(RootN :. "mid1RootFk" := [Mid1N])
-      [ "r1" :. 1 :. "first" :. [10 :. True :. 1, 11 :. False :. 2]
-      , "r2" :. 2 :. "second" :. [20 :. True :. 3] ]
-    (outSel', _) <- selSch "mid1" conn qpEmpty
-    pure (outIns' :: [RootG :. "mid1RootFk" := ["pos" := Int32]], outSel')
-  plains outIns ===
+    outIns' <- plains @(RootG :. "mid1RootFk" := ["pos" := Int32]) . fst
+      <$> insJSON "root" conn (rowsOf @(RootN :. "mid1RootFk" := [Mid1N])
+        [ "r1" :. 1 :. "first" :. [10 :. True :. 1, 11 :. False :. 2]
+        , "r2" :. 2 :. "second" :. [20 :. True :. 3] ])
+    outSel' <- plains @(Mid1N :. "mid1RootFk" := (RootG :. "name" := Text)) . fst
+      <$> selSch "mid1" conn qpEmpty
+    pure (outIns', outSel')
+  outIns ===
     [ "r1" :. 1 :. [10, 11]
     , "r2" :. 2 :. [20] ]
-  L.sort (plains (outSel :: [Mid1N :. "mid1RootFk" := (RootG :. "name" := Text)])) ===
+  L.sort outSel ===
     [ 10 :. True :. 1 :. ("r1" :. 1 :. "first")
     , 11 :. False :. 2 :. ("r1" :. 1 :. "first")
     , 20 :. True :. 3 :. ("r2" :. 2 :. "second") ]
