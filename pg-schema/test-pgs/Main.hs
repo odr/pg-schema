@@ -15,6 +15,7 @@ import Tests.UpsertUniqueKey
 import Tests.KeyedDML
 import Tests.Conditions
 import Tests.Aggregates
+import Tests.PathErrors
 
 prop_not_implemented :: Property
 prop_not_implemented = property $ fail "not implemented"
@@ -92,6 +93,15 @@ main = do
     , testGroup "Aggregates (test_dml)"
       [ testProperty "Aggr' on plain column is not in GROUP BY" $
           prop_selectText_aggr_plain_not_in_group_by pool
+      ]
+    , testGroup "Path compile-time errors (deferred type errors)"
+      [ testProperty "qPath: unknown relation" prop_qpath_unknown_rel
+      , testProperty "qPath: unknown relation after renamer" prop_qpath_unknown_rel_renamed
+      , testProperty "qPath: unknown relation in nested path" prop_qpath_unknown_rel_nested
+      , testProperty "qPathFromHere: unknown relation" prop_qpath_from_here_unknown_rel
+      , testProperty "qPathToHere: unknown relation" prop_qpath_to_here_unknown_rel
+      , testProperty "qPathFromHere: relation in wrong direction" prop_qpath_from_here_wrong_dir
+      , testProperty "qPathToHere: relation in wrong direction" prop_qpath_to_here_wrong_dir
       ]
     --   , testProperty "Cond: Child / Parent exists" prop_not_implemented
     --   , testProperty "Conditions by path (root vs nested path)" prop_not_implemented

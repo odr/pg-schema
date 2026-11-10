@@ -379,30 +379,58 @@ type family HasRelName (rels :: [NameNSK]) (name :: Symbol) :: Bool where
 type HasFromStep sch tab name = HasRelName (TFrom sch tab) name
 type HasToStep   sch tab name = HasRelName (TTo sch tab) name
 
+-- | Comma-separated names of relations (for error messages).
+type family RelNamesMsg (rels :: [NameNSK]) :: ErrorMessage where
+  RelNamesMsg '[] = TL.Text "<none>"
+  RelNamesMsg '[ 'NameNS _ n ] = TL.Text n
+  RelNamesMsg ('NameNS _ n ': rs) = TL.Text n :<>: TL.Text ", " :<>: RelNamesMsg rs
+
+-- | Note for error messages when the renamer changed the name given by user.
+type family RenamedMsg (orig :: Symbol) (name :: Symbol) :: ErrorMessage where
+  RenamedMsg name name = TL.Text ""
+  RenamedMsg orig name =
+    TL.Text " (" :<>: ShowType orig :<>: TL.Text " after applying the renamer)"
+
 -- | Resolve 'PathKind' for 'qPath' / 'qPathFromHere' / 'qPathToHere'.
+--
+-- @hasFrom@ / @hasTo@: whether @name@ is in 'TFrom' / 'TTo' of @tab@
+-- (both are 'True' for a self-reference relation).
+-- @orig@ is the name as given by user, @name@ is the name after applying the renamer.
 type family ResolvePathKind
-  (pathKind :: Maybe PathKind) (hasFrom :: Bool) (hasTo :: Bool) (tab :: NameNSK)
-  (name :: Symbol)
+  (pathKind :: Maybe PathKind) (hasFrom :: Bool) (hasTo :: Bool) sch (tab :: NameNSK)
+  (orig :: Symbol) (name :: Symbol)
   :: PathKind where
-  ResolvePathKind ('Just 'FromHere) 'True _ _ _ = 'FromHere
-  ResolvePathKind ('Just 'ToHere) _ 'True _ _ = 'ToHere
-  ResolvePathKind 'Nothing 'True 'False _ _ = 'FromHere
-  ResolvePathKind 'Nothing 'False 'True _ _ = 'ToHere
-  ResolvePathKind ('Just 'FromHere) _ _ tab name = TypeError
+  ResolvePathKind _ 'False 'False sch tab orig name = TypeError
+    ( TL.Text "In schema " :<>: ShowType sch
+    :$$: TL.Text "for table " :<>: ShowType tab
+    :$$: TL.Text "relation " :<>: ShowType name :<>: RenamedMsg orig name
+      :<>: TL.Text " is not defined."
+    :$$: TL.Text ""
+    :$$: TL.Text "Valid values are:"
+    :$$: TL.Text "  Foreign key constraints to parent tables (qPathFromHere or qPath): "
+      :<>: RelNamesMsg (TFrom sch tab) :<>: TL.Text "."
+    :$$: TL.Text "  Foreign key constraints from child tables (qPathToHere or qPath): "
+      :<>: RelNamesMsg (TTo sch tab) :<>: TL.Text "."
+    :$$: TL.Text "" )
+  ResolvePathKind ('Just 'FromHere) 'True _ _ _ _ _ = 'FromHere
+  ResolvePathKind ('Just 'ToHere) _ 'True _ _ _ _ = 'ToHere
+  ResolvePathKind 'Nothing 'True 'False _ _ _ _ = 'FromHere
+  ResolvePathKind 'Nothing 'False 'True _ _ _ _ = 'ToHere
+  ResolvePathKind ('Just 'FromHere) 'False 'True _ tab _ name = TypeError
     ( TL.Text "Relation is not available in from-here direction."
     :$$: TL.Text "Use qPathToHere or qPath."
     :$$: TL.Text ""
     :$$: TL.Text "Table: " :<>: ShowType tab
     :$$: TL.Text "Relation: " :<>: ShowType name
     :$$: TL.Text "" )
-  ResolvePathKind ('Just 'ToHere) _ _ tab name = TypeError
+  ResolvePathKind ('Just 'ToHere) 'True 'False _ tab _ name = TypeError
     ( TL.Text "Relation is not available in to-here direction."
     :$$: TL.Text "Use qPathFromHere or qPath."
     :$$: TL.Text ""
     :$$: TL.Text "Table: " :<>: ShowType tab
     :$$: TL.Text "Relation: " :<>: ShowType name
     :$$: TL.Text "" )
-  ResolvePathKind 'Nothing _ _ tab name = TypeError
+  ResolvePathKind 'Nothing 'True 'True _ tab _ name = TypeError
     ( TL.Text "qPath cannot be used for self-reference relation."
     :$$: TL.Text "Use qPathFromHere or qPathToHere."
     :$$: TL.Text ""

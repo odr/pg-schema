@@ -269,6 +269,7 @@ test-suite test-pgs
     Tests.InsertJSONTransaction
     Tests.UpsertUniqueKey
     Tests.Path
+    Tests.PathErrors
     Utils
     -- Paths and PackageInfo
     Paths_pg_schema
