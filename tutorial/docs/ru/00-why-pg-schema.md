@@ -32,13 +32,9 @@
 3. Выполняем типобезопасный `selectSch`:
 
 ```haskell
-type MyAnn tab = 'Ann RenamerId Sch 5 ("tut" ->> tab)
+--8<-- "app/app/Tut/Why.hs:why-ann"
 
-(rows :: ["title" := Text :. "tasks_project_id_fkey" := ["title" := Text :. "priority" := Int32]], (sql, params)) <-
-  selectSch (MyAnn "projects") conn $ qRoot do
-    qWhere $ "status" =? Project_status_active
-    qPath "tasks_project_id_fkey" do
-      qWhere $ "priority" <? (50 :: Int32)
+--8<-- "app/app/Tut/Why.hs:why-select"
 ```
 
 Тип результата задаёт, какие поля и связи читаются: здесь это проекты
