@@ -51,6 +51,7 @@ nav:
       - Рабочая модель pg-schema: ru/02-core-workflow.md
       - DML операции: ru/03-dml-operations.md
       - Select: ru/04-select.md
+      - Справочник: ru/appendix-reference.md
   - English:
       - Introduction: en/index.md
 

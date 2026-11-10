@@ -26,13 +26,24 @@ flatDml conn = do
     putStrLn $ "inserted: " <> show res4
     -- --8<-- [end:insert-projects]
 
+  section "update-by-cond" $ do
+    -- --8<-- [start:update-by-cond]
+    (res :: ["id" := Int64 :. "title" := Text :. "status" := PGEnum Sch ("tut" ->> "project_status")]) <-
+      updateByCond (MyAnn "projects") conn
+        ("status" =: Project_status_archived)
+        ("id" =? (2 :: Int64))
+    putStrLn $ "updated: " <> show res
+    -- --8<-- [end:update-by-cond]
+
   section "update-text" $ do
     -- --8<-- [start:update-text]
     let
-      (tUpd5 :: Text, updParams5) = updateText_ (MyAnn "projects")
-        @("status" := PGEnum Sch ("tut" ->> "project_status")) ("id" =? (2 :: Int64))
-    putStrLn $ "update text: " <> T.unpack tUpd5
-    putStrLn $ "update params: " <> show updParams5
+      (tUpd :: Text, updParams) = updateText (MyAnn "projects")
+        @("status" := PGEnum Sch ("tut" ->> "project_status"))
+        @("id" := Int64 :. "title" := Text :. "status" := PGEnum Sch ("tut" ->> "project_status"))
+        ("id" =? (2 :: Int64))
+    putStrLn $ "update text: " <> T.unpack tUpd
+    putStrLn $ "update params: " <> show updParams
     -- --8<-- [end:update-text]
 
   section "delete-by-cond" $ do
@@ -42,3 +53,33 @@ flatDml conn = do
     putStrLn $ "delete params: " <> show (snd tDel5)
     putStrLn $ "deleted: " <> show cnt5 <> " rows"
     -- --8<-- [end:delete-by-cond]
+
+  section "update-by-key" $ do
+    -- --8<-- [start:update-by-key]
+    (res :: [Maybe ("id" := Int64 :. "name" := Text)], tUpd) <-
+      updateByKey (MyAnn "users") conn
+        [ "id" =: (2 :: Int64) :. "name" =: ("Quentin T." :: Text)
+        , "id" =: 999 :. "name" =: "Nobody" ]
+    putStrLn $ "update text: " <> T.unpack tUpd
+    putStrLn $ "updated: " <> show res
+    -- --8<-- [end:update-by-key]
+
+  section "upsert-by-pk" $ do
+    -- --8<-- [start:upsert-by-pk]
+    (res :: ["id" := Int64 :. "name" := Text], tUps) <-
+      upsertByKey (MyAnn "users") conn
+        [ "id" =: (3 :: Int64) :. "name" =: ("Jason B." :: Text)
+        , "id" =: 100 :. "name" =: "Margo" ]
+    putStrLn $ "upsert text: " <> T.unpack tUps
+    putStrLn $ "upserted: " <> show res
+    -- --8<-- [end:upsert-by-pk]
+
+  section "upsert-by-uk" $ do
+    -- --8<-- [start:upsert-by-uk]
+    (res :: ["id" := Int64 :. "name" := Text :. "email" := Maybe Text], tUps) <-
+      upsertByKey (MyAnn "users") conn
+        [ "name" =: ("Quentin Tarantino" :: Text) :. "email" =: Just ("quentin@example.com" :: Text)
+        , "name" =: "Mia" :. "email" =: Just "mia@example.com" ]
+    putStrLn $ "upsert text: " <> T.unpack tUps
+    putStrLn $ "upserted: " <> show res
+    -- --8<-- [end:upsert-by-uk]

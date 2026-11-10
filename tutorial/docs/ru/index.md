@@ -30,6 +30,8 @@
 4. [DML операции](03-dml-operations.md) — insert, update, upsert, delete, в том числе для связанных таблиц.
 5. [Select](04-select.md) — запросы с условиями, связи между таблицами.
 
+В [справочнике](appendix-reference.md) собраны правила, которые в главах показаны на примерах.
+
 ## Мини-checklist перед стартом
 
 - [ ] Есть доступ к PostgreSQL и корректный `PG_CONN`.
