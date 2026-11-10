@@ -1,6 +1,9 @@
 # Changelog for pg-schema
 
 ## Unreleased
+- Fix typos in compile-time error messages: "renaimer" → "renamer"
+  (generated `Sch.hs`; regenerate it to pick up the change) and
+  "more then" → "more than" (`UnsafeCol` expression check).
 - Fix: tree DML (`insertJSON`, `upsertJSON`, `updateJSON` and their `_`
   variants) stored `Nothing` for a nullable `json` / `jsonb` column as the JSON
   value `null` instead of SQL `NULL` (so `pnull` did not find the row and

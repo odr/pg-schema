@@ -328,7 +328,7 @@ typeErrorMsg sch tabStr fields rels =
   <> "\n    TE.:$$: TE.Text \"  Fields: " <> T.intercalate ", " fields <> ".\""
   <> "\n    TE.:$$: TE.Text \"  Foreign key constraints: " <> T.intercalate ", " rels <> ".\""
   <> "\n    TE.:$$: TE.Text \"\""
-  <> "\n    TE.:$$: TE.Text \"Your source or target type or renaimer is probably invalid.\""
+  <> "\n    TE.:$$: TE.Text \"Your source or target type or renamer is probably invalid.\""
   <> "\n    TE.:$$: TE.Text \"\""
   <> ")"
 

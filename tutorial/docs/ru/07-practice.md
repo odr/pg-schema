@@ -227,7 +227,7 @@ cabal run tutorial:generator
     Fields: project_id, seq, title, weight, payload, watchers.
     Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey.
 
-  Your source or target type or renaimer is probably invalid.
+  Your source or target type or renamer is probably invalid.
 ```
 
 Без `pg-schema` каждая из этих ошибок обнаружилась бы только при выполнении

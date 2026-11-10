@@ -187,7 +187,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, grp, i2, i4, i8, n, f4, f8."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "dates_nullable" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_date" ) 'True 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "arrays" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
@@ -203,7 +203,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, root_id, dates_nullable, jsons."
     TE.:$$: TE.Text "  Foreign key constraints: arrays_root_fk."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "cboolean" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_bool" ) 'True 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "base_arr_converts" ) "cfloat8" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_float8" ) 'True 'False)
@@ -218,7 +218,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: cboolean, cint4, cfloat8, ctimestamptz, ctext."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cboolean" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'True 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "base_converts" ) "cdate" = 'RFPlain ('FldDef ( "pg_catalog" ->> "date" ) 'True 'False)
@@ -236,7 +236,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: cboolean, cint4, cfloat8, cdate, ctime, ctimestamp, ctimestamptz, ctext."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "dim" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
   TDBFieldInfoSch ( "test_pgs" ->> "dim" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
@@ -252,7 +252,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, name."
     TE.:$$: TE.Text "  Foreign key constraints: root_dim_a_fk, root_dim_b_fk."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "cbytea" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_bytea" ) 'True 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "ext_arr_converts" ) "ccitext" = 'RFPlain ('FldDef ( "public" ->> "_citext" ) 'True 'False)
@@ -267,7 +267,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: ccitext, cbytea, cjsonb, cuuid, ccolor."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "cbytea" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bytea" ) 'True 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "ext_converts" ) "ccitext" = 'RFPlain ('FldDef ( "public" ->> "citext" ) 'True 'False)
@@ -283,7 +283,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: ccitext, cbytea, cjsonb, cjson, cuuid, ccolor."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "category" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "leaf" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
@@ -302,7 +302,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: root_id, seq, leaf_no, value, category, created_at."
     TE.:$$: TE.Text "  Foreign key constraints: leaf_mid2_fk."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "mid1" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
@@ -320,7 +320,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, root_id, pos, flag, sort_key, payload."
     TE.:$$: TE.Text "  Foreign key constraints: mid1_root_fk."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "flag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "bool" ) 'False 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "mid2" ) "kind" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
@@ -341,7 +341,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: root_id, seq, kind, flag, priority, payload."
     TE.:$$: TE.Text "  Foreign key constraints: mid2_root_fk, leaf_mid2_fk."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "nullable_uq_row" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "nullable_uq_row" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
@@ -356,7 +356,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, code, suffix, name, note."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "test_pgs" ->> "root" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
   TDBFieldInfoSch ( "test_pgs" ->> "root" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
@@ -383,7 +383,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, code, grp, name, created_at, dim_a_id, dim_b_id."
     TE.:$$: TE.Text "  Foreign key constraints: root_dim_a_fk, root_dim_b_fk, arrays_root_fk, mid1_root_fk, mid2_root_fk."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text "")

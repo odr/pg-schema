@@ -318,7 +318,7 @@ tut.users(name) values (?) returning id`. Мы вставили одного п�
     Fields: project_id, seq, title, priority, payload, watchers.
     Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey.
 
-  Your source or target type or renaimer is probably invalid.
+  Your source or target type or renamer is probably invalid.
 ```
 
 Сам тип `Task` ничего не знает о базе. Проверка происходит там, где тип
@@ -337,7 +337,7 @@ tut.users(name) values (?) returning id`. Мы вставили одного п�
     Fields: project_id, seq, title, priority, payload, watchers.
     Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey.
 
-  Your source or target type or renaimer is probably invalid.
+  Your source or target type or renamer is probably invalid.
 ```
 
 Обратите внимание, что имя ищется в таблице `tasks`, хотя запрос строится от

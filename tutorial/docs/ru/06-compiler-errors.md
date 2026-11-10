@@ -17,9 +17,7 @@
 сообщения исчезнут. Найти нужный тип помогают таблица и поле из первого
 пункта.
 
-Во всех примерах ниже показан только первый пункт сообщения. Опечатки в
-английском тексте некоторых сообщений («renaimer», «more then») — из самой
-библиотеки, а не из этой главы.
+Во всех примерах ниже показан только первый пункт сообщения.
 
 ## Имена
 
@@ -42,7 +40,7 @@
     Fields: project_id, seq, title, priority, payload, watchers.
     Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey.
 
-  Your source or target type or renaimer is probably invalid.
+  Your source or target type or renamer is probably invalid.
 ```
 
 И имя в сообщении, и список допустимых имён — это имена в базе. Имя из вашего
@@ -291,7 +289,7 @@
 с обратной формулировкой):
 
 ```
-• Count of field names in the list of fields is more then count of question marks in expression.
+• Count of field names in the list of fields is more than count of question marks in expression.
 ```
 
 ## Резюме

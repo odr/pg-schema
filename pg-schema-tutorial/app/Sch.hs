@@ -155,7 +155,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, city_id, street, home, app, zipcode, phones, numbers."
     TE.:$$: TE.Text "  Foreign key constraints: address_city, comp_addr, cust_addr."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "sch" ->> "articles" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
   TDBFieldInfoSch ( "sch" ->> "articles" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
@@ -172,7 +172,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, name, code, created_at, updated_at."
     TE.:$$: TE.Text "  Foreign key constraints: opos_article."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "sch" ->> "cities" ) "country_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
   TDBFieldInfoSch ( "sch" ->> "cities" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
@@ -189,7 +189,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, country_id, name."
     TE.:$$: TE.Text "  Foreign key constraints: city_country, address_city."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "sch" ->> "companies" ) "address_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
   TDBFieldInfoSch ( "sch" ->> "companies" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
@@ -210,7 +210,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, name, address_id, created_at, updated_at."
     TE.:$$: TE.Text "  Foreign key constraints: comp_addr, ord_seller, ord_trader."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "sch" ->> "countries" ) "code" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
   TDBFieldInfoSch ( "sch" ->> "countries" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
@@ -225,7 +225,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, name, code."
     TE.:$$: TE.Text "  Foreign key constraints: city_country."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "sch" ->> "customers" ) "address_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'True 'False)
   TDBFieldInfoSch ( "sch" ->> "customers" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
@@ -245,7 +245,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, name, address_id, note, created_at, updated_at."
     TE.:$$: TE.Text "  Foreign key constraints: cust_addr, ord_cust."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "sch" ->> "order_positions" ) "article_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
   TDBFieldInfoSch ( "sch" ->> "order_positions" ) "cnt" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
@@ -264,7 +264,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: order_id, num, article_id, cnt, price."
     TE.:$$: TE.Text "  Foreign key constraints: opos_article, opos_order."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "sch" ->> "orders" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
   TDBFieldInfoSch ( "sch" ->> "orders" ) "customer_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
@@ -291,7 +291,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, day, num, customer_id, seller_id, trader_id, state, created_at, updated_at."
     TE.:$$: TE.Text "  Foreign key constraints: ord_cust, ord_seller, ord_trader, opos_order."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text "")

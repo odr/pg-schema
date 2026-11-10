@@ -152,7 +152,7 @@
     Fields: id, name, email, manager_id, created_at.
     Foreign key constraints: users_manager_id_fkey, task_events_author, projects_owner_id_fkey.
 
-  Your source or target type or renaimer is probably invalid.
+  Your source or target type or renamer is probably invalid.
 ```
 
 - Сделаем `name :: Maybe Text`
@@ -230,7 +230,7 @@
     Fields: id, name, email, manager_id, created_at.
     Foreign key constraints: users_manager_id_fkey, task_events_author, projects_owner_id_fkey.
 
-  Your source or target type or renaimer is probably invalid.
+  Your source or target type or renamer is probably invalid.
 ```
 
 Заметим, что в тексте ошибки указано имя после ренейминга.

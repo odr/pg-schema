@@ -131,7 +131,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, project_id, message, created_at."
     TE.:$$: TE.Text "  Foreign key constraints: project_log_project_id_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "tut" ->> "projects" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "projects" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True)
@@ -153,7 +153,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, owner_id, title, status, tags, created_at."
     TE.:$$: TE.Text "  Foreign key constraints: projects_owner_id_fkey, project_log_project_id_fkey, tasks_project_id_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "author_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
@@ -175,7 +175,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: project_id, seq, event_no, kind, meta, author_id, created_at."
     TE.:$$: TE.Text "  Foreign key constraints: task_events_author, task_events_project_id_seq_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "tut" ->> "tasks" ) "payload" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "tasks" ) "priority" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
@@ -196,7 +196,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: project_id, seq, title, priority, payload, watchers."
     TE.:$$: TE.Text "  Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "tut" ->> "users" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "users" ) "email" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
@@ -217,7 +217,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: id, name, email, manager_id, created_at."
     TE.:$$: TE.Text "  Foreign key constraints: users_manager_id_fkey, task_events_author, projects_owner_id_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text "")
