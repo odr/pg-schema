@@ -318,8 +318,10 @@ main = do
   mapM_ print upsVals
   upsJSON_ "addresses" conn upsVals
   T.putStrLn "\n====== 13 ========\n"
-  (as2 :: ["id" := Int32 :. "custAddr" :=
-    ["id" := Int32 :. "updatedAt" := Maybe ZonedTime]], _upsTxt)
+  -- key-only input (no mandatory "street" / "name"): rows are only updated by
+  -- key, so a row that is not found comes back as Nothing
+  (as2 :: [Maybe ("id" := Int32 :. "custAddr" :=
+    [Maybe ("id" := Int32 :. "updatedAt" := Maybe ZonedTime)])], _upsTxt)
     <- upsJSON "addresses" conn upsVals
   mapM_ print as2
   T.putStrLn "\n====== 15 ========\n"

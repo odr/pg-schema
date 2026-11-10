@@ -273,6 +273,7 @@ test-suite test-pgs
     Tests.UpsertUniqueKey
     Tests.Path
     Tests.PathErrors
+    Tests.ReturningErrors
     Utils
     -- Paths and PackageInfo
     Paths_pg_schema
@@ -295,7 +296,8 @@ test-suite test-pgs
     uuid-types,
     vector,
     -- they can be excluded by flags
-    deepseq
+    deepseq,
+    ghc-heap
     ---------------
   if flag(hashable)
     build-depends:

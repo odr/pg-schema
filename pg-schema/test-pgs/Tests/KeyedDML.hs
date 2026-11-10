@@ -304,3 +304,102 @@ prop_update_json_child_maybe pool = withTests 5 $ property do
         :. "sortKey" =: 1 :. "payload" =: Nothing
     (ret, _) <- updateByKey (AnnSch "mid1") @Mid1KeyPatch @Mid1KeyRet conn [patch]
     expectAbsent ret
+
+type RootMid1KeyPatch = "id" := Int32 :. "mid1_root_fk" := [Mid1KeyRet]
+
+type RootMid1UpdOut =
+  Maybe ("id" := Int32 :. "mid1_root_fk" := [Maybe ("id" := Int32 :. "flag" := Bool)])
+
+-- | Insert a root with one @mid1@ child; return ids of the root and the child.
+insertRootWithMid1 :: Connection -> Text -> Int32 -> IO (Int32, Int32)
+insertRootWithMid1 conn code grp = do
+  let
+    row :: RootRec
+    row = "code" =: code :. "grp" =: grp :. "name" =: "n" :. "someEmpty" =: ()
+  res <- insertJSON (AnnSch "root") @RootWithMid1 @RootInsWithMid conn
+    [ "mid1_root_fk" =: [ "flag" =: True :. "pos" =: 1 :. "sortKey" =: 1
+        :. "payload" =: Nothing ] :. row ]
+  case res of
+    ([PgTag rid :. PgTag [PgTag mid :. _]], _) -> pure (rid, mid)
+    _ -> fail "expected one root with one mid1"
+
+-- | A child that is not found by its key comes back as @Nothing@ (JSON @null@);
+-- the returning type must have @Maybe@ on child list elements.
+prop_update_json_missing_child :: Pool Connection -> Property
+prop_update_json_missing_child pool = withTests 5 $ property do
+  code <- forAll (Gen.text (Range.linear 3 16) Gen.alphaNum)
+  grp <- forAll (Gen.int32 (Range.linear 1 5000))
+  evalIO $ Pool.withResource pool \conn -> do
+    void $ delByCond "root" conn mempty
+    (rid, mid) <- insertRootWithMid1 conn code grp
+    let
+      patch :: RootMid1KeyPatch
+      patch = "id" =: rid :. "mid1_root_fk" =:
+        [ "id" =: mid :. "flag" =: False, "id" =: (mid + 99999) :. "flag" =: False ]
+    (ret, _) <- updateJSON (AnnSch "root") @RootMid1KeyPatch @RootMid1UpdOut conn [patch]
+    case ret of
+      [Just (PgTag rid' :. PgTag [Just (PgTag mid' :. PgTag False), Nothing])]
+        | rid' == rid && mid' == mid -> pure ()
+      _ -> fail $ "expected [Just (_ :. [Just _, Nothing])], got " <> show ret
+
+type Mid2Ins =
+  "seq" := Int32 :. "kind" := Text :. "flag" := Bool :. "priority" := Int32
+    :. "leaf_mid2_fk" := ["leaf_no" := Int32 :. "value" := Double]
+
+type RootMid2LeafPatch =
+  "id" := Int32 :. "mid2_root_fk" :=
+    ["seq" := Int32 :. "leaf_mid2_fk" := ["leaf_no" := Int32 :. "value" := Double]]
+
+type RootMid2LeafUpdOut =
+  Maybe ("id" := Int32 :. "mid2_root_fk" :=
+    [Maybe ("seq" := Int32 :. "leaf_mid2_fk" :=
+      [Maybe ("leaf_no" := Int32 :. "value" := Double)])])
+
+prop_update_json_missing_grandchild :: Pool Connection -> Property
+prop_update_json_missing_grandchild pool = withTests 5 $ property do
+  code <- forAll (Gen.text (Range.linear 3 16) Gen.alphaNum)
+  grp <- forAll (Gen.int32 (Range.linear 1 5000))
+  evalIO $ Pool.withResource pool \conn -> do
+    void $ delByCond "root" conn mempty
+    let
+      row :: RootRec
+      row = "code" =: code :. "grp" =: grp :. "name" =: "n" :. "someEmpty" =: ()
+      mid2 :: Mid2Ins
+      mid2 = "seq" =: 1 :. "kind" =: "k" :. "flag" =: True :. "priority" =: 1
+        :. "leaf_mid2_fk" =: ["leaf_no" =: 1 :. "value" =: 1]
+    rid <- insertJSON (AnnSch "root") @("mid2_root_fk" := [Mid2Ins] :. RootRec)
+      @("id" := Int32) conn ["mid2_root_fk" =: [mid2] :. row] >>= \case
+        ([PgTag rid], _) -> pure rid
+        _ -> fail "expected one root"
+    let
+      patch :: RootMid2LeafPatch
+      patch = "id" =: rid :. "mid2_root_fk" =:
+        [ "seq" =: 1 :. "leaf_mid2_fk" =:
+          ["leaf_no" =: 1 :. "value" =: 2, "leaf_no" =: 2 :. "value" =: 3]
+        , "seq" =: 2 :. "leaf_mid2_fk" =: ["leaf_no" =: 1 :. "value" =: 4] ]
+    (ret, _) <- updateJSON (AnnSch "root") @RootMid2LeafPatch @RootMid2LeafUpdOut
+      conn [patch]
+    case ret of
+      [Just (_ :. PgTag
+        [ Just (PgTag 1 :. PgTag [Just (PgTag 1 :. PgTag 2), Nothing])
+        , Nothing ])] -> pure ()
+      _ -> fail $ "unexpected updateJSON result: " <> show ret
+
+-- | Key-only child in 'upsertJSON' is updated (never inserted); a missing one is
+-- returned as @Nothing@.
+prop_upsert_json_key_only_missing_child :: Pool Connection -> Property
+prop_upsert_json_key_only_missing_child pool = withTests 5 $ property do
+  code <- forAll (Gen.text (Range.linear 3 16) Gen.alphaNum)
+  grp <- forAll (Gen.int32 (Range.linear 1 5000))
+  evalIO $ Pool.withResource pool \conn -> do
+    void $ delByCond "root" conn mempty
+    (rid, mid) <- insertRootWithMid1 conn code grp
+    let
+      patch :: RootMid1KeyPatch
+      patch = "id" =: rid :. "mid1_root_fk" =:
+        [ "id" =: mid :. "flag" =: False, "id" =: (mid + 99999) :. "flag" =: False ]
+    (ret, _) <- upsertJSON (AnnSch "root") @RootMid1KeyPatch @RootMid1UpdOut conn [patch]
+    case ret of
+      [Just (PgTag rid' :. PgTag [Just (PgTag mid' :. PgTag False), Nothing])]
+        | rid' == rid && mid' == mid -> pure ()
+      _ -> fail $ "expected [Just (_ :. [Just _, Nothing])], got " <> show ret

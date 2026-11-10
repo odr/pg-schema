@@ -15,6 +15,26 @@
 - `qPath` / `qPathFromHere` / `qPathToHere` with an unknown relation name now
   report `relation "..." is not defined` with the valid relations of the table
   (previously `qPath` reported a misleading self-reference error).
+- Fix `RETURNING` checks of `insertJSON` / `upsertJSON` / `updateJSON`
+  (`ReturningMatchesInsert` / `ReturningMatchesUpsert` / `ReturningMatchesUpdate`),
+  which were silently skipped in most cases: e.g. `updateJSON` accepted a bare
+  child list element (`"tasks" := [t]` instead of `[Maybe t]`) and then failed at
+  runtime to decode `null` for a child not found by its key.
+  The walk over the returning type dropped all fields after the first plain
+  column, compared nested levels against the root row type, and checked
+  `PgTag ann t` instead of the element row `t` (so a correct `[Maybe t]` as the
+  first field was rejected). Now every child list at any depth is checked.
+  Code that compiled only because of this may now fail to compile:
+  - `updateJSON`: child list elements must be `Maybe`;
+  - `insertJSON`: child list elements must not be `Maybe`;
+  - `upsertJSON`: a child list element must be `Maybe` iff the child in the
+    *input* row lacks mandatory columns (previously the *returning* columns
+    were used) or upsert uses `ON CONFLICT DO NOTHING` with parent FK columns
+    outside the conflict key; the root returning row must be `Maybe` if the
+    input root row lacks mandatory columns.
+- `NeedsFkKeyOnlyMaybe` matched the opposite case (a child with plain columns
+  outside the conflict key, i.e. `ON CONFLICT … DO UPDATE`, which always
+  returns the row); now it matches `ON CONFLICT DO NOTHING` as documented.
 
 ## 0.8.1.0
 - upsertJSON: require `Maybe` on child returning when upsert uses
