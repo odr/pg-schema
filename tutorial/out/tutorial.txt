@@ -548,7 +548,7 @@ begin
       where id IS NOT DISTINCT FROM (row_0.value->>'id')::int8
       returning id into id0;
       found_0 := found;
-    if found then
+    if found_0 then
       data_1 := row_0.value->'tasksProjectIdFkey';
       arr_1:= '{}';
       for row_1 in select * from jsonb_array_elements(data_1)
@@ -611,7 +611,7 @@ begin
       where id IS NOT DISTINCT FROM (row_0.value->>'id')::int8
       returning id, status into id0, status0;
       found_0 := found;
-    if found then
+    if found_0 then
       data_1 := row_0.value->'tasksProjectIdFkey';
       arr_1:= '{}';
       for row_1 in select * from jsonb_array_elements(data_1)
@@ -621,7 +621,7 @@ begin
           where project_id = id0 and seq IS NOT DISTINCT FROM (row_1.value->>'seq')::int4
           returning seq, priority into seq1, priority1;
               found_1 := found;
-        if found then
+        if found_1 then
         end if;
         if found_1 then
           arr_1 := array_append(arr_1, jsonb_build_object('seq', seq1, 'priority', priority1));

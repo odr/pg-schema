@@ -177,6 +177,37 @@
 должен целиком оказаться в типе. В операциях со связанными таблицами колонки,
 которые приходят от родителя (здесь `project_id`), в типе указывать не нужно.
 
+## Форма результата операций со связанными таблицами
+
+В `upsertJSON` и `updateJSON` строка, которая изменяется по ключу, может не
+найтись, и тогда на её месте в результате будет `Nothing`. Поэтому тип такой
+строки в результате должен быть `Maybe`. Для дочерних строк компилятор скажет
+об этом так:
+
+```
+• Returning must use Maybe here (update or key-only upsert).
+  At path: '[]
+  Table: NameNS "tut" "projects"
+  Field: "tasksProjectIdFkey"
+  Got: ("seq" := Int32) :. ("priority" := Int32)
+```
+
+А для корня `upsertJSON`, в котором нет всех обязательных колонок, сообщение
+объясняет причину подробнее:
+
+```
+• Upsert returning row must be wrapped in Maybe:
+  the input row lacks mandatory fields ["owner_id", "title"]
+  so it is only updated by key and a row that is not found is returned as null.
+  Table: NameNS "tut" "projects"
+  Got: ("id" := Int64)
+       :. ("tasksProjectIdFkey"
+           := [("seq" := Int32) :. ("title" := Text)])
+```
+
+Где `Maybe` обязателен, а где запрещён, сведено в таблицу в
+[справочнике](appendix-reference.md#returning).
+
 ## Структура запроса
 
 `qLimit`, `qOffset` и `qDistinct` разрешены только в корне запроса и в
