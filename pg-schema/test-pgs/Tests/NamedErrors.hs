@@ -49,4 +49,4 @@ prop_rows_of_not_product :: Property
 prop_rows_of_not_product = typeErrorWith
   [ "Only Product types with fields are supported in pg-schema."
   , "But I've got " ]
-  (L.length $ rowsOf Ordering [])
+  (L.length $ rowsOf @Ordering [])

@@ -152,7 +152,7 @@ instance (PlainRow r, v ~ Maybe (Plain r))
 
 instance (PlainRow r, v ~ Maybe (Plain r))
   => FromPlainCols 'PCMaybe '[v] (Maybe r) rest where
-  fromPlainCols (x :& xs) = (fmap (rowOf r) x, xs)
+  fromPlainCols (x :& xs) = (fmap (rowOf @r) x, xs)
 
 -- Generic
 instance (Generic r, GToPlainCols cols (Rep r))
@@ -230,7 +230,7 @@ instance (CPlainVal (ValCaseOf t) t, PlainVal (Maybe t) ~ Maybe (PlainVal t))
 
 instance (PlainRow r, PlainVal r ~ Plain r) => CPlainVal 'VCRow r where
   toPlainVal = plain
-  fromPlainVal = rowOf r
+  fromPlainVal = rowOf @r
 
 instance PlainVal t ~ t => CPlainVal 'VCOther t where
   toPlainVal = id
@@ -254,8 +254,8 @@ instance
   => PlainRow r
 
 -- | Make a row of type @r@ from its plain value.
-rowOf :: forall r -> PlainRow r => Plain r -> r
-rowOf r = fst . fromPlainCols @(PlainCaseOf r) @(PlainCols r) @r @'[] . fromChain
+rowOf :: forall r. PlainRow r => Plain r -> r
+rowOf = fst . fromPlainCols @(PlainCaseOf r) @(PlainCols r) @r @'[] . fromChain
 
 -- | Plain value of a row. The inverse of 'rowOf'.
 plain :: forall r. PlainRow r => r -> Plain r
@@ -267,7 +267,7 @@ plain = toChain . toPlainCols @(PlainCaseOf r) @(PlainCols r)
 -- > type Mid1 = "pos" := Int32 :. "flag" := Bool
 -- > type Root = "code" := Text :. "grp" := Int32 :. "mid1RootFk" := [Mid1]
 -- >
--- > insertJSON (MyAnn "root") conn $ rowsOf Root
+-- > insertJSON (MyAnn "root") conn $ rowsOf @Root
 -- >   [ "r1" :. 1 :. [10 :. True, 11 :. False]
 -- >   , "r2" :. 2 :. [] ]
 --
@@ -276,13 +276,14 @@ plain = toChain . toPlainCols @(PlainCaseOf r) @(PlainCols r)
 -- parentheses are needed whatever the grouping in the type is.
 -- See 'Plain' for details.
 --
--- A type written in place needs the @type@ keyword (@ExplicitNamespaces@),
--- otherwise '(:=)' is taken as the data constructor of comparison operators:
+-- The type is given with a type application (not as a required type
+-- argument), so it can be written in place: in a term position '(:.)', @()@,
+-- @[t]@ or a record name would be taken as data constructors.
 --
--- >>> rowsOf (type ("a" := Int :. ("b" := Bool :. "c" := ()))) [1 :. True, 2 :. False]
+-- >>> rowsOf @("a" := Int :. ("b" := Bool :. "c" := ())) [1 :. True, 2 :. False]
 -- ["a" =: 1 :. ("b" =: True :. "c" =: ()),"a" =: 2 :. ("b" =: False :. "c" =: ())]
-rowsOf :: forall r -> PlainRow r => [Plain r] -> [r]
-rowsOf r = fmap (rowOf r)
+rowsOf :: forall r. PlainRow r => [Plain r] -> [r]
+rowsOf = fmap (rowOf @r)
 
 -- | Plain values of rows (e.g. to pattern match on selected rows without
 -- 'PgTag'). The inverse of 'rowsOf'.

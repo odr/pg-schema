@@ -82,7 +82,7 @@ prop_rows_of_tree pool = withTests 1 $ property do
   (outIns, outSel) <- evalIO $ withPool pool \conn -> do
     void $ delByCond "mid1" conn mempty
     void $ delByCond "root" conn mempty
-    (outIns', _) <- insJSON "root" conn $ rowsOf (type (RootN :. "mid1RootFk" := [Mid1N]))
+    (outIns', _) <- insJSON "root" conn $ rowsOf @(RootN :. "mid1RootFk" := [Mid1N])
       [ "r1" :. 1 :. "first" :. [10 :. True :. 1, 11 :. False :. 2]
       , "r2" :. 2 :. "second" :. [20 :. True :. 3] ]
     (outSel', _) <- selSch "mid1" conn qpEmpty
@@ -96,14 +96,12 @@ prop_rows_of_tree pool = withTests 1 $ property do
     , 20 :. True :. 3 :. ("r2" :. 2 :. "second") ]
 
 -- | 'rowsOf' with a Generic record (in the inserted and in the expected rows).
--- A type written in place needs the @type@ keyword: otherwise '(:=)' and
--- 'RootG' are taken as data constructors.
 prop_rows_of_generic :: Pool Connection -> Property
 prop_rows_of_generic pool = withTests 1 $ property do
   outSel <- evalIO $ withPool pool \conn -> do
     void $ delByCond "mid1" conn mempty
     void $ delByCond "root" conn mempty
-    void $ insJSON_ "root" conn $ rowsOf (type (RootG :. "name" := Text :. "mid1RootFk" := [Mid1N]))
+    void $ insJSON_ "root" conn $ rowsOf @(RootG :. "name" := Text :. "mid1RootFk" := [Mid1N])
       [ "g1" :. 1 :. "first" :. [1 :. True :. 1] ]
     fst <$> selSch "root" conn qpEmpty
-  outSel === rowsOf (type (RootG :. "mid1RootFk" := [Mid1N])) [ "g1" :. 1 :. [1 :. True :. 1] ]
+  outSel === rowsOf @(RootG :. "mid1RootFk" := [Mid1N]) [ "g1" :. 1 :. [1 :. True :. 1] ]

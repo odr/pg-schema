@@ -8,7 +8,7 @@
   Wrong number of names is reported at compile time.
 - `rowsOf` / `plains` (and `rowOf` / `plain` for one row, `Plain`): rows from / to plain
   values with field names and types taken from the row type
-  (`rowsOf Root ["r1" :. 1 :. [10 :. True]]`). Rows are flattened as for
+  (`rowsOf @Root ["r1" :. 1 :. [10 :. True]]`). Rows are flattened as for
   `ToRow`/`FromRow`: parts joined with `(:.)` and Generic records give their
   fields in order, `fld := ()` gives no field; nested rows in field values
   (children, parents, optional parents) are plain too.
