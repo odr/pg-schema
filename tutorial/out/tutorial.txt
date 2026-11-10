@@ -1,3 +1,7 @@
+--8<-- [start:wow-owner]
+insert into tut.users(name) values (?) returning id
+1
+--8<-- [end:wow-owner]
 --8<-- [start:wow-insert]
 ProjectKey {id = 1, tasks_project_id_fkey = [TaskKey {project_id = 1, seq = 1},TaskKey {project_id = 1, seq = 2},TaskKey {project_id = 1, seq = 3}]}
 ProjectKey {id = 2, tasks_project_id_fkey = [TaskKey {project_id = 2, seq = 1}]}
@@ -44,6 +48,18 @@ Project {owner_id = 1, title = "Website", status = Project_status_active, tasks_
 select t0.owner_id "owner_id",t0.title "title",t0.status "status",array_to_json(array(select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority) from tut.tasks t1  where t1.project_id=t0.id and t1.priority < ? order by t1.seq Asc nulls last)) "tasks_project_id_fkey" from tut.projects t0  where t0.status = ?
 [SomeToField 50,SomeToField Project_status_active]
 --8<-- [end:wow-select]
+--8<-- [start:wow-select-sql]
+select t0.owner_id "owner_id",
+       t0.title "title",
+       t0.status "status",
+       array_to_json(array(
+           select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority)
+           from tut.tasks t1
+           where t1.project_id=t0.id and t1.priority < ?
+           order by t1.seq Asc nulls last)) "tasks_project_id_fkey"
+from tut.projects t0
+where t0.status = ?
+--8<-- [end:wow-select-sql]
 --8<-- [start:wow-select-text]
 select t0.owner_id "owner_id",t0.title "title",t0.status "status",array_to_json(array(select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority) from tut.tasks t1  where t1.project_id=t0.id and t1.priority < ? order by t1.seq Asc nulls last)) "tasks_project_id_fkey" from tut.projects t0  where t0.status = ?
 [SomeToField 50,SomeToField Project_status_active]

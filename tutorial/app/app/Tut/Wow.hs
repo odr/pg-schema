@@ -51,6 +51,8 @@ data ProjectKey = ProjectKey
 
 -- --8<-- [start:owner-type]
 newtype Owner = Owner { name :: Text } deriving (Show, Generic)
+
+newtype UserKey = UserKey { id :: Int64 } deriving (Show, Generic)
 -- --8<-- [end:owner-type]
 
 -- --8<-- [start:query]
@@ -64,19 +66,23 @@ activeProjects = qRoot do
 
 wow :: Connection -> IO ()
 wow conn = do
-  -- --8<-- [start:wow-owner]
-  _ <- insertSch_ (TutAnn "users") conn [Owner "Alice"]
-  -- --8<-- [end:wow-owner]
+  ownerId <- section "wow-owner" $ do
+    -- --8<-- [start:wow-owner]
+    ([UserKey ownerId], sqlOwner) <- insertSch (TutAnn "users") conn [Owner "Alice"]
+    putStrLn $ T.unpack sqlOwner
+    print ownerId
+    -- --8<-- [end:wow-owner]
+    pure ownerId
 
   sqlIns <- section "wow-insert" $ do
     -- --8<-- [start:wow-insert]
     let
       projects =
-        [ Project 1 "Website" Project_status_active
+        [ Project ownerId "Website" Project_status_active
           [ Task 1 "Design" 10
           , Task 2 "Backend" 30
           , Task 3 "Nice to have" 100 ]
-        , Project 1 "Mobile app" Project_status_draft
+        , Project ownerId "Mobile app" Project_status_draft
           [ Task 1 "Research" 20 ] ]
     (keys :: [ProjectKey], sqlIns) <- insertJSON (TutAnn "projects") conn projects
     mapM_ print keys
@@ -85,13 +91,16 @@ wow conn = do
 
   section "wow-insert-sql" $ putStrLn (T.unpack sqlIns)
 
-  section "wow-select" $ do
+  sqlSel <- section "wow-select" $ do
     -- --8<-- [start:wow-select]
     (rows :: [Project], (sql, params)) <- selectSch (TutAnn "projects") conn activeProjects
     mapM_ print rows
     putStrLn $ T.unpack sql
     print params
     -- --8<-- [end:wow-select]
+    pure sql
+
+  section "wow-select-sql" $ putStrLn (T.unpack $ formatSql sqlSel)
 
   section "wow-select-text" $ do
     -- --8<-- [start:wow-select-text]
