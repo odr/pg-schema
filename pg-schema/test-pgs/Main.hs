@@ -20,6 +20,7 @@ import Tests.AggregateErrors
 import Tests.PathErrors
 import Tests.Named
 import Tests.NamedErrors
+import Tests.ReturningErrors
 
 prop_not_implemented :: Property
 prop_not_implemented = property $ fail "not implemented"
@@ -91,6 +92,16 @@ main = do
           prop_upsert_json_full_row_bare_returning pool
       , testProperty "updateJSON child key miss" $
           prop_update_json_child_maybe pool
+      , testProperty "updateJSON missing child returns null element" $
+          prop_update_json_missing_child pool
+      , testProperty "updateJSON missing grandchild returns null element" $
+          prop_update_json_missing_grandchild pool
+      , testProperty "upsertJSON key-only missing child returns null element" $
+          prop_upsert_json_key_only_missing_child pool
+      , testProperty "upsertJSON DO NOTHING child of another parent returns null element" $
+          prop_upsert_json_do_nothing_other_parent pool
+      , testProperty "upsertJSON DO NOTHING child inserted or found" $
+          prop_upsert_json_do_nothing_insert_or_found pool
       ]
     , testGroup "Upsert by unique key (test_dml)"
       [ testProperty "upsertJSON on composite unique without PK in payload" $
@@ -138,6 +149,23 @@ main = do
       , testProperty "qPathToHere: unknown relation" prop_qpath_to_here_unknown_rel
       , testProperty "qPathFromHere: relation in wrong direction" prop_qpath_from_here_wrong_dir
       , testProperty "qPathToHere: relation in wrong direction" prop_qpath_to_here_wrong_dir
+      ]
+    , testGroup "Tree DML returning compile-time errors (deferred type errors)"
+      [ testProperty "updateJSON: bare child after plain field" prop_update_child_bare
+      , testProperty "updateJSON: bare child as first field" prop_update_child_bare_first
+      , testProperty "updateJSON: bare second child" prop_update_second_child_bare
+      , testProperty "updateJSON: bare grandchild" prop_update_grandchild_bare
+      , testProperty "updateJSON: Maybe child as first field is ok" prop_update_child_first_ok
+      , testProperty "updateJSON: Maybe on all levels is ok" prop_update_ok
+      , testProperty "insertJSON: Maybe child" prop_insert_child_maybe
+      , testProperty "insertJSON: bare child is ok" prop_insert_ok
+      , testProperty "upsertJSON: bare key-only child" prop_upsert_key_only_child_bare
+      , testProperty "upsertJSON: Maybe insert-capable child" prop_upsert_full_child_maybe
+      , testProperty "upsertJSON: bare key-only root" prop_upsert_key_only_root_bare
+      , testProperty "upsertJSON: Maybe key-only child is ok" prop_upsert_ok
+      , testProperty "upsertJSON: bare insert-capable child is ok" prop_upsert_full_ok
+      , testProperty "upsertJSON: bare ON CONFLICT DO NOTHING child" prop_upsert_do_nothing_child_bare
+      , testProperty "upsertJSON: bare ON CONFLICT DO UPDATE child is ok" prop_upsert_do_update_child_ok
       ]
     --   , testProperty "Cond: Child / Parent exists" prop_not_implemented
     --   , testProperty "Conditions by path (root vs nested path)" prop_not_implemented

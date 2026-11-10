@@ -205,8 +205,6 @@ insertJSONText' mode mapTypes mapTabs ir qfs = unlines'
 
 type MonadInsert s = RWS (s, Int) ([s],[s]) Int
 
-data OP = INS | UPD | UPS deriving (Eq, Show)
-
 data Field v = Field
   { jsonName :: Text
   , dbName :: Text
@@ -244,7 +242,7 @@ insertJSONTextM mode mapTypes mapTabs ri qfs fromFields toVars parentDbKeys = do
       Just ti ->
         fromMaybe [] $ pickKeyNames ti (parentDbKeys <> ((.dbName) <$> iplains))
       Nothing -> []
-    (ins, op) = resolve
+    (ins, mayMiss) = resolve
       where
         jsonFld ip = case mapTypes M.!? ip.info.fdType of
           Just (TypDef "A" (Just t) _) ->
@@ -293,7 +291,13 @@ insertJSONTextM mode mapTypes mapTabs ri qfs fromFields toVars parentDbKeys = do
             <> " into " <> intercalate' ", " qretVars]
         ups0 conflictCols
           | L.null plainsOthers = case mbSetVars of
+            -- on conflict the row with this key must belong to this parent:
+            -- otherwise it is not found (@mayMiss@)
             Just xs -> ins0 <> [ "    on conflict do nothing;"]
+              <> ["  if not found then"
+                , "    perform 1 from " <> qualTabName
+                , "      " <> sWhere <> ";"
+                , "  end if;"]
               <> ["  " <> intercalate' " " xs]
             Nothing -> ins0 <> addSemiColon ([ "    on conflict do nothing"] <> rets)
               <> ["  if not found then"
@@ -308,15 +312,19 @@ insertJSONTextM mode mapTypes mapTabs ri qfs fromFields toVars parentDbKeys = do
               , "      do update set " <> intercalate' ", "
                   (plainsOthers <&> \(name, _) -> name <> " = EXCLUDED." <> name) ]
             <> rets
+        -- @mayMiss@: the row may be not found (@UPDATE@ by key, or
+        -- @ON CONFLICT DO NOTHING@ with the key of a row of another parent);
+        -- then its children are skipped and @null@ is returned for it.
         resolve
           | mode == Update =
-            (addSemiColon (upd0 <> rets), UPD)
+            (addSemiColon (upd0 <> rets), True)
           | mode == Insert =
-            (addSemiColon (ins0 <> rets), INS)
+            (addSemiColon (ins0 <> rets), False)
           | keyOnlyInput =
-            (addSemiColon (upd0 <> rets), UPD)
-          | not $ P.null keyNamesTxt = (ups0 keyNames, UPS)
-          | otherwise = (addSemiColon (ins0 <> rets), INS)
+            (addSemiColon (upd0 <> rets), True)
+          | not $ P.null keyNamesTxt =
+            (ups0 keyNames, L.null plainsOthers)
+          | otherwise = (addSemiColon (ins0 <> rets), False)
     endLoop = "end loop;"
     processChildren = do
       (spaces', _) <- ask
@@ -343,37 +351,25 @@ insertJSONTextM mode mapTypes mapTabs ri qfs fromFields toVars parentDbKeys = do
             <> "', " <> fromText qp.dbName <> sn)
           <> (arrs <&> \(jsonN, arr) -> "'" <> jsonN <> "', to_jsonb(" <> arr <> ")")
         obj = "jsonb_build_object(" <> jsonFlds <> ")"
-      in case (mode, op) of
-        (Update, UPD) ->
+      in if mayMiss
+        then
           [ spaces <> "  if " <> foundN <> " then"
           , spaces <> "    " <> arrN <> " := array_append(" <> arrN <> ", " <> obj <> ");"
           , spaces <> "  else"
           , spaces <> "    " <> arrN <> " := array_append("
             <> arrN <> ", 'null'::jsonb);"
           , spaces <> "  end if;" ]
-        (Upsert, UPD)
-          | keyOnlyInput ->
-            [ spaces <> "  if " <> foundN <> " then"
-            , spaces <> "    " <> arrN <> " := array_append(" <> arrN <> ", " <> obj <> ");"
-            , spaces <> "  else"
-            , spaces <> "    " <> arrN <> " := array_append("
-              <> arrN <> ", 'null'::jsonb);"
-            , spaces <> "  end if;" ]
-          | otherwise ->
-            [ spaces <> "  if " <> foundN <> " then"
-            , spaces <> "    " <> arrN <> " := array_append(" <> arrN <> ", " <> obj <> ");"
-            , spaces <> "  end if;" ]
-        _ ->
+        else
           [ spaces <> "  " <> arrN <> " := array_append(" <> arrN <> ", " <> obj <> ");" ]
   tell (decs, fmap (spaces <>) $ initArray <> startLoop <> ins
     <> [spaces <> "  " <> foundN <> " := found;"])
-  arrs <- case op of
-    UPD -> do
-      tell (mempty, pure $ spaces <> "  if found then")
+  arrs <- if mayMiss
+    then do
+      tell (mempty, pure $ spaces <> "  if " <> foundN <> " then")
       ch <- local (first ("    " <>)) processChildren
       tell (mempty, pure $ spaces <> "  end if;")
       pure ch
-    _ -> local (first ("  " <>)) processChildren
+    else local (first ("  " <>)) processChildren
   case mbArrN of
     Nothing -> pure ()
     Just arrN -> tell (mempty, appendReturning arrN arrs)

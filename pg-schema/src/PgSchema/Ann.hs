@@ -9,7 +9,6 @@ import qualified Data.Aeson.Key as Key
 import Data.Coerce
 import Data.Singletons.TH (genDefunSymbols)
 import Data.Type.Bool
-import Data.Type.Equality
 import Data.Typeable
 import Data.Text qualified as T
 import Data.Kind
@@ -831,9 +830,6 @@ type family ReturningIsSubtree (ann :: Ann) (rIn :: Type) (rOut :: Type) :: Cons
 -- Returning row optionality (Maybe) vs input mandatory coverage
 --------------------------------------------------------------------------------
 
-type family AnnChild (ann :: Ann) (childTab :: NameNSK) :: Ann where
-  AnnChild ('Ann ren sch _ _) childTab = 'Ann ren sch 0 childTab
-
 type family InnerRow (r :: Type) :: Type where
   InnerRow (Maybe r) = r
   InnerRow r = TypeError
@@ -857,21 +853,6 @@ type family RequireBareRow' (r :: Type) :: Constraint where
     :$$: Text "Use IO [Maybe r'] on updateByKey when a row may be absent."
     :$$: Text "Got: " :<>: ShowType (Maybe x) )
   RequireBareRow' _ = ()
-
-type family ListElem (t :: Type) :: Type where
-  ListElem [e] = e
-  ListElem t = TypeError
-    ( Text "Expected a Haskell list type for a child branch."
-    :$$: Text "Got: " :<>: ShowType t )
-
-type family SymNatName (sn :: SymNat) :: Symbol where
-  SymNatName '(s, _) = s
-
-type family ColTypeByJsonName (name :: Symbol) (cols :: [ColInfo NameNSK]) :: Type where
-  ColTypeByJsonName name '[] = TypeError
-    ( Text "Returning field not found in output type: " :<>: ShowType name )
-  ColTypeByJsonName name ('ColInfo sn t _ _ ': xs) =
-    If (SymNatName sn == name) t (ColTypeByJsonName name xs)
 
 type family CoveredRs (ann :: Ann) (fis :: [FieldInfo Symbol]) :: [Symbol] where
   CoveredRs ann '[] = '[]
@@ -929,135 +910,126 @@ type family FkOutsideKeyB (b :: Bool) (fs :: [Symbol]) (key :: [Symbol]) :: Bool
   FkOutsideKeyB 'True fs key = FkOutsideKey fs key
 
 -- | Upsert child uses @ON CONFLICT DO NOTHING@ when JSON carries only key
--- columns while parent FK columns are injected separately.
+-- columns (no plain column outside the conflict key) while parent FK columns
+-- are injected separately.
 type family NeedsFkKeyOnlyMaybe (plain :: [Symbol]) (fk :: [Symbol])
   (key :: [Symbol]) :: Bool where
   NeedsFkKeyOnlyMaybe plain fk key = Not (Null fk)
-    && Not (Null (FilterNotIn plain key)) && FkOutsideKey fk key
+    && Null (FilterNotIn plain key) && FkOutsideKey fk key
 
-type family CheckUpsertChildListElem (path :: [Symbol]) (ann :: Ann)
-  (jsonName :: Symbol) (refs :: [RefK]) (childFIs :: [FieldInfo Symbol])
-  (elemTy :: Type) :: Constraint where
-  CheckUpsertChildListElem path ('Ann ren sch d childTab) jsonName refs childFIs
-    elemTy =
-    CheckUpsertChildElem' path sch childTab jsonName
-      (CoveredRs ('Ann ren sch d childTab) childFIs)
+-- | Which tree DML operation the returning type is checked for.
+data TreeDml = TreeInsert | TreeUpsert | TreeUpdate
+
+-- | Walk the columns of a returning row together with the input fields of the
+-- same tree node. Columns of the returning row carry the Haskell types, so for
+-- each child list @[PgTag childAnn t]@ the element row type @t@ is checked
+-- ('CheckChildElem') and the walk goes on into the columns of @t@ with the
+-- input fields of that child.
+type family CheckReturningAt (op :: TreeDml) (path :: [Symbol]) (ann :: Ann)
+  (fisIn :: [FieldInfo Symbol]) (colsOut :: [ColInfo NameNSK]) :: Constraint where
+  CheckReturningAt op path ann fisIn '[] = ()
+  CheckReturningAt op path ('Ann ren sch d tab) fisIn
+    ('ColInfo sn [PgTag childAnn t] db ('RFToHere _ refs) ': cs) =
+    ( CheckChildElem op path tab (NameSymNat sn) childAnn refs
+        (FindChildAt path db fisIn) t
+    , CheckReturningAt op (Snoc path db) childAnn (FindChildAt path db fisIn)
+        (Cols childAnn (UnMaybe t))
+    , CheckReturningAt op path ('Ann ren sch d tab) fisIn cs )
+  CheckReturningAt op path ann fisIn (_ ': cs) =
+    CheckReturningAt op path ann fisIn cs
+
+-- | Check the element type @t@ of a child list @fld@ of table @tab@:
+--
+-- * insert: always bare ('AssertNoMaybe');
+-- * update: always @Maybe@ ('AssertMustBeMaybe') - a child that is not found
+--   by its key is returned as @null@;
+-- * upsert: depends on the input fields of the child ('CheckUpsertChildElem').
+type family CheckChildElem (op :: TreeDml) (path :: [Symbol]) (tab :: NameNSK)
+  (fld :: Symbol) (childAnn :: Ann) (refs :: [RefK])
+  (childFIsIn :: [FieldInfo Symbol]) (t :: Type) :: Constraint where
+  CheckChildElem 'TreeInsert path tab fld _ _ _ t = AssertNoMaybe path tab fld t
+  CheckChildElem 'TreeUpdate path tab fld _ _ _ t = AssertMustBeMaybe path tab fld t
+  CheckChildElem 'TreeUpsert path tab fld ('Ann ren sch d childTab) refs fis t =
+    CheckUpsertChildElem path sch tab fld childTab
+      (CoveredRs ('Ann ren sch d childTab) fis)
       (RefFromNames refs)
       (PickFirstKey
-        (RefFromNames refs ++ CoveredRs ('Ann ren sch d childTab) childFIs)
+        (RefFromNames refs ++ CoveredRs ('Ann ren sch d childTab) fis)
         (IdentityCandidates sch childTab))
-      elemTy
+      t
 
-type family InnerPgTag (t :: Type) :: Type where
-  InnerPgTag (PgTag _ r) = r
-  InnerPgTag r = r
-
-type family CheckUpsertChildElem' (path :: [Symbol]) (sch :: k)
-  (tab :: NameNSK) (jsonName :: Symbol) (plainDb :: [Symbol])
-  (fkDb :: [Symbol]) (key :: [Symbol]) (elemTy :: Type) :: Constraint where
-  CheckUpsertChildElem' path sch tab jsonName plainDb fkDb key elemTy =
+-- | Upsert child element: @Maybe@ when the input child lacks mandatory columns
+-- (it is only updated by key and may be not found) or 'NeedsFkKeyOnlyMaybe';
+-- bare otherwise. @plainDb@ are plain columns of the /input/ child: they define
+-- the SQL that is generated for the child.
+type family CheckUpsertChildElem (path :: [Symbol]) (sch :: k) (tab :: NameNSK)
+  (fld :: Symbol) (childTab :: NameNSK) (plainDb :: [Symbol])
+  (fkDb :: [Symbol]) (key :: [Symbol]) (t :: Type) :: Constraint where
+  CheckUpsertChildElem path sch tab fld childTab plainDb fkDb key t =
     If (NeedsFkKeyOnlyMaybe plainDb fkDb key
-      || Not (Null (RestMandatory sch tab plainDb)))
-      (AssertMustBeMaybe path tab jsonName (InnerPgTag (ListElem elemTy)))
-      (AssertNoMaybe path tab jsonName (InnerPgTag (ListElem elemTy)))
+      || Not (Null (RestMandatory sch childTab (fkDb ++ plainDb))))
+      (AssertMustBeMaybe path tab fld t)
+      (AssertNoMaybe path tab fld t)
 
-type family SkipOutField (db :: Symbol) (fis :: [FieldInfo Symbol])
-  :: [FieldInfo Symbol] where
-  SkipOutField db '[] = '[]
-  SkipOutField db ('FieldInfo _ db _ ': xs) = xs
-  SkipOutField db (_ ': xs) = SkipOutField db xs
-
-type family CheckReturningUpsertAt (path :: [Symbol]) (ann :: Ann) (rIn :: Type)
-  (rOut :: Type) (fisIn :: [FieldInfo Symbol]) (fisOut :: [FieldInfo Symbol])
+-- | Root row of upsert: when the input row lacks mandatory columns it is only
+-- updated by key, and a row that is not found is returned as @null@.
+type family CheckUpsertRoot (ann :: Ann) (rIn :: Type) (rOut :: Type)
   :: Constraint where
-  CheckReturningUpsertAt path ann rIn rOut '[] '[] = ()
-  CheckReturningUpsertAt path ('Ann ren sch d tab) rIn rOut fisIn
-    ('FieldInfo jsonName db
-      ('RFToHere ('RecordInfo childTab childFIsOut) refs) ': outs) =
-    ( CheckUpsertChildListElem path ('Ann ren sch d childTab) jsonName refs
-        childFIsOut
-        (ColTypeByJsonName jsonName (Cols ('Ann ren sch d tab) rOut))
-    , CheckReturningUpsertAt (Snoc path db) (AnnChild ('Ann ren sch d tab) childTab) rIn rOut
-        (FindChildAt path db fisIn) childFIsOut
-    , CheckReturningUpsertAt path ('Ann ren sch d tab) rIn rOut fisIn (SkipOutField db outs) )
-  CheckReturningUpsertAt path ann rIn rOut
-    (_ ': ins) ('FieldInfo _ db _ ': outs) =
-    CheckReturningUpsertAt path ann rIn rOut ins (SkipOutField db outs)
-  CheckReturningUpsertAt path ann rIn rOut fisIn fisOut =
-    CheckSubtreeAt path fisIn fisOut
+  CheckUpsertRoot ('Ann ren sch d tab) rIn rOut = CheckUpsertRoot' tab
+    (RestMandatory sch tab (CoveredRs ('Ann ren sch d tab) (TRecordInfo ('Ann ren sch d tab) rIn)))
+    rOut
 
-type family CheckReturningUpdateAt (path :: [Symbol]) (ann :: Ann) (rIn :: Type)
-  (rOut :: Type) (fisIn :: [FieldInfo Symbol]) (fisOut :: [FieldInfo Symbol])
+type family CheckUpsertRoot' (tab :: NameNSK) (rest :: [Symbol]) (rOut :: Type)
   :: Constraint where
-  CheckReturningUpdateAt path ann rIn rOut '[] '[] = ()
-  CheckReturningUpdateAt path ('Ann ren sch d tab) rIn rOut fisIn
-    ('FieldInfo jsonName db ('RFToHere ('RecordInfo childTab childFIsOut) _) ': outs) =
-    ( AssertMustBeMaybe path tab jsonName
-        (ListElem (ColTypeByJsonName jsonName (Cols ('Ann ren sch d tab) rOut)))
-    , CheckReturningUpdateAt (Snoc path db) (AnnChild ('Ann ren sch d tab) childTab) rIn rOut
-        (FindChildAt path db fisIn) childFIsOut
-    , CheckReturningUpdateAt path ('Ann ren sch d tab) rIn rOut fisIn (SkipOutField db outs) )
-  CheckReturningUpdateAt path ann rIn rOut
-    (_ ': ins) ('FieldInfo _ db _ ': outs) =
-    CheckReturningUpdateAt path ann rIn rOut ins (SkipOutField db outs)
-  CheckReturningUpdateAt path ann rIn rOut fisIn fisOut =
-    CheckSubtreeAt path fisIn fisOut
-
-type family CheckReturningInsertAt (path :: [Symbol]) (ann :: Ann) (rIn :: Type)
-  (rOut :: Type) (fisIn :: [FieldInfo Symbol]) (fisOut :: [FieldInfo Symbol])
-  :: Constraint where
-  CheckReturningInsertAt path ann rIn rOut '[] '[] = ()
-  CheckReturningInsertAt path ('Ann ren sch d tab) rIn rOut fisIn
-    ('FieldInfo jsonName db ('RFToHere ('RecordInfo childTab childFIsOut) _) ': outs) =
-    ( AssertNoMaybe path tab jsonName
-        (ColTypeByJsonName jsonName (Cols ('Ann ren sch d tab) rOut))
-    , CheckReturningInsertAt (Snoc path db) (AnnChild ('Ann ren sch d tab) childTab) rIn rOut
-        (FindChildAt path db fisIn) childFIsOut
-    , CheckReturningInsertAt path ('Ann ren sch d tab) rIn rOut fisIn (SkipOutField db outs) )
-  CheckReturningInsertAt path ann rIn rOut
-    (_ ': ins) ('FieldInfo _ db _ ': outs) =
-    CheckReturningInsertAt path ann rIn rOut ins (SkipOutField db outs)
-  CheckReturningInsertAt path ann rIn rOut fisIn fisOut =
-    CheckSubtreeAt path fisIn fisOut
+  CheckUpsertRoot' _ '[] _ = ()
+  CheckUpsertRoot' _ _ (Maybe _) = ()
+  CheckUpsertRoot' tab rest rOut = TypeError
+    ( Text "Upsert returning row must be wrapped in Maybe:"
+    :$$: Text "the input row lacks mandatory fields " :<>: ShowType rest
+    :$$: Text "so it is only updated by key and a row that is not found is returned as null."
+    :$$: Text "Table: " :<>: ShowType tab
+    :$$: Text "Got: " :<>: ShowType rOut )
 
 -- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after insert:
 --
 -- * Each relation branch in @rOut@ exists in @rIn@ at the same path; plain columns
 --   in @rOut@ need not appear in @rIn@ ('CheckSubtreeAt').
--- * For every child list in @rOut@: the list element type must not be @Maybe@
---   ('AssertNoMaybe').
+-- * For every child list in @rOut@ (at any depth): the list element type must not
+--   be @Maybe@ ('AssertNoMaybe').
 type family ReturningMatchesInsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
   :: Constraint where
   ReturningMatchesInsert ann rIn rOut =
     ( ReturningIsSubtree ann rIn rOut
-    , CheckReturningInsertAt '[] ann rIn rOut
-        (TRecordInfo ann rIn) (TRecordInfo ann rOut) )
+    , CheckReturningAt 'TreeInsert '[] ann (TRecordInfo ann rIn) (Cols ann rOut) )
 
 -- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after upsert:
 --
 -- * Same relation-subtree rules as 'ReturningMatchesInsert'.
--- * For each child list in @rOut@: if @rIn@ still lacks mandatory plain columns
---   at the child node, or upsert would use @ON CONFLICT DO NOTHING@ with parent FK
---   columns outside the conflict key ('NeedsFkKeyOnlyMaybe'), the element type must
---   be @Maybe@; otherwise it must be bare ('CheckUpsertChildListElem').
+-- * If the root input row lacks mandatory columns, @rOut@ must be @Maybe row@
+--   (the row is only updated by key and may be not found).
+-- * For each child list in @rOut@ (at any depth): if the child in @rIn@ lacks
+--   mandatory plain columns, or upsert would use @ON CONFLICT DO NOTHING@ with
+--   parent FK columns outside the conflict key ('NeedsFkKeyOnlyMaybe'), the
+--   element type must be @Maybe@; otherwise it must be bare ('CheckUpsertChildElem').
 type family ReturningMatchesUpsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
   :: Constraint where
   ReturningMatchesUpsert ann rIn rOut =
-    ( ReturningIsSubtree ann rIn rOut
-    , CheckReturningUpsertAt '[] ann rIn rOut
-        (TRecordInfo ann rIn) (TRecordInfo ann rOut) )
+    ( ReturningIsSubtree ann rIn (UnMaybe rOut)
+    , CheckUpsertRoot ann rIn rOut
+    , CheckReturningAt 'TreeUpsert '[] ann (TRecordInfo ann rIn)
+        (Cols ann (UnMaybe rOut)) )
 
 -- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after update:
 --
 -- * @rOut@ must be @Maybe row@ ('RequireMaybeRow'); checks apply to 'InnerRow rOut'.
 -- * Each relation branch in that row exists in @rIn@ at the same path; plain columns
 --   in the returning row need not appear in @rIn@.
--- * For every child list there: the element type must be @Maybe@
+-- * For every child list there (at any depth): the element type must be @Maybe@
 --   ('AssertMustBeMaybe').
 type family ReturningMatchesUpdate (ann :: Ann) (rIn :: Type) (rOut :: Type)
   :: Constraint where
   ReturningMatchesUpdate ann rIn rOut =
     ( RequireMaybeRow rOut
     , ReturningIsSubtree ann rIn (InnerRow rOut)
-    , CheckReturningUpdateAt '[] ann rIn (InnerRow rOut)
-        (TRecordInfo ann rIn) (TRecordInfo ann (InnerRow rOut)) )
+    , CheckReturningAt 'TreeUpdate '[] ann (TRecordInfo ann rIn)
+        (Cols ann (InnerRow rOut)) )
