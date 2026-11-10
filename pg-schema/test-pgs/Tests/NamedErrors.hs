@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fdefer-type-errors -Wno-deferred-type-errors #-}
--- | Compile-time errors of 'named'.
+-- | Compile-time errors of 'named' and 'rowsOf'.
 --
 -- The module is compiled with @-fdefer-type-errors@, so each ill-typed
 -- definition throws 'TypeError' at runtime with the compile-time message.
@@ -43,3 +43,10 @@ prop_named_more_names = typeErrorWith
   , "Field \"b\" gets the last field Bool"
   , "Names without fields: [\"c\", \"d\"]" ]
   (L.length $ named ["a", "b", "c", "d"] [(1 :: Int) :. True])
+
+-- | The same error as for 'Generic'-based rows in DML.
+prop_rows_of_not_product :: Property
+prop_rows_of_not_product = typeErrorWith
+  [ "Only Product types with fields are supported in pg-schema."
+  , "But I've got " ]
+  (L.length $ rowsOf Ordering [])

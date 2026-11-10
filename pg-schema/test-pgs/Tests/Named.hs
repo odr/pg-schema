@@ -1,5 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
--- | Rows built with 'named' (names given once for the whole list).
+{-# LANGUAGE DeriveGeneric #-}
+-- | Rows built with 'named' (names given once for the whole list)
+-- and with 'rowsOf' / 'plain' (names taken from the type).
 module Tests.Named where
 
 import Control.Monad
@@ -9,6 +11,7 @@ import Data.List qualified as L
 import Data.Pool as Pool
 import Data.Text as T
 import Database.PostgreSQL.Simple
+import GHC.Generics (Generic)
 import Hedgehog as H
 import Prelude as P
 import PgSchema.DML
@@ -62,3 +65,45 @@ prop_named_insert_tree pool = withTests 1 $ property do
       :. "mid1RootFk" =: L.sort ["pos" =: (10 :: Int32) :. "flag" =: True, "pos" =: 11 :. "flag" =: False]
     , "code" =: "r2" :. "grp" =: 2
       :. "mid1RootFk" =: L.sort ["pos" =: 20 :. "flag" =: True, "pos" =: 21 :. "flag" =: False] ]
+
+type RootN = "code" := Text :. "grp" := Int32 :. "name" := Text
+
+type Mid1N = "pos" := Int32 :. "flag" := Bool :. "sortKey" := Int32
+
+-- | Generic record as a part of a row: its fields are flattened.
+data RootG = RootG { code :: Text, grp :: Int32 }
+  deriving (Eq, Ord, Show, Generic)
+
+-- | 'rowsOf': names and types are taken from the type; no parentheses are
+-- needed for groups (RootN), Generic records are flattened, children are plain.
+-- 'plain': selected rows (child with parent) as plain values.
+prop_rows_of_tree :: Pool Connection -> Property
+prop_rows_of_tree pool = withTests 1 $ property do
+  (outIns, outSel) <- evalIO $ withPool pool \conn -> do
+    void $ delByCond "mid1" conn mempty
+    void $ delByCond "root" conn mempty
+    (outIns', _) <- insJSON "root" conn $ rowsOf (type (RootN :. "mid1RootFk" := [Mid1N]))
+      [ "r1" :. 1 :. "first" :. [10 :. True :. 1, 11 :. False :. 2]
+      , "r2" :. 2 :. "second" :. [20 :. True :. 3] ]
+    (outSel', _) <- selSch "mid1" conn qpEmpty
+    pure (outIns' :: [RootG :. "mid1RootFk" := ["pos" := Int32]], outSel')
+  plain outIns ===
+    [ "r1" :. 1 :. [10, 11]
+    , "r2" :. 2 :. [20] ]
+  L.sort (plain (outSel :: [Mid1N :. "mid1RootFk" := (RootG :. "name" := Text)])) ===
+    [ 10 :. True :. 1 :. ("r1" :. 1 :. "first")
+    , 11 :. False :. 2 :. ("r1" :. 1 :. "first")
+    , 20 :. True :. 3 :. ("r2" :. 2 :. "second") ]
+
+-- | 'rowsOf' with a Generic record (in the inserted and in the expected rows).
+-- A type written in place needs the @type@ keyword: otherwise '(:=)' and
+-- 'RootG' are taken as data constructors.
+prop_rows_of_generic :: Pool Connection -> Property
+prop_rows_of_generic pool = withTests 1 $ property do
+  outSel <- evalIO $ withPool pool \conn -> do
+    void $ delByCond "mid1" conn mempty
+    void $ delByCond "root" conn mempty
+    void $ insJSON_ "root" conn $ rowsOf (type (RootG :. "name" := Text :. "mid1RootFk" := [Mid1N]))
+      [ "g1" :. 1 :. "first" :. [1 :. True :. 1] ]
+    fst <$> selSch "root" conn qpEmpty
+  outSel === rowsOf (type (RootG :. "mid1RootFk" := [Mid1N])) [ "g1" :. 1 :. [1 :. True :. 1] ]

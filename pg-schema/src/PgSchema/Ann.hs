@@ -188,11 +188,16 @@ type family GCols ann (rep :: Type -> Type) :: [ColInfo NameNSK] where
     GCols ann (D1 d (C1 c flds)) = Normalize (GCols ann flds)
     GCols ann (a :*: b) = GCols ann a SP.++ GCols ann b
     GCols ann (S1 (MetaSel ('Just fld) u v w) (Rec0 t)) = Col ann fld t
-    GCols ann rep = TypeError
-      ( Text "Only Product types with fields are supported in pg-schema."
-      :$$: Text "(sum types, empty, or missing field selector are not supported)"
-      :$$: Text ""
-      :$$: Text "But I've got " :<>: ShowType rep )
+    GCols ann rep = NotProductTypeError rep
+
+-- | Error for Generic representations that are not a record with fields
+-- (shared by 'GCols' and 'PgSchema.Plain.GPlainCols').
+type NotProductTypeError :: forall k. (Type -> Type) -> k
+type NotProductTypeError rep = TypeError
+  ( Text "Only Product types with fields are supported in pg-schema."
+  :$$: Text "(sum types, empty, or missing field selector are not supported)"
+  :$$: Text ""
+  :$$: Text "But I've got " :<>: ShowType rep )
 
 --------------------------------------------------------------------------------
 -- Normalize (SymNat numbering)

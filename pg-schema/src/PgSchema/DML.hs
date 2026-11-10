@@ -167,6 +167,8 @@ module PgSchema.DML
   , RenamerId, CamelToSnake, Renamer, ApplyRenamer, ApplyRenamerNS
   -- ** PgTag types
   , type (:=), (=:), PgTag(..), named, Named,
+  -- ** Plain values of rows
+  rowsOf, rowOf, plain, plain1, Plain, PlainRow,
   -- | Re-export from postgresql-simple
   (:.)(..)
   -- ** Enum
@@ -188,6 +190,7 @@ module PgSchema.DML
 
 
 import PgSchema.Ann
+import PgSchema.Plain
 import PgSchema.DML.Select as S
 import PgSchema.DML.Select.Types as S
 import PgSchema.DML.Insert as I
