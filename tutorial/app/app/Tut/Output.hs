@@ -64,13 +64,13 @@ formatSql sql
     go _ _ _ _ [] = ""
     go d sts prev ind (t : ts)
       | t == " " = case ts of
-          (n : _) | startsStmt sts (lower n) || breaks d sts prev (lower n) -> go d sts prev ind ts
+          (n : rest) | startsStmt sts (lower n) || breaks d sts prev (lower n) (nextWord rest) -> go d sts prev ind ts
           _ -> " " <> go d sts prev ind ts
       | startsStmt sts w =
           let ind' = if null sts then 0 else ind + 4
               pre = if null sts then "" else nl ind'
           in pre <> t <> go d ((d, ind', w) : sts) w ind' ts
-      | breaks d sts prev w, ((sd, si, _) : rest) <- sts =
+      | breaks d sts prev w (nextWord ts), ((sd, si, _) : rest) <- sts =
           nl si <> t <> go d ((sd, si, w) : rest) w si ts
       | t == ",", ((sd, si, cl) : _) <- sts, sd == d, Just k <- lookup cl listIndent =
           "," <> nl (si + k) <> go d sts prev (si + k) (dropWhile (== " ") ts)
@@ -88,11 +88,23 @@ formatSql sql
       && not (w == "update" && inClause "on" sts)
 
     -- Перенос перед частью оператора на его же уровне скобок.
-    breaks d sts prev w = case sts of
+    -- @next@ — следующее слово (нужно, чтобы отличить @on conflict@ от
+    -- @join … on@ и @distinct on@).
+    breaks d sts prev w next = case sts of
       ((sd, _, cl) : _) -> sd == d && w `elem` clauses
         && not (w == "from" && prev `elem` ["delete", "distinct"])
         && not (w == "set" && cl == "on")
+        && not (w == "on" && next /= "conflict")
+        && not (w == "join" && prev `elem` joinMods)
+        && not (w `elem` joinMods && prev `elem` joinMods)
       [] -> False
+
+    joinMods = ["left", "right", "full", "inner", "outer", "cross"]
+
+    nextWord = \case
+      (" " : rest) -> nextWord rest
+      (x : _) -> lower x
+      [] -> ""
 
     inClause c = \case
       ((_, _, cl) : _) -> cl == c
@@ -100,7 +112,8 @@ formatSql sql
 
     clauses =
       [ "from", "where", "order", "group", "having", "limit", "offset"
-      , "values", "set", "on", "returning" ]
+      , "values", "set", "on", "returning"
+      , "join", "left", "right", "full", "inner", "cross" ]
 
     -- Отступ элементов списка относительно начала оператора.
     listIndent = [("select", 7), ("set", 4)]

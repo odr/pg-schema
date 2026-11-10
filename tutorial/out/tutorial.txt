@@ -378,3 +378,235 @@ updateJSON patch ok: create or replace procedure pg_temp.__ins(data_0 jsonb) as 
 upsertJSON bad id (no new row): create or replace procedure pg_temp.__ins(data_0 jsonb) as $
 updateJSON bad id: create or replace procedure pg_temp.__ins(data_0 jsonb) as $
 --8<-- [end:tree-compare]
+--8<-- [start:sel-tree]
+Project {title = "Website", status = Project_status_active, projectOwner = Owner {name = "Alice"}, tasksProjectIdFkey = [Task {seq = 1, title = "Design", priority = 10},Task {seq = 2, title = "Frontend", priority = 30},Task {seq = 3, title = "Polish", priority = 100}]}
+Project {title = "API", status = Project_status_active, projectOwner = Owner {name = "Bob"}, tasksProjectIdFkey = [Task {seq = 1, title = "Schema", priority = 20},Task {seq = 2, title = "Endpoints", priority = 40}]}
+Project {title = "Docs", status = Project_status_draft, projectOwner = Owner {name = "Carol"}, tasksProjectIdFkey = [Task {seq = 1, title = "Outline", priority = 50}]}
+Project {title = "Legacy", status = Project_status_archived, projectOwner = Owner {name = "Dave"}, tasksProjectIdFkey = []}
+params: []
+--8<-- [end:sel-tree]
+--8<-- [start:sel-tree-sql]
+select t0.title "title",
+       t0.status "status",
+       jsonb_build_object('name',t1.name) "projectOwner",
+       array_to_json(array(
+           select jsonb_build_object('seq',t2.seq,'title',t2.title,'priority',t2.priority)
+           from tut.tasks t2
+           where t2.project_id=t0.id)) "tasksProjectIdFkey"
+from tut.projects t0
+join tut.users t1 on t0.owner_id=t1.id;
+--8<-- [end:sel-tree-sql]
+--8<-- [start:sel-self]
+Person {name = "Alice", manager = Nothing, subordinates = [Owner {name = "Bob"},Owner {name = "Carol"}]}
+Person {name = "Bob", manager = Just (Owner {name = "Alice"}), subordinates = [Owner {name = "Dave"}]}
+Person {name = "Carol", manager = Just (Owner {name = "Alice"}), subordinates = []}
+Person {name = "Dave", manager = Just (Owner {name = "Bob"}), subordinates = []}
+params: []
+--8<-- [end:sel-self]
+--8<-- [start:sel-self-sql]
+select t0.name "name",
+       case when t1.name is null then null else jsonb_build_object('name',t1.name) end "manager",
+       array_to_json(array(
+           select jsonb_build_object('name',t2.name)
+           from tut.users t2
+           where t2.manager_id=t0.id)) "subordinates"
+from tut.users t0
+left outer join tut.users t1 on t0.manager_id=t1.id;
+--8<-- [end:sel-self-sql]
+--8<-- [start:sel-cond]
+"title" =: "Website" :. "status" =: Project_status_active
+"title" =: "Docs" :. "status" =: Project_status_draft
+"title" =: "Legacy" :. "status" =: Project_status_archived
+params: [SomeToField Project_status_active,SomeToField "%site%",SomeToField Project_status_active,SomeToField (PGArray {fromPGArray = [3,4]})]
+--8<-- [end:sel-cond]
+--8<-- [start:sel-cond-sql]
+select t0.title "title",
+       t0.status "status"
+from tut.projects t0
+where (t0.status = ? and t0.title ilike ? or not (t0.status = ?) and t0.id = any(?::int8[]));
+--8<-- [end:sel-cond-sql]
+--8<-- [start:sel-null]
+"name" =: "Bob" :. "email" =: Just "bob@example.com"
+"name" =: "Carol" :. "email" =: Nothing
+"name" =: "Dave" :. "email" =: Just "dave@example.com"
+params: [SomeToField (Just "bob@example.com"),SomeToField (PGArray {fromPGArray = ["Dave","Eve"]})]
+--8<-- [end:sel-null]
+--8<-- [start:sel-null-sql]
+select t0.name "name",
+       t0.email "email"
+from tut.users t0
+where ((t0.email is null or t0.email is not distinct from ?) or t0.name = any(?::text[]));
+--8<-- [end:sel-null-sql]
+--8<-- [start:sel-path]
+Project {title = "Website", status = Project_status_active, projectOwner = Owner {name = "Alice"}, tasksProjectIdFkey = [Task {seq = 2, title = "Frontend", priority = 30}]}
+Project {title = "API", status = Project_status_active, projectOwner = Owner {name = "Bob"}, tasksProjectIdFkey = [Task {seq = 2, title = "Endpoints", priority = 40}]}
+params: [SomeToField 50,SomeToField Project_status_active]
+--8<-- [end:sel-path]
+--8<-- [start:sel-path-sql]
+select t0.title "title",
+       t0.status "status",
+       jsonb_build_object('name',t1.name) "projectOwner",
+       array_to_json(array(
+           select jsonb_build_object('seq',t2.seq,'title',t2.title,'priority',t2.priority)
+           from tut.tasks t2
+           where t2.project_id=t0.id and t2.priority < ?
+           order by t2.priority Desc nulls last
+           limit 1)) "tasksProjectIdFkey"
+from tut.projects t0
+join tut.users t1 on t0.owner_id=t1.id
+where t0.status = ?
+order by t0.title Desc nulls last;
+--8<-- [end:sel-path-sql]
+--8<-- [start:sel-pchild]
+"title" =: "Website"
+params: [SomeToField 20]
+--8<-- [end:sel-pchild]
+--8<-- [start:sel-pchild-sql]
+select t0.title "title"
+from tut.projects t0
+where exists (
+    select 1
+    from (
+        select *
+        from tut.tasks t0q1
+        where t0q1.project_id = t0.id) t0q1
+    where t0q1.priority < ?);
+--8<-- [end:sel-pchild-sql]
+--8<-- [start:sel-pchild-first]
+"title" =: "API"
+params: [SomeToField 50]
+--8<-- [end:sel-pchild-first]
+--8<-- [start:sel-pchild-first-sql]
+select t0.title "title"
+from tut.projects t0
+where exists (
+    select 1
+    from (
+        select *
+        from tut.tasks t0q1
+        where t0q1.project_id = t0.id
+        order by t0q1.priority Desc nulls last
+        limit 1) t0q1
+    where t0q1.priority < ?);
+--8<-- [end:sel-pchild-first-sql]
+--8<-- [start:sel-pparent]
+"title" =: "Frontend" :. "priority" =: 30
+"title" =: "Endpoints" :. "priority" =: 40
+"title" =: "Polish" :. "priority" =: 100
+params: [SomeToField Project_status_active,SomeToField 30]
+--8<-- [end:sel-pparent]
+--8<-- [start:sel-pparent-sql]
+select t0.title "title",
+       t0.priority "priority"
+from tut.tasks t0
+where exists (
+    select 1
+    from (
+        select *
+        from tut.projects t0q1
+        where t0q1.id = t0.project_id) t0q1
+    where t0q1.status = ?) and t0.priority >= ?
+order by t0.priority Asc nulls last;
+--8<-- [end:sel-pparent-sql]
+--8<-- [start:sel-limit]
+"title" =: "Outline" :. "priority" =: 50
+"title" =: "Endpoints" :. "priority" =: 40
+params: []
+--8<-- [end:sel-limit]
+--8<-- [start:sel-limit-sql]
+select t0.title "title",
+       t0.priority "priority"
+from tut.tasks t0
+order by t0.priority Desc nulls last
+limit 2
+offset 1;
+--8<-- [end:sel-limit-sql]
+--8<-- [start:sel-distinct]
+"status" =: Project_status_draft
+"status" =: Project_status_active
+"status" =: Project_status_archived
+params: []
+--8<-- [end:sel-distinct]
+--8<-- [start:sel-distinct-sql]
+select distinct t0.status "status"
+from tut.projects t0
+order by t0.status Asc nulls last;
+--8<-- [end:sel-distinct-sql]
+--8<-- [start:sel-distinct-on]
+"projectId" =: 1 :. ("title" =: "Design" :. "priority" =: 10)
+"projectId" =: 2 :. ("title" =: "Schema" :. "priority" =: 20)
+"projectId" =: 3 :. ("title" =: "Outline" :. "priority" =: 50)
+params: []
+--8<-- [end:sel-distinct-on]
+--8<-- [start:sel-distinct-on-sql]
+select distinct on (t0.project_id) t0.project_id "projectId",
+       t0.title "title",
+       t0.priority "priority"
+from tut.tasks t0
+order by t0.project_id Asc nulls last,t0.priority Asc nulls last;
+--8<-- [end:sel-distinct-on-sql]
+--8<-- [start:sel-self-path]
+Person {name = "Alice", manager = Nothing, subordinates = [Owner {name = "Bob"},Owner {name = "Carol"}]}
+Person {name = "Bob", manager = Just (Owner {name = "Alice"}), subordinates = []}
+Person {name = "Carol", manager = Just (Owner {name = "Alice"}), subordinates = []}
+params: [SomeToField "%o%",SomeToField (Just 1)]
+--8<-- [end:sel-self-path]
+--8<-- [start:sel-self-path-sql]
+select t0.name "name",
+       case when t1.name is null then null else jsonb_build_object('name',t1.name) end "manager",
+       array_to_json(array(
+           select jsonb_build_object('name',t2.name)
+           from tut.users t2
+           where t2.manager_id=t0.id and t2.name ilike ?)) "subordinates"
+from tut.users t0
+left outer join tut.users t1 on t0.manager_id=t1.id
+where (t0.manager_id is null or t0.manager_id = ?)
+order by t0.name Asc nulls last;
+--8<-- [end:sel-self-path-sql]
+--8<-- [start:sel-aggr]
+"projectId" =: 1 :. ("cnt" =: Aggr' {unAggr' = 3} :. "priority" =: Aggr' {unAggr' = 100})
+"projectId" =: 2 :. ("cnt" =: Aggr' {unAggr' = 2} :. "priority" =: Aggr' {unAggr' = 40})
+"projectId" =: 3 :. ("cnt" =: Aggr' {unAggr' = 1} :. "priority" =: Aggr' {unAggr' = 50})
+params: []
+--8<-- [end:sel-aggr]
+--8<-- [start:sel-aggr-sql]
+select t0.project_id "projectId",
+       count(*) "cnt",
+       max(t0.priority) "priority"
+from tut.tasks t0
+group by project_id
+order by t0.project_id Asc nulls last;
+--8<-- [end:sel-aggr-sql]
+--8<-- [start:sel-aggr-total]
+"cnt" =: Aggr {unAggr = 6} :. "priority" =: Aggr {unAggr = Just 100}
+params: []
+--8<-- [end:sel-aggr-total]
+--8<-- [start:sel-aggr-total-sql]
+select count(*) "cnt",
+       max(t0.priority) "priority"
+from tut.tasks t0;
+--8<-- [end:sel-aggr-total-sql]
+--8<-- [start:sel-json-arr]
+"title" =: "Design" :. ("payload" =: Just (Payload {estimate = 3}) :. "watchers" =: PgArr {unPgArr = [Just 2,Just 3]})
+"title" =: "Frontend" :. ("payload" =: Just (Payload {estimate = 8}) :. "watchers" =: PgArr {unPgArr = [Just 3]})
+"title" =: "Schema" :. ("payload" =: Just (Payload {estimate = 5}) :. "watchers" =: PgArr {unPgArr = [Just 1]})
+params: []
+--8<-- [end:sel-json-arr]
+--8<-- [start:sel-json-arr-sql]
+select t0.title "title",
+       t0.payload "payload",
+       t0.watchers "watchers"
+from tut.tasks t0
+where not (t0.payload is null);
+--8<-- [end:sel-json-arr-sql]
+--8<-- [start:sel-unsafe]
+"title" =: "Design" :. "titleLength" =: UnsafeCol ['title'] 'length(?)' 6
+"title" =: "Endpoints" :. "titleLength" =: UnsafeCol ['title'] 'length(?)' 9
+params: []
+--8<-- [end:sel-unsafe]
+--8<-- [start:sel-unsafe-sql]
+select t0.title "title",
+       length(t0.title) "titleLength"
+from tut.tasks t0
+where cardinality(t0.watchers) > 1;
+--8<-- [end:sel-unsafe-sql]

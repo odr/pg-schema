@@ -14,6 +14,7 @@ import Database.PostgreSQL.Simple.Types (Query (..))
 import System.Environment (lookupEnv)
 import Tut.Basics (basics)
 import Tut.FlatDml (flatDml)
+import Tut.Select (select)
 import Tut.TreeDml (treeCompare, treeDml)
 import Tut.Wow (wow)
 
@@ -28,6 +29,8 @@ main = do
   flatDml conn     -- 03-dml-operations: плоские операции
   treeDml conn     -- 03-dml-operations: операции со связанными таблицами
   treeCompare conn -- 03-dml-operations: сравнение insert / upsert / update
+  resetDb conn
+  select conn      -- 04-select
 
 -- | Пересоздать схему @tut@ (скрипт начинается с @drop schema if exists tut cascade@).
 resetDb :: Connection -> IO ()

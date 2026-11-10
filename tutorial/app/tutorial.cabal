@@ -38,10 +38,12 @@ executable tutorial
         Tut.Common
         Tut.FlatDml
         Tut.Output
+        Tut.Select
         Tut.TreeDml
         Tut.Wow
     -- other-extensions:
     build-depends:
+        aeson,
         base ^>=4.21.0.0,
         bytestring,
         deepseq,
