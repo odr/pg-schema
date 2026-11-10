@@ -6,7 +6,8 @@ import PgSchema.Import
 data Sch
 
 instance CSchema Sch where
-  type TTabs Sch = '[ ( "tut" ->> "projects" ),( "tut" ->> "task_events" )
+  type TTabs Sch = '[ ( "audit" ->> "project_log" )
+    ,( "tut" ->> "projects" ),( "tut" ->> "task_events" )
     ,( "tut" ->> "tasks" ),( "tut" ->> "users" ) ]
 
   type TTypes Sch = '[ ( "pg_catalog" ->> "_int8" )

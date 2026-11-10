@@ -70,6 +70,7 @@ help:
 	@echo "  tut-from-scratch   (db + schema + generator + app + docs build)"
 	@echo "  run-all            (test-run + old-tutorial-run + tut-from-scratch)"
 	@echo "  tut-db-init        (create DB if needed, apply tutorial schema)"
+	@echo "  tut-schema-check   (fail if Sch.hs does not match the tutorial DB; for CI)"
 	@echo "  tut-run            (reset DB, run generator and app; app output -> $(TUTORIAL_OUT))"
 	@echo "  tut-docs-venv      (create tutorial/.venv and install mkdocs deps)"
 	@echo "  tut-docs-build     (mkdocs build --strict via tutorial/.venv)"
@@ -141,6 +142,12 @@ tut-run: tut-db-init
 	TUT_SNIPPETS=1 "$$($(CABAL_REL) list-bin $(TUTORIAL_APP_EXE))" > "$(TUTORIAL_OUT)"
 	@grep -v -e '--8<--' "$(TUTORIAL_OUT)"
 	@echo "Output with snippet markers: $(TUTORIAL_OUT)"
+
+# CI: fail if tutorial/app/app/Sch.hs does not match the tutorial database
+# (the generator also rewrites the file, so the diff is visible locally).
+.PHONY: tut-schema-check
+tut-schema-check: tut-db-init
+	$(CABAL_REL) run $(TUTORIAL_GEN_EXE) -- --check
 
 .PHONY: tut-docs-build
 tut-docs-build: tut-docs-venv

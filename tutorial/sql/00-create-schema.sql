@@ -1,4 +1,5 @@
 -- tutorial/sql/00-create-schema.sql
+drop schema if exists audit cascade;
 drop schema if exists tut cascade;
 create schema tut;
 set search_path to tut, public;
@@ -39,9 +40,22 @@ create table task_events (
   event_no    integer not null,
   kind        text not null,
   meta        jsonb,
+  author_id   bigint,                               -- без FK: связь добавляет генератор (глава 07)
   created_at  timestamptz not null default now(),
   primary key (project_id, seq, event_no),
   foreign key (project_id, seq)
     references tasks(project_id, seq)
     on delete cascade
 );
+
+-- вторая схема: журнал изменений проектов (глава 07)
+-- --8<-- [start:audit]
+create schema audit;
+
+create table audit.project_log (
+  id          bigserial primary key,
+  project_id  bigint not null references tut.projects(id) on delete cascade,
+  message     text not null,
+  created_at  timestamptz not null default now()
+);
+-- --8<-- [end:audit]

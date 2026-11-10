@@ -56,7 +56,7 @@
 
   Valid values are:
     Foreign key constraints to parent tables (qPathFromHere or qPath): projects_owner_id_fkey.
-    Foreign key constraints from child tables (qPathToHere or qPath): tasks_project_id_fkey.
+    Foreign key constraints from child tables (qPathToHere or qPath): project_log_project_id_fkey, tasks_project_id_fkey.
 ```
 
 Для связи таблицы с самой собой `qPath` не годится, и компилятор подскажет,
@@ -223,6 +223,7 @@
 
 ## Что дальше
 
-Эта глава пригодится как справочник по сообщениям компилятора. Правила для
-типов результата и ограничения `pg-schema` собраны в
-[справочнике](appendix-reference.md).
+Эта глава пригодится как справочник по сообщениям компилятора. О том, как
+жить с `pg-schema` в настоящем проекте, где схема базы меняется, рассказывает
+глава [«На практике»](07-practice.md), а правила для типов результата и
+ограничения собраны в [справочнике](appendix-reference.md).

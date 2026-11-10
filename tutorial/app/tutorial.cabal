@@ -38,6 +38,7 @@ executable tutorial
         Tut.Common
         Tut.FlatDml
         Tut.Output
+        Tut.Practice
         Tut.Select
         Tut.TreeDml
         Tut.Wow

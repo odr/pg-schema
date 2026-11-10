@@ -133,7 +133,7 @@ SQL можно с помощью `updateText`, которому нужны те 
 
   Valid values are:
     Fields: id, owner_id, title, status, tags, created_at.
-    Foreign key constraints: projects_owner_id_fkey, tasks_project_id_fkey.
+    Foreign key constraints: projects_owner_id_fkey, project_log_project_id_fkey, tasks_project_id_fkey.
 
   Your source or target type or renaimer is probably invalid.
 ```

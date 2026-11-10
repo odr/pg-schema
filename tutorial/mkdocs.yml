@@ -53,6 +53,7 @@ nav:
       - Select: ru/04-select.md
       - Изменение связанных данных: ru/05-tree-dml.md
       - Ошибки компиляции: ru/06-compiler-errors.md
+      - На практике: ru/07-practice.md
       - Справочник: ru/appendix-reference.md
   - English:
       - Introduction: en/index.md

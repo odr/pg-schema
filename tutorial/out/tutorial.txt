@@ -644,3 +644,80 @@ $$ language plpgsql;
 error: "duplicate key value violates unique constraint \"projects_pkey\""
 projects "Tx demo": 0
 --8<-- [end:tree-tx]
+--8<-- [start:prac-audit-insert]
+[1 :. [1,2]]
+--8<-- [end:prac-audit-insert]
+--8<-- [start:prac-audit-insert-sql]
+create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  id1 int8; 
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    insert into tut.projects(owner_id, title)
+      values ((row_0.value->>'ownerId')::int8, (row_0.value->>'title')::text)
+      returning id into id0;
+      found_0 := found;
+    data_1 := row_0.value->'projectLogProjectIdFkey';
+    arr_1:= '{}';
+    for row_1 in select * from jsonb_array_elements(data_1)
+    loop
+      insert into audit.project_log(project_id, message)
+        values (id0, (row_1.value->>'message')::text)
+        returning id into id1;
+          found_1 := found;
+      arr_1 := array_append(arr_1, jsonb_build_object('id', id1));
+    end loop;
+    arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'projectLogProjectIdFkey', to_jsonb(arr_1)));
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+--8<-- [end:prac-audit-insert-sql]
+--8<-- [start:prac-audit-select]
+"message" =: "created" :. "projectLogProjectIdFkey" =: ("title" =: "Website")
+"message" =: "owner assigned" :. "projectLogProjectIdFkey" =: ("title" =: "Website")
+--8<-- [end:prac-audit-select]
+--8<-- [start:prac-audit-select-sql]
+select t0.message "message",
+       jsonb_build_object('title',t1.title) "projectLogProjectIdFkey"
+from audit.project_log t0
+join tut.projects t1 on t0.project_id=t1.id
+order by t0.id Asc nulls last;
+--8<-- [end:prac-audit-select-sql]
+--8<-- [start:prac-addrel]
+"seq" =: 1 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthor" =: Just ("name" =: "Alice")))
+"seq" =: 1 :. ("eventNo" =: 2 :. ("kind" =: "reviewed" :. "taskEventsAuthor" =: Just ("name" =: "Bob")))
+"seq" =: 2 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthor" =: Nothing))
+--8<-- [end:prac-addrel]
+--8<-- [start:prac-addrel-sql]
+select t0.seq "seq",
+       t0.event_no "eventNo",
+       t0.kind "kind",
+       case when t1.name is null then null else jsonb_build_object('name',t1.name) end "taskEventsAuthor"
+from tut.task_events t0
+left outer join tut.users t1 on t0.author_id=t1.id
+order by t0.seq Asc nulls last,t0.event_no Asc nulls last;
+--8<-- [end:prac-addrel-sql]
+--8<-- [start:prac-addrel-children]
+"name" =: "Alice" :. "taskEventsAuthor" =: ["kind" =: "created"]
+"name" =: "Bob" :. "taskEventsAuthor" =: ["kind" =: "reviewed"]
+--8<-- [end:prac-addrel-children]
+--8<-- [start:prac-addrel-children-sql]
+select t0.name "name",
+       array_to_json(array(
+           select jsonb_build_object('kind',t1.kind)
+           from tut.task_events t1
+           where t1.author_id=t0.id)) "taskEventsAuthor"
+from tut.users t0
+order by t0.name Asc nulls last;
+--8<-- [end:prac-addrel-children-sql]

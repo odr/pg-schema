@@ -24,7 +24,8 @@
 
 --8<-- "source/snippets/hs/GenNames.md"
 
-Мы можем включить в нашу схему
+Мы можем включить в нашу схему (подробнее об этом — в главе
+[«На практике»](07-practice.md))
 - полные схемы БД
 - произвольный набор таблиц
 - дополнительные отношения между таблицами
@@ -149,7 +150,7 @@
 
   Valid values are:
     Fields: id, name, email, manager_id, created_at.
-    Foreign key constraints: users_manager_id_fkey, projects_owner_id_fkey.
+    Foreign key constraints: users_manager_id_fkey, task_events_author, projects_owner_id_fkey.
 
   Your source or target type or renaimer is probably invalid.
 ```
@@ -227,7 +228,7 @@
 
   Valid values are:
     Fields: id, name, email, manager_id, created_at.
-    Foreign key constraints: users_manager_id_fkey, projects_owner_id_fkey.
+    Foreign key constraints: users_manager_id_fkey, task_events_author, projects_owner_id_fkey.
 
   Your source or target type or renaimer is probably invalid.
 ```
