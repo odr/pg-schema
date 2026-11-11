@@ -1,6 +1,6 @@
 ```haskell
 type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
-  TTabDefSch ( "audit" ->> "project_log" ) = 'TabDef '[ "id","project_id","message","created_at" ] '[ "id" ] '[  ]
+  TTabDefSch ( "audit" ->> "project_log" ) = 'TabDef '[ "id","project_id","message","client_ip","created_at" ] '[ "id" ] '[  ]
   TTabDefSch ( "tut" ->> "projects" ) = 'TabDef '[ "id","owner_id","title","status","tags","created_at" ] '[ "id" ] '[  ]
   TTabDefSch ( "tut" ->> "task_events" ) = 'TabDef '[ "project_id","seq","event_no","kind","meta","author_id","created_at" ] '[ "project_id","seq","event_no" ] '[  ]
   TTabDefSch ( "tut" ->> "tasks" ) = 'TabDef '[ "project_id","seq","title","priority","payload","watchers" ] '[ "project_id","seq" ] '[  ]
