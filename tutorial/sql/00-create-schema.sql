@@ -56,6 +56,7 @@ create table audit.project_log (
   id          bigserial primary key,
   project_id  bigint not null references tut.projects(id) on delete cascade,
   message     text not null,
+  client_ip   inet,                                 -- тип без готового соответствия (приложение «Типы данных»)
   created_at  timestamptz not null default now()
 );
 -- --8<-- [end:audit]

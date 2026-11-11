@@ -56,6 +56,7 @@ nav:
       - Ошибки компиляции: ru/06-compiler-errors.md
       - На практике: ru/07-practice.md
       - Справочник: ru/appendix-reference.md
+      - Типы данных: ru/appendix-types.md
   - English:
       - Introduction: en/index.md
 

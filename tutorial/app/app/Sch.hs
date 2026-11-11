@@ -29,6 +29,7 @@ type family TTypDefSch (name :: NameNSK) :: TypDef' TL.Symbol where
   TTypDefSch ( "pg_catalog" ->> "_int8" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "int8" )) '[  ]
   TTypDefSch ( "pg_catalog" ->> "_text" ) = 'TypDef "A" ('Just ( "pg_catalog" ->> "text" )) '[  ]
   TTypDefSch ( "pg_catalog" ->> "float8" ) = 'TypDef "N" 'Nothing '[  ]
+  TTypDefSch ( "pg_catalog" ->> "inet" ) = 'TypDef "I" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "int4" ) = 'TypDef "N" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "int8" ) = 'TypDef "N" 'Nothing '[  ]
   TTypDefSch ( "pg_catalog" ->> "jsonb" ) = 'TypDef "U" 'Nothing '[  ]
@@ -38,13 +39,13 @@ type family TTypDefSch (name :: NameNSK) :: TypDef' TL.Symbol where
   TTypDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "type " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Types: pg_catalog._int8, pg_catalog._text, pg_catalog.float8, pg_catalog.int4, pg_catalog.int8, pg_catalog.jsonb, pg_catalog.text, pg_catalog.timestamptz, tut.project_status."
+    TE.:$$: TE.Text "  Types: pg_catalog._int8, pg_catalog._text, pg_catalog.float8, pg_catalog.inet, pg_catalog.int4, pg_catalog.int8, pg_catalog.jsonb, pg_catalog.text, pg_catalog.timestamptz, tut.project_status."
     TE.:$$: TE.Text "")
 instance (ToStar (TTypDef Sch name), ToStar name) => CTypDef Sch name where
   type TTypDef Sch name = TTypDefSch name
 
 type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
-  TTabDefSch ( "audit" ->> "project_log" ) = 'TabDef '[ "id","project_id","message","created_at" ] '[ "id" ] '[  ]
+  TTabDefSch ( "audit" ->> "project_log" ) = 'TabDef '[ "id","project_id","message","client_ip","created_at" ] '[ "id" ] '[  ]
   TTabDefSch ( "tut" ->> "projects" ) = 'TabDef '[ "id","owner_id","title","status","tags","created_at" ] '[ "id" ] '[  ]
   TTabDefSch ( "tut" ->> "task_events" ) = 'TabDef '[ "project_id","seq","event_no","kind","meta","author_id","created_at" ] '[ "project_id","seq","event_no" ] '[  ]
   TTabDefSch ( "tut" ->> "tasks" ) = 'TabDef '[ "project_id","seq","title","priority","payload","watchers" ] '[ "project_id","seq" ] '[  ]
@@ -117,6 +118,7 @@ instance CTabRels Sch tab where
   type TTo Sch tab = TToSch tab
 
 type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
+  TDBFieldInfoSch ( "audit" ->> "project_log" ) "client_ip" = 'RFPlain ('FldDef ( "pg_catalog" ->> "inet" ) 'True 'False)
   TDBFieldInfoSch ( "audit" ->> "project_log" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
   TDBFieldInfoSch ( "audit" ->> "project_log" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True)
   TDBFieldInfoSch ( "audit" ->> "project_log" ) "message" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
@@ -128,7 +130,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, project_id, message, created_at."
+    TE.:$$: TE.Text "  Fields: id, project_id, message, client_ip, created_at."
     TE.:$$: TE.Text "  Foreign key constraints: project_log_project_id_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -230,8 +232,8 @@ instance CSchema Sch where
     ,( "tut" ->> "projects" ),( "tut" ->> "task_events" )
     ,( "tut" ->> "tasks" ),( "tut" ->> "users" ) ]
 
-  type TTypes Sch = '[ ( "pg_catalog" ->> "_int8" )
-    ,( "pg_catalog" ->> "_text" ),( "pg_catalog" ->> "float8" )
+  type TTypes Sch = '[ ( "pg_catalog" ->> "_int8" ),( "pg_catalog" ->> "_text" )
+    ,( "pg_catalog" ->> "float8" ),( "pg_catalog" ->> "inet" )
     ,( "pg_catalog" ->> "int4" ),( "pg_catalog" ->> "int8" )
     ,( "pg_catalog" ->> "jsonb" ),( "pg_catalog" ->> "text" )
     ,( "pg_catalog" ->> "timestamptz" ),( "tut" ->> "project_status" ) ]
