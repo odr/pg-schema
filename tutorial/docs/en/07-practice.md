@@ -39,7 +39,7 @@ of project changes:
 
 Since both schemas are listed in `GenNames`, the table `audit.project_log` is
 described in the same `Sch.hs` as the others. The annotation for it differs
-from `MyAnn` of chapter 02 only in the database schema in the table name, so we
+from `MyAnn` of the chapter [Core workflow](02-core-workflow.md) only in the database schema in the table name, so we
 define the same kind of synonym for it and, like `MyAnn`, pass it to operations
 as the first argument:
 
@@ -101,7 +101,7 @@ Such a relation can be described in the generator with `AddRelation`, as in
 it leads to, and the pairs of columns. After that `pg-schema` works with it just
 as with a foreign key. In result types and in `qPath` its name goes through the
 renamer as usual: `"taskEventsAuthor"`. Where a relation is given by its full
-name together with the schema, as in `pchild` and `pparent` from chapter 04,
+name together with the schema, as in `pchild` and `pparent` from the chapter [Select](04-select.md),
 `_add` is written instead of the database schema: the generator puts all added
 relations into this namespace. There is an example with `pparent` a bit below.
 
@@ -152,7 +152,7 @@ relation can be followed the other way, from a user to their events:
     --8<-- "out/tutorial.txt:prac-addrel-children-sql"
     ```
 
-And this is how events are selected by author with `pparent`. As in chapter 04,
+And this is how events are selected by author with `pparent`. As in the chapter [Select](04-select.md),
 the full name of the relation is convenient to write via a type synonym, only
 the database schema here is `_add`:
 
@@ -174,7 +174,7 @@ the database schema here is `_add`:
     --8<-- "out/tutorial.txt:prac-addrel-parent-sql"
     ```
 
-The documentation of `GenNames` (a fragment of it is in chapter 02) says "Be
+The documentation of `GenNames` (a fragment of it is in the chapter [Core workflow](02-core-workflow.md)) says "Be
 careful!" about added relations. The database knows nothing about them and does
 not check them: `author_id` may hold the `id` of a non-existent user, as with
 the event `(2, 2)`, and the author is simply not found. The compiler checks that
@@ -211,7 +211,7 @@ and is overwritten on every generation, so this file should go into
 left untouched, and the output of the generator is deterministic, so there are
 no spurious changes in `git diff`. Now it is enough to build the project, and
 the compiler lists all the places the migration broke. In the tutorial project
-there are 42 such errors, in five modules. Here are two of them. In chapter 03
+there are 42 such errors, in five modules. Here are two of them. In the chapter [Single-table DML](03-flat-dml.md)
 we inserted projects without the column `code`:
 
 ```
@@ -220,7 +220,7 @@ we inserted projects without the column `code`:
   Missing mandatory fields: '["code"]
 ```
 
-And in chapter 04 a condition used the column `priority`, which no longer
+And in the chapter [Select](04-select.md) a condition used the column `priority`, which no longer
 exists:
 
 ```

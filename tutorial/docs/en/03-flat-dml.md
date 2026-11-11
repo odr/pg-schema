@@ -8,7 +8,7 @@ that touch several related tables in one query are covered in the chapter
 As in the previous chapter, we use the annotation `MyAnn` with the renamer
 `MyRenamer`, so fields can be named in camelCase, and we describe data with
 `PgTag`. All examples of this chapter are in `tutorial/app/app/Tut/FlatDml.hs`
-and run after the examples of chapter 02, on the same data.
+and run after the examples of the chapter [Core workflow](02-core-workflow.md), on the same data.
 
 For working with one table, `pg-schema` has five groups of operations:
 `insertSch` inserts rows, `updateByCond` updates the rows that match a

@@ -57,12 +57,12 @@ with their owners and tasks:
     ```
 
 Two fields of the type `Project` describe relations. `tasksProjectIdFkey` is,
-as in chapter 01, the foreign key from `tasks` to `projects`: for a project it
+as in the chapter [Quick start](01-wow.md), the foreign key from `tasks` to `projects`: for a project it
 leads to child rows, so the field is a list. `projectOwner` goes the other way:
 the key `projects_owner_id_fkey` points from `projects` to `users`, so a
 project has exactly one owner, and the field is a single row of type `Owner`.
 We made up the name `projectOwner` ourselves. The renamer `MyRenamer` from
-chapter 02 translates it into the real name of the foreign key:
+the chapter [Core workflow](02-core-workflow.md) translates it into the real name of the foreign key:
 
 ```haskell
 --8<-- "app/app/Tut/Common.hs:renamer"
@@ -71,7 +71,7 @@ chapter 02 translates it into the real name of the foreign key:
 Note that `Owner` is not a record but a `PgTag`: `type Owner = "name" := Text`.
 The two notations can be mixed freely. A field of a Generic record can be a
 `PgTag` row, a list of them or a `Maybe`, and a record, in turn, can be part of
-a `:.` chain, as in chapter 02. For a small row of one or two fields you do not
+a `:.` chain, as in the chapter [Core workflow](02-core-workflow.md). For a small row of one or two fields you do not
 have to define a separate record.
 
 The SQL shows how `pg-schema` builds such a query. The parent row is attached
@@ -203,7 +203,7 @@ example, `qPath "projectOwner"`) go into the `where` of the main query and
 filter the root rows.
 
 !!! warning "Branch conditions are tied to a result field"
-    As we saw in chapter 01, conditions, ordering and limits from `qPath` apply
+    As we saw in the chapter [Quick start](01-wow.md), conditions, ordering and limits from `qPath` apply
     to the result field with the same relation name. If the type has no such
     field, they silently do not get into the query. For a parent branch this
     means that the filter on root rows disappears together with the field.
@@ -492,7 +492,7 @@ chapter's data). They are easiest to define with `fromJSONField` and
 --8<-- "app/app/Tut/Select.hs:sel-payload"
 ```
 
-Arrays are read into the type `PgArr`, which we met in chapter 03. Its elements
+Arrays are read into the type `PgArr`, which we met in the chapter [Single-table DML](03-flat-dml.md). Its elements
 have type `Maybe`, because a PostgreSQL array may contain `NULL`, so in the
 output the watchers look like `[Just 2, Just 3]`:
 

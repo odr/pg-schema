@@ -26,7 +26,7 @@ owner of all projects.
 ## Insert: insertJSON
 
 We describe the input data with types. Child rows are fields with a list of
-rows, named after the foreign key. As in chapters 01 and 04, this is the name of
+rows, named after the foreign key. As in the chapters [Quick start](01-wow.md) and [Select](04-select.md), this is the name of
 the constraint in the database (`tasks_project_id_fkey`,
 `task_events_project_id_seq_fkey`) passed through the renamer `MyRenamer`, so we
 write it in camelCase:
@@ -42,10 +42,10 @@ and puts it into the tasks, and then does the same with the events. So
 `insertJSON` requires all mandatory columns in the input except those that come
 from the relation with the parent and those that have a default value. If a
 mandatory column is missing, the program does not compile, just as with
-`insertSch` in chapter 03.
+`insertSch` in the chapter [Single-table DML](03-flat-dml.md).
 
 The trees themselves are convenient to build with the function `rowsOf`. It is
-similar to `named` from chapter 03, but `named` gets the field names as a list
+similar to `named` from the chapter [Single-table DML](03-flat-dml.md), but `named` gets the field names as a list
 of strings, while `rowsOf` takes both the names and the types of the fields from
 the row type, which is passed to it as `rowsOf @ProjectIn`. So values can be
 written without names and without type annotations, and child rows simply as
@@ -235,7 +235,7 @@ from `postgresql-simple`:
 The second insert violated uniqueness, and `withTransaction` rolled back the
 whole transaction, including the first, successful insert. There is no project
 "Tx demo" in the database. To count projects we used an aggregate from
-chapter 04:
+the chapter [Select](04-select.md):
 
 ```haskell
 --8<-- "app/app/Tut/TreeDml.hs:tree-count"
