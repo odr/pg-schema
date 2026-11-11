@@ -34,11 +34,23 @@ executable tutorial
     main-is:          Main.hs
     other-modules:
         Sch
+        Tut.Basics
+        Tut.Common
+        Tut.FlatDml
+        Tut.Output
+        Tut.Practice
+        Tut.Select
+        Tut.TreeDml
+        Tut.Why
+        Tut.Wow
     -- other-extensions:
     build-depends:
+        aeson,
         base ^>=4.21.0.0,
+        bytestring,
         deepseq,
         hashable,
+        mtl,
         pg-schema,
         postgresql-simple,
         text,

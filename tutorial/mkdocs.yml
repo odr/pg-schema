@@ -14,12 +14,20 @@ theme:
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - pymdownx.details
   - toc:
       permalink: true
   - pymdownx.snippets:
+      # пути считаются от каталога tutorial/ (mkdocs запускается оттуда):
+      #   docs/...           — вспомогательные md-фрагменты
+      #   app/..., sql/...   — исходники примеров (секции -- --8<-- [start:name])
+      #   out/tutorial.txt   — вывод примеров (make tut-run)
       base_path:
         - docs
+        - .
       check_paths: true
+      dedent_subsections: true
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.inlinehilite
@@ -29,14 +37,24 @@ markdown_extensions:
 
 docs_dir: docs
 
+# перестраивать сайт в mkdocs serve при изменении примеров и их вывода
+watch:
+  - app/app
+  - app/generator
+  - sql
+  - out
+
 nav:
   - Русский:
       - Введение: ru/index.md
-      - Зачем pg-schema: ru/00-why-pg-schema.md
-      - Pg-schema за 15 минут: ru/01-wow.md
+      - Быстрый старт: ru/01-wow.md
       - Рабочая модель pg-schema: ru/02-core-workflow.md
-      - DML операции: ru/03-dml-operations.md
+      - Изменение данных в одной таблице: ru/03-flat-dml.md
       - Select: ru/04-select.md
+      - Изменение связанных данных: ru/05-tree-dml.md
+      - Ошибки компиляции: ru/06-compiler-errors.md
+      - На практике: ru/07-practice.md
+      - Справочник: ru/appendix-reference.md
   - English:
       - Introduction: en/index.md
 

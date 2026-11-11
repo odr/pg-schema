@@ -45,16 +45,14 @@ TUTORIAL_PKG          := tutorial
 TUTORIAL_GEN_EXE      := $(TUTORIAL_PKG):generator
 TUTORIAL_APP_EXE      := $(TUTORIAL_PKG):tutorial
 TUTORIAL_DB           ?= tutorial
+# connection string for the generator and the app (they read PG_CONN)
+PG_CONN               ?= dbname=$(TUTORIAL_DB)
+export PG_CONN
 TUTORIAL_SQL_SCHEMA   := tutorial/sql/00-create-schema.sql
 TUTORIAL_GEN_MAIN     := tutorial/app/generator/Main.hs
 TUTORIAL_GEN_SCH      := tutorial/app/app/Sch.hs
-DOCS_ROOT             := tutorial/docs
-DOCS_SOURCE_ROOT      := $(DOCS_ROOT)/source
-DOCS_SOURCE_SQL       := $(DOCS_SOURCE_ROOT)/sql
-DOCS_SOURCE_APP       := $(DOCS_SOURCE_ROOT)/app
-DOCS_SQL_MD           := $(DOCS_SOURCE_SQL)/00-create-schema.md
-DOCS_SCH_MD           := $(DOCS_SOURCE_APP)/Sch.md
-DOCS_GEN_MAIN_MD      := $(DOCS_SOURCE_APP)/generator-Main.md
+# console output of the tutorial app with snippet markers (included by the docs)
+TUTORIAL_OUT          := tutorial/out/tutorial.txt
 DOCS_VENV_DIR         := tutorial/.venv
 MKDOCS_BIN            := $(DOCS_VENV_DIR)/bin/mkdocs
 
@@ -69,13 +67,13 @@ help:
 	@echo "  test-run-debug  (same with pg-schema +debug)"
 	@echo "  old-tutorial-run    (generate app/Sch.hs, build, run pgs-tutorial)"
 	@echo "  old-tutorial-run-debug"
-	@echo "  tut-from-scratch   (db + schema + generator + app + docs sync + docs build)"
+	@echo "  tut-from-scratch   (db + schema + generator + app + docs build)"
 	@echo "  run-all            (test-run + old-tutorial-run + tut-from-scratch)"
 	@echo "  tut-db-init        (create DB if needed, apply tutorial schema)"
-	@echo "  tut-run            (run tutorial generator and app executables)"
-	@echo "  tut-sync-docs-source (generate docs/source/*.md wrappers from source files)"
+	@echo "  tut-schema-check   (fail if Sch.hs does not match the tutorial DB; for CI)"
+	@echo "  tut-run            (reset DB, run generator and app; app output -> $(TUTORIAL_OUT))"
 	@echo "  tut-docs-venv      (create tutorial/.venv and install mkdocs deps)"
-	@echo "  tut-docs-build     (mkdocs build via tutorial/.venv)"
+	@echo "  tut-docs-build     (mkdocs build --strict via tutorial/.venv)"
 	@echo "  tut-docs-serve     (mkdocs serve via tutorial/.venv)"
 	@echo "  local-docs      Haddock $(PKG) -> $(BUILDDIR_IDE) (cabal.project; for HLS hover)"
 	@echo "  hackage-docs  -> $(HACKAGE_DOCS_TAR)"
@@ -131,57 +129,47 @@ old-tutorial-run-debug:
 tut-db-init:
 	@psql -Atqc "SELECT 1 FROM pg_database WHERE datname='$(TUTORIAL_DB)'" postgres | grep -q 1 \
 		|| createdb "$(TUTORIAL_DB)"
-	psql "dbname=$(TUTORIAL_DB)" -f "$(TUTORIAL_SQL_SCHEMA)"
+	psql "$(PG_CONN)" -f "$(TUTORIAL_SQL_SCHEMA)"
 
+# The app expects a fresh DB (ids in the output depend on it), hence tut-db-init.
+# TUT_SNIPPETS=1 makes the app wrap each example's output in
+# `--8<-- [start:name]` / `--8<-- [end:name]` markers for pymdownx.snippets.
 .PHONY: tut-run
-tut-run:
+tut-run: tut-db-init
 	$(CABAL_REL) run $(TUTORIAL_GEN_EXE)
-	$(CABAL_REL) run $(TUTORIAL_APP_EXE)
+	$(CABAL_REL) build $(TUTORIAL_APP_EXE)
+	@mkdir -p "$(dir $(TUTORIAL_OUT))"
+	TUT_SNIPPETS=1 "$$($(CABAL_REL) list-bin $(TUTORIAL_APP_EXE))" > "$(TUTORIAL_OUT)"
+	@grep -v -e '--8<--' "$(TUTORIAL_OUT)"
+	@echo "Output with snippet markers: $(TUTORIAL_OUT)"
 
-.PHONY: tut-sync-docs-source
-tut-sync-docs-source:
-	mkdir -p "$(DOCS_SOURCE_SQL)" "$(DOCS_SOURCE_APP)"
-	rm -f "$(DOCS_SOURCE_SQL)"/*.sql "$(DOCS_SOURCE_APP)"/*.hs
-	@{ \
-		printf '%s\n\n' '# SQL schema: `00-create-schema.sql`'; \
-		printf '%s\n\n' 'Source path: `$(TUTORIAL_SQL_SCHEMA)`'; \
-		printf '%s\n' '```sql'; \
-		cat "$(TUTORIAL_SQL_SCHEMA)"; \
-		printf '\n%s\n' '```'; \
-	} > "$(DOCS_SQL_MD)"
-	@test -f "$(TUTORIAL_GEN_SCH)" || { printf '%s\n' "Missing $(TUTORIAL_GEN_SCH) — run: $(MAKE) tut-run"; exit 1; }
-	@{ \
-		printf '%s\n\n' '# Haskell schema module: `Sch.hs`'; \
-		printf '%s\n\n' 'Source path: `$(TUTORIAL_GEN_SCH)`'; \
-		printf '%s\n' '```haskell'; \
-		cat "$(TUTORIAL_GEN_SCH)"; \
-		printf '\n%s\n' '```'; \
-	} > "$(DOCS_SCH_MD)"
-	@{ \
-		printf '%s\n\n' '# Tutorial generator: `Main.hs`'; \
-		printf '%s\n\n' 'Source path: `$(TUTORIAL_GEN_MAIN)`'; \
-		printf '%s\n' '```haskell'; \
-		cat "$(TUTORIAL_GEN_MAIN)"; \
-		printf '\n%s\n' '```'; \
-	} > "$(DOCS_GEN_MAIN_MD)"
+# CI: fail if tutorial/app/app/Sch.hs does not match the tutorial database
+# (the generator also rewrites the file, so the diff is visible locally).
+.PHONY: tut-schema-check
+tut-schema-check: tut-db-init
+	$(CABAL_REL) run $(TUTORIAL_GEN_EXE) -- --check
 
 .PHONY: tut-docs-build
 tut-docs-build: tut-docs-venv
-	cd tutorial && ../$(MKDOCS_BIN) build
+	cd tutorial && ../$(MKDOCS_BIN) build --strict
 
 .PHONY: tut-docs-serve
 tut-docs-serve: tut-docs-venv
 	cd tutorial && ../$(MKDOCS_BIN) serve
 
 .PHONY: tut-docs-venv
+# Recreate the venv when it is missing or broken (e.g. the system Python was
+# upgraded and .venv/bin/python now points to a version without our packages).
 tut-docs-venv:
-	@test -x "$(MKDOCS_BIN)" || { \
-		python3 -m venv "$(DOCS_VENV_DIR)"; \
+	@"$(DOCS_VENV_DIR)/bin/python" -c 'import mkdocs, material, pymdownx' 2>/dev/null || { \
+		echo "Creating $(DOCS_VENV_DIR)"; \
+		rm -rf "$(DOCS_VENV_DIR)"; \
+		python3 -m venv "$(DOCS_VENV_DIR)" && \
 		"$(DOCS_VENV_DIR)/bin/pip" install mkdocs mkdocs-material pymdown-extensions; \
 	}
 
 .PHONY: tut-from-scratch
-tut-from-scratch: tut-db-init tut-run tut-sync-docs-source tut-docs-build
+tut-from-scratch: tut-run tut-docs-build
 
 .PHONY: run-all
 run-all: test-run old-tutorial-run tut-from-scratch

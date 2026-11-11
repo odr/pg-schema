@@ -1,6 +1,9 @@
 # Changelog for pg-schema
 
 ## Unreleased
+- Fix typos in compile-time error messages: "renaimer" → "renamer"
+  (generated `Sch.hs`; regenerate it to pick up the change) and
+  "more then" → "more than" (`UnsafeCol` expression check).
 - Fix: tree DML (`insertJSON`, `upsertJSON`, `updateJSON` and their `_`
   variants) stored `Nothing` for a nullable `json` / `jsonb` column as the JSON
   value `null` instead of SQL `NULL` (so `pnull` did not find the row and
@@ -63,6 +66,9 @@
   columns were all in the input, as if it were found under this parent; its own
   children were still processed. Now such a child is returned as `null`
   (`Nothing`) and its children are skipped, as for a row not found by `UPDATE`.
+
+## 0.8.1.1
+- aeson upper version is changed
 
 ## 0.8.1.0
 - upsertJSON: require `Maybe` on child returning when upsert uses

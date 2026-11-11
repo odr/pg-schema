@@ -1,0 +1,754 @@
+--8<-- [start:wow-owner]
+insert into tut.users(name) values (?) returning id
+1
+--8<-- [end:wow-owner]
+--8<-- [start:wow-owner-sql]
+insert into tut.users(name)
+values (?)
+returning id;
+--8<-- [end:wow-owner-sql]
+--8<-- [start:wow-insert]
+ProjectKey {id = 1, tasks_project_id_fkey = [TaskKey {project_id = 1, seq = 1},TaskKey {project_id = 1, seq = 2},TaskKey {project_id = 1, seq = 3}]}
+ProjectKey {id = 2, tasks_project_id_fkey = [TaskKey {project_id = 2, seq = 1}]}
+--8<-- [end:wow-insert]
+--8<-- [start:wow-insert-sql]
+create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  project_id1 int8; 
+  seq1 int4; 
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    insert into tut.projects(owner_id, title, status)
+      values ((row_0.value->>'owner_id')::int8, (row_0.value->>'title')::text, (row_0.value->>'status')::tut.project_status)
+      returning id into id0;
+      found_0 := found;
+    data_1 := row_0.value->'tasks_project_id_fkey';
+    arr_1:= '{}';
+    for row_1 in select * from jsonb_array_elements(data_1)
+    loop
+      insert into tut.tasks(project_id, seq, title, priority)
+        values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text, (row_1.value->>'priority')::int4)
+        returning project_id, seq into project_id1, seq1;
+          found_1 := found;
+      arr_1 := array_append(arr_1, jsonb_build_object('project_id', project_id1, 'seq', seq1));
+    end loop;
+    arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'tasks_project_id_fkey', to_jsonb(arr_1)));
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+--8<-- [end:wow-insert-sql]
+--8<-- [start:wow-select]
+Project {owner_id = 1, title = "Website", status = Project_status_active, tasks_project_id_fkey = [Task {seq = 1, title = "Design", priority = 10},Task {seq = 2, title = "Backend", priority = 30}]}
+select t0.owner_id "owner_id",t0.title "title",t0.status "status",array_to_json(array(select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority) from tut.tasks t1  where t1.project_id=t0.id and t1.priority < ? order by t1.seq Asc nulls last)) "tasks_project_id_fkey" from tut.projects t0  where t0.status = ?
+[SomeToField 50,SomeToField Project_status_active]
+--8<-- [end:wow-select]
+--8<-- [start:wow-select-sql]
+select t0.owner_id "owner_id",
+       t0.title "title",
+       t0.status "status",
+       array_to_json(array(
+           select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority)
+           from tut.tasks t1
+           where t1.project_id=t0.id and t1.priority < ?
+           order by t1.seq Asc nulls last)) "tasks_project_id_fkey"
+from tut.projects t0
+where t0.status = ?;
+--8<-- [end:wow-select-sql]
+--8<-- [start:wow-select-text]
+select t0.owner_id "owner_id",t0.title "title",t0.status "status",array_to_json(array(select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority) from tut.tasks t1  where t1.project_id=t0.id and t1.priority < ? order by t1.seq Asc nulls last)) "tasks_project_id_fkey" from tut.projects t0  where t0.status = ?
+[SomeToField 50,SomeToField Project_status_active]
+--8<-- [end:wow-select-text]
+--8<-- [start:wow-select-text-sql]
+select t0.owner_id "owner_id",
+       t0.title "title",
+       t0.status "status",
+       array_to_json(array(
+           select jsonb_build_object('seq',t1.seq,'title',t1.title,'priority',t1.priority)
+           from tut.tasks t1
+           where t1.project_id=t0.id and t1.priority < ?
+           order by t1.seq Asc nulls last)) "tasks_project_id_fkey"
+from tut.projects t0
+where t0.status = ?;
+--8<-- [end:wow-select-text-sql]
+--8<-- [start:users-generic]
+insert text: insert into tut.users(name,email) values (?,?)
+inserted 1 rows
+select text: select t0.name "name",t0.email "email" from tut.users t0 
+select params: []
+selected rows: [MkUser {name = "Benjy", email = Nothing}]
+--8<-- [end:users-generic]
+--8<-- [start:users-generic-sql]
+insert into tut.users(name,email)
+values (?,?);
+
+select t0.name "name",
+       t0.email "email"
+from tut.users t0;
+--8<-- [end:users-generic-sql]
+--8<-- [start:users-pgtag]
+insert text: insert into tut.users(name,email) values (?,?) returning id,manager_id,name,email
+inserted: ["id" =: 2 :. ("managerId" =: Nothing :. MkUser {name = "Quentin", email = Just "quentin@example.com"}),"id" =: 3 :. ("managerId" =: Nothing :. MkUser {name = "Jason", email = Just "jason@example.com"})]
+select text: select t0.name "name" from tut.users t0 
+select params: []
+selected rows: ["name" =: "Benjy","name" =: "Quentin","name" =: "Jason"]
+--8<-- [end:users-pgtag]
+--8<-- [start:users-pgtag-sql]
+insert into tut.users(name,email)
+values (?,?)
+returning id,manager_id,name,email;
+
+select t0.name "name"
+from tut.users t0;
+--8<-- [end:users-pgtag-sql]
+--8<-- [start:insert-projects]
+insert text: insert into tut.projects(owner_id,title,status,tags) values (?,?,?,?) returning id
+inserted ids: [1,2]
+--8<-- [end:insert-projects]
+--8<-- [start:insert-projects-sql]
+insert into tut.projects(owner_id,title,status,tags)
+values (?,?,?,?)
+returning id;
+--8<-- [end:insert-projects-sql]
+--8<-- [start:update-by-cond]
+updated: [2 :. ("tutorial" :. Project_status_archived)]
+--8<-- [end:update-by-cond]
+--8<-- [start:update-text]
+update text: update tut.projects t0 set status = ? where t0.id = ? returning id,title,status
+update params: [SomeToField 2]
+--8<-- [end:update-text]
+--8<-- [start:update-text-sql]
+update tut.projects t0
+set status = ?
+where t0.id = ?
+returning id,title,status;
+--8<-- [end:update-text-sql]
+--8<-- [start:delete-by-cond]
+delete text: delete from tut.projects t0  where t0.id = ?
+delete params: [SomeToField 2]
+deleted: 1 rows
+--8<-- [end:delete-by-cond]
+--8<-- [start:delete-by-cond-sql]
+delete from tut.projects t0
+where t0.id = ?;
+--8<-- [end:delete-by-cond-sql]
+--8<-- [start:update-by-key]
+update text: update tut.users set name = ? where id IS NOT DISTINCT FROM ? returning id,name
+updated: [Just ("id" =: 2 :. "name" =: "Quentin T."),Nothing]
+--8<-- [end:update-by-key]
+--8<-- [start:update-by-key-sql]
+update tut.users
+set name = ?
+where id IS NOT DISTINCT FROM ?
+returning id,name;
+--8<-- [end:update-by-key-sql]
+--8<-- [start:upsert-by-pk]
+upsert text: insert into tut.users(id, name) values (?, ?) on conflict (id) do update set name = EXCLUDED.name returning id,name
+upserted: [3 :. "Jason B.",100 :. "Margo"]
+--8<-- [end:upsert-by-pk]
+--8<-- [start:upsert-by-pk-sql]
+insert into tut.users(id, name)
+values (?, ?)
+on conflict (id) do update set name = EXCLUDED.name
+returning id,name;
+--8<-- [end:upsert-by-pk-sql]
+--8<-- [start:upsert-by-uk]
+upsert text: insert into tut.users(name, email) values (?, ?) on conflict (email) do update set name = EXCLUDED.name returning id,name,email
+upserted: [2 :. ("Quentin Tarantino" :. Just "quentin@example.com"),5 :. ("Mia" :. Just "mia@example.com")]
+--8<-- [end:upsert-by-uk]
+--8<-- [start:upsert-by-uk-sql]
+insert into tut.users(name, email)
+values (?, ?)
+on conflict (email) do update set name = EXCLUDED.name
+returning id,name,email;
+--8<-- [end:upsert-by-uk-sql]
+--8<-- [start:sel-tree]
+Project {title = "Website", status = Project_status_active, projectOwner = "name" =: "Alice", tasksProjectIdFkey = [Task {seq = 1, title = "Design", priority = 10},Task {seq = 2, title = "Frontend", priority = 30},Task {seq = 3, title = "Polish", priority = 100}]}
+Project {title = "API", status = Project_status_active, projectOwner = "name" =: "Bob", tasksProjectIdFkey = [Task {seq = 1, title = "Schema", priority = 20},Task {seq = 2, title = "Endpoints", priority = 40}]}
+Project {title = "Docs", status = Project_status_draft, projectOwner = "name" =: "Carol", tasksProjectIdFkey = [Task {seq = 1, title = "Outline", priority = 50}]}
+Project {title = "Legacy", status = Project_status_archived, projectOwner = "name" =: "Dave", tasksProjectIdFkey = []}
+params: []
+--8<-- [end:sel-tree]
+--8<-- [start:sel-tree-sql]
+select t0.title "title",
+       t0.status "status",
+       jsonb_build_object('name',t1.name) "projectOwner",
+       array_to_json(array(
+           select jsonb_build_object('seq',t2.seq,'title',t2.title,'priority',t2.priority)
+           from tut.tasks t2
+           where t2.project_id=t0.id)) "tasksProjectIdFkey"
+from tut.projects t0
+join tut.users t1 on t0.owner_id=t1.id;
+--8<-- [end:sel-tree-sql]
+--8<-- [start:sel-self]
+Person {name = "Alice", manager = Nothing, subordinates = ["name" =: "Bob","name" =: "Carol"]}
+Person {name = "Bob", manager = Just ("name" =: "Alice"), subordinates = ["name" =: "Dave"]}
+Person {name = "Carol", manager = Just ("name" =: "Alice"), subordinates = []}
+Person {name = "Dave", manager = Just ("name" =: "Bob"), subordinates = []}
+params: []
+--8<-- [end:sel-self]
+--8<-- [start:sel-self-sql]
+select t0.name "name",
+       case when t1.name is null then null else jsonb_build_object('name',t1.name) end "manager",
+       array_to_json(array(
+           select jsonb_build_object('name',t2.name)
+           from tut.users t2
+           where t2.manager_id=t0.id)) "subordinates"
+from tut.users t0
+left outer join tut.users t1 on t0.manager_id=t1.id;
+--8<-- [end:sel-self-sql]
+--8<-- [start:sel-cond]
+"title" =: "Website" :. "status" =: Project_status_active
+"title" =: "Docs" :. "status" =: Project_status_draft
+"title" =: "Legacy" :. "status" =: Project_status_archived
+params: [SomeToField Project_status_active,SomeToField "%site%",SomeToField Project_status_active,SomeToField (PGArray {fromPGArray = [3,4]})]
+--8<-- [end:sel-cond]
+--8<-- [start:sel-cond-sql]
+select t0.title "title",
+       t0.status "status"
+from tut.projects t0
+where (t0.status = ? and t0.title ilike ? or not (t0.status = ?) and t0.id = any(?::int8[]));
+--8<-- [end:sel-cond-sql]
+--8<-- [start:sel-null]
+"name" =: "Bob" :. "email" =: Just "bob@example.com"
+"name" =: "Carol" :. "email" =: Nothing
+"name" =: "Dave" :. "email" =: Just "dave@example.com"
+params: [SomeToField (Just "bob@example.com"),SomeToField (PGArray {fromPGArray = ["Dave","Eve"]})]
+--8<-- [end:sel-null]
+--8<-- [start:sel-null-sql]
+select t0.name "name",
+       t0.email "email"
+from tut.users t0
+where ((t0.email is null or t0.email is not distinct from ?) or t0.name = any(?::text[]));
+--8<-- [end:sel-null-sql]
+--8<-- [start:sel-path]
+Project {title = "Website", status = Project_status_active, projectOwner = "name" =: "Alice", tasksProjectIdFkey = [Task {seq = 2, title = "Frontend", priority = 30}]}
+Project {title = "API", status = Project_status_active, projectOwner = "name" =: "Bob", tasksProjectIdFkey = [Task {seq = 2, title = "Endpoints", priority = 40}]}
+params: [SomeToField 50,SomeToField Project_status_active]
+--8<-- [end:sel-path]
+--8<-- [start:sel-path-sql]
+select t0.title "title",
+       t0.status "status",
+       jsonb_build_object('name',t1.name) "projectOwner",
+       array_to_json(array(
+           select jsonb_build_object('seq',t2.seq,'title',t2.title,'priority',t2.priority)
+           from tut.tasks t2
+           where t2.project_id=t0.id and t2.priority < ?
+           order by t2.priority Desc nulls last
+           limit 1)) "tasksProjectIdFkey"
+from tut.projects t0
+join tut.users t1 on t0.owner_id=t1.id
+where t0.status = ?
+order by t0.title Desc nulls last;
+--8<-- [end:sel-path-sql]
+--8<-- [start:sel-pchild]
+"title" =: "Website"
+params: [SomeToField 20]
+--8<-- [end:sel-pchild]
+--8<-- [start:sel-pchild-sql]
+select t0.title "title"
+from tut.projects t0
+where exists (
+    select 1
+    from (
+        select *
+        from tut.tasks t0q1
+        where t0q1.project_id = t0.id) t0q1
+    where t0q1.priority < ?);
+--8<-- [end:sel-pchild-sql]
+--8<-- [start:sel-pchild-first]
+"title" =: "API"
+params: [SomeToField 50]
+--8<-- [end:sel-pchild-first]
+--8<-- [start:sel-pchild-first-sql]
+select t0.title "title"
+from tut.projects t0
+where exists (
+    select 1
+    from (
+        select *
+        from tut.tasks t0q1
+        where t0q1.project_id = t0.id
+        order by t0q1.priority Desc nulls last
+        limit 1) t0q1
+    where t0q1.priority < ?);
+--8<-- [end:sel-pchild-first-sql]
+--8<-- [start:sel-pparent]
+"title" =: "Frontend" :. "priority" =: 30
+"title" =: "Endpoints" :. "priority" =: 40
+"title" =: "Polish" :. "priority" =: 100
+params: [SomeToField Project_status_active,SomeToField 30]
+--8<-- [end:sel-pparent]
+--8<-- [start:sel-pparent-sql]
+select t0.title "title",
+       t0.priority "priority"
+from tut.tasks t0
+where exists (
+    select 1
+    from (
+        select *
+        from tut.projects t0q1
+        where t0q1.id = t0.project_id) t0q1
+    where t0q1.status = ?) and t0.priority >= ?
+order by t0.priority Asc nulls last;
+--8<-- [end:sel-pparent-sql]
+--8<-- [start:sel-limit]
+"title" =: "Outline" :. "priority" =: 50
+"title" =: "Endpoints" :. "priority" =: 40
+params: []
+--8<-- [end:sel-limit]
+--8<-- [start:sel-limit-sql]
+select t0.title "title",
+       t0.priority "priority"
+from tut.tasks t0
+order by t0.priority Desc nulls last
+limit 2
+offset 1;
+--8<-- [end:sel-limit-sql]
+--8<-- [start:sel-distinct]
+"status" =: Project_status_draft
+"status" =: Project_status_active
+"status" =: Project_status_archived
+params: []
+--8<-- [end:sel-distinct]
+--8<-- [start:sel-distinct-sql]
+select distinct t0.status "status"
+from tut.projects t0
+order by t0.status Asc nulls last;
+--8<-- [end:sel-distinct-sql]
+--8<-- [start:sel-distinct-on]
+"projectId" =: 1 :. ("title" =: "Design" :. "priority" =: 10)
+"projectId" =: 2 :. ("title" =: "Schema" :. "priority" =: 20)
+"projectId" =: 3 :. ("title" =: "Outline" :. "priority" =: 50)
+params: []
+--8<-- [end:sel-distinct-on]
+--8<-- [start:sel-distinct-on-sql]
+select distinct on (t0.project_id) t0.project_id "projectId",
+       t0.title "title",
+       t0.priority "priority"
+from tut.tasks t0
+order by t0.project_id Asc nulls last,t0.priority Asc nulls last;
+--8<-- [end:sel-distinct-on-sql]
+--8<-- [start:sel-distinct-on-parent]
+"seq" =: 1 :. ("title" =: "Outline" :. ("priority" =: 50 :. "tasksProjectIdFkey" =: ("title" =: "Docs" :. "status" =: Project_status_draft)))
+"seq" =: 1 :. ("title" =: "Schema" :. ("priority" =: 20 :. "tasksProjectIdFkey" =: ("title" =: "API" :. "status" =: Project_status_active)))
+"seq" =: 2 :. ("title" =: "Endpoints" :. ("priority" =: 40 :. "tasksProjectIdFkey" =: ("title" =: "API" :. "status" =: Project_status_active)))
+"seq" =: 3 :. ("title" =: "Polish" :. ("priority" =: 100 :. "tasksProjectIdFkey" =: ("title" =: "Website" :. "status" =: Project_status_active)))
+params: []
+--8<-- [end:sel-distinct-on-parent]
+--8<-- [start:sel-distinct-on-parent-sql]
+select distinct on (t0.seq,t1.status) t0.seq "seq",
+       t0.title "title",
+       t0.priority "priority",
+       jsonb_build_object('title',t1.title,'status',t1.status) "tasksProjectIdFkey"
+from tut.tasks t0
+join tut.projects t1 on t0.project_id=t1.id
+order by t0.seq Asc nulls last,t1.status Asc nulls last,t0.priority Desc nulls last;
+--8<-- [end:sel-distinct-on-parent-sql]
+--8<-- [start:sel-self-path]
+Person {name = "Alice", manager = Nothing, subordinates = ["name" =: "Bob","name" =: "Carol"]}
+Person {name = "Bob", manager = Just ("name" =: "Alice"), subordinates = []}
+Person {name = "Carol", manager = Just ("name" =: "Alice"), subordinates = []}
+params: [SomeToField "%o%",SomeToField (Just 1)]
+--8<-- [end:sel-self-path]
+--8<-- [start:sel-self-path-sql]
+select t0.name "name",
+       case when t1.name is null then null else jsonb_build_object('name',t1.name) end "manager",
+       array_to_json(array(
+           select jsonb_build_object('name',t2.name)
+           from tut.users t2
+           where t2.manager_id=t0.id and t2.name ilike ?)) "subordinates"
+from tut.users t0
+left outer join tut.users t1 on t0.manager_id=t1.id
+where (t0.manager_id is null or t0.manager_id = ?)
+order by t0.name Asc nulls last;
+--8<-- [end:sel-self-path-sql]
+--8<-- [start:sel-aggr]
+"projectId" =: 1 :. ("cnt" =: Aggr' {unAggr' = 3} :. "priority" =: Aggr' {unAggr' = 100})
+"projectId" =: 2 :. ("cnt" =: Aggr' {unAggr' = 2} :. "priority" =: Aggr' {unAggr' = 40})
+"projectId" =: 3 :. ("cnt" =: Aggr' {unAggr' = 1} :. "priority" =: Aggr' {unAggr' = 50})
+params: []
+--8<-- [end:sel-aggr]
+--8<-- [start:sel-aggr-sql]
+select t0.project_id "projectId",
+       count(*) "cnt",
+       max(t0.priority) "priority"
+from tut.tasks t0
+group by project_id
+order by t0.project_id Asc nulls last;
+--8<-- [end:sel-aggr-sql]
+--8<-- [start:sel-aggr-total]
+"cnt" =: Aggr {unAggr = 6} :. "priority" =: Aggr {unAggr = Just 100}
+params: []
+--8<-- [end:sel-aggr-total]
+--8<-- [start:sel-aggr-total-sql]
+select count(*) "cnt",
+       max(t0.priority) "priority"
+from tut.tasks t0;
+--8<-- [end:sel-aggr-total-sql]
+--8<-- [start:sel-json-arr]
+"title" =: "Design" :. ("payload" =: Just (Payload {estimate = 3}) :. "watchers" =: PgArr {unPgArr = [Just 2,Just 3]})
+"title" =: "Frontend" :. ("payload" =: Just (Payload {estimate = 8}) :. "watchers" =: PgArr {unPgArr = [Just 3]})
+"title" =: "Schema" :. ("payload" =: Just (Payload {estimate = 5}) :. "watchers" =: PgArr {unPgArr = [Just 1]})
+params: []
+--8<-- [end:sel-json-arr]
+--8<-- [start:sel-json-arr-sql]
+select t0.title "title",
+       t0.payload "payload",
+       t0.watchers "watchers"
+from tut.tasks t0
+where not (t0.payload is null);
+--8<-- [end:sel-json-arr-sql]
+--8<-- [start:sel-unsafe]
+"title" =: "Endpoints" :. "titleLength" =: UnsafeCol ['title'] 'length(?)' 9
+"title" =: "Outline" :. "titleLength" =: UnsafeCol ['title'] 'length(?)' 7
+"title" =: "Polish" :. "titleLength" =: UnsafeCol ['title'] 'length(?)' 6
+params: [SomeToField 40]
+--8<-- [end:sel-unsafe]
+--8<-- [start:sel-unsafe-sql]
+select t0.title "title",
+       length(t0.title) "titleLength"
+from tut.tasks t0
+where t0.seq + t0.priority > ?
+order by length(t0.title) Desc nulls last;
+--8<-- [end:sel-unsafe-sql]
+--8<-- [start:why-select]
+"title" =: "Website" :. "tasks_project_id_fkey" =: ["title" =: "Design" :. "priority" =: 10,"title" =: "Frontend" :. "priority" =: 30]
+"title" =: "API" :. "tasks_project_id_fkey" =: ["title" =: "Schema" :. "priority" =: 20,"title" =: "Endpoints" :. "priority" =: 40]
+[SomeToField 50,SomeToField Project_status_active]
+--8<-- [end:why-select]
+--8<-- [start:why-select-sql]
+select t0.title "title",
+       array_to_json(array(
+           select jsonb_build_object('title',t1.title,'priority',t1.priority)
+           from tut.tasks t1
+           where t1.project_id=t0.id and t1.priority < ?)) "tasks_project_id_fkey"
+from tut.projects t0
+where t0.status = ?;
+--8<-- [end:why-select-sql]
+--8<-- [start:tree-insert]
+"id" =: 1 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "taskEventsProjectIdSeqFkey" =: ["eventNo" =: 1,"eventNo" =: 2],"seq" =: 2 :. "taskEventsProjectIdSeqFkey" =: []]
+"id" =: 2 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "taskEventsProjectIdSeqFkey" =: ["eventNo" =: 1]]
+--8<-- [end:tree-insert]
+--8<-- [start:tree-insert-sql]
+create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  project_id1 int8; 
+  seq1 int4; 
+  data_2 jsonb;
+  found_2 boolean;
+  row_2 record;
+  arr_2 jsonb[];
+  event_no2 int4; 
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    insert into tut.projects(owner_id, title, status, tags)
+      values ((row_0.value->>'ownerId')::int8, (row_0.value->>'title')::text, (row_0.value->>'status')::tut.project_status, case when jsonb_typeof(row_0.value->'tags') = 'array' then (select coalesce(array_agg(__x)::text[], '{}') from jsonb_array_elements_text(row_0.value->'tags') __x) else null end)
+      returning id into id0;
+      found_0 := found;
+    data_1 := row_0.value->'tasksProjectIdFkey';
+    arr_1:= '{}';
+    for row_1 in select * from jsonb_array_elements(data_1)
+    loop
+      insert into tut.tasks(project_id, seq, title, priority)
+        values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text, (row_1.value->>'priority')::int4)
+        returning project_id, seq into project_id1, seq1;
+          found_1 := found;
+      data_2 := row_1.value->'taskEventsProjectIdSeqFkey';
+      arr_2:= '{}';
+      for row_2 in select * from jsonb_array_elements(data_2)
+      loop
+        insert into tut.task_events(project_id, seq, event_no, kind)
+          values (project_id1, seq1, (row_2.value->>'eventNo')::int4, (row_2.value->>'kind')::text)
+          returning event_no into event_no2;
+              found_2 := found;
+        arr_2 := array_append(arr_2, jsonb_build_object('eventNo', event_no2));
+      end loop;
+      arr_1 := array_append(arr_1, jsonb_build_object('seq', seq1, 'taskEventsProjectIdSeqFkey', to_jsonb(arr_2)));
+    end loop;
+    arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'tasksProjectIdFkey', to_jsonb(arr_1)));
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+--8<-- [end:tree-insert-sql]
+--8<-- [start:tree-insert-nr-sql]
+create or replace procedure pg_temp.__ins(data_0 jsonb) as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  project_id1 int8; 
+  seq1 int4; 
+  data_2 jsonb;
+  found_2 boolean;
+  row_2 record;
+begin
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    insert into tut.projects(owner_id, title, status, tags)
+      values ((row_0.value->>'ownerId')::int8, (row_0.value->>'title')::text, (row_0.value->>'status')::tut.project_status, case when jsonb_typeof(row_0.value->'tags') = 'array' then (select coalesce(array_agg(__x)::text[], '{}') from jsonb_array_elements_text(row_0.value->'tags') __x) else null end)
+      returning id into id0;
+      found_0 := found;
+    data_1 := row_0.value->'tasksProjectIdFkey';
+    for row_1 in select * from jsonb_array_elements(data_1)
+    loop
+      insert into tut.tasks(project_id, seq, title, priority)
+        values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text, (row_1.value->>'priority')::int4)
+        returning project_id, seq into project_id1, seq1;
+          found_1 := found;
+      data_2 := row_1.value->'taskEventsProjectIdSeqFkey';
+      for row_2 in select * from jsonb_array_elements(data_2)
+      loop
+        insert into tut.task_events(project_id, seq, event_no, kind)
+          values (project_id1, seq1, (row_2.value->>'eventNo')::int4, (row_2.value->>'kind')::text);
+              found_2 := found;
+      end loop;
+    end loop;
+  end loop;
+
+end; 
+$$ language plpgsql;
+--8<-- [end:tree-insert-nr-sql]
+--8<-- [start:tree-upsert]
+Just ("id" =: 1 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "title" =: "Design v2","seq" =: 3 :. "title" =: "Backend"])
+--8<-- [end:tree-upsert]
+--8<-- [start:tree-upsert-sql]
+create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  project_id1 int8; 
+  seq1 int4; 
+  title1 text; 
+  data_2 jsonb;
+  found_2 boolean;
+  row_2 record;
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    update tut.projects
+      set id = (row_0.value->>'id')::int8
+      where id IS NOT DISTINCT FROM (row_0.value->>'id')::int8
+      returning id into id0;
+      found_0 := found;
+    if found_0 then
+      data_1 := row_0.value->'tasksProjectIdFkey';
+      arr_1:= '{}';
+      for row_1 in select * from jsonb_array_elements(data_1)
+      loop
+        insert into tut.tasks(project_id, seq, title)
+          values (id0, (row_1.value->>'seq')::int4, (row_1.value->>'title')::text)
+          on conflict (project_id, seq)
+            do update set title = EXCLUDED.title
+          returning project_id, seq, title into project_id1, seq1, title1;
+              found_1 := found;
+        data_2 := row_1.value->'taskEventsProjectIdSeqFkey';
+        for row_2 in select * from jsonb_array_elements(data_2)
+        loop
+          insert into tut.task_events(project_id, seq, event_no, kind)
+            values (project_id1, seq1, (row_2.value->>'eventNo')::int4, (row_2.value->>'kind')::text)
+            on conflict (project_id, seq, event_no)
+              do update set kind = EXCLUDED.kind;
+                  found_2 := found;
+        end loop;
+        arr_1 := array_append(arr_1, jsonb_build_object('seq', seq1, 'title', title1));
+      end loop;
+    end if;
+    if found_0 then
+      arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'tasksProjectIdFkey', to_jsonb(arr_1)));
+    else
+      arr_0 := array_append(arr_0, 'null'::jsonb);
+    end if;
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+--8<-- [end:tree-upsert-sql]
+--8<-- [start:tree-upsert-missing]
+[Nothing]
+--8<-- [end:tree-upsert-missing]
+--8<-- [start:tree-update]
+Just ("id" =: 2 :. ("status" =: Project_status_active :. "tasksProjectIdFkey" =: [Just ("seq" =: 1 :. "priority" =: 5),Nothing]))
+Nothing
+--8<-- [end:tree-update]
+--8<-- [start:tree-update-sql]
+create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  status0 tut.project_status; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  seq1 int4; 
+  priority1 int4; 
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    update tut.projects
+      set id = (row_0.value->>'id')::int8, status = (row_0.value->>'status')::tut.project_status
+      where id IS NOT DISTINCT FROM (row_0.value->>'id')::int8
+      returning id, status into id0, status0;
+      found_0 := found;
+    if found_0 then
+      data_1 := row_0.value->'tasksProjectIdFkey';
+      arr_1:= '{}';
+      for row_1 in select * from jsonb_array_elements(data_1)
+      loop
+        update tut.tasks
+          set seq = (row_1.value->>'seq')::int4, priority = (row_1.value->>'priority')::int4
+          where project_id = id0 and seq IS NOT DISTINCT FROM (row_1.value->>'seq')::int4
+          returning seq, priority into seq1, priority1;
+              found_1 := found;
+        if found_1 then
+        end if;
+        if found_1 then
+          arr_1 := array_append(arr_1, jsonb_build_object('seq', seq1, 'priority', priority1));
+        else
+          arr_1 := array_append(arr_1, 'null'::jsonb);
+        end if;
+      end loop;
+    end if;
+    if found_0 then
+      arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'status', status0, 'tasksProjectIdFkey', to_jsonb(arr_1)));
+    else
+      arr_0 := array_append(arr_0, 'null'::jsonb);
+    end if;
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+--8<-- [end:tree-update-sql]
+--8<-- [start:tree-tx]
+error: "duplicate key value violates unique constraint \"projects_pkey\""
+projects "Tx demo": 0
+--8<-- [end:tree-tx]
+--8<-- [start:prac-audit-insert]
+[1 :. [1,2]]
+--8<-- [end:prac-audit-insert]
+--8<-- [start:prac-audit-insert-sql]
+create or replace function pg_temp.__ins(data_0 jsonb) returns jsonb as $$
+declare
+  found_0 boolean;
+  row_0 record;
+  arr_0 jsonb[];
+  id0 int8; 
+  data_1 jsonb;
+  found_1 boolean;
+  row_1 record;
+  arr_1 jsonb[];
+  id1 int8; 
+begin
+  arr_0:= '{}';
+  for row_0 in select * from jsonb_array_elements(data_0)
+  loop
+    insert into tut.projects(owner_id, title)
+      values ((row_0.value->>'ownerId')::int8, (row_0.value->>'title')::text)
+      returning id into id0;
+      found_0 := found;
+    data_1 := row_0.value->'projectLogProjectIdFkey';
+    arr_1:= '{}';
+    for row_1 in select * from jsonb_array_elements(data_1)
+    loop
+      insert into audit.project_log(project_id, message)
+        values (id0, (row_1.value->>'message')::text)
+        returning id into id1;
+          found_1 := found;
+      arr_1 := array_append(arr_1, jsonb_build_object('id', id1));
+    end loop;
+    arr_0 := array_append(arr_0, jsonb_build_object('id', id0, 'projectLogProjectIdFkey', to_jsonb(arr_1)));
+  end loop;
+  return to_jsonb(arr_0);
+end; 
+$$ language plpgsql;
+--8<-- [end:prac-audit-insert-sql]
+--8<-- [start:prac-audit-select]
+"message" =: "created" :. "projectLogProjectIdFkey" =: ("title" =: "Website")
+"message" =: "owner assigned" :. "projectLogProjectIdFkey" =: ("title" =: "Website")
+--8<-- [end:prac-audit-select]
+--8<-- [start:prac-audit-select-sql]
+select t0.message "message",
+       jsonb_build_object('title',t1.title) "projectLogProjectIdFkey"
+from audit.project_log t0
+join tut.projects t1 on t0.project_id=t1.id
+order by t0.id Asc nulls last;
+--8<-- [end:prac-audit-select-sql]
+--8<-- [start:prac-addrel]
+"seq" =: 1 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthor" =: Just ("name" =: "Alice")))
+"seq" =: 1 :. ("eventNo" =: 2 :. ("kind" =: "reviewed" :. "taskEventsAuthor" =: Just ("name" =: "Bob")))
+"seq" =: 2 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthor" =: Nothing))
+"seq" =: 2 :. ("eventNo" =: 2 :. ("kind" =: "edited" :. "taskEventsAuthor" =: Nothing))
+--8<-- [end:prac-addrel]
+--8<-- [start:prac-addrel-sql]
+select t0.seq "seq",
+       t0.event_no "eventNo",
+       t0.kind "kind",
+       case when t1.name is null then null else jsonb_build_object('name',t1.name) end "taskEventsAuthor"
+from tut.task_events t0
+left outer join tut.users t1 on t0.author_id=t1.id
+order by t0.seq Asc nulls last,t0.event_no Asc nulls last;
+--8<-- [end:prac-addrel-sql]
+--8<-- [start:prac-addrel-children]
+"name" =: "Alice" :. "taskEventsAuthor" =: ["kind" =: "created"]
+"name" =: "Bob" :. "taskEventsAuthor" =: ["kind" =: "reviewed"]
+--8<-- [end:prac-addrel-children]
+--8<-- [start:prac-addrel-children-sql]
+select t0.name "name",
+       array_to_json(array(
+           select jsonb_build_object('kind',t1.kind)
+           from tut.task_events t1
+           where t1.author_id=t0.id)) "taskEventsAuthor"
+from tut.users t0
+order by t0.name Asc nulls last;
+--8<-- [end:prac-addrel-children-sql]
+--8<-- [start:prac-addrel-parent]
+"seq" =: 1 :. ("eventNo" =: 1 :. "kind" =: "created")
+--8<-- [end:prac-addrel-parent]
+--8<-- [start:prac-addrel-parent-sql]
+select t0.seq "seq",
+       t0.event_no "eventNo",
+       t0.kind "kind"
+from tut.task_events t0
+where exists (
+    select 1
+    from (
+        select *
+        from tut.users t0q1
+        where t0q1.id = t0.author_id) t0q1
+    where t0q1.name = ?);
+--8<-- [end:prac-addrel-parent-sql]

@@ -44,26 +44,30 @@ instance (ToStar (TTypDef Sch name), ToStar name) => CTypDef Sch name where
   type TTypDef Sch name = TTypDefSch name
 
 type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
+  TTabDefSch ( "audit" ->> "project_log" ) = 'TabDef '[ "id","project_id","message","created_at" ] '[ "id" ] '[  ]
   TTabDefSch ( "tut" ->> "projects" ) = 'TabDef '[ "id","owner_id","title","status","tags","created_at" ] '[ "id" ] '[  ]
-  TTabDefSch ( "tut" ->> "task_events" ) = 'TabDef '[ "project_id","seq","event_no","kind","meta","created_at" ] '[ "project_id","seq","event_no" ] '[  ]
+  TTabDefSch ( "tut" ->> "task_events" ) = 'TabDef '[ "project_id","seq","event_no","kind","meta","author_id","created_at" ] '[ "project_id","seq","event_no" ] '[  ]
   TTabDefSch ( "tut" ->> "tasks" ) = 'TabDef '[ "project_id","seq","title","priority","payload","watchers" ] '[ "project_id","seq" ] '[  ]
-  TTabDefSch ( "tut" ->> "users" ) = 'TabDef '[ "id","name","email","created_at" ] '[ "id" ] '[ '[ "email" ] ]
+  TTabDefSch ( "tut" ->> "users" ) = 'TabDef '[ "id","name","email","manager_id","created_at" ] '[ "id" ] '[ '[ "email" ] ]
   TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: tut.projects, tut.task_events, tut.tasks, tut.users."
+    TE.:$$: TE.Text "  Tables: audit.project_log, tut.projects, tut.task_events, tut.tasks, tut.users."
     TE.:$$: TE.Text "")
 instance (ToStar (TTabDef Sch name), ToStar name) => CTabDef Sch name where
   type TTabDef Sch name = TTabDefSch name
 
 type family TRelDefSch (ref :: NameNSK) :: RelDef' TL.Symbol where
+  TRelDefSch ( "_add" ->> "task_events_author" ) = 'RelDef ( "tut" ->> "task_events" ) ( "tut" ->> "users" ) '[ '( "author_id","id" ) ]
+  TRelDefSch ( "audit" ->> "project_log_project_id_fkey" ) = 'RelDef ( "audit" ->> "project_log" ) ( "tut" ->> "projects" ) '[ '( "project_id","id" ) ]
   TRelDefSch ( "tut" ->> "projects_owner_id_fkey" ) = 'RelDef ( "tut" ->> "projects" ) ( "tut" ->> "users" ) '[ '( "owner_id","id" ) ]
   TRelDefSch ( "tut" ->> "task_events_project_id_seq_fkey" ) = 'RelDef ( "tut" ->> "task_events" ) ( "tut" ->> "tasks" ) '[ '( "project_id","project_id" ),'( "seq","seq" ) ]
   TRelDefSch ( "tut" ->> "tasks_project_id_fkey" ) = 'RelDef ( "tut" ->> "tasks" ) ( "tut" ->> "projects" ) '[ '( "project_id","id" ) ]
+  TRelDefSch ( "tut" ->> "users_manager_id_fkey" ) = 'RelDef ( "tut" ->> "users" ) ( "tut" ->> "users" ) '[ '( "manager_id","id" ) ]
   TRelDefSch ref = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "relation " TE.:<>: TE.ShowType ref TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Relations: tut.projects_owner_id_fkey, tut.task_events_project_id_seq_fkey, tut.tasks_project_id_fkey."
+    TE.:$$: TE.Text "  Relations: _add.task_events_author, audit.project_log_project_id_fkey, tut.projects_owner_id_fkey, tut.task_events_project_id_seq_fkey, tut.tasks_project_id_fkey, tut.users_manager_id_fkey."
     TE.:$$: TE.Text "")
 instance ( ToStar (TRelDef Sch ref)
          , CTabDef Sch (RdFrom (TRelDef Sch ref))
@@ -72,45 +76,71 @@ instance ( ToStar (TRelDef Sch ref)
   type TRelDef Sch ref = TRelDefSch ref
 
 type family TFromSch (tab :: NameNSK) :: [NameNSK] where
+  TFromSch ( "audit" ->> "project_log" ) = '[ ( "audit" ->> "project_log_project_id_fkey" ) ]
+
   TFromSch ( "tut" ->> "projects" ) = '[ ( "tut" ->> "projects_owner_id_fkey" ) ]
 
-  TFromSch ( "tut" ->> "task_events" ) = '[ ( "tut" ->> "task_events_project_id_seq_fkey" ) ]
+  TFromSch ( "tut" ->> "task_events" ) = '[ ( "_add" ->> "task_events_author" )
+    ,( "tut" ->> "task_events_project_id_seq_fkey" ) ]
 
   TFromSch ( "tut" ->> "tasks" ) = '[ ( "tut" ->> "tasks_project_id_fkey" ) ]
 
-  TFromSch ( "tut" ->> "users" ) = '[  ]
+  TFromSch ( "tut" ->> "users" ) = '[ ( "tut" ->> "users_manager_id_fkey" ) ]
 
   TFromSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TFrom for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: tut.projects, tut.task_events, tut.tasks, tut.users."
+    TE.:$$: TE.Text "  Tables: audit.project_log, tut.projects, tut.task_events, tut.tasks, tut.users."
     TE.:$$: TE.Text "")
 
 type family TToSch (tab :: NameNSK) :: [NameNSK] where
-  TToSch ( "tut" ->> "projects" ) = '[ ( "tut" ->> "tasks_project_id_fkey" ) ]
+  TToSch ( "audit" ->> "project_log" ) = '[  ]
+
+  TToSch ( "tut" ->> "projects" ) = '[ ( "audit" ->> "project_log_project_id_fkey" )
+    ,( "tut" ->> "tasks_project_id_fkey" ) ]
 
   TToSch ( "tut" ->> "task_events" ) = '[  ]
 
   TToSch ( "tut" ->> "tasks" ) = '[ ( "tut" ->> "task_events_project_id_seq_fkey" ) ]
 
-  TToSch ( "tut" ->> "users" ) = '[ ( "tut" ->> "projects_owner_id_fkey" ) ]
+  TToSch ( "tut" ->> "users" ) = '[ ( "_add" ->> "task_events_author" )
+    ,( "tut" ->> "projects_owner_id_fkey" )
+    ,( "tut" ->> "users_manager_id_fkey" ) ]
 
   TToSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TTo for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: tut.projects, tut.task_events, tut.tasks, tut.users."
+    TE.:$$: TE.Text "  Tables: audit.project_log, tut.projects, tut.task_events, tut.tasks, tut.users."
     TE.:$$: TE.Text "")
 instance CTabRels Sch tab where
   type TFrom Sch tab = TFromSch tab
   type TTo Sch tab = TToSch tab
 
 type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK where
+  TDBFieldInfoSch ( "audit" ->> "project_log" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
+  TDBFieldInfoSch ( "audit" ->> "project_log" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True)
+  TDBFieldInfoSch ( "audit" ->> "project_log" ) "message" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "audit" ->> "project_log" ) "project_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False)
+  TDBFieldInfoSch ( "audit" ->> "project_log" ) "project_log_project_id_fkey" = 'RFFromHere ( "tut" ->> "projects" )
+      '[ 'Ref "project_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
+  TDBFieldInfoSch ( "audit" ->> "project_log" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+    TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "audit" ->> "project_log" )
+    TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Fields: id, project_id, message, created_at."
+    TE.:$$: TE.Text "  Foreign key constraints: project_log_project_id_fkey."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
+    TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "tut" ->> "projects" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "projects" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "projects" ) "owner_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False)
   TDBFieldInfoSch ( "tut" ->> "projects" ) "status" = 'RFPlain ('FldDef ( "tut" ->> "project_status" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "projects" ) "tags" = 'RFPlain ('FldDef ( "pg_catalog" ->> "_text" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "projects" ) "title" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "tut" ->> "projects" ) "project_log_project_id_fkey" = 'RFToHere ( "audit" ->> "project_log" )
+      '[ 'Ref "project_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
   TDBFieldInfoSch ( "tut" ->> "projects" ) "tasks_project_id_fkey" = 'RFToHere ( "tut" ->> "tasks" )
       '[ 'Ref "project_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
   TDBFieldInfoSch ( "tut" ->> "projects" ) "projects_owner_id_fkey" = 'RFFromHere ( "tut" ->> "users" )
@@ -121,16 +151,19 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
     TE.:$$: TE.Text "  Fields: id, owner_id, title, status, tags, created_at."
-    TE.:$$: TE.Text "  Foreign key constraints: projects_owner_id_fkey, tasks_project_id_fkey."
+    TE.:$$: TE.Text "  Foreign key constraints: projects_owner_id_fkey, project_log_project_id_fkey, tasks_project_id_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
+  TDBFieldInfoSch ( "tut" ->> "task_events" ) "author_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "event_no" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "kind" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "meta" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "project_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "seq" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "tut" ->> "task_events" ) "task_events_author" = 'RFFromHere ( "tut" ->> "users" )
+      '[ 'Ref "author_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "task_events_project_id_seq_fkey" = 'RFFromHere ( "tut" ->> "tasks" )
       '[ 'Ref "project_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False) "project_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False)
       , 'Ref "seq" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) "seq" ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False) ]
@@ -139,10 +172,10 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: project_id, seq, event_no, kind, meta, created_at."
-    TE.:$$: TE.Text "  Foreign key constraints: task_events_project_id_seq_fkey."
+    TE.:$$: TE.Text "  Fields: project_id, seq, event_no, kind, meta, author_id, created_at."
+    TE.:$$: TE.Text "  Foreign key constraints: task_events_author, task_events_project_id_seq_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "tut" ->> "tasks" ) "payload" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "tasks" ) "priority" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'True)
@@ -163,23 +196,28 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "  Fields: project_id, seq, title, priority, payload, watchers."
     TE.:$$: TE.Text "  Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch ( "tut" ->> "users" ) "created_at" = 'RFPlain ('FldDef ( "pg_catalog" ->> "timestamptz" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "users" ) "email" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "users" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True)
+  TDBFieldInfoSch ( "tut" ->> "users" ) "manager_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "users" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "tut" ->> "users" ) "task_events_author" = 'RFToHere ( "tut" ->> "task_events" )
+      '[ 'Ref "author_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
   TDBFieldInfoSch ( "tut" ->> "users" ) "projects_owner_id_fkey" = 'RFToHere ( "tut" ->> "projects" )
       '[ 'Ref "owner_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
+  TDBFieldInfoSch ( "tut" ->> "users" ) "users_manager_id_fkey" = 'RFSelfRef ( "tut" ->> "users" )
+      '[ 'Ref "manager_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
   TDBFieldInfoSch ( "tut" ->> "users" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
     TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "tut" ->> "users" )
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, name, email, created_at."
-    TE.:$$: TE.Text "  Foreign key constraints: projects_owner_id_fkey."
+    TE.:$$: TE.Text "  Fields: id, name, email, manager_id, created_at."
+    TE.:$$: TE.Text "  Foreign key constraints: users_manager_id_fkey, task_events_author, projects_owner_id_fkey."
     TE.:$$: TE.Text ""
-    TE.:$$: TE.Text "Your source or target type or renaimer is probably invalid."
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
   TDBFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text "")
@@ -188,7 +226,8 @@ instance (ToStar (TDBFieldInfo Sch t f), ToStar t, ToStar f) => CDBFieldInfo Sch
   type TDBFieldInfo Sch t f = TDBFieldInfoSch t f
 
 instance CSchema Sch where
-  type TTabs Sch = '[ ( "tut" ->> "projects" ),( "tut" ->> "task_events" )
+  type TTabs Sch = '[ ( "audit" ->> "project_log" )
+    ,( "tut" ->> "projects" ),( "tut" ->> "task_events" )
     ,( "tut" ->> "tasks" ),( "tut" ->> "users" ) ]
 
   type TTypes Sch = '[ ( "pg_catalog" ->> "_int8" )
