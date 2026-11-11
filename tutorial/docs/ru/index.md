@@ -1,4 +1,4 @@
-# Учебник по pg-schema (черновик)
+# Учебник по pg-schema
 
 [`pg-schema`](https://hackage.haskell.org/package/pg-schema) — это библиотека
 для работы с PostgreSQL из Haskell, в которой правильность запросов
@@ -45,7 +45,9 @@ Haskell-модуль и дальше строить `select`, `insert`, `update`
 - PostgreSQL и `psql`/`createdb` в `PATH`.
 - Расширения GHC. Примеры написаны на `GHC2024`, в который уже входят
   `DataKinds` и `TypeApplications`. Дополнительно нужны:
-    - `OverloadedStrings` — имена полей и связей задаются строками;
+    - `OverloadedStrings` — для строковых значений (`Text`) в данных и
+      условиях. Имена таблиц, полей и связей (`"title"`, `MyAnn "users"`)
+      от него не зависят: это литералы уровня типов (`Symbol`);
     - `BlockArguments` — для `qRoot do …` и `qPath "…" do …`;
     - `TypeFamilies` и `UndecidableInstances` — для своего ренеймера;
     - `DuplicateRecordFields` — если у нескольких record-типов есть

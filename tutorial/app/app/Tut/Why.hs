@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedStrings #-}
 -- | Введение (index.md): минимальный пример. Только компилируется
 -- (в главе нет вывода), чтобы пример в тексте не разошёлся с библиотекой.
 module Tut.Why (whyExample) where
