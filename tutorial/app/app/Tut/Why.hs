@@ -1,11 +1,11 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
--- | Введение (index.md): минимальный пример. Только компилируется
--- (в главе нет вывода), чтобы пример в тексте не разошёлся с библиотекой.
+-- | Введение (index.md): минимальный пример и параметризованный рекорд.
+-- Выполняется на данных главы 04 (после её примеров).
 module Tut.Why (whyExample, whyParam) where
 
-import Data.Int (Int32, Int64)
+import Data.Int (Int32)
 import Data.Text (Text)
 import Data.Type.Bool (If)
 import Data.Type.Equality (type (==))
@@ -18,7 +18,7 @@ import Sch
 type MyAnn tab = 'Ann RenamerId Sch 5 ("tut" ->> tab)
 -- --8<-- [end:why-ann]
 
-whyExample :: Connection -> IO ()
+whyExample :: Connection -> IO Text
 whyExample conn = do
   -- --8<-- [start:why-select]
   (rows :: ["title" := Text :. "tasks_project_id_fkey" := ["title" := Text :. "priority" := Int32]], (sql, params)) <-
@@ -27,12 +27,14 @@ whyExample conn = do
       qPath "tasks_project_id_fkey" do
         qWhere $ "priority" <? (50 :: Int32)
   -- --8<-- [end:why-select]
-  print (rows, sql, params)
+  mapM_ print rows
+  print params
+  pure sql
 
 -- --8<-- [start:why-param]
 data Context = List | Details
 
-data Task = Task { title :: Text, priority :: Int32, watchers :: PgArr Int64 }
+data Task = Task { title :: Text, priority :: Int32 }
   deriving (Show, Generic)
 
 data Project (c :: Context) = Project

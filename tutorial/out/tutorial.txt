@@ -422,6 +422,20 @@ from tut.tasks t0
 where t0.seq + t0.priority > ?
 order by length(t0.title) Desc nulls last;
 --8<-- [end:sel-unsafe-sql]
+--8<-- [start:why-select]
+"title" =: "Website" :. "tasks_project_id_fkey" =: ["title" =: "Design" :. "priority" =: 10,"title" =: "Frontend" :. "priority" =: 30]
+"title" =: "API" :. "tasks_project_id_fkey" =: ["title" =: "Schema" :. "priority" =: 20,"title" =: "Endpoints" :. "priority" =: 40]
+[SomeToField 50,SomeToField Project_status_active]
+--8<-- [end:why-select]
+--8<-- [start:why-select-sql]
+select t0.title "title",
+       array_to_json(array(
+           select jsonb_build_object('title',t1.title,'priority',t1.priority)
+           from tut.tasks t1
+           where t1.project_id=t0.id and t1.priority < ?)) "tasks_project_id_fkey"
+from tut.projects t0
+where t0.status = ?;
+--8<-- [end:why-select-sql]
 --8<-- [start:tree-insert]
 "id" =: 1 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "taskEventsProjectIdSeqFkey" =: ["eventNo" =: 1,"eventNo" =: 2],"seq" =: 2 :. "taskEventsProjectIdSeqFkey" =: []]
 "id" =: 2 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "taskEventsProjectIdSeqFkey" =: ["eventNo" =: 1]]

@@ -16,6 +16,8 @@ import Tut.Basics (basics)
 import Tut.FlatDml (flatDml)
 import Tut.Practice (practice)
 import Tut.Select (select)
+import Tut.Output (section, sqlSection)
+import Tut.Why (whyExample)
 import Tut.TreeDml (treeDml)
 import Tut.Wow (wow)
 
@@ -30,6 +32,8 @@ main = do
   flatDml conn     -- 03-flat-dml
   resetDb conn
   select conn      -- 04-select
+  sqlWhy <- section "why-select" (whyExample conn) -- index (на данных главы 04)
+  sqlSection "why-select" [sqlWhy]
   resetDb conn
   treeDml conn     -- 05-tree-dml
   resetDb conn
