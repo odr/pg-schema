@@ -7,6 +7,8 @@ module Tut.Why (whyExample, whyParam) where
 
 import Data.Int (Int32, Int64)
 import Data.Text (Text)
+import Data.Type.Bool (If)
+import Data.Type.Equality (type (==))
 import Database.PostgreSQL.Simple (Connection)
 import GHC.Generics (Generic)
 import PgSchema.DML
@@ -28,20 +30,23 @@ whyExample conn = do
   print (rows, sql, params)
 
 -- --8<-- [start:why-param]
-data Project task = Project
-  { title                 :: Text
-  , tasks_project_id_fkey :: [task]
-  } deriving (Show, Generic)
+data Context = List | Details
 
-data TaskTitle = TaskTitle { title :: Text }
+data Task = Task { title :: Text, priority :: Int32, watchers :: PgArr Int64 }
   deriving (Show, Generic)
 
-data TaskCard = TaskCard { title :: Text, priority :: Int32, watchers :: PgArr Int64 }
-  deriving (Show, Generic)
+data Project (c :: Context) = Project
+  { title                  :: Text
+  , projects_owner_id_fkey :: If (c == 'List) () ("name" := Text)
+  , tasks_project_id_fkey  :: If (c == 'List) () [Task]
+  } deriving Generic
 
-whyParam :: Connection -> IO ([Project TaskTitle], [Project TaskCard])
+whyParam :: Connection -> IO ([Project 'List], [Project 'Details])
 whyParam conn = do
-  (menu, _)  <- selectSch (MyAnn "projects") conn qpEmpty -- только названия задач
-  (cards, _) <- selectSch (MyAnn "projects") conn qpEmpty -- задачи для карточек
-  pure (menu, cards)
+  (list, _)    <- selectSch (MyAnn "projects") conn qpEmpty -- только названия
+  (details, _) <- selectSch (MyAnn "projects") conn qpEmpty -- с владельцем и задачами
+  pure (list, details)
 -- --8<-- [end:why-param]
+
+deriving instance Show (Project 'List)
+deriving instance Show (Project 'Details)
