@@ -212,7 +212,7 @@ Haskell — модуль `Sch.hs`. Затем, при работе с данны
 Но и его можно прочитать: в схеме `Sch` у таблицы `tut.users` колонка
 `email` имеет тип `pg_catalog.text`, и преобразования в `Int` для неё нет.
 Какие типы Haskell подходят к каким типам PostgreSQL, сведено в
-[справочнике](appendix-reference.md#types).
+приложении [«Типы данных»](appendix-types.md).
 
 ## PgTag
 

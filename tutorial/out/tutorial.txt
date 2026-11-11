@@ -436,6 +436,15 @@ select t0.title "title",
 from tut.projects t0
 where t0.status = ?;
 --8<-- [end:why-select-sql]
+--8<-- [start:types-email]
+["Eve" :. Just "eve@example.com"]
+--8<-- [end:types-email]
+--8<-- [start:types-email-sql]
+select t0.name "name",
+       t0.email "email"
+from tut.users t0
+where t0.email = ?;
+--8<-- [end:types-email-sql]
 --8<-- [start:tree-insert]
 "id" =: 1 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "taskEventsProjectIdSeqFkey" =: ["eventNo" =: 1,"eventNo" =: 2],"seq" =: 2 :. "taskEventsProjectIdSeqFkey" =: []]
 "id" =: 2 :. "tasksProjectIdFkey" =: ["seq" =: 1 :. "taskEventsProjectIdSeqFkey" =: ["eventNo" =: 1]]

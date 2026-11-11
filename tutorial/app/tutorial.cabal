@@ -41,6 +41,7 @@ executable tutorial
         Tut.Practice
         Tut.Select
         Tut.TreeDml
+        Tut.Types
         Tut.Why
         Tut.Wow
     -- other-extensions:

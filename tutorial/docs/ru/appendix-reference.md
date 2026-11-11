@@ -7,36 +7,8 @@
 Все правила ниже проверяются при компиляции: если условие не выполнено,
 программа не соберётся, а компилятор сообщит, что именно не так.
 
-## Типы PostgreSQL и Haskell {#types}
-
-Какой тип Haskell можно использовать для колонки, определяется её типом в
-базе. Если колонка допускает `NULL`, тип оборачивается в `Maybe`.
-
-| Тип в PostgreSQL | Тип в Haskell |
-|------------------|---------------|
-| `boolean` | `Bool` |
-| `smallint` (`int2`) | `Int16` или `Scientific` |
-| `integer` (`int4`) | `Int32` или `Scientific` |
-| `bigint` (`int8`) | `Int64` или `Scientific` |
-| `real`, `double precision` | `Double` или `Scientific` |
-| `numeric` | `Scientific` (а также `Fixed k`, но без проверки точности) |
-| `text`, `varchar`, `name` | `Text` |
-| `"char"` | `PgChar` |
-| `citext` | `CI Text` |
-| `date` | `Day` |
-| `time` | `TimeOfDay` |
-| `timestamp` | `LocalTime` |
-| `timestamptz` | `UTCTime` или `ZonedTime` |
-| `uuid` | `UUID` |
-| `bytea` | `Binary ByteString` (строгий или ленивый) |
-| `json`, `jsonb` | любой тип с `FromJSON` и `ToJSON` |
-| enum | `PGEnum Sch ("схема" ->> "тип")`, сгенерированный в `Sch.hs` |
-| массив | `PgArr t`, где `t` — тип элемента |
-
-`Scientific` берётся из пакета `scientific`, `CI` — из `case-insensitive`,
-`UUID` — из `uuid`. Типы даты и времени, `uuid` и `citext` поддерживаются,
-пока включены флаги пакета `pg-schema` `time`, `uuid` и `case-insensitive`;
-по умолчанию все три включены.
+Соответствие типов PostgreSQL и Haskell и то, как добавить свои типы,
+описано в приложении [«Типы данных»](appendix-types.md).
 
 ## Операции по ключу
 
