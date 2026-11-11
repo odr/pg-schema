@@ -4,7 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- --8<-- [end:extensions]
--- | Глава «Быстрый старт»: вставка и чтение дерева «проект → задачи».
+-- | Chapter "Quick start": insert and read the tree "project -> tasks".
 module Tut.Wow (wow) where
 
 -- --8<-- [start:imports]

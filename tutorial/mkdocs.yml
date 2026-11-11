@@ -1,13 +1,11 @@
 site_name: pg-schema tutorial
-site_description: Practical guide to pg-schema (RU first, EN later)
+site_description: Practical guide to pg-schema
 site_url: https://odr.github.io/pg-schema/
 repo_url: https://github.com/odr/pg-schema
 theme:
   name: material
-  # name: readthedocs
-  language: ru
+  language: en
   features:
-    - navigation.instant
     - navigation.sections
     - content.code.copy
     - search.suggest
@@ -20,10 +18,10 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.snippets:
-      # пути считаются от каталога tutorial/ (mkdocs запускается оттуда):
-      #   docs/...           — вспомогательные md-фрагменты
-      #   app/..., sql/...   — исходники примеров (секции -- --8<-- [start:name])
-      #   out/tutorial.txt   — вывод примеров (make tut-run)
+      # paths are relative to tutorial/ (mkdocs runs there):
+      #   snippets/...       — copies of library / Sch.hs fragments
+      #   app/..., sql/...   — sources of the examples (-- --8<-- [start:name] sections)
+      #   out/tutorial.txt   — output of the examples (make tut-run)
       base_path:
         - docs
         - .
@@ -38,27 +36,50 @@ markdown_extensions:
 
 docs_dir: docs
 
-# перестраивать сайт в mkdocs serve при изменении примеров и их вывода
+# rebuild the site in mkdocs serve when the examples or their output change
 watch:
   - app/app
   - app/generator
   - sql
   - out
+  - snippets
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: ru
+          name: Русский
+          build: true
+          site_description: Практическое руководство по pg-schema
+          nav_translations:
+            Introduction: Введение
+            Quick start: Быстрый старт
+            Core workflow: Рабочая модель pg-schema
+            Single-table DML: Изменение данных в одной таблице
+            Select: Select
+            Tree DML: Изменение связанных данных
+            Compiler errors: Ошибки компиляции
+            In practice: На практике
+            Reference: Справочник
+            Data types: Типы данных
 
 nav:
-  - Русский:
-      - Введение: ru/index.md
-      - Быстрый старт: ru/01-wow.md
-      - Рабочая модель pg-schema: ru/02-core-workflow.md
-      - Изменение данных в одной таблице: ru/03-flat-dml.md
-      - Select: ru/04-select.md
-      - Изменение связанных данных: ru/05-tree-dml.md
-      - Ошибки компиляции: ru/06-compiler-errors.md
-      - На практике: ru/07-practice.md
-      - Справочник: ru/appendix-reference.md
-      - Типы данных: ru/appendix-types.md
-  - English:
-      - Introduction: en/index.md
+  - Introduction: index.md
+  - Quick start: 01-wow.md
+  - Core workflow: 02-core-workflow.md
+  - Single-table DML: 03-flat-dml.md
+  - Select: 04-select.md
+  - Tree DML: 05-tree-dml.md
+  - Compiler errors: 06-compiler-errors.md
+  - In practice: 07-practice.md
+  - Reference: appendix-reference.md
+  - Data types: appendix-types.md
 
 extra_css:
   - styles/emoji.css

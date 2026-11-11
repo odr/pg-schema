@@ -19,18 +19,18 @@ create table projects (
   owner_id    bigint not null references users(id) on delete restrict,
   title       text not null,
   status      project_status not null default 'draft',
-  tags        text[] not null default '{}',         -- PgArr демонстрация
+  tags        text[] not null default '{}',         -- PgArr demo
   created_at  timestamptz not null default now()
 );
 
--- composite PK для демонстрации upsert по PK
+-- composite PK to demonstrate upsert by PK
 create table tasks (
   project_id  bigint not null references projects(id) on delete cascade,
   seq         integer not null,
   title       text not null,
   priority    integer not null default 100,
   payload     jsonb,
-  watchers    bigint[] not null default '{}',       -- еще PgArr
+  watchers    bigint[] not null default '{}',       -- one more PgArr
   primary key (project_id, seq)
 );
 
@@ -40,7 +40,7 @@ create table task_events (
   event_no    integer not null,
   kind        text not null,
   meta        jsonb,
-  author_id   bigint,                               -- без FK: связь добавляет генератор (глава 07)
+  author_id   bigint,                               -- no FK: the generator adds the relation (chapter 07)
   created_at  timestamptz not null default now(),
   primary key (project_id, seq, event_no),
   foreign key (project_id, seq)
@@ -48,7 +48,7 @@ create table task_events (
     on delete cascade
 );
 
--- вторая схема: журнал изменений проектов (глава 07)
+-- second schema: a log of project changes (chapter 07)
 -- --8<-- [start:audit]
 create schema audit;
 
@@ -56,7 +56,7 @@ create table audit.project_log (
   id          bigserial primary key,
   project_id  bigint not null references tut.projects(id) on delete cascade,
   message     text not null,
-  client_ip   inet,                                 -- тип без готового соответствия (приложение «Типы данных»)
+  client_ip   inet,                                 -- a type with no built-in mapping (appendix "Data types")
   created_at  timestamptz not null default now()
 );
 -- --8<-- [end:audit]

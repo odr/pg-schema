@@ -2,7 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Глава «Select»: формы результата, условия, связи, сортировка, агрегаты.
+-- | Chapter "Select": result shapes, conditions, relations, ordering, aggregates.
 module Tut.Select (select) where
 
 import Control.Monad.RWS (tell)
@@ -86,8 +86,8 @@ data Person = Person
 -- --8<-- [end:sel-self-types]
 
 -- --8<-- [start:sel-run]
--- | Выполнить запрос, напечатать строки по одной и параметры запроса,
--- а затем отформатированный SQL.
+-- | Run a query, print the rows one per line and the query parameters,
+-- then the formatted SQL.
 run :: Show r => String -> IO ([r], (Text, [SomeToField])) -> IO ()
 run name act = do
   sql <- section name $ do

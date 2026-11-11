@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
--- | Запускает примеры всех глав по порядку.
+-- | Runs the examples of all chapters in order.
 --
--- Перед каждой независимой главой схема пересоздаётся ('resetDb'): от этого
--- зависят id в выводе. Главы 02 и 03 работают с одними данными. Код и вывод
--- попадают в документацию через pymdownx.snippets, см. @tutorial/README.md@.
--- Запускается из корня репозитория (путь к SQL-скрипту относительный).
+-- The schema is recreated before each independent chapter ('resetDb'): ids in
+-- the output depend on it. Chapters 02 and 03 share their data. Code and output
+-- get into the docs via pymdownx.snippets, see @tutorial/README.md@.
+-- Run from the repository root (the path to the SQL script is relative).
 module Main (main) where
 
 import Control.Monad (void)
@@ -33,15 +33,15 @@ main = do
   flatDml conn     -- 03-flat-dml
   resetDb conn
   select conn      -- 04-select
-  sqlWhy <- section "why-select" (whyExample conn) -- index (на данных главы 04)
+  sqlWhy <- section "why-select" (whyExample conn) -- index (on the chapter 04 data)
   sqlSection "why-select" [sqlWhy]
-  types conn       -- appendix-types (на данных главы 04)
+  types conn       -- appendix-types (on the chapter 04 data)
   resetDb conn
   treeDml conn     -- 05-tree-dml
   resetDb conn
   practice conn    -- 07-practice
 
--- | Пересоздать схему @tut@ (скрипт начинается с @drop schema if exists tut cascade@).
+-- | Recreate the @tut@ schema (the script starts with @drop schema if exists tut cascade@).
 resetDb :: Connection -> IO ()
 resetDb conn = do
   sql <- BS.readFile "tutorial/sql/00-create-schema.sql"

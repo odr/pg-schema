@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
--- | Общие определения для всех глав: ренеймер, аннотация, базовый тип.
+-- | Definitions shared by the chapters: renamer, annotation, basic type.
 module Tut.Common (MyRenamer, MyAnn, ProjectStatus, User(..)) where
 
 import Data.Text (Text)

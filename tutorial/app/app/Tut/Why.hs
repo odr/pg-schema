@@ -1,8 +1,8 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
--- | Введение (index.md): минимальный пример и параметризованный рекорд.
--- Выполняется на данных главы 04 (после её примеров).
+-- | Introduction (index.md): a minimal example and a parameterized record.
+-- Runs on the chapter 04 data (after its examples).
 module Tut.Why (whyExample, whyParam) where
 
 import Data.Int (Int32)
@@ -45,8 +45,8 @@ data Project (c :: Context) = Project
 
 whyParam :: Connection -> IO ([Project 'List], [Project 'Details])
 whyParam conn = do
-  (list, _)    <- selectSch (MyAnn "projects") conn qpEmpty -- только названия
-  (details, _) <- selectSch (MyAnn "projects") conn qpEmpty -- с владельцем и задачами
+  (list, _)    <- selectSch (MyAnn "projects") conn qpEmpty -- titles only
+  (details, _) <- selectSch (MyAnn "projects") conn qpEmpty -- with the owner and tasks
   pure (list, details)
 -- --8<-- [end:why-param]
 

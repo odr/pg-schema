@@ -161,11 +161,11 @@ tut-docs-serve: tut-docs-venv
 # Recreate the venv when it is missing or broken (e.g. the system Python was
 # upgraded and .venv/bin/python now points to a version without our packages).
 tut-docs-venv:
-	@"$(DOCS_VENV_DIR)/bin/python" -c 'import mkdocs, material, pymdownx' 2>/dev/null || { \
+	@"$(DOCS_VENV_DIR)/bin/python" -c 'import mkdocs, material, pymdownx, mkdocs_static_i18n' 2>/dev/null || { \
 		echo "Creating $(DOCS_VENV_DIR)"; \
 		rm -rf "$(DOCS_VENV_DIR)"; \
 		python3 -m venv "$(DOCS_VENV_DIR)" && \
-		"$(DOCS_VENV_DIR)/bin/pip" install mkdocs mkdocs-material pymdown-extensions; \
+		"$(DOCS_VENV_DIR)/bin/pip" install mkdocs mkdocs-material pymdown-extensions mkdocs-static-i18n; \
 	}
 
 .PHONY: tut-from-scratch
