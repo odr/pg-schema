@@ -61,7 +61,7 @@
 | Файл `docs/ru/` | Модуль `app/app/Tut/` | Статус |
 |---|---|---|
 | `index.md` | — | обновить список глав |
-| `00-why-pg-schema.md` | — | исправить пример |
+| `00-why-pg-schema.md` | — | исправить пример (позже перенесено во введение `index.md`) |
 | `01-wow.md` | `Wow.hs` (новый) | переписать с кодом |
 | `02-core-workflow.md` | `Common.hs`, `Basics.hs` | готова |
 | `03-flat-dml.md` (сейчас `03-dml-operations.md`) | `FlatDml.hs` | дополнить |

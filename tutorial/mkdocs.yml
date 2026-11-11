@@ -47,7 +47,6 @@ watch:
 nav:
   - Русский:
       - Введение: ru/index.md
-      - Зачем pg-schema: ru/00-why-pg-schema.md
       - Быстрый старт: ru/01-wow.md
       - Рабочая модель pg-schema: ru/02-core-workflow.md
       - Изменение данных в одной таблице: ru/03-flat-dml.md
