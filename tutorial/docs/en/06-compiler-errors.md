@@ -163,7 +163,7 @@ For aggregates the result type of the SQL function is checked. For example,
   Haskell Field type: Aggr AAvg (Maybe Double)
 ```
 
-Recall (chapter 04) that `Aggr` is used in queries without grouping and
+Recall from the chapter [Select](04-select.md) that `Aggr` is used in queries without grouping and
 requires `Maybe` inside, and `Aggr'` in queries with grouping. If `Maybe` is
 needed, it goes inside the aggregate (`Aggr AMax (Maybe Int32)`), not outside
 (`Maybe (Aggr' AMax Int32)`):
@@ -269,7 +269,7 @@ If you see `RelOne` and `RelMany`, check whether `qLimit`, `qOffset` or
 
 ## Helper functions
 
-`named` from chapter 03 attaches a list of field names to the values of each
+`named` from the chapter [Single-table DML](03-flat-dml.md) attaches a list of field names to the values of each
 row. It checks that there are as many names as values in a row. If there are
 fewer names, the last name would get several values at once:
 
@@ -280,7 +280,7 @@ fewer names, the last name would get several values at once:
                                                             :. PgArr Text
 ```
 
-`UnsafeCol` from chapter 04 describes a result field with an arbitrary SQL
+`UnsafeCol` from the chapter [Select](04-select.md) describes a result field with an arbitrary SQL
 expression. It checks that the expression has as many `?` marks as there are
 columns in the list. If there are more columns, the message is this one (and if
 there are more `?` marks, a similar one, worded the other way round):
