@@ -1,5 +1,6 @@
 site_name: pg-schema tutorial
 site_description: Practical guide to pg-schema (RU first, EN later)
+site_url: https://odr.github.io/pg-schema/
 repo_url: https://github.com/odr/pg-schema
 theme:
   name: material

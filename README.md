@@ -1,9 +1,9 @@
 The repository includes:
 
 - a library [pg-schema](https://github.com/odr/pg-schema/tree/master/pg-schema#readme)
-- a [tutorial](https://github.com/odr/pg-schema/tree/master/tutorial) (in Russian for now;
-  the English translation is planned). The chapters include code and output from the
-  examples, so read them as a site built with MkDocs:
+- a tutorial (in Russian for now; the English translation is planned), published at
+  https://odr.github.io/pg-schema/. Its sources are in [`tutorial/`](https://github.com/odr/pg-schema/tree/master/tutorial);
+  to read it locally, run
 
   ```bash
   make tut-docs-serve
