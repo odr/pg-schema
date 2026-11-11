@@ -7,8 +7,10 @@
 
 - `pg-schema/` — библиотека: type-level описание схемы PostgreSQL и
   типобезопасный DML.
-- `tutorial/` — новый учебник на MkDocs Material. Пишется сначала на русском
-  (`docs/ru`), на английский (`docs/en`) переводится позже.
+- `tutorial/` — новый учебник на MkDocs Material. Написан на русском
+  (`docs/ru`) и переведён на английский (`docs/en`); английский — язык по
+  умолчанию на сайте, русский — в `/ru/` (плагин `mkdocs-static-i18n`).
+  Изменения в главах вносятся в обе версии.
 - `pg-schema-tutorial/` — старый учебник, устарел. Новый заменяет его.
 - Окружение: GHC 9.12.4 (`cabal.project`), `default-language: GHC2024`,
   БД `tutorial` (`dbname=tutorial` прописано в `app/generator/Main.hs` и

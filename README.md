@@ -1,8 +1,8 @@
 The repository includes:
 
 - a library [pg-schema](https://github.com/odr/pg-schema/tree/master/pg-schema#readme)
-- a tutorial (in Russian for now; the English translation is planned), published at
-  https://odr.github.io/pg-schema/. Its sources are in [`tutorial/`](https://github.com/odr/pg-schema/tree/master/tutorial);
+- a tutorial in English and Russian, published at
+  https://odr.github.io/pg-schema/ (Russian: https://odr.github.io/pg-schema/ru/). Its sources are in [`tutorial/`](https://github.com/odr/pg-schema/tree/master/tutorial);
   to read it locally, run
 
   ```bash
