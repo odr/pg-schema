@@ -81,7 +81,7 @@
   returning у `upsertJSON` в `TreeDml.hs`.
 - Закоммитить настоящий `out/tutorial.txt`.
 - Удалить ставшие ненужными файлы:
-  `docs/source/snippets/hs/{MyAnn,MyRenamer,generator-main}.md`.
+  `snippets/hs/{MyAnn,MyRenamer,generator-main}.md`.
 - Удалить цель `tut-sync-docs-source` и каталоги `docs/source/{app,sql}`:
   их не подключает ни одна глава. Если понадобится включить файл целиком,
   это делается строкой `--8<-- "sql/00-create-schema.sql"`.
@@ -185,7 +185,7 @@
 | Генератор | `tutorial/app/generator/Main.hs`, генерируемый `tutorial/app/app/Sch.hs` |
 | Вывод | `tutorial/out/tutorial.txt` (генерируется, хранится в git) |
 | Сборка | `Makefile` (цели `tut-*`), `tutorial/mkdocs.yml` |
-| Сниппеты | `tutorial/docs/source/snippets/hs/*.md` |
+| Сниппеты | `tutorial/snippets/hs/*.md` |
 | Схема БД | `tutorial/sql/00-create-schema.sql` |
 
 Таблицы схемы `tut`: `users` (+ `manager_id`), `projects`, `tasks`,

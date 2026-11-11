@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Глава «DML операции»: плоские insert / update / delete.
+-- | Chapter "Single-table DML": insert / update / upsert / delete.
 module Tut.FlatDml (flatDml) where
 
 import Data.Int (Int64)

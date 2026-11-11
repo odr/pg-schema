@@ -1,7 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Глава «Связанные таблицы»: insertJSON / upsertJSON / updateJSON и транзакции.
+-- | Chapter "Tree DML": insertJSON / upsertJSON / updateJSON and transactions.
 module Tut.TreeDml (treeDml) where
 
 import Control.Exception (try)
@@ -48,7 +48,7 @@ type UpdOut = Maybe ("id" := Int64 :. "status" := ProjectStatus
 -- --8<-- [end:tree-update-types]
 
 -- --8<-- [start:tree-count]
--- | Сколько проектов с таким названием.
+-- | How many projects have this title.
 countProjects :: Connection -> Text -> IO Int64
 countProjects conn title = do
   (rows, _) <- selectSch (MyAnn "projects") conn $ qRoot $ qWhere $ "title" =? title
@@ -113,7 +113,7 @@ treeDml conn = do
         [ 100 :. 1 :. "Tx demo" :. Project_status_draft :. pgArr' [] :. [] ]
     res <- try @SqlError $ withTransaction conn do
       _ <- insertJSON_ (MyAnn "projects") conn docs
-      insertJSON_ (MyAnn "projects") conn docs  -- тот же id: ошибка
+      insertJSON_ (MyAnn "projects") conn docs  -- the same id: an error
     putStrLn $ either (("error: " <>) . show . sqlErrorMsg) (const "ok") res
     cnt <- countProjects conn "Tx demo"
     putStrLn $ "projects \"Tx demo\": " <> show cnt

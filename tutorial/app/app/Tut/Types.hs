@@ -4,8 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 -- --8<-- [end:types-header]
--- | Приложение «Типы данных»: свои типы для колонок.
--- Выполняется на данных главы 04 (после её примеров).
+-- | Appendix "Data types": own types for columns.
+-- Runs on the chapter 04 data (after its examples).
 module Tut.Types (types) where
 -- --8<-- [start:types-imports]
 
@@ -26,7 +26,7 @@ import Tut.Output
 newtype Email = Email Text
   deriving newtype (Show, Eq, FromField, ToField, FromJSON, ToJSON)
 
--- Email можно использовать только для колонки email таблицы tut.users
+-- Email may be used only for the email column of tut.users
 type instance CanConvert1 sch ("tut" ->> "users") "email" ("pg_catalog" ->> "text") ('TypDef "S" x y) Email = ()
 -- --8<-- [end:types-email]
 
@@ -34,8 +34,8 @@ type instance CanConvert1 sch ("tut" ->> "users") "email" ("pg_catalog" ->> "tex
 newtype IpAddress = IpAddress Text
   deriving newtype (Show, Eq, FromJSON, ToJSON)
 
--- FromField для Text принимает только текстовые типы, поэтому читаем
--- значение inet в его текстовом виде сами
+-- FromField for Text accepts only text types, so we read
+-- the text form of the inet value ourselves
 instance FromField IpAddress where
   fromField f = \case
     Nothing -> returnError UnexpectedNull f ""
@@ -44,7 +44,7 @@ instance FromField IpAddress where
 instance ToField IpAddress where
   toField (IpAddress t) = toField t
 
--- IpAddress подходит к любой колонке типа inet
+-- IpAddress fits any column of type inet
 type instance CanConvert1 sch tab fld ("pg_catalog" ->> "inet") ('TypDef "I" x y) IpAddress = ()
 
 type AuditAnn t = 'Ann MyRenamer Sch 3 ("audit" ->> t)

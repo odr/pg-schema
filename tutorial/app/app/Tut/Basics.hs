@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Глава «Рабочая модель pg-schema»: первые insert/select, Generic и PgTag.
+-- | Chapter "Core workflow": first insert/select, Generic and PgTag.
 module Tut.Basics (basics) where
 
 import Data.Int (Int64)

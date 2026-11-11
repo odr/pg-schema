@@ -1,7 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Глава «На практике»: несколько схем БД и связи, которых нет в базе.
+-- | Chapter "In practice": several DB schemas and relations missing in the DB.
 module Tut.Practice (practice) where
 
 import Data.Int (Int32, Int64)
