@@ -391,3 +391,4 @@ main = do
       --   pure ()
 
 -- >>> selSchText "addresses" @("address_city" := Maybe ("name" := Maybe Text)) $ qRoot $ qPath "address_city" $ qWhere $ "name" =? Just @Text "foo"
+-- ("select case when t1.name is null then null else jsonb_build_object('name',t1.name) end \"address_city\" from sch.addresses t0 left outer join sch.cities t1 on t0.city_id=t1.id where t1.name = ?",[SomeToField (Just "foo")])

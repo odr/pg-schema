@@ -2,7 +2,6 @@
 module PgSchema.DML.UpsertByKey
   ( upsertByKey, upsertByKey_, upsertByKeyText, upsertByKeyText_ ) where
 
-import Data.List as L
 import Data.Maybe
 import Data.String
 import Data.Text as T

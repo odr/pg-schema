@@ -56,7 +56,7 @@ type family SplitAtHelper (x :: k) (res :: ([k], [k])) :: ([k], [k]) where
 
 -- >>> :kind! SplitAt 2 '[1,2,3,4,5]
 -- SplitAt 2 '[1,2,3,4,5] :: ([Natural], [Natural])
--- = '( '[1, 2], '[3, 4, 5])
+-- = '([1, 2], [3, 4, 5])
 
 type family Map1 (f :: a ~> b) (xs :: [a]) :: [b] where
   Map1 f '[] = '[]

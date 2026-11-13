@@ -29,6 +29,7 @@ import PgSchema.Utils.TF as SP
 
 -- $setup
 -- >>> import PgSchema.Schema.Catalog
+-- >>> import PgSchema.Schema.Info
 -- >>> import Database.PostgreSQL.Simple
 -- >>> conn <- connectPostgreSQL ""
 
@@ -253,12 +254,13 @@ instance {-# OVERLAPPING #-}
    parseJSON Null = pure $ PgTag Nothing
    parseJSON v = PgTag . Just <$> parseJSONCols @ann @colsCase @cols v
 
--- >>> type AnnRel = 'Ann RenamerId PgCatalog (PGC "pg_constraint")
+-- >>> type AnnRel = 'Ann RenamerId PgCatalog 1 (PGC "pg_constraint")
 -- >>> rel = PgRelation{ constraint__namespace = PgTag "a", conname = "b", constraint__class = PgClassShort (PgTag "c") "d", constraint__fclass = PgClassShort (PgTag "e") "f", conkey = pgArr' [1,2], confkey = pgArr' [] }
 -- >>> rec = "conname" =: ("x" :: T.Text) :. "conname" =: ("z" :: T.Text) :. rel :. "conname" =: ("y" :: T.Text)
 -- >>> toJSON $ PgTag @AnnRel rec
--- >>> fromJSON (toJSON $ PgTag @AnnRel rec) == Success (PgTag @AnnRel rec)
 -- Object (fromList [("confkey",Array []),("conkey",Array [Number 1.0,Number 2.0]),("conname",String "x"),("conname___1",String "z"),("conname___2",String "b"),("conname___3",String "y"),("constraint__class",Object (fromList [("class__namespace",Object (fromList [("nspname",String "c")])),("relname",String "d")])),("constraint__fclass",Object (fromList [("class__namespace",Object (fromList [("nspname",String "e")])),("relname",String "f")])),("constraint__namespace",Object (fromList [("nspname",String "a")]))])
+--
+-- >>> fromJSON (toJSON $ PgTag @AnnRel rec) == Success (PgTag @AnnRel rec)
 -- True
 
 
