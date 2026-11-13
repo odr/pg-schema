@@ -76,10 +76,11 @@ type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
   TTabDefSch ( "test_pgs" ->> "mid2" ) = 'TabDef '[ "root_id","seq","kind","flag","priority","payload" ] '[ "root_id","seq" ] '[  ]
   TTabDefSch ( "test_pgs" ->> "nullable_uq_row" ) = 'TabDef '[ "id","code","suffix","name","note" ] '[ "id" ] '[ '[ "code","suffix" ] ]
   TTabDefSch ( "test_pgs" ->> "root" ) = 'TabDef '[ "id","code","grp","name","created_at","dim_a_id","dim_b_id" ] '[ "id" ] '[ '[ "code","grp" ] ]
+  TTabDefSch ( "test_pgs" ->> "tag_link" ) = 'TabDef '[ "owner_id","tag","note" ] '[ "owner_id","tag" ] '[  ]
   TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
+    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root, test_pgs.tag_link."
     TE.:$$: TE.Text "")
 instance (ToStar (TTabDef Sch name), ToStar name) => CTabDef Sch name where
   type TTabDef Sch name = TTabDefSch name
@@ -128,10 +129,12 @@ type family TFromSch (tab :: NameNSK) :: [NameNSK] where
   TFromSch ( "test_pgs" ->> "root" ) = '[ ( "test_pgs" ->> "root_dim_a_fk" )
     ,( "test_pgs" ->> "root_dim_b_fk" ) ]
 
+  TFromSch ( "test_pgs" ->> "tag_link" ) = '[  ]
+
   TFromSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TFrom for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
+    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root, test_pgs.tag_link."
     TE.:$$: TE.Text "")
 
 type family TToSch (tab :: NameNSK) :: [NameNSK] where
@@ -161,10 +164,12 @@ type family TToSch (tab :: NameNSK) :: [NameNSK] where
   TToSch ( "test_pgs" ->> "root" ) = '[ ( "test_pgs" ->> "arrays_root_fk" )
     ,( "test_pgs" ->> "mid1_root_fk" ),( "test_pgs" ->> "mid2_root_fk" ) ]
 
+  TToSch ( "test_pgs" ->> "tag_link" ) = '[  ]
+
   TToSch tab = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "TTo for table " TE.:<>: TE.ShowType tab TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root."
+    TE.:$$: TE.Text "  Tables: test_pgs.aggr_nums, test_pgs.arrays, test_pgs.base_arr_converts, test_pgs.base_converts, test_pgs.dim, test_pgs.ext_arr_converts, test_pgs.ext_converts, test_pgs.leaf, test_pgs.mid1, test_pgs.mid2, test_pgs.nullable_uq_row, test_pgs.root, test_pgs.tag_link."
     TE.:$$: TE.Text "")
 instance CTabRels Sch tab where
   type TFrom Sch tab = TFromSch tab
@@ -385,6 +390,19 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
+  TDBFieldInfoSch ( "test_pgs" ->> "tag_link" ) "note" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'True 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "tag_link" ) "owner_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "tag_link" ) "tag" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
+  TDBFieldInfoSch ( "test_pgs" ->> "tag_link" ) f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch
+    TE.:$$: TE.Text "for table " TE.:<>: TE.ShowType ( "test_pgs" ->> "tag_link" )
+    TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Valid values are:"
+    TE.:$$: TE.Text "  Fields: owner_id, tag, note."
+    TE.:$$: TE.Text "  Foreign key constraints: ."
+    TE.:$$: TE.Text ""
+    TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
+    TE.:$$: TE.Text "")
   TDBFieldInfoSch t f = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:<>: TE.Text " the table " TE.:<>: TE.ShowType t TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text "")
 
@@ -394,11 +412,11 @@ instance (ToStar (TDBFieldInfo Sch t f), ToStar t, ToStar f) => CDBFieldInfo Sch
 instance CSchema Sch where
   type TTabs Sch = '[ ( "test_pgs" ->> "aggr_nums" )
     ,( "test_pgs" ->> "arrays" ),( "test_pgs" ->> "base_arr_converts" )
-    ,( "test_pgs" ->> "base_converts" )
-    ,( "test_pgs" ->> "dim" ),( "test_pgs" ->> "ext_arr_converts" )
-    ,( "test_pgs" ->> "ext_converts" ),( "test_pgs" ->> "leaf" )
-    ,( "test_pgs" ->> "mid1" ),( "test_pgs" ->> "mid2" )
-    ,( "test_pgs" ->> "nullable_uq_row" ),( "test_pgs" ->> "root" ) ]
+    ,( "test_pgs" ->> "base_converts" ),( "test_pgs" ->> "dim" )
+    ,( "test_pgs" ->> "ext_arr_converts" ),( "test_pgs" ->> "ext_converts" )
+    ,( "test_pgs" ->> "leaf" ),( "test_pgs" ->> "mid1" )
+    ,( "test_pgs" ->> "mid2" ),( "test_pgs" ->> "nullable_uq_row" )
+    ,( "test_pgs" ->> "root" ),( "test_pgs" ->> "tag_link" ) ]
 
   type TTypes Sch = '[ ( "pg_catalog" ->> "_bool" )
     ,( "pg_catalog" ->> "_bytea" ),( "pg_catalog" ->> "_date" )

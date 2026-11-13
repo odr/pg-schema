@@ -45,13 +45,20 @@ keyedUpdateSetAndKeys ti plains =
     keyNames = fromMaybe [] $ pickKeyNames ti srcFlds
   in L.partition ((`L.elem` keyNames) . fst) plains
 
-upsertOnConflict :: [(Text, Text)] -> [Text] -> Text
-upsertOnConflict plainsOthers conflictCols =
-  case (L.null plainsOthers, conflictCols) of
-    (True, _) -> " on conflict do nothing"
-    (_, []) -> ""
-    (_, cols) ->
-      " on conflict (" <> T.intercalate ", " cols <> ")"
-        <> " do update set "
-        <> T.intercalate ", "
-          ( L.map (\(name, _) -> name <> " = EXCLUDED." <> name) plainsOthers )
+-- | @ON CONFLICT@ clause of a flat upsert with the conflict key @conflictCols@:
+-- on conflict the other columns (@plainsOthers@) are updated.
+--
+-- If there are no other columns, an existing row is left as is. Without
+-- @RETURNING@ it is @DO NOTHING@. With @RETURNING@ it is a no-op @DO UPDATE@
+-- of a key column, because @DO NOTHING@ returns nothing for an existing row.
+upsertOnConflict :: Bool -> [(Text, Text)] -> [Text] -> Text
+upsertOnConflict withReturning plainsOthers conflictCols =
+  case (conflictCols, plainsOthers) of
+    ([], _) -> ""
+    (k : _, [])
+      | withReturning -> target <> " do update set " <> k <> " = EXCLUDED." <> k
+      | otherwise -> target <> " do nothing"
+    (_, xs) -> target <> " do update set "
+      <> T.intercalate ", " (L.map (\(name, _) -> name <> " = EXCLUDED." <> name) xs)
+  where
+    target = " on conflict (" <> T.intercalate ", " conflictCols <> ")"

@@ -26,12 +26,16 @@ import Prelude as P
 -- primary key, unique keys over @NOT NULL@ columns, other unique keys.
 -- On conflict all other fields of @r@ are updated.
 --
--- If all fields of @r@ belong to the key, there is nothing to update and
--- @ON CONFLICT DO NOTHING@ is used: then no row is returned for an existing row,
--- so the result can be shorter than the input.
+-- If all fields of @r@ belong to the key, there is nothing to update: an
+-- existing row is left as is, but it is returned too (the @ON CONFLICT@ clause is
+-- a no-op @DO UPDATE@ of a key column).
+--
+-- A row with @NULL@ in a column of a unique key never conflicts (unless the
+-- constraint is @NULLS NOT DISTINCT@), so it is always inserted. The same key must not occur twice in one call
+-- (PostgreSQL can't update a row twice in one statement).
 --
 -- Returning type @r'@ may name any plain columns of the table.
--- Returns the returned rows and the SQL text.
+-- Returns one returned row per input row (in the same order) and the SQL text.
 upsertByKey
   :: forall ann -> forall r r'. UpsertByKeyReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
@@ -43,6 +47,9 @@ upsertByKey ann @r @r' conn recs = let sql = upsertByKeyText ann @r @r' in
       $ fmap (PgTag @ann @r) recs )
 
 -- | Like 'upsertByKey', but without @RETURNING@.
+--
+-- If all fields of @r@ belong to the key, existing rows are left as is
+-- (@ON CONFLICT (key) DO NOTHING@).
 --
 -- Returns the number of inserted or updated rows and the SQL text.
 upsertByKey_
@@ -58,7 +65,8 @@ upsertByKey_ ann @r conn recs = let sql = upsertByKeyText_ ann @r in
 upsertByKeyText
   :: forall ann -> forall r r' s
   . (UpsertByKeyReturning ann r r', IsString s, Monoid s) => s
-upsertByKeyText ann @r @r' = upsertByKeyText_ ann @r <> " returning " <> fs'
+upsertByKeyText ann @r @r' =
+  fromString (T.unpack $ upsertByKeyStmt ann @r True) <> " returning " <> fs'
   where
     ri' = getRecordInfo @ann @r'
     fs' = fromText $ T.intercalate "," [fi.fieldDbName | fi <- ri'.fields]
@@ -67,12 +75,14 @@ upsertByKeyText ann @r @r' = upsertByKeyText_ ann @r <> " returning " <> fs'
 upsertByKeyText_
   :: forall ann -> forall r s
   . (UpsertByKeyNonReturning ann r, IsString s, Monoid s) => s
-upsertByKeyText_ ann @r = fromString $ T.unpack $ upsertByKeyStmt ann @r
+upsertByKeyText_ ann @r = fromString $ T.unpack $ upsertByKeyStmt ann @r False
 
-upsertByKeyStmt :: forall ann -> forall r. UpsertByKeyNonReturning ann r => Text
-upsertByKeyStmt ann @r
-  | L.null plainsOthers = ins <> " on conflict do nothing"
-  | otherwise = ins <> upsertOnConflict plainsOthers keyNames
+-- | @INSERT … ON CONFLICT …@ statement without @RETURNING@; the flag tells
+-- whether @RETURNING@ will be added (see 'upsertOnConflict').
+upsertByKeyStmt
+  :: forall ann -> forall r. UpsertByKeyNonReturning ann r => Bool -> Text
+upsertByKeyStmt ann @r withReturning =
+  ins <> upsertOnConflict withReturning plainsOthers keyNames
   where
     ri = getRecordInfo @ann @r
     ti = tabInfoMap @(AnnSch ann) M.! ri.tabName

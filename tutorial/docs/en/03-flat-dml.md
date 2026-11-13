@@ -244,8 +244,14 @@ name changed and the `id` stayed the same. The new user "Mia" got `id = 5`, not
 sequence before it detected the conflict, and that value was lost. Every
 `insert … on conflict` behaves this way, and it does not affect the program.
 
-`upsertByKey` does not accept a record with only a key: such a row cannot be
-inserted because mandatory columns are missing.
+A unique key may contain nullable columns, like `email`. In PostgreSQL `NULL`
+values never conflict with each other, so a record with `email = Nothing` is
+always inserted as a new row. (`updateByKey`, on the contrary, compares the key
+with `IS NOT DISTINCT FROM` and finds a row with `NULL` in the key.)
+
+Here `upsertByKey` does not accept a record with only a key: the `users` table
+has the mandatory column `name` outside the key, and without it a new row
+cannot be inserted.
 
 ```
 • We can't insert data because not all mandatory fields are present.
@@ -254,6 +260,11 @@ inserted because mandatory columns are missing.
 ```
 
 To update a row by its key alone, use `updateByKey`.
+
+If all mandatory columns of a table belong to the key (as in a link table with
+a composite primary key), a record with only the key is accepted. Then there is
+nothing to update: an existing row is left as is, and `upsertByKey` still
+returns it, so the result always has one row per input record.
 
 ## Which operation to choose
 

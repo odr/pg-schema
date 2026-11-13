@@ -100,6 +100,14 @@ main = do
         constraint nullable_uq_row_code_suffix_uq unique (code, suffix)
       );
 
+      -- All mandatory columns belong to the primary key (key-only upsert).
+      create table tag_link (
+        owner_id integer not null,
+        tag      text not null,
+        note     text,
+        constraint tag_link_pk primary key (owner_id, tag)
+      );
+
       -- Numeric columns of different types (aggregate result types).
       create table aggr_nums (
         id   serial primary key,

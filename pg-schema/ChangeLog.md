@@ -1,6 +1,13 @@
 # Changelog for pg-schema
 
 ## Unreleased
+- Fix: `upsertByKey` with a record whose fields all belong to the key used
+  `ON CONFLICT DO NOTHING` and returned nothing for rows that already existed.
+  Now it uses a no-op `ON CONFLICT (key) DO UPDATE`: an existing row is left
+  as is and returned, so there is one returned row per input record.
+  `upsertByKey_` uses `ON CONFLICT (key) DO NOTHING` in this case; previously
+  the conflict target was missing, so a conflict on another unique key was
+  silently ignored, and now it is an error, as for other records.
 - Haddock: fix incorrect and outdated descriptions (renamers and `CamelToSnake`,
   the module example in `PgSchema.DML`, `upsertJSON`, `Aggr` / `Aggr'`,
   `pparent`, unique keys used by key-based operations) and broken markup.

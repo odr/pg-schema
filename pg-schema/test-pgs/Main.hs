@@ -74,6 +74,8 @@ main = do
     , testGroup "Keyed DML (test_dml)"
       [ testProperty "upsertByKey insert then key patch" $
           prop_upsert_by_key_insert_then_update pool
+      , testProperty "upsertByKey key-only record returns all rows" $
+          prop_upsert_by_key_key_only_returns_all pool
       , testProperty "upsertByKey composite unique" $
           prop_upsert_by_key_composite_unique pool
       , testProperty "upsertByKey always INSERT ON CONFLICT SQL" $

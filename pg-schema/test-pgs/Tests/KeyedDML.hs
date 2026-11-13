@@ -64,6 +64,10 @@ type Mid1KeyPatch = "id" := Int32 :. Mid1Rec
 
 type Mid1KeyRet = "id" := Int32 :. "flag" := Bool
 
+type TagLinkKey = "ownerId" := Int32 :. "tag" := Text
+
+type TagLinkRow = "ownerId" := Int32 :. "tag" := Text :. "note" := Maybe Text
+
 expectAbsent :: Show a => [Maybe a] -> IO ()
 expectAbsent [Nothing] = pure ()
 expectAbsent xs = fail $ "expected [Nothing], got " <> show xs
@@ -105,6 +109,32 @@ prop_upsert_by_key_insert_then_update pool = withTests 10 $ property do
     case rows of
       [_ :. _ :. n] -> when (unPgTag n /= name2) $ fail "DB name not updated"
       _ -> fail "expected one row"
+
+-- | All fields of the record belong to the key: there is nothing to update, but
+-- existing rows must be returned too (and left as is).
+prop_upsert_by_key_key_only_returns_all :: Pool Connection -> Property
+prop_upsert_by_key_key_only_returns_all pool = withTests 5 $ property do
+  owner <- forAll (Gen.int32 (Range.linear 1 100000))
+  evalIO $ Pool.withResource pool \conn -> do
+    void $ delByCond "tag_link" conn ("ownerId" =? owner)
+    let
+      seed :: TagLinkRow
+      seed = "ownerId" =: owner :. "tag" =: "a" :. "note" =: Just "kept"
+      keys = rowsOf @TagLinkKey [owner :. "a", owner :. "b"]
+      expected = [owner :. ("a" :. Just "kept"), owner :. ("b" :. Nothing)]
+    void $ insSch_ "tag_link" conn [seed]
+    (ret, sql) <- upsertByKey (AnnSch "tag_link") @TagLinkKey @TagLinkRow conn keys
+    expectUpsertSql sql
+    when (plains ret /= expected) $
+      fail $ "expected all rows returned, got " <> show ret <> "\nSQL: " <> T.unpack sql
+    (n, sql_) <- upsertByKey_ (AnnSch "tag_link") conn keys
+    expectUpsertSql sql_
+    when (n /= 0) $ fail $ "expected no changed rows, got " <> show n
+    (rows :: [TagLinkRow], _) <- selSch "tag_link" conn $ qRoot do
+      qWhere $ "ownerId" =? owner
+      qOrderBy [ascf "tag"]
+    when (plains rows /= expected) $
+      fail $ "expected rows left as is, got " <> show rows
 
 prop_upsert_by_key_composite_unique :: Pool Connection -> Property
 prop_upsert_by_key_composite_unique pool = withTests 5 $ property do

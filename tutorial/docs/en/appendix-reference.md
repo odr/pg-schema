@@ -22,9 +22,11 @@ differ in what the input record must contain and in which SQL is run.
 
 Mandatory columns are those declared `NOT NULL` without a default value. If the
 record has the primary key, it is used; otherwise the first unique key all of
-whose columns are in the record. `upsertByKey` does not accept a record that
-contains only a key: to change a row by key without the full set of mandatory
-columns, use `updateByKey`.
+whose columns are in the record (unique keys over `NOT NULL` columns are tried
+first). `upsertByKey` does not accept a record without the full set of
+mandatory columns: to change a row by key without them, use `updateByKey`. If
+all fields of an `upsertByKey` record belong to the key, an existing row is
+left as is and returned unchanged.
 
 ## Returning
 
