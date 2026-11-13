@@ -19,10 +19,13 @@ import GHC.TypeLits (Symbol)
 import GHC.TypeError qualified as TE
 import PgSchema.Utils.Internal
 
+-- | Type-level schema of the PostgreSQL system catalogs used by @pg-schema@.
 data PgCatalog
 
+-- | Name in the @pg_catalog@ schema, e.g. @PGC \"int4\"@.
 type PGC name = "pg_catalog" ->> name
 
+-- | Term-level name in the @pg_catalog@ schema, e.g. @pgc \"int4\"@.
 pgc :: Text -> NameNS
 pgc = ("pg_catalog" ->>)
 
@@ -186,7 +189,7 @@ instance CTypDef PgCatalog (PGC "char") where
 
 ---------- CDBFieldInfo ----------
 
--- Closed type family for PgCatalog field info
+-- | Fields of the catalog tables (see 'TDBFieldInfo').
 type family TDBFieldInfoPgCatalog (t :: NameNSK) (f :: Symbol)
   :: RecFieldK NameNSK where
   -- plain oid column for all catalog tables

@@ -69,12 +69,17 @@ type Selectable ann r = (CRecInfo ann r, FromRow (PgTag ann r))
 -- when the foreign-key side you join from allows NULL).
 --
 -- What actually appears in the generated SQL beyond that shape is controlled by
--- the 'QueryParam': filters, which paths are traversed, ordering on a branch
+-- the t'QueryParam': filters, which paths are traversed, ordering on a branch
 -- (e.g. child rows sorted by their position number), limits, and similar options.
--- You only configure in 'QueryParam' what you need for this query—not every
+-- You only configure in t'QueryParam' what you need for this query—not every
 -- possible relation field in @r@.
 --
--- Build 'QueryParam' with the 'MonadQP' API.
+-- Build t'QueryParam' with the 'MonadQP' API.
+--
+-- To pattern match on rows of t'PgTag' fields without unwrapping every field,
+-- use 'PgSchema.DML.plains':
+--
+-- > rows <- plains @("id" := Int64 :. "name" := Text) . fst <$> selectSch (MyAnn "users") conn qpEmpty
 --
 selectSch :: forall ann -> forall r. Selectable ann r
   => Connection -> QueryParamAnn ann -> IO ([r], (Text,[SomeToField]))
@@ -196,7 +201,6 @@ renderUnsafeExpr n ps = T.concat
 -- (non-obvious for nested relation fields).
 fieldM :: MonadQuery ren sch tab m => FieldInfo Text -> m (Text, Text, Text)
 fieldM fi = case fi.fieldKind of
-  RFEmpty s -> pure ("null", s, "true")
   RFSelfRef{} -> error "Impossible: RFSelfRef should be changed to RFFromHere or RFToHere"
   RFPlain {} -> do
     n <- asks qrCurrTabNum
@@ -295,11 +299,18 @@ loByPath p = fromMaybe mempty . withLOsWithPath convLO p
 runCond :: Int -> CondMonad a -> (a,[SomeToField])
 runCond n x = evalRWS x ("q", pure n) 0
 
+-- | Alias of the current table in the generated SQL (e.g. @t0@), for
+-- unsafe conditions and ordering ('pUnsafeCond', 'UnsafeOrd').
 tabPref :: CondMonad Text
 tabPref = asks \case
   (_, n :| []) -> "t" <> show' n
   (p, n :| (np : _)) -> "t" <> show' np <> p <> show' n
 
+-- | Column @fld@ qualified with the alias of the current table
+-- (e.g. @t0.name@), for unsafe conditions and ordering ('pUnsafeCond',
+-- 'UnsafeOrd'). @fld@ is a database name: the renamer is not applied.
+--
+-- > qual @"name"
 qual :: forall (fld :: Symbol). ToStar fld => CondMonad Text
 qual = tabPref <&> (<> "." <> (demote @fld))
 

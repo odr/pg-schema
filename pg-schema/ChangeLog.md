@@ -1,5 +1,26 @@
 # Changelog for pg-schema
 
+## Unreleased
+- Fix: `upsertByKey` with a record whose fields all belong to the key used
+  `ON CONFLICT DO NOTHING` and returned nothing for rows that already existed.
+  Now it uses a no-op `ON CONFLICT (key) DO UPDATE`: an existing row is left
+  as is and returned, so there is one returned row per input record.
+  `upsertByKey_` uses `ON CONFLICT (key) DO NOTHING` in this case; previously
+  the conflict target was missing, so a conflict on another unique key was
+  silently ignored, and now it is an error, as for other records.
+- Haddock: fix incorrect and outdated descriptions (renamers and `CamelToSnake`,
+  the module example in `PgSchema.DML`, `upsertJSON`, `Aggr` / `Aggr'`,
+  `pparent`, unique keys used by key-based operations) and broken markup.
+- Haddock: document the previously undocumented API (`(=:)`, `(:=)`,
+  `UnsafeCol`, `pUnsafeCond`, comparison operators, `upsertByKey` and all
+  `*Text` functions, return values of DML functions, query-parameter types,
+  `GenNames` / `AddRelation`, `genDot` etc.).
+- `PgSchema.DML` exports the type `FldDef'` (used by `FdType` / `FdNullable`).
+- Remove the unused constructor `RFEmpty` of `RecField'`.
+- `PgOid` is no longer exported from `PgSchema.DML`: it is used only to read
+  the system catalogs, and its `Eq` instance treats all values as equal.
+  Use `Int` for `oid` columns.
+
 ## 0.9.0.0
 - Fix typos in some compile-time error messages
 - Fix: tree DML (`insertJSON`, `upsertJSON`, `updateJSON` and their `_`

@@ -65,10 +65,11 @@ import Data.Hashable
 #endif
 
 
--- | Representation of `enum` database types.
+-- | Representation of @enum@ database types.
 --
 -- Data instances are produced by schema generation.
--- You can use these data instances in your records to @SELECT@ | @INSERT@ | @UPSERT@ data.
+-- You can use these data instances in your records to select, insert, update
+-- or upsert data.
 data family PGEnum sch (name :: NameNSK) :: Type
 
 instance
@@ -113,9 +114,12 @@ instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
 
 -- | Representation of aggregate functions.
 --
--- E.g. @\"fld\" := Aggr AMin (Maybe Int32)@ means "minimum value of the field `fld`"
+-- E.g. @\"fld\" := Aggr AMin (Maybe Int32)@ means "minimum value of the field @fld@".
 --
--- 'Aggr' requires a 'Maybe' argument for all functions except @count@.
+-- t'Aggr' requires a 'Maybe' argument for all functions except @count@:
+-- all aggregate functions except @count@ return @NULL@ on an empty set of rows
+-- (e.g. @select min(a) from t where false@), even if the field is mandatory.
+-- Use t'Aggr'' in rows with grouping fields to avoid 'Maybe' for mandatory fields.
 --
 -- Only a small set of aggregations are supported currently: @count@, @min@, @max@, @sum@, @avg@.
 --
@@ -127,19 +131,21 @@ instance (Read (PGEnum sch n), Show (PGEnum sch n)) => Flat (PGEnum sch n) where
 -- * @sum(int2 | int4)@ - @int8@: 'Int64', 'Scientific' or 'Rational';
 -- * @sum(int8 | numeric)@, @avg(int2 | int4 | int8 | numeric)@ - @numeric@:
 --   'Scientific' or 'Rational';
--- * @sum(float4)@, @sum(float8)@, @avg(float4 | float8)@ - @float4@ / @float8@:
+-- * @sum(float4)@ - @float4@, @sum(float8)@ - @float8@, @avg(float4 | float8)@ - @float8@:
 --   'Double', 'Scientific' or 'Rational'.
 newtype Aggr (f :: AggrFun) t = Aggr { unAggr :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
 
--- | All aggregate functions except @count@ can return NULL.
--- But if field under aggregate is mandatory they return NULL only on empty set
--- if there is no group by clause. E.g. `select min(a) from t where false`
--- So we require Nullable for Aggr.
+-- | Like t'Aggr', but for rows that also contain non-aggregate (grouping) fields.
 --
--- 'Aggr'' is like 'Aggr' but cannot be used in SELECT without `group by`.
--- So it is mandatory if field is mandatory.
+-- For such rows @GROUP BY@ over the non-aggregate fields is generated, and every
+-- group has at least one row. So the result of the aggregate is @NULL@ only if
+-- the field is nullable: t'Aggr'' requires 'Maybe' exactly for nullable fields
+-- (and never for @count@).
+--
+-- Without grouping fields there is no @GROUP BY@, and on an empty set of rows the
+-- result is @NULL@ even for a mandatory field, so decoding fails. Use t'Aggr' there.
 newtype Aggr' (f :: AggrFun) t = Aggr' { unAggr' :: t }
   deriving stock Show
   deriving newtype (Eq, Ord, FromField, ToField, FromJSON, ToJSON)
@@ -157,14 +163,14 @@ newtype PgChar = PgChar { unPgChar :: Char }
 instance ToField PgChar where
   toField = toField . (:[]) . unPgChar
 
---
--- | 'PGArray' has no JSON instances. '[]' has JSON, but no PG instances.
+-- | t'PGArray' has no JSON instances. @[]@ has JSON, but no PostgreSQL instances.
 -- This one has both.
 --
 -- Use this type to work with arrays in database.
 --
--- All elements are 'Maybe' because PostgreSQL does not guarantee that all elements are present.
--- 'PgTag' @typeName@ 'PgArr' can be /safely/ converted to 'ToField' with type information (e.g. @val::int[]@).
+-- All elements are 'Maybe' because elements of a PostgreSQL array can be @NULL@.
+-- @PgTag typeName (PgArr a)@ has a 'ToField' instance that adds the array type
+-- to the value (e.g. @val::int[]@), so it is converted /safely/.
 -- This instance is used internally in the generation of SQL.
 --
 newtype PgArr a = PgArr { unPgArr :: [Maybe a] }
@@ -200,22 +206,27 @@ instance ToJSON a => ToJSON (PgTag (s :: Maybe NameNSK) (PgArr a)) where
 instance FromJSON a => FromJSON (PgTag (s :: Maybe NameNSK) (PgArr a)) where
   parseJSON = fmap PgTag . parseJSON
 
--- | Make 'PgArr' from list. All elements are lifted to 'Maybe'
+-- | Make t'PgArr' from list. All elements are lifted to 'Maybe'.
 pgArr' :: [a] -> PgArr a
 pgArr' = PgArr . fmap Just
 
--- | Make list from 'PgArr'. All empty ('Nothing') elements are omitted.
+-- | Make list from t'PgArr'. All empty ('Nothing') elements are omitted.
 unPgArr' :: PgArr a -> [a]
 unPgArr' = catMaybes . unPgArr
 
--- | 'Oid' but with JSON instances
+-- | t'Oid' but with JSON instances.
+--
+-- It is used to read the system catalogs during schema generation.
+--
+-- Note that all values are equal ('Eq' ignores the OID): schemas are compared
+-- by names, not by OIDs, e.g. if some table or constraint was recreated.
 newtype PgOid = PgOid { fromPgOid :: Oid }
   deriving stock (Show, Read)
   deriving newtype (FromField, ToField)
 
+-- | All values are equal: we don't want to distinguish by OIDs but by names
+-- instead (e.g. if we recreate some table or constraint).
 instance Eq PgOid where _ == _ = True
-  -- we don't want to distinguish by OIDs but by names instead
-  -- e.g. if we recreate some table or constraint
 
 instance FromJSON PgOid where
   parseJSON = fmap (PgOid . read . ("Oid " ++)) . parseJSON
@@ -278,10 +289,10 @@ type family CanConvertAggr sch (tab::NameNSK) (fld::Symbol) (fn :: AggrFun)
 
 -- | Check the Haskell type @at@ of an aggregate field (e.g. @Aggr ASum (Maybe Int64)@)
 -- over the DB field @fld@ against the SQL result type of the aggregate function
--- (see 'AggrResType'). Reduces to ''True' or to a 'TypeError'.
+-- (see 'AggrResType'). Reduces to @'True@ or to a 'TypeError'.
 --
--- * 'Aggr' (except @count@) requires 'Maybe': the result is NULL on an empty set.
--- * 'Aggr'' (with GROUP BY) requires 'Maybe' exactly for nullable fields.
+-- * t'Aggr' (except @count@) requires 'Maybe': the result is NULL on an empty set.
+-- * t'Aggr'' (with @GROUP BY@) requires 'Maybe' exactly for nullable fields.
 -- * @count@ is 'Int64'.
 -- * @sum@ / @avg@ results: @int8@ - 'Int64', 'Scientific' or 'Rational';
 --   @numeric@ - 'Scientific' or 'Rational'; @float4@ / @float8@ - 'Double',
@@ -462,21 +473,27 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
 -- You can describe rows in two ways:
 --
 -- 1. Ordinary Haskell records with a 'GHC.Generics.Generic' instance.
--- 2. Symbol-labelled rows built from '(=:)' and chained with '(:.)' from
+-- 2. Symbol-labelled rows built from '(=:)' and chained with t'(:.)' from
 --    @postgresql-simple@ (re-exported from "PgSchema.DML").
 --
--- 'PgTag' is analogous to 'Data.Tagged.Tagged' from the @tagged@ package, but
+-- Lists of symbol-labelled rows can also be made from plain values without
+-- field names: with 'PgSchema.DML.rowsOf' (names and types are taken from the
+-- row type) or 'named' (names are given once for the whole list). In the other
+-- direction, 'PgSchema.DML.plains' drops the names from selected or returned rows.
+--
+-- t'PgTag' is analogous to 'Data.Tagged.Tagged' from the @tagged@ package, but
 -- carries JSON (and related) instances suited to @pg-schema@.
 --
 -- Both representations can be mixed in one row.
 --
--- Two pieces of syntax cooperate with 'PgTag':
+-- Two pieces of syntax cooperate with t'PgTag':
 --
--- * '(=:)' builds a 'PgTag' value (field name + payload).
--- @RequiredTypeArguments@ lets you avoid noisy explicit type application on the
--- field name: you write "name" =: "John" instead of @"name" =: "John".
--- * '(:=)' is the type-level spelling of the same idea (see the '(:=)' type
---   synonym below).
+-- * '(=:)' builds a t'PgTag' value (field name + payload).
+--   @RequiredTypeArguments@ lets you avoid noisy explicit type application on the
+--   field name: you write @\"name\" =: \"John\"@ instead of
+--   @(=:) \@\"name\" \"John\"@.
+-- * t'(:=)' is the type-level spelling of the same idea:
+--   @\"name\" := Text@ is the type of @\"name\" =: (\"John\" :: Text)@.
 --
 newtype PgTag s t = PgTag { unPgTag :: t }
   deriving stock (Eq, Ord, Functor, Foldable, Traversable)
@@ -544,30 +561,44 @@ instance {-# OVERLAPPABLE #-} Show t => Show (PgTag s t) where
 instance {-# OVERLAPPABLE #-} Read t => Read (PgTag s t) where
   readsPrec p = readParen (p > 11) readsPgTagLegacy
 
+-- | Field named @s@ with value of type @t@: the type of @s '=:' value@.
+--
+-- > type User = "name" := Text :. "email" := Maybe Text
 type s := t = PgTag s t
 infixr 5 :=
 
+-- | Field with name @a@ (given as a required type argument) and value of type @b@.
+--
+-- > "name" =: ("John" :: Text) :. "email" =: (Nothing :: Maybe Text)
+--
+-- Fields are chained into rows with t'(:.)'. To make a list of rows without
+-- repeating the field names in every row, see 'PgSchema.DML.rowsOf' and 'named'.
 (=:) :: forall b. forall a -> b -> a := b
 (=:) _ = coerce
 infixr 5 =:
 
 -- | Attach field names to a list of plain rows at once.
 --
--- Rows are ordinary values chained with '(:.)' (no 'PgTag' on each field);
+-- Rows are ordinary values chained with t'(:.)' (no t'PgTag' on each field);
 -- the names are given only once, for the whole list:
 --
--- > insertSch (MyAnn "projects") conn
--- >   $ named ["ownerId", "title", "status", "tags"]
--- >   [ (1 :: Int64) :. ("pg-schema" :: Text) :. Project_status_active :. pgArr' ["db" :: Text, "haskell"]
--- >   , 1 :. "tutorial" :. Project_status_draft :. pgArr' ["learning"] ]
+-- > (res, _) <- insertSch (MyAnn "projects") conn $
+-- >   named ["ownerId", "title", "status", "tags"]
+-- >     [ (1 :: Int64) :. ("pg-schema" :: Text) :. Project_status_active :. pgArr' ["db" :: Text, "haskell"]
+-- >     , 1 :. "tutorial" :. Project_status_draft :. pgArr' ["learning"] ]
+-- > print (plains @("id" := Int64) res)
 --
 -- is the same as
 --
--- > insertSch (MyAnn "projects") conn
+-- > (res, _) <- insertSch (MyAnn "projects") conn
 -- >   [ "ownerId" =: (1 :: Int64) :. "title" =: ("pg-schema" :: Text)
 -- >     :. "status" =: Project_status_active :. "tags" =: pgArr' ["db" :: Text, "haskell"]
 -- >   , "ownerId" =: 1 :. "title" =: "tutorial"
 -- >     :. "status" =: Project_status_draft :. "tags" =: pgArr' ["learning"] ]
+--
+-- The types of the values are inferred from the values here (hence the
+-- annotations). With 'PgSchema.DML.rowsOf' they are taken from a row type
+-- instead: @rowsOf \@(\"ownerId\" := Int64 :. \"title\" := Text :. …)@.
 --
 -- The n-th name is attached to the n-th field; the last name takes the whole
 -- rest of the row. The number of names must be equal to the number of fields,
@@ -605,6 +636,20 @@ type family Named (ns :: [Symbol]) (r :: Type) :: Type where
       TE.:<>: TE.ShowType r
     TE.:$$: TE.Text "  Names without fields: " TE.:<>: TE.ShowType ns )
 
+-- | Field whose value is an SQL expression over columns of the table
+-- (for @SELECT@ only).
+--
+-- @expr@ is an SQL expression where each @?@ is replaced with a column from
+-- @flds@ in order (qualified with the alias of the table; the renamer is
+-- applied to the names). E.g. the field
+--
+-- > "total" := UnsafeCol '["price", "qty"] "? * ?" Double
+--
+-- is selected as @t0.price * t0.qty@ and decoded as 'Double'.
+--
+-- It is checked at compile time that all columns exist in the table and that
+-- the number of @?@ is equal to the number of columns. The expression itself and
+-- the type of its result are /not/ checked.
 newtype UnsafeCol (flds :: [Symbol]) (expr :: Symbol) res = UnsafeCol
   { getUnsafeCol :: res }
 

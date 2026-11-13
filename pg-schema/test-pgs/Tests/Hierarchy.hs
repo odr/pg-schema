@@ -62,8 +62,8 @@ data Leaf = MkLeaf
   , leaf_mid2_rev_fk :: Mid2RecRev }
   deriving (Generic, Eq, Ord, Show)
   deriving anyclass GenDefault
--- >>> getRecordInfo @('Ann RenamerSch Sch (TS "leaf")) @LeafI
--- RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "leaf"}, fields = [FieldInfo {fieldName = "leaf_no", fieldDbName = "leaf_no", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "value", fieldDbName = "value", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "float4"}, fdNullable = False, fdHasDefault = False})}]}
+-- >>> getRecordInfo @(AnnSch "leaf") @LeafI
+-- RecordInfo {tabName = NameNS {nnsNamespace = "test_pgs", nnsName = "leaf"}, fields = [FieldInfo {fieldName = "leafNo", fieldDbName = "leaf_no", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "int4"}, fdNullable = False, fdHasDefault = False})},FieldInfo {fieldName = "value", fieldDbName = "value", fieldKind = RFPlain (FldDef {fdType = NameNS {nnsNamespace = "pg_catalog", nnsName = "float4"}, fdNullable = False, fdHasDefault = False})}]}
 
 eqRoot :: RootRec -> RootRec -> Bool
 eqRoot (a1 :. b1 :. _) (a2 :. b2 :. _) = (a1, b1) == (a2, b2)

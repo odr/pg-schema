@@ -29,20 +29,26 @@ import PgSchema.Utils.TF as SP
 
 -- $setup
 -- >>> import PgSchema.Schema.Catalog
+-- >>> import PgSchema.Schema.Info
 -- >>> import Database.PostgreSQL.Simple
--- >>> conn <- connectPostgreSQL ""
+-- >>> import System.Environment (lookupEnv)
+-- >>> import qualified Data.ByteString.Char8 as BS
+-- >>> conn <- connectPostgreSQL . maybe "" BS.pack =<< lookupEnv "PG_CONN"
 
 -- | Type-level annotation: enforce constraints at compile time
 -- and drive demoted types used to generate correct SQL.
--- 'annRen' and 'annSch' are fixed for the whole DML-operation.
+-- 'annRen' and 'annSch' are fixed for the whole DML operation.
 -- 'annDepth' and 'annTab' are changed while traversing the structure of the ADT.
 --
 data Ann = Ann
   { annRen  :: Renamer -- ^ Renamer to convert Haskell names to database names.
   , annSch  :: Type    -- ^ Schema with tables, relations and types.
   , annDepth :: Nat
-  -- ^ Depth of the nested relations. It is mostly used to prevent cycles in types.
-  , annTab  :: NameNSK -- ^ Name of the root table.
+  -- ^ Maximal depth of the nested relations. It is decreased on each step to a
+  -- related table and is mostly used to prevent cycles in types.
+  , annTab  :: NameNSK
+  -- ^ Name of the current table: the root table of the operation, then the
+  -- related table while walking into nested relations.
   }
 
 type family AnnSch (ann :: Ann) where
@@ -64,13 +70,19 @@ type Renamer = Symbol ~> Symbol
 
 -- | Apply renamer to symbol.
 --
---  Like 'Data.Singletons.Apply' but specialized for 'Symbol'.
+-- Like 'Data.Singletons.Apply' but specialized for 'Symbol'.
 --
--- To make your own Renamer, typically you make
+-- To make your own renamer, declare an empty data type of kind 'Renamer',
+-- a closed type family with the renaming rules, and an instance of
+-- 'ApplyRenamer' that connects them:
 --
--- * data MyRenamer :: Renamer
--- * closed type family: `type family MyRenamerImpl (s :: Symbol) :: Symbol where ... `
--- * type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
+-- > data MyRenamer :: Renamer
+-- >
+-- > type family MyRenamerImpl (s :: Symbol) :: Symbol where
+-- >   MyRenamerImpl "manager" = "users_manager_id_fkey"
+-- >   MyRenamerImpl s = CamelToSnake s
+-- >
+-- > type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
 --
 type family ApplyRenamer (renamer :: Renamer) (s :: Symbol) :: Symbol
 
@@ -79,6 +91,7 @@ data RenamerId :: Renamer
 
 type instance ApplyRenamer RenamerId s = s
 
+-- | Apply renamer to the name (not to the namespace) of a qualified name.
 type family ApplyRenamerNS (ren :: Renamer) (nns :: NameNSK) :: NameNSK where
   ApplyRenamerNS ren ('NameNS ns n) = 'NameNS ns (ApplyRenamer ren n)
 
@@ -243,12 +256,13 @@ instance {-# OVERLAPPING #-}
    parseJSON Null = pure $ PgTag Nothing
    parseJSON v = PgTag . Just <$> parseJSONCols @ann @colsCase @cols v
 
--- >>> type AnnRel = 'Ann RenamerId PgCatalog (PGC "pg_constraint")
+-- >>> type AnnRel = 'Ann RenamerId PgCatalog 1 (PGC "pg_constraint")
 -- >>> rel = PgRelation{ constraint__namespace = PgTag "a", conname = "b", constraint__class = PgClassShort (PgTag "c") "d", constraint__fclass = PgClassShort (PgTag "e") "f", conkey = pgArr' [1,2], confkey = pgArr' [] }
 -- >>> rec = "conname" =: ("x" :: T.Text) :. "conname" =: ("z" :: T.Text) :. rel :. "conname" =: ("y" :: T.Text)
 -- >>> toJSON $ PgTag @AnnRel rec
--- >>> fromJSON (toJSON $ PgTag @AnnRel rec) == Success (PgTag @AnnRel rec)
 -- Object (fromList [("confkey",Array []),("conkey",Array [Number 1.0,Number 2.0]),("conname",String "x"),("conname___1",String "z"),("conname___2",String "b"),("conname___3",String "y"),("constraint__class",Object (fromList [("class__namespace",Object (fromList [("nspname",String "c")])),("relname",String "d")])),("constraint__fclass",Object (fromList [("class__namespace",Object (fromList [("nspname",String "e")])),("relname",String "f")])),("constraint__namespace",Object (fromList [("nspname",String "a")]))])
+--
+-- >>> fromJSON (toJSON $ PgTag @AnnRel rec) == Success (PgTag @AnnRel rec)
 -- True
 
 
@@ -260,7 +274,7 @@ class FromJSONCols (ann :: Ann) (colsCase :: ColsCase) (cols :: [ColInfo NameNSK
 
 -- (:=)
 --------------------------------------------------------------------------------
--- NonGeneric: (:=) и (:.)
+-- NonGeneric: (:=) and (:.)
 --------------------------------------------------------------------------------
 instance ToJSONCols ann 'NonGenericCase '[] (fld := ()) where
   toPairs _ = []
@@ -521,6 +535,13 @@ data RecordInfo s   = RecordInfo
   , fields  :: [FieldInfo s] }
   deriving Show
 
+-- | Term-level description of how the Haskell row type @r@ maps to the table of
+-- annotation @ann@: database names of the fields and, for relation fields, the
+-- nested descriptions of the related tables.
+--
+-- It is used to generate SQL. There is a single instance for all rows, and it
+-- reports a compile-time error if some field of @r@ does not exist in the table
+-- or has an incompatible type.
 class CRecInfo (ann :: Ann) (r :: Type) where
   getRecordInfo :: RecordInfo T.Text
 
@@ -608,7 +629,7 @@ type family AppNotPlain (rs :: [Symbol]) (db :: Symbol) (b :: Bool) :: [Symbol] 
   AppNotPlain rs db 'True = rs
   AppNotPlain rs db 'False = db ': rs
 
--- | All fields are plain (no RFToHere/RFFromHere)
+-- | All fields are plain (no relations: 'RFToHere', 'RFFromHere' or 'RFSelfRef').
 type AllPlain (ann :: Ann) (r :: Type) = AllPlainRS ann (NotPlainCols (Cols ann r) '[]) r
 
 type family AllPlainRS (ann :: Ann) (rs :: [Symbol]) (r :: Type) :: Constraint where
@@ -625,7 +646,7 @@ type family AllPlainRS (ann :: Ann) (rs :: [Symbol]) (r :: Type) :: Constraint w
 --------------------------------------------------------------------------------
 -- Type-level RecordInfo for Ann
 --------------------------------------------------------------------------------
--- | Decrease relation-walk depth kept in 'Ann'.
+-- | Decrease relation-walk depth kept in t'Ann'.
 -- When depth is exhausted, fail with a detailed type error instead of
 -- potentially diverging in recursive type families/instances.
 type family DecDepth (ann :: Ann) :: Nat where
@@ -651,7 +672,6 @@ type family TFldInfo (ann :: Ann) (fi :: RecField' Symbol NameNSK) t
   :: RecField' Symbol (RecordInfo Symbol) where
   TFldInfo ann ('RFPlain fd) t = 'RFPlain fd
   TFldInfo ann ('RFAggr fd af b) t = 'RFAggr fd af b
-  TFldInfo ann ('RFEmpty s) t = 'RFEmpty s
   TFldInfo ('Ann ren sch d tab) ('RFToHere (toTab :: NameNSK) refs)
     [PgTag ('Ann ren sch d' toTab) rChild] =
     'RFToHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch d' toTab) rChild)) refs
@@ -675,6 +695,9 @@ type family TRecordInfoCols (ann  :: Ann) (cols :: [ColInfo NameNSK]) :: [FieldI
   TRecordInfoCols ann ('ColInfo sn t db fi ': cs) =
     'FieldInfo (NameSymNat sn) db (TFldInfo ann fi t) ': TRecordInfoCols ann cs
 
+-- | Type-level analogue of 'getRecordInfo': the fields of row @r@ for annotation
+-- @ann@ with their database names and kinds (plain column, aggregate, relation
+-- with the fields of the nested row).
 type family TRecordInfo (ann :: Ann) (r :: Type) :: [FieldInfo Symbol] where
   TRecordInfo ann r = TRecordInfoCols ann (Cols ann r)
 
@@ -704,8 +727,10 @@ type family CheckRef (ann :: Ann) (fldDbName :: Symbol)
 -- Node-level checks for Mandatory / upsert keys (CheckNodeAll* analogue)
 --------------------------------------------------------------------------------
 
--- | One-table check that all mandatory fields are present
--- rs: list of columns that are already "covered" (including those that come from Reference)
+-- | One-table check that all mandatory fields are present.
+--
+-- @rs@ is the list of columns that are already "covered" (including the
+-- columns that come from the reference to the parent).
 type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckAllMandatory ('Ann ren sch d tab) rs =
     CheckAllMandatory' (RestMandatory sch tab rs) ('Ann ren sch d tab) rs
@@ -717,8 +742,8 @@ type family CheckAllMandatory' (rest :: [Symbol]) (ann :: Ann) (rs :: [Symbol]) 
     :$$: Text "Table: " :<>: ShowType tab
     :$$: Text "Missing mandatory fields: " :<>: ShowType rest )
 
--- | All mandatory fields in @rs@, or a full primary key, or a full eligible
--- unique key (see 'IdentityCandidates').
+-- | All mandatory fields in @rs@, or a full primary key, or a full unique key
+-- (see 'IdentityCandidates').
 type family CheckAllMandatoryOrHasKey (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckAllMandatoryOrHasKey ('Ann ren sch d tab) rs = CheckAllMandatoryOrHasKey'
     (RestMandatory sch tab rs) (IdentityCandidates sch tab)
@@ -743,12 +768,12 @@ type family HasAnyFullIdentity' (restKey :: [Symbol]) (rs :: [Symbol]) (ks :: [[
   HasAnyFullIdentity' '[] rs ks ann = ()
   HasAnyFullIdentity' (_ ': _) rs ks ann = HasAnyFullIdentity rs ks ann
 
--- | Every node must include a full primary or eligible unique key.
+-- | Every node must include a full primary or unique key (see 'IdentityCandidates').
 type family CheckHasKey (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckHasKey ('Ann ren sch d tab) rs =
     HasAnyFullIdentity rs (IdentityCandidates sch tab) ('Ann ren sch d tab)
 
--- | All mandatory fields and a full primary or eligible unique key (flat upsert).
+-- | All mandatory fields and a full primary or unique key (flat upsert).
 type CheckAllMandatoryAndHasKey ann rs =
   (CheckAllMandatory ann rs, CheckHasKey ann rs)
 
@@ -770,18 +795,29 @@ type family WalkLevelAnn
       , WalkLevelAnn check ('Ann ren sch d tab) xs rs )
   WalkLevelAnn check ann (_ ': xs) rs = WalkLevelAnn check ann xs rs
 
+-- | Every node of the input tree @r@ (a row or a list of rows) has all mandatory
+-- columns of its table (for 'PgSchema.DML.insertJSON').
+--
+-- @rFlds@ are columns that are known to be present at the root besides the
+-- fields of @r@ (usually @'[]@). Foreign-key columns of child rows are counted
+-- as present: they are taken from the parent row.
 type family AllMandatoryTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   :: Constraint where
   AllMandatoryTree ann [r] rFlds = AllMandatoryTree ann r rFlds
   AllMandatoryTree ann r rFlds =
     WalkLevelAnn CheckAllMandatorySym0 ann (TRecordInfo ann r) rFlds
 
+-- | Every node of the input tree @r@ has all mandatory columns of its table or a
+-- full primary / unique key (for 'PgSchema.DML.upsertJSON'). See
+-- 'AllMandatoryTree' for @rFlds@.
 type family AllMandatoryOrHasKeyTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   :: Constraint where
   AllMandatoryOrHasKeyTree ann [r] rFlds = AllMandatoryOrHasKeyTree ann r rFlds
   AllMandatoryOrHasKeyTree ann r rFlds =
     WalkLevelAnn CheckAllMandatoryOrHasKeySym0 ann (TRecordInfo ann r) rFlds
 
+-- | Every node of the input tree @r@ has a full primary / unique key of its table
+-- (for 'PgSchema.DML.updateJSON'). See 'AllMandatoryTree' for @rFlds@.
 type family AllHasKeyTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   :: Constraint where
   AllHasKeyTree ann [r] rFlds = AllHasKeyTree ann r rFlds
@@ -843,7 +879,7 @@ type family RequireMaybeRow (r :: Type) :: Constraint where
     :$$: Text "Got: " :<>: ShowType r )
 
 -- | Flat @RETURNING@ row must not be wrapped in @Maybe@ (use @IO [Maybe r']@ on
--- 'updateByKey' for per-row absence). Nullable columns may still be @Maybe@ fields.
+-- 'PgSchema.DML.updateByKey' for per-row absence). Nullable columns may still be @Maybe@ fields.
 type family RequireBareRow (r :: Type) :: Constraint where
   RequireBareRow r = RequireBareRow' r
 
@@ -1021,7 +1057,7 @@ type family ReturningMatchesUpsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
 
 -- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after update:
 --
--- * @rOut@ must be @Maybe row@ ('RequireMaybeRow'); checks apply to 'InnerRow rOut'.
+-- * @rOut@ must be @Maybe row@ ('RequireMaybeRow'); checks apply to @InnerRow rOut@.
 -- * Each relation branch in that row exists in @rIn@ at the same path; plain columns
 --   in the returning row need not appear in @rIn@.
 -- * For every child list there (at any depth): the element type must be @Maybe@

@@ -29,6 +29,8 @@ unlines' :: (Monoid a, IsString a) => [a] -> a
 unlines' = intercalate' "\n"
 {-# INLINE unlines' #-}
 
+-- | Type-level value @a@ can be demoted to a term-level value
+-- (with 'Data.Singletons.demote').
 type ToStar a = (SingKind (KindOf a), SingI a)
 
 trace' :: String -> a -> a

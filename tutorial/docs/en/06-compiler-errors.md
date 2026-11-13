@@ -191,7 +191,8 @@ those declared `NOT NULL` and having no default value:
 The same error appears after a mandatory column is added to the table and
 `Sch.hs` is regenerated: the compiler shows every place where rows are inserted
 into this table. `upsertByKey` gives the same error if a record contains only a
-key: the row may turn out to be new, and there is nothing to insert it with. To
+key and the table has mandatory columns outside it: the row may turn out to be
+new, and there is nothing to insert it with. To
 update a row giving only its key, use `updateByKey`. (`upsertJSON` behaves
 differently here: a row without all mandatory columns is not inserted but only
 updated by key, which is why `Maybe` appears in its result.)

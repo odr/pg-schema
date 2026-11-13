@@ -6,10 +6,11 @@ import Data.Singletons ( Apply, type (~>) )
 import GHC.TypeLits
 
 
--- | Second component of a type-level pair (replaces "Prelude.Singletons" @Snd@).
+-- | First component of a type-level pair (replaces @Fst@ from "Prelude.Singletons").
 type family Fst (xs :: (a,b)) :: a where
   Fst '(x,_) = x
 
+-- | Second component of a type-level pair (replaces @Snd@ from "Prelude.Singletons").
 type family Snd (xs :: (a, b)) :: b where
   Snd '(_, y) = y
 
@@ -46,16 +47,16 @@ type family Length (xs :: [a]) :: Nat where
 type family SplitAt (n :: Nat) (xs :: [k]) :: ([k], [k]) where
   SplitAt 0 xs             = '( '[], xs)
   SplitAt n '[]            = '( '[], '[])
-  -- Используем вспомогательный тип, чтобы "пробросить" результат рекурсии
+  -- Use a helper type family to thread the result of the recursion through
   SplitAt n (x ': xs)      = SplitAtHelper x (SplitAt (n - 1) xs)
 
--- Вспомогательный тип для конструирования результата
+-- Helper type family that builds the result
 type family SplitAtHelper (x :: k) (res :: ([k], [k])) :: ([k], [k]) where
   SplitAtHelper x '(left, right) = '(x ': left, right)
 
 -- >>> :kind! SplitAt 2 '[1,2,3,4,5]
 -- SplitAt 2 '[1,2,3,4,5] :: ([Natural], [Natural])
--- = '( '[1, 2], '[3, 4, 5])
+-- = '([1, 2], [3, 4, 5])
 
 type family Map1 (f :: a ~> b) (xs :: [a]) :: [b] where
   Map1 f '[] = '[]

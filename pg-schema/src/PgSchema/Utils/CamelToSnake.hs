@@ -6,14 +6,17 @@ import Data.Type.Bool
 import Data.Type.Equality
 
 
--- | Closed type family to convert CamelCase to snake_case that can be used in 'Renamer'.
+-- | Type-level function to convert @CamelCase@ to @snake_case@.
 --
--- @
+-- It is not a renamer itself, but it is convenient to use it in your renamer
+-- (see 'PgSchema.DML.ApplyRenamer'):
+--
+-- > data MyRenamer :: Renamer
+-- > type instance ApplyRenamer MyRenamer s = CamelToSnake s
+--
 -- >>> import Data.Proxy
 -- >>> symbolVal (Proxy @(CamelToSnake "TESTCamelTo_snake_Case"))
 -- "t_e_s_t_camel_to_snake__case"
---
--- @
 type CamelToSnake (s :: Symbol) = CamelToSnakeInternal (UnconsSymbol s)
 
 type family CamelToSnakeInternal (m :: Maybe (Char, Symbol)) :: Symbol where

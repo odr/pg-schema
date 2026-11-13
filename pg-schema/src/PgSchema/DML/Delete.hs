@@ -15,6 +15,9 @@ import Data.Singletons
 
 -- | Delete records in table by condition.
 --
+-- Returns the number of deleted rows, the SQL text and the values of its
+-- placeholders.
+--
 deleteByCond :: forall ann -> SingI (AnnTab ann) => Connection -> CondAnn ann
   -> IO (Int64, (Text,[SomeToField]))
 deleteByCond ann conn cond = traceShow' (q,ps)

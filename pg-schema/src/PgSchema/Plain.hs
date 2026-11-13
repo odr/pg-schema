@@ -2,8 +2,8 @@
 -- | Plain (untagged, flat) values of rows: 'rowsOf' / 'rowOf' and 'plains' / 'plain'.
 --
 -- A row is flattened the same way as for 'Database.PostgreSQL.Simple.ToRow' /
--- 'Database.PostgreSQL.Simple.FromRow' (see 'PgSchema.Ann.Cols'):
--- '(:.)' and Generic records are flattened into a sequence of fields,
+-- 'Database.PostgreSQL.Simple.FromRow' (see the internal @Cols@):
+-- t'(:.)' and Generic records are flattened into a sequence of fields,
 -- @fld := ()@ gives no field. The structure (grouping) lives in the type only.
 --
 -- Here we have just structures: no schema is used.
@@ -18,7 +18,7 @@ import PgSchema.Types
 import PgSchema.Utils.TF
 
 
--- | Flat (plain) value of a row @r@: values of all fields chained with '(:.)'
+-- | Flat (plain) value of a row @r@: values of all fields chained with t'(:.)'
 -- from the right, without field names. A row without fields is @()@.
 --
 -- Nested rows in field values (children @[r]@, parents @r@ or @Maybe r@) are
@@ -29,7 +29,7 @@ import PgSchema.Utils.TF
 -- = Int :. (Bool :. [Char :. Char])
 type Plain r = Chain (PlainCols r)
 
--- | Types of the fields of a row (like 'PgSchema.Ann.Cols' but schema-less).
+-- | Types of the fields of a row (like the internal @Cols@, but schema-less).
 type family PlainCols (r :: Type) :: [Type] where
   -- an optional group of fields cannot be split into fields:
   -- it is one value
@@ -47,7 +47,7 @@ type family GPlainCols (rep :: Type -> Type) :: [Type] where
 
 -- | Plain value of a field.
 --
--- Rows built with '(:.)' / '(:=)' (also in lists and 'Maybe') become plain.
+-- Rows built with t'(:.)' / '(:=)' (also in lists and 'Maybe') become plain.
 -- Other values are not changed. In particular, Generic records in field values
 -- are kept as is: without a schema they can't be distinguished from other
 -- types having a Generic instance (e.g. 'Data.Aeson.Value').
@@ -99,11 +99,11 @@ type family PlainCaseOf (r :: Type) :: PlainCase where
   PlainCaseOf (Maybe r) = 'PCMaybe
   PlainCaseOf r = 'PCRow (ColsCaseOf r)
 
--- | Like 'PgSchema.Ann.ToRowCols': a row to the list of plain fields.
+-- | Like the internal @ToRowCols@: a row to the list of plain fields.
 class ToPlainCols (c :: PlainCase) (cols :: [Type]) r where
   toPlainCols :: r -> HL cols
 
--- | Like 'PgSchema.Ann.FromRowCols': a row from the beginning of the list of
+-- | Like the internal @FromRowCols@: a row from the beginning of the list of
 -- plain fields (as 'Database.PostgreSQL.Simple.FromRow.RowParser' takes the
 -- beginning of the row). The rest is returned.
 class FromPlainCols (c :: PlainCase) (cols :: [Type]) r (rest :: [Type]) where
@@ -264,20 +264,20 @@ plain = toChain . toPlainCols @(PlainCaseOf r) @(PlainCols r)
 -- | Make rows of type @r@ from plain values: field names (and field types)
 -- are taken from @r@, so values don't need names or type annotations.
 --
--- > type Mid1 = "pos" := Int32 :. "flag" := Bool
--- > type Root = "code" := Text :. "grp" := Int32 :. "mid1RootFk" := [Mid1]
+-- > type Mid1 = "pos" := Int32 :. "flag" := Bool :. "sortKey" := Int32
+-- > type Root = "code" := Text :. "grp" := Int32 :. "name" := Text :. "mid1RootFk" := [Mid1]
 -- >
--- > insertJSON (MyAnn "root") conn $ rowsOf @Root
--- >   [ "r1" :. 1 :. [10 :. True, 11 :. False]
--- >   , "r2" :. 2 :. [] ]
+-- > insertJSON_ (MyAnn "root") conn $ rowsOf @Root
+-- >   [ "r1" :. 1 :. "first" :. [10 :. True :. 1, 11 :. False :. 2]
+-- >   , "r2" :. 2 :. "second" :. [] ]
 --
 -- Rows are flattened as for 'Database.PostgreSQL.Simple.ToRow': parts joined
--- with '(:.)' and Generic records give their fields in order, so no
+-- with t'(:.)' and Generic records give their fields in order, so no
 -- parentheses are needed whatever the grouping in the type is.
 -- See 'Plain' for details.
 --
 -- The type is given with a type application (not as a required type
--- argument), so it can be written in place: in a term position '(:.)', @()@,
+-- argument), so it can be written in place: in a term position t'(:.)', @()@,
 -- @[t]@ or a record name would be taken as data constructors.
 --
 -- >>> rowsOf @("a" := Int :. ("b" := Bool :. "c" := ())) [1 :. True, 2 :. False]
@@ -286,14 +286,14 @@ rowsOf :: forall r. PlainRow r => [Plain r] -> [r]
 rowsOf = fmap (rowOf @r)
 
 -- | Plain values of rows (e.g. to pattern match on selected rows without
--- 'PgTag'). The inverse of 'rowsOf'.
+-- t'PgTag'). The inverse of 'rowsOf'.
 --
 -- As for 'rowsOf', the row type can be given with a type application.
 -- For @SELECT@ or @RETURNING@ it is then the only place where the type of the
 -- result is written:
 --
 -- > rows <- plains @(Mid1 :. "mid1RootFk" := Root) . fst <$> selectSch (MyAnn "mid1") conn qpEmpty
--- > for_ rows \(pos :. flag :. (code :. _)) -> ...
+-- > for_ rows \(pos :. flag :. _ :. (code :. _)) -> print (pos, flag, code)
 --
 -- >>> plains ["a" =: (1 :: Int) :. "b" =: True]
 -- [1 :. True]

@@ -55,18 +55,26 @@ data ExceptionSch
 
 instance Exception ExceptionSch
 
+-- | A relation that does not exist in the database as a foreign key, but is
+-- used as if it existed (e.g. a relation to a view).
+--
+-- Nothing checks the relation in the database: the columns must be correct and
+-- the data must really be consistent with it.
 data AddRelation = AddRelation
   { name  :: Text
-  -- ^ name of an additional (non-existing in the database) relation.
-  -- All additional relations will be added with the namespace "_add".
-  , from  :: NameNS
-  , to    :: NameNS
-  , cols  :: [(Text, Text)] }
+  -- ^ Name of an additional (non-existing in the database) relation.
+  -- All additional relations will be added with the namespace @_add@.
+  , from  :: NameNS -- ^ Child (referencing) table.
+  , to    :: NameNS -- ^ Parent (referenced) table.
+  , cols  :: [(Text, Text)]
+  -- ^ Pairs of columns: (column of the child table, column of the parent table).
+  }
 
+-- | What to generate.
 data GenNames = GenNames
-  { schemas :: [Text]   -- ^ generate data for all tables in these schemas
-  , tables  :: [NameNS] -- ^ generate data for these tables
-  , addRelations :: [AddRelation] -- ^ additional relations. Be careful!
+  { schemas :: [Text]   -- ^ Generate data for all tables in these schemas.
+  , tables  :: [NameNS] -- ^ Generate data for these tables.
+  , addRelations :: [AddRelation] -- ^ Additional relations. Be careful!
   }
 
 type AnnCat tn = 'Ann RenamerId PgCatalog 3 (PGC tn)
@@ -220,18 +228,22 @@ getDefs (types,classes,relations) =
         getName t n = M.lookup (t,n) mClassAttrs
         getName2 n1 n2 = (,) <$> getName rdFrom n1 <*> getName rdTo n2
 
--- | Update (or create) the Haskell file containing the schema definition
+-- | Update (or create) the Haskell file containing the schema definition.
+--
+-- The file is rewritten only if the generated text differs from its contents;
+-- the previous version is kept as @\<file\>.bak@.
+-- Returns 'True' if the file was (re)written.
 updateSchemaFile
-  :: Bool       -- ^ verbose mode
-  -> String     -- ^ file name
+  :: Bool       -- ^ Verbose mode: also print the schema read from the database.
+  -> String     -- ^ File name.
   -> Either String ByteString
-    -- ^ name of environment variable with connection string, or
-    -- the connection string itself.
+    -- ^ 'Left': name of the environment variable with the connection string;
+    -- 'Right': the connection string itself.
     -- When this environment variable is not set or the connection string is empty,
-    -- we do nothing.
-  -> Text     -- ^ haskell module name to generate
-  -> Text     -- ^ name of generated haskell type for schema
-  -> GenNames -- ^ names of schemas in database or tables to generate
+    -- nothing is done (and 'False' is returned).
+  -> Text     -- ^ Haskell module name to generate.
+  -> Text     -- ^ Name of the generated Haskell type for the schema.
+  -> GenNames -- ^ Names of schemas in the database or of tables to generate.
   -> IO Bool
 updateSchemaFile verbose fileName ecs moduleName schName genNames = do
   getCurrentDirectory >>= print

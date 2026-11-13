@@ -29,7 +29,9 @@ data NameNS' s = NameNS
 
 -- | Description of a PostgreSQL type (category, array element, enum labels).
 data TypDef' s = TypDef
-  { typCategory :: s  -- ^ PostgreSql internal type category
+  { typCategory :: s
+  -- ^ PostgreSQL type category (@pg_type.typcategory@), e.g. @\"N\"@ (numeric),
+  -- @\"S\"@ (string), @\"A\"@ (array), @\"E\"@ (enum).
   , typElem :: Maybe (NameNS' s) -- ^ For array types: element type name; 'Nothing' for non-arrays.
   , typEnum :: [s] -- ^ Enum label names for enum types; empty list for non-enums.
   } deriving Show
@@ -61,31 +63,36 @@ data RelType = RelOne | RelMany deriving Show
 -- | Direction of one path step relative to the current table.
 data PathKind = FromHere | ToHere deriving (Show, Eq)
 
--- | One step of a 'SELECT' query path: logical branch name, DB fk name, direction.
+-- | One step of a @SELECT@ query path: logical branch name, DB fk name, direction.
 data PathElem' s = PathElem
-  { peName   :: s
-  , peDbName :: s
-  , peKind   :: PathKind
+  { peName   :: s        -- ^ Relation name as given by the user (before the renamer).
+  , peDbName :: s        -- ^ Name of the foreign-key constraint (after the renamer).
+  , peKind   :: PathKind -- ^ Direction of the step.
   } deriving (Show, Eq)
 
 -- | Field of a logical record: plain column, aggregate, or relation hop.
 data RecField' s p
-  = RFEmpty s -- ^ Placeholder / unnamed slot (depending on schema codegen).
-  | RFPlain (FldDef' s) -- ^ Ordinary column with 'FldDef''.
+  = RFPlain (FldDef' s) -- ^ Ordinary column with 'FldDef''.
   | RFAggr (FldDef' s) AggrFun Bool
-    -- ^ Aggregate field: 'FldDef'', which aggregate, and whether it is allowed outside @GROUP BY@
-    -- (when 'True': any select; when 'False': only with @GROUP BY@).
+    -- ^ Aggregate field: 'FldDef'', which aggregate, and whether the result can
+    -- be @NULL@ for a mandatory field: 'True' for 'PgSchema.DML.Aggr', 'False'
+    -- for 'PgSchema.DML.Aggr'' (used with @GROUP BY@).
   | RFUnsafe [s] s
-  -- ^ Plain field that we get as expression. E.g. @RFUnsafe ["a", "b"] "? + ?"@
-  -- means @tn.a + tn.b@ in query
+  -- ^ Plain field that we get as expression. E.g. @RFUnsafe [\"a\", \"b\"] \"? + ?\"@
+  -- means @tn.a + tn.b@ in query.
   | RFToHere p [Ref' s]
-    -- ^ Relation: navigate @p@ toward the current table (“to here”).
+    -- ^ Child relation: rows of table @p@ reference the current table
+    -- (the foreign key goes from @p@ to here). The field is a list of child rows.
   | RFFromHere p [Ref' s]
-    -- ^ Relation: navigate @p@ away from the current table (“from here”).
-  | RFSelfRef p [Ref' s] -- ^ Self-referential relation through path @p@.
+    -- ^ Parent relation: the current table references table @p@
+    -- (the foreign key goes from here to @p@). The field is one parent row
+    -- ('Maybe' if the foreign key is nullable).
+  | RFSelfRef p [Ref' s]
+    -- ^ Self-referential relation (table @p@ references itself). It is used
+    -- as 'RFToHere' for a list field and as 'RFFromHere' otherwise.
   deriving Show
 
--- | One step of a join path: source column, types, target column.
+-- | One column pair of a foreign key: source column, target column and their types.
 data Ref' s = Ref
   { fromName :: s         -- ^ Source (child) column name.
   , fromDef :: FldDef' s  -- ^ Type/nullability of @fromName@.
@@ -98,26 +105,31 @@ genSingletons
   , ''PathKind, ''PathElem'
   , ''RecField', ''Ref' ]
 
+-- | Type-level qualified name, usually written as @\"schema\" ->> \"name\"@.
 type NameNSK = NameNS' Symbol
 type TypDefK = TypDef' Symbol
 type FldDefK = FldDef' Symbol
 type TabDefK = TabDef' Symbol
 type RelDefK = RelDef' Symbol
+-- | Type-level kind of a field (see t'RecField'').
 type RecFieldK = RecField' Symbol
 type RefK = Ref' Symbol
 
+-- | Term-level qualified name, usually written as @\"schema\" ->> \"name\"@.
 type NameNS = NameNS' Text
 type TypDef = TypDef' Text
 type FldDef = FldDef' Text
 type TabDef = TabDef' Text
 type RelDef = RelDef' Text
+-- | Type-level step of a query path (see t'PathElem'').
 type PathElemK = PathElem' Symbol
+-- | Term-level step of a query path (see t'PathElem'').
 type PathElem = PathElem' Text
 
 mkPathStep :: Text -> Text -> PathKind -> PathElem
 mkPathStep name db kind = PathElem{peName = name, peDbName = db, peKind = kind}
 
--- | Broadcast step: 'peName' is the db/fk key from 'qPath', not a Haskell field.
+-- | Broadcast step: 'peName' is the db/fk key from 'PgSchema.DML.qPath', not a Haskell field.
 pathStepBroadcast :: PathElem -> Bool
 pathStepBroadcast s = s.peName == s.peDbName
 
@@ -147,9 +159,11 @@ parentPathMatches :: [PathElem] -> [PathElem] -> [PathElem] -> Bool
 parentPathMatches p basePath piPath = pathsEqual p (basePath <> piPath)
 
 infixr 9 ->>
+-- | Qualified name: @\"public\" ->> \"users\"@ is the table @public.users@.
 (->>) :: Text -> Text -> NameNS
 (->>) = NameNS
 
+-- | Type-level qualified name: @\"public\" ->> \"users\"@ is the table @public.users@.
 type ns ->> name = 'NameNS ns name
 
 type SimpleType c = 'TypDef c 'Nothing '[]
@@ -184,10 +198,14 @@ type family AppendPK (pk :: [Symbol]) (uks :: [[Symbol]]) :: [[Symbol]] where
   AppendPK '[] uks = uks
   AppendPK pk uks = pk ': uks
 
--- | Keys accepted by 'CheckAllMandatoryOrHasKey' (tree upsert) and
--- 'CheckHasKey' (flat 'updateByKey' / 'upsertByKey'): PK plus every unique
--- constraint from the schema (catalog order). Runtime key choice uses
--- 'PgSchema.DML.KeyedWrite.identityCandidatesFromTab' and its priority rules.
+-- | Keys accepted by 'PgSchema.Ann.CheckAllMandatoryOrHasKey' (tree upsert) and
+-- 'PgSchema.Ann.CheckHasKey' (flat 'PgSchema.DML.updateByKey' /
+-- 'PgSchema.DML.upsertByKey'): the primary key plus every unique constraint
+-- from the schema (catalog order), including unique constraints over nullable
+-- columns. A record \"has a key\" if it covers all columns of any of them.
+--
+-- At runtime the first covered key is used, in this order: the primary key,
+-- unique constraints over @NOT NULL@ columns, other unique constraints.
 type family IdentityCandidates sch tab :: [[Symbol]] where
   IdentityCandidates sch tab =
     AppendPK (TdKey (TTabDef sch tab)) (TdUniq (TTabDef sch tab))
@@ -209,14 +227,15 @@ type family NameSymNat (sn :: SymNat) where
   NameSymNat '(s,n) = AppendSymbol s (AppendSymbol "___" (NatToSymbol n))
 
 -- CTypDef
--- | instances will be generated by code generation
+-- | Definition of a database type. Instances are generated by schema generation.
 class
   (ToStar name, ToStar (TTypDef sch name)) => CTypDef sch (name :: NameNSK) where
 
   type TTypDef sch name :: TypDefK
 
 -- | Schema-level field kind for (sch, tab, field name).
--- Instances are generated by codegen (Gen) or defined manually (e.g. Catalog).
+-- Instances are generated by schema generation ("PgSchema.Generation") or
+-- defined manually (e.g. "PgSchema.Schema.Catalog").
 class (ToStar (TDBFieldInfo sch tab name), ToStar tab, ToStar name)
   => CDBFieldInfo sch (tab :: NameNSK) (name :: Symbol) where
     type TDBFieldInfo sch tab name :: RecFieldK NameNSK
@@ -230,16 +249,18 @@ type family GetFldDef (sch :: k) (tab :: NameNSK) (name :: Symbol) :: FldDefK wh
   GetFldDef sch tab name = PlainFldDef (TDBFieldInfo sch tab name)
 
 -- CTabDef
--- | instances will be generated by code generation
+-- | Definition of a table. Instances are generated by schema generation.
 class (ToStar name, ToStar (TTabDef sch name)) => CTabDef sch (name::NameNSK) where
   type TTabDef sch name :: TabDefK
 
--- | Relation definition for relation name ref.
+-- | Relation definition for relation name @ref@.
 class
   ( ToStar (TRelDef sch ref)
   , CTabDef sch (RdFrom (TRelDef sch ref))
   , CTabDef sch (RdTo (TRelDef sch ref)) )
   => CRelDef sch (ref :: NameNSK) where
+    -- | Definition of the foreign key @ref@: child and parent tables and the
+    -- pairs of columns.
     type TRelDef sch (ref :: NameNSK) :: RelDefK
 
 getFldDef :: forall sch t n. ToStar (TDBFieldInfo sch t n) => FldDef
@@ -247,8 +268,11 @@ getFldDef = case demote @(TDBFieldInfo sch t n) of
   RFPlain fd -> fd
   _ -> error "impossible"
 
+-- | Relations of a table. Instances are generated by schema generation.
 class CTabRels sch (tab :: NameNSK) where
+  -- | Foreign keys from table @tab@ to its parents.
   type TFrom sch tab :: [NameNSK]
+  -- | Foreign keys from children to table @tab@.
   type TTo sch tab :: [NameNSK]
 
 genDefunSymbols [''TTypDef, ''TDBFieldInfo, ''GetFldDef, ''TTabDef, ''TRelDef, ''TFrom, ''TTo]
@@ -269,7 +293,7 @@ type TTabRelTo sch tab = Map2 (TRelDefSym1 sch) (TTo sch tab)
 --
 -- This class guarantees that we can demote all the necessary information about the schema from type level to value level.
 --
--- Instances will be generated by code generation
+-- Instances are generated by schema generation.
 class
   ( ToStar (TTabs sch)
   , ToStar (TTabRelFroms sch)
@@ -334,7 +358,7 @@ type family TRelToTab sch t name :: NameNSK where
 
 -- | Walk a directed @path@ from root table @t@.
 --
--- Each step is a 'PathElem' (schema walk uses 'peDbName'). Result: end table and
+-- Each step is a t'PathElem' (schema walk uses 'peDbName'). Result: end table and
 -- its cardinality ('RelOne' for a single parent step, 'RelMany' for a single child).
 type family TabOnDPath2 sch (t :: NameNSK) (path :: [PathElemK]) :: (NameNSK, RelType) where
   TabOnDPath2 sch t '[] = '(t, 'RelMany)
@@ -391,7 +415,8 @@ type family RenamedMsg (orig :: Symbol) (name :: Symbol) :: ErrorMessage where
   RenamedMsg orig name =
     TL.Text " (" :<>: ShowType orig :<>: TL.Text " after applying the renamer)"
 
--- | Resolve 'PathKind' for 'qPath' / 'qPathFromHere' / 'qPathToHere'.
+-- | Resolve 'PathKind' for 'PgSchema.DML.qPath' / 'PgSchema.DML.qPathFromHere' /
+-- 'PgSchema.DML.qPathToHere'.
 --
 -- @hasFrom@ / @hasTo@: whether @name@ is in 'TFrom' / 'TTo' of @tab@
 -- (both are 'True' for a self-reference relation).

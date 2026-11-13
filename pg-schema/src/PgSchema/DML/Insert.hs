@@ -19,6 +19,9 @@ import PgSchema.Utils.Internal
 -- they need not appear in the input row (e.g. @RETURNING id@ without @id@ in @r@).
 -- All mandatory fields having no defaults should be present in @r@.
 --
+-- Returns the returned rows (one per input row, in the same order) and the
+-- SQL text.
+--
 insertSch
   :: forall ann -> forall r r'. InsertReturning ann r r'
   => Connection -> [r] -> IO ([r'], Text)
@@ -29,6 +32,8 @@ insertSch ann @r @r' conn = let sql = insertText ann @r @r' in
     . fmap (PgTag @ann @r)
 
 -- | Insert records into a table without @RETURNING@.
+--
+-- Returns the number of inserted rows and the SQL text.
 insertSch_ :: forall ann -> forall r. (InsertNonReturning ann r) =>
   Connection -> [r] -> IO (Int64, Text)
 insertSch_ ann @r conn recs = let sql = insertText_ ann @r in do

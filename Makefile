@@ -40,6 +40,16 @@ CABAL_DBG := $(CABAL) --builddir=$(BUILDDIR_DEBUG)
 CABAL_HDK := $(CABAL) --builddir=$(BUILDDIR_HADDOCK) $(PROJECT_HACKAGE)
 CABAL_SDT := $(CABAL) --builddir=$(BUILDDIR_SDIST) $(PROJECT_HACKAGE)
 
+# --- `-- >>>` examples in comments (run as the HLS Eval plugin does) ---
+# COMPONENT=SRCDIR pairs; every .hs file under SRCDIR with `-- >>>` is checked.
+# The $$setup of PgSchema.Ann connects to PostgreSQL with PG_CONN.
+EXAMPLES_SCRIPT := scripts/eval-examples.py
+EXAMPLES_TARGETS = \
+  lib:$(PKG)=pg-schema/src \
+  $(PKG):test:test-pgs=pg-schema/test-pgs \
+  pg-schema-tutorial:exe:pgs-tutorial=pg-schema-tutorial/app \
+  $(TUTORIAL_PKG):exe:tutorial=tutorial/app/app
+
 # --- new tutorial package (tutorial/app) ---
 TUTORIAL_PKG          := tutorial
 TUTORIAL_GEN_EXE      := $(TUTORIAL_PKG):generator
@@ -69,6 +79,8 @@ help:
 	@echo "  old-tutorial-run-debug"
 	@echo "  tut-from-scratch   (db + schema + generator + app + docs build)"
 	@echo "  run-all            (test-run + old-tutorial-run + tut-from-scratch)"
+	@echo "  examples-check     (run \`-- >>>\` examples in GHCi, fail on a mismatch; needs PG_CONN)"
+	@echo "  examples-update    (same, but write the actual output into the files)"
 	@echo "  tut-db-init        (create DB if needed, apply tutorial schema)"
 	@echo "  tut-schema-check   (fail if Sch.hs does not match the tutorial DB; for CI)"
 	@echo "  tut-run            (reset DB, run generator and app; app output -> $(TUTORIAL_OUT))"
@@ -108,6 +120,16 @@ test-run-debug:
 	$(CABAL_DBG) test $(PKG):test-gen $(PG_SCHEMA_DEBUG)
 	$(CABAL_DBG) build $(PKG):json-spec $(PKG):test-pgs $(PKG):test-gen $(PG_SCHEMA_DEBUG)
 	$(CABAL_DBG) test $(PKG) $(PG_SCHEMA_DEBUG)
+
+# --- `-- >>>` examples ---
+
+.PHONY: examples-check
+examples-check:
+	python3 $(EXAMPLES_SCRIPT) --cabal "$(CABAL_REL)" $(EXAMPLES_TARGETS)
+
+.PHONY: examples-update
+examples-update:
+	python3 $(EXAMPLES_SCRIPT) --cabal "$(CABAL_REL)" --update $(EXAMPLES_TARGETS)
 
 # --- tutorial: generate app/Sch.hs, build, run ---
 

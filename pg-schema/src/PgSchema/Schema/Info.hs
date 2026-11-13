@@ -27,11 +27,13 @@ data PgClass = PgClass
   , constraint__class :: [PgConstraint] }
   deriving (Show,Eq,Generic)
 
+-- | Short table info: schema and name.
 data PgClassShort = PgClassShort
   { class__namespace :: "nspname" := Text
   , relname          :: Text }
   deriving (Show,Eq,Generic)
 
+-- | Column info.
 data PgAttribute = PgAttribute
   { attname         :: Text
   , attribute__type :: PgType
@@ -40,6 +42,7 @@ data PgAttribute = PgAttribute
   , atthasdef       :: Bool }
   deriving (Show,Eq,Generic)
 
+-- | Constraint info (primary keys and unique constraints are used).
 data PgConstraint = PgConstraint
   { constraint__namespace :: "nspname" := Text
   , conname               :: Text
@@ -57,7 +60,7 @@ data PgType = PgType
   , enum__type      :: [PgEnum] }
   deriving (Show,Eq,Generic)
 
---
+-- | Label of an enum type.
 data PgEnum = PgEnum
   { enumlabel     :: Text
   , enumsortorder :: Double }
