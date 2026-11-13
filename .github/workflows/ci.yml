@@ -213,3 +213,82 @@ jobs:
           key: >-
             ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-hackage-plan-${{
             steps.plan.outputs.hash }}
+
+  # `-- >>>` examples in comments (see README and scripts/eval-examples.py).
+  # Uses cabal.project (with the tutorials and its package flags), not the
+  # Hackage project. Only the GHC from cabal.project: the output of examples
+  # may depend on the GHC version.
+  examples:
+    name: examples (GHC ${{ matrix.ghc }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghc: ['9.12.4']
+
+    env:
+      PG_CONN: >-
+        dbname=schema_test host=localhost user=postgres password=postgres
+      CABAL_CMD: cabal --with-compiler=ghc --enable-tests
+      CABAL_STORE: ~/.cabal/store
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-ghc
+        with:
+          ghc-version: ${{ matrix.ghc }}
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev libgmp-dev
+
+      - name: Freeze dependencies fingerprint
+        id: plan
+        shell: bash
+        run: |
+          $CABAL_CMD freeze
+          echo "hash=$(sha256sum cabal.project.freeze | cut -c1-16)" \
+            >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.CABAL_STORE }}
+          key: >-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-examples-plan-${{
+            steps.plan.outputs.hash }}
+          restore-keys: |
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-examples-plan-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-
+
+      - name: Build dependencies only
+        shell: bash
+        run: $CABAL_CMD build --only-dependencies all
+
+      - name: Create test database
+        run: |
+          PGPASSWORD=postgres createdb -h localhost -U postgres schema_test \
+            || true
+
+      - name: Check examples
+        shell: bash
+        run: make examples-check CABAL="$CABAL_CMD"
+
+      - uses: actions/cache/save@v5
+        if: success()
+        with:
+          path: ${{ env.CABAL_STORE }}
+          key: >-
+            ci-${{ runner.os }}-ghc-${{ matrix.ghc }}-examples-plan-${{
+            steps.plan.outputs.hash }}
