@@ -31,7 +31,9 @@ import PgSchema.Utils.TF as SP
 -- >>> import PgSchema.Schema.Catalog
 -- >>> import PgSchema.Schema.Info
 -- >>> import Database.PostgreSQL.Simple
--- >>> conn <- connectPostgreSQL ""
+-- >>> import System.Environment (lookupEnv)
+-- >>> import qualified Data.ByteString.Char8 as BS
+-- >>> conn <- connectPostgreSQL . maybe "" BS.pack =<< lookupEnv "PG_CONN"
 
 -- | Type-level annotation: enforce constraints at compile time
 -- and drive demoted types used to generate correct SQL.
