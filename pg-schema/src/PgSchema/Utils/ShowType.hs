@@ -53,7 +53,6 @@ instance ShowType Ref where
 
 instance ShowType (RecField NameNS) where
   showType = \case
-    RFEmpty s     -> "'RFEmpty " <> showType s
     RFPlain fd    -> "'RFPlain " <> showType fd
     RFAggr fd fn b -> "'RFAggr " <> T.intercalate " " [showType fd, showType fn, showType b]
     RFUnsafe ps expr -> "'RFUnsafe " <> showType ps <> " " <> showType expr

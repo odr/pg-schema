@@ -220,18 +220,22 @@ getDefs (types,classes,relations) =
         getName t n = M.lookup (t,n) mClassAttrs
         getName2 n1 n2 = (,) <$> getName rdFrom n1 <*> getName rdTo n2
 
--- | Update (or create) the Haskell file containing the schema definition
+-- | Update (or create) the Haskell file containing the schema definition.
+--
+-- The file is rewritten only if the generated text differs from its contents;
+-- the previous version is kept as @\<file\>.bak@.
+-- Returns 'True' if the file was (re)written.
 updateSchemaFile
-  :: Bool       -- ^ verbose mode
-  -> String     -- ^ file name
+  :: Bool       -- ^ Verbose mode: also print the schema read from the database.
+  -> String     -- ^ File name.
   -> Either String ByteString
-    -- ^ name of environment variable with connection string, or
-    -- the connection string itself.
+    -- ^ 'Left': name of the environment variable with the connection string;
+    -- 'Right': the connection string itself.
     -- When this environment variable is not set or the connection string is empty,
-    -- we do nothing.
-  -> Text     -- ^ haskell module name to generate
-  -> Text     -- ^ name of generated haskell type for schema
-  -> GenNames -- ^ names of schemas in database or tables to generate
+    -- nothing is done (and 'False' is returned).
+  -> Text     -- ^ Haskell module name to generate.
+  -> Text     -- ^ Name of the generated Haskell type for the schema.
+  -> GenNames -- ^ Names of schemas in the database or of tables to generate.
   -> IO Bool
 updateSchemaFile verbose fileName ecs moduleName schName genNames = do
   getCurrentDirectory >>= print

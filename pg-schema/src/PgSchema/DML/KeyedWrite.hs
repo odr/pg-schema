@@ -12,7 +12,8 @@ import PgSchema.Schema
 import Prelude as P
 
 
--- | Runtime conflict/update targets (same order as 'InsertJSON').
+-- | Runtime conflict/update targets: the primary key, then unique keys over
+-- @NOT NULL@ columns, then other unique keys (used by "PgSchema.DML.InsertJSON").
 identityCandidatesFromTab :: TabInfo -> [[Text]]
 identityCandidatesFromTab ti =
   P.filter (not . P.null) [ti.tiDef.tdKey] <> notNullUks <> nullUks

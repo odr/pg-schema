@@ -1,5 +1,14 @@
 # Changelog for pg-schema
 
+## Unreleased
+- Haddock: fix incorrect and outdated descriptions (renamers and `CamelToSnake`,
+  the module example in `PgSchema.DML`, `upsertJSON`, `Aggr` / `Aggr'`,
+  `pparent`, unique keys used by key-based operations) and broken markup.
+- Remove the unused constructor `RFEmpty` of `RecField'`.
+- `PgOid` is no longer exported from `PgSchema.DML`: it is used only to read
+  the system catalogs, and its `Eq` instance treats all values as equal.
+  Use `Int` for `oid` columns.
+
 ## 0.9.0.0
 - Fix typos in some compile-time error messages
 - Fix: tree DML (`insertJSON`, `upsertJSON`, `updateJSON` and their `_`

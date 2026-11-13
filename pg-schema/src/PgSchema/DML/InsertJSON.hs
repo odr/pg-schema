@@ -40,11 +40,10 @@ data InsertMode = Insert | Upsert | Update deriving (Eq, Show)
 -- Uses the same SQL pipeline as 'upsertJSON', but each row is a plain @INSERT@
 -- (no @UPDATE@, no @INSERT … ON CONFLICT …@). Any duplicate primary or unique key
 -- raises a PostgreSQL error. Requires all mandatory columns at every node
--- ('InsertTreeReturning'; 'ReturningMatchesInsert' on @r'@). Flat 'insertSch'
--- uses 'PlainOut' only.
+-- ('InsertTreeReturning'; 'ReturningMatchesInsert' on @r'@).
 --
 -- /@json@ \/ @jsonb@ columns/: 'Nothing' is stored as SQL @NULL@ (as in
--- 'insertSch'). Rows travel to PostgreSQL as one JSON document, where
+-- 'PgSchema.DML.insertSch'). Rows travel to PostgreSQL as one JSON document, where
 -- 'Nothing' and a JSON @null@ value (e.g. @Just 'A.Null'@ in a
 -- @Maybe 'A.Value'@ field) are both encoded as @null@, so a JSON @null@ value
 -- is stored as SQL @NULL@ too and is read back as 'Nothing'. The same holds
@@ -67,9 +66,25 @@ insertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Insert
 -- | Upsert a forest of rows into the root table and its /child/ tables in one
 -- round-trip, using JSON inside PostgreSQL (same pipeline as 'insertJSON').
 --
--- See Haddock on previous versions for input/output shape and per-row @INSERT@ /
--- @UPDATE@ / @UPSERT@ selection. Returning list elements use bare rows where the
--- input node has all mandatory fields, and @Maybe@ otherwise ('ReturningMatchesUpsert').
+-- The input has the same shape as for 'insertJSON': child rows are given in list
+-- fields named after the foreign keys, and their foreign-key columns are taken
+-- from the parent row automatically. Every node must have all mandatory columns
+-- or a full primary / unique key ('UpsertTreeReturning'). The operation is chosen
+-- for each node separately:
+--
+-- * not all mandatory columns are present: @UPDATE@ by key (the row may be not
+--   found; then its children are skipped);
+-- * all mandatory columns and a full key are present:
+--   @INSERT … ON CONFLICT (key) DO UPDATE@ of the other given columns, or
+--   @INSERT … ON CONFLICT DO NOTHING@ if there are no other columns (an existing
+--   row with this key is then looked up within the parent);
+-- * all mandatory columns, but no key: plain @INSERT@.
+--
+-- The key is the first fully covered one of: the primary key, unique keys over
+-- @NOT NULL@ columns, other unique keys.
+--
+-- Returning list elements must be bare rows where the node is always inserted or
+-- upserted, and @Maybe@ where the row may be not found ('ReturningMatchesUpsert').
 --
 -- 'Nothing' (and a JSON @null@ value) for a @json@ \/ @jsonb@ column is
 -- stored as SQL @NULL@; see 'insertJSON'.
@@ -87,7 +102,7 @@ upsertJSON_ ann @r conn rs = insertJSONImpl_ ann @r conn rs Upsert
 
 -- | Update an existing forest (never @INSERT@). Returning type @r'@ must satisfy
 -- 'ReturningMatchesUpdate' (@Maybe@ on each child list element). Flat
--- 'updateByKey' instead uses bare @r'@ and returns @IO ([Maybe r'], Text)@.
+-- 'PgSchema.DML.updateByKey' instead uses bare @r'@ and returns @IO ([Maybe r'], Text)@.
 --
 -- 'Nothing' (and a JSON @null@ value) for a @json@ \/ @jsonb@ column sets it
 -- to SQL @NULL@; see 'insertJSON'.

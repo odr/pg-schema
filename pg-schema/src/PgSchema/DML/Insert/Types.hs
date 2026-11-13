@@ -25,7 +25,7 @@ type InsertNonReturning ann r =
   (PlainIn ann r, CheckAllMandatory ann (ColsDbNames (Cols ann r)))
 
 -- | Plain insert with @RETURNING@: @r'@ is any bare plain column subset of the
--- table ('PlainOut'); tree 'ReturningMatchesInsert' is for 'insertJSON' only.
+-- table ('PlainOut'); tree 'ReturningMatchesInsert' is for 'PgSchema.DML.insertJSON' only.
 type InsertReturning ann r r' =
   ( InsertNonReturning ann r, PlainOut ann r', RequireBareRow r' )
 
@@ -39,7 +39,7 @@ type UpdateNonReturning ann r = PlainIn ann r
 
 -- | Upsert one table row by primary / unique key (@ToRow@, no JSON).
 --
--- Requires all mandatory fields and a full primary or eligible unique key so
+-- Requires all mandatory fields and a full primary or unique key so
 -- the operation is always @INSERT … ON CONFLICT …@. Use 'InsertNonReturning' or
 -- 'UpdateByKeyNonReturning' for insert-only or update-only flat writes.
 type UpsertByKeyNonReturning ann r =
@@ -86,7 +86,7 @@ type InsertTreeReturning ann r r' =
 
 -- | Upsert tree without @RETURNING@.
 --
--- Check that all mandatory fields or a full primary / eligible unique key are
+-- Check that all mandatory fields or a full primary / unique key are
 -- present at each tree node.
 -- Reference fields in the child tables are not checked - they are inserted automatically.
 type UpsertTreeNonReturning ann r =
@@ -94,7 +94,7 @@ type UpsertTreeNonReturning ann r =
 
 -- | Upsert tree with @RETURNING@.
 --
--- Check that all mandatory fields or a full primary / eligible unique key are
+-- Check that all mandatory fields or a full primary / unique key are
 -- present at each tree node.
 -- Reference fields in the child tables are not checked - they are inserted automatically.
 --

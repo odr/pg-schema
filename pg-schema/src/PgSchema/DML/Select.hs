@@ -69,12 +69,12 @@ type Selectable ann r = (CRecInfo ann r, FromRow (PgTag ann r))
 -- when the foreign-key side you join from allows NULL).
 --
 -- What actually appears in the generated SQL beyond that shape is controlled by
--- the 'QueryParam': filters, which paths are traversed, ordering on a branch
+-- the t'QueryParam': filters, which paths are traversed, ordering on a branch
 -- (e.g. child rows sorted by their position number), limits, and similar options.
--- You only configure in 'QueryParam' what you need for this query—not every
+-- You only configure in t'QueryParam' what you need for this query—not every
 -- possible relation field in @r@.
 --
--- Build 'QueryParam' with the 'MonadQP' API.
+-- Build t'QueryParam' with the 'MonadQP' API.
 --
 selectSch :: forall ann -> forall r. Selectable ann r
   => Connection -> QueryParamAnn ann -> IO ([r], (Text,[SomeToField]))
@@ -196,7 +196,6 @@ renderUnsafeExpr n ps = T.concat
 -- (non-obvious for nested relation fields).
 fieldM :: MonadQuery ren sch tab m => FieldInfo Text -> m (Text, Text, Text)
 fieldM fi = case fi.fieldKind of
-  RFEmpty s -> pure ("null", s, "true")
   RFSelfRef{} -> error "Impossible: RFSelfRef should be changed to RFFromHere or RFToHere"
   RFPlain {} -> do
     n <- asks qrCurrTabNum

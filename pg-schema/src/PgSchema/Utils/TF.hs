@@ -6,10 +6,11 @@ import Data.Singletons ( Apply, type (~>) )
 import GHC.TypeLits
 
 
--- | Second component of a type-level pair (replaces "Prelude.Singletons" @Snd@).
+-- | First component of a type-level pair (replaces @Fst@ from "Prelude.Singletons").
 type family Fst (xs :: (a,b)) :: a where
   Fst '(x,_) = x
 
+-- | Second component of a type-level pair (replaces @Snd@ from "Prelude.Singletons").
 type family Snd (xs :: (a, b)) :: b where
   Snd '(_, y) = y
 

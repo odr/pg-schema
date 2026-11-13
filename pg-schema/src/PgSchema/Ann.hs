@@ -34,15 +34,18 @@ import PgSchema.Utils.TF as SP
 
 -- | Type-level annotation: enforce constraints at compile time
 -- and drive demoted types used to generate correct SQL.
--- 'annRen' and 'annSch' are fixed for the whole DML-operation.
+-- 'annRen' and 'annSch' are fixed for the whole DML operation.
 -- 'annDepth' and 'annTab' are changed while traversing the structure of the ADT.
 --
 data Ann = Ann
   { annRen  :: Renamer -- ^ Renamer to convert Haskell names to database names.
   , annSch  :: Type    -- ^ Schema with tables, relations and types.
   , annDepth :: Nat
-  -- ^ Depth of the nested relations. It is mostly used to prevent cycles in types.
-  , annTab  :: NameNSK -- ^ Name of the root table.
+  -- ^ Maximal depth of the nested relations. It is decreased on each step to a
+  -- related table and is mostly used to prevent cycles in types.
+  , annTab  :: NameNSK
+  -- ^ Name of the current table: the root table of the operation, then the
+  -- related table while walking into nested relations.
   }
 
 type family AnnSch (ann :: Ann) where
@@ -64,13 +67,19 @@ type Renamer = Symbol ~> Symbol
 
 -- | Apply renamer to symbol.
 --
---  Like 'Data.Singletons.Apply' but specialized for 'Symbol'.
+-- Like 'Data.Singletons.Apply' but specialized for 'Symbol'.
 --
--- To make your own Renamer, typically you make
+-- To make your own renamer, declare an empty data type of kind 'Renamer',
+-- a closed type family with the renaming rules, and an instance of
+-- 'ApplyRenamer' that connects them:
 --
--- * data MyRenamer :: Renamer
--- * closed type family: `type family MyRenamerImpl (s :: Symbol) :: Symbol where ... `
--- * type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
+-- > data MyRenamer :: Renamer
+-- >
+-- > type family MyRenamerImpl (s :: Symbol) :: Symbol where
+-- >   MyRenamerImpl "manager" = "users_manager_id_fkey"
+-- >   MyRenamerImpl s = CamelToSnake s
+-- >
+-- > type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
 --
 type family ApplyRenamer (renamer :: Renamer) (s :: Symbol) :: Symbol
 
@@ -608,7 +617,7 @@ type family AppNotPlain (rs :: [Symbol]) (db :: Symbol) (b :: Bool) :: [Symbol] 
   AppNotPlain rs db 'True = rs
   AppNotPlain rs db 'False = db ': rs
 
--- | All fields are plain (no RFToHere/RFFromHere)
+-- | All fields are plain (no relations: 'RFToHere', 'RFFromHere' or 'RFSelfRef').
 type AllPlain (ann :: Ann) (r :: Type) = AllPlainRS ann (NotPlainCols (Cols ann r) '[]) r
 
 type family AllPlainRS (ann :: Ann) (rs :: [Symbol]) (r :: Type) :: Constraint where
@@ -625,7 +634,7 @@ type family AllPlainRS (ann :: Ann) (rs :: [Symbol]) (r :: Type) :: Constraint w
 --------------------------------------------------------------------------------
 -- Type-level RecordInfo for Ann
 --------------------------------------------------------------------------------
--- | Decrease relation-walk depth kept in 'Ann'.
+-- | Decrease relation-walk depth kept in t'Ann'.
 -- When depth is exhausted, fail with a detailed type error instead of
 -- potentially diverging in recursive type families/instances.
 type family DecDepth (ann :: Ann) :: Nat where
@@ -651,7 +660,6 @@ type family TFldInfo (ann :: Ann) (fi :: RecField' Symbol NameNSK) t
   :: RecField' Symbol (RecordInfo Symbol) where
   TFldInfo ann ('RFPlain fd) t = 'RFPlain fd
   TFldInfo ann ('RFAggr fd af b) t = 'RFAggr fd af b
-  TFldInfo ann ('RFEmpty s) t = 'RFEmpty s
   TFldInfo ('Ann ren sch d tab) ('RFToHere (toTab :: NameNSK) refs)
     [PgTag ('Ann ren sch d' toTab) rChild] =
     'RFToHere ('RecordInfo toTab (TRecordInfo ('Ann ren sch d' toTab) rChild)) refs
@@ -704,8 +712,10 @@ type family CheckRef (ann :: Ann) (fldDbName :: Symbol)
 -- Node-level checks for Mandatory / upsert keys (CheckNodeAll* analogue)
 --------------------------------------------------------------------------------
 
--- | One-table check that all mandatory fields are present
--- rs: list of columns that are already "covered" (including those that come from Reference)
+-- | One-table check that all mandatory fields are present.
+--
+-- @rs@ is the list of columns that are already "covered" (including the
+-- columns that come from the reference to the parent).
 type family CheckAllMandatory (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckAllMandatory ('Ann ren sch d tab) rs =
     CheckAllMandatory' (RestMandatory sch tab rs) ('Ann ren sch d tab) rs
@@ -717,8 +727,8 @@ type family CheckAllMandatory' (rest :: [Symbol]) (ann :: Ann) (rs :: [Symbol]) 
     :$$: Text "Table: " :<>: ShowType tab
     :$$: Text "Missing mandatory fields: " :<>: ShowType rest )
 
--- | All mandatory fields in @rs@, or a full primary key, or a full eligible
--- unique key (see 'IdentityCandidates').
+-- | All mandatory fields in @rs@, or a full primary key, or a full unique key
+-- (see 'IdentityCandidates').
 type family CheckAllMandatoryOrHasKey (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckAllMandatoryOrHasKey ('Ann ren sch d tab) rs = CheckAllMandatoryOrHasKey'
     (RestMandatory sch tab rs) (IdentityCandidates sch tab)
@@ -743,12 +753,12 @@ type family HasAnyFullIdentity' (restKey :: [Symbol]) (rs :: [Symbol]) (ks :: [[
   HasAnyFullIdentity' '[] rs ks ann = ()
   HasAnyFullIdentity' (_ ': _) rs ks ann = HasAnyFullIdentity rs ks ann
 
--- | Every node must include a full primary or eligible unique key.
+-- | Every node must include a full primary or unique key (see 'IdentityCandidates').
 type family CheckHasKey (ann :: Ann) (rs :: [Symbol]) :: Constraint where
   CheckHasKey ('Ann ren sch d tab) rs =
     HasAnyFullIdentity rs (IdentityCandidates sch tab) ('Ann ren sch d tab)
 
--- | All mandatory fields and a full primary or eligible unique key (flat upsert).
+-- | All mandatory fields and a full primary or unique key (flat upsert).
 type CheckAllMandatoryAndHasKey ann rs =
   (CheckAllMandatory ann rs, CheckHasKey ann rs)
 
@@ -843,7 +853,7 @@ type family RequireMaybeRow (r :: Type) :: Constraint where
     :$$: Text "Got: " :<>: ShowType r )
 
 -- | Flat @RETURNING@ row must not be wrapped in @Maybe@ (use @IO [Maybe r']@ on
--- 'updateByKey' for per-row absence). Nullable columns may still be @Maybe@ fields.
+-- 'PgSchema.DML.updateByKey' for per-row absence). Nullable columns may still be @Maybe@ fields.
 type family RequireBareRow (r :: Type) :: Constraint where
   RequireBareRow r = RequireBareRow' r
 
@@ -1021,7 +1031,7 @@ type family ReturningMatchesUpsert (ann :: Ann) (rIn :: Type) (rOut :: Type)
 
 -- | Checks that tree @RETURNING@ type @rOut@ matches input @rIn@ after update:
 --
--- * @rOut@ must be @Maybe row@ ('RequireMaybeRow'); checks apply to 'InnerRow rOut'.
+-- * @rOut@ must be @Maybe row@ ('RequireMaybeRow'); checks apply to @InnerRow rOut@.
 -- * Each relation branch in that row exists in @rIn@ at the same path; plain columns
 --   in the returning row need not appear in @rIn@.
 -- * For every child list there (at any depth): the element type must be @Maybe@

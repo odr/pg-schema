@@ -10,67 +10,84 @@
 -- Among @pg-schema@’s library modules, this is the one meant for ordinary application
 -- imports for database access (alongside your generated schema module).
 --
--- == TLDR; Example:
+-- == Example
 --
 -- @
+-- data MyRenamer :: Renamer
+--
+-- type family MyRenamerImpl (s :: Symbol) :: Symbol where
+--   MyRenamerImpl "items"   = "ord\_\_ord_pos"     -- FK from ord_pos to ord
+--   MyRenamerImpl "article" = "ord_pos\_\_article" -- FK from ord_pos to article
+--   MyRenamerImpl s         = CamelToSnake s
+--
+-- type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
+--
+-- type MyAnn tabName = 'Ann MyRenamer MySch 5 ("dbSchema" ->> tabName)
+--
 -- data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
 -- data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
 -- data Article = Article { id :: Int32, name :: Text } deriving Generic
--- type MyAnn tabName = 'Ann CamelToSnake MySch 5 ("dbSchema" ->> tabName)
 --     ...
 -- do
---   void $ insertJSON_ (MyAnn "orders") conn
---     [ "num" =: "num1" :. "ord__ord_pos" =:
+--   void $ insertJSON_ (MyAnn "ord") conn
+--     [ "num" =: "num1" :. "items" =:
 --       [ "num" =: 1 :. "articleId" =: 42 :. "price" =: 10
 --       , "num" =: 2 :. "articleId" =: 41 :. "price" =: 15 ] ]
 --
---   (xs :: [Order]) <- selectSch (MyAnn "orders") conn $ qRoot do
+--   (xs :: [Order]) <- fst \<$\> selectSch (MyAnn "ord") conn (qRoot do
 --     qWhere $ "created_at" >? someDay
---       &&& pchild "ord__ord_pos" defTabParam
---         (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
+--       &&& pchild "items" defTabParam
+--         (pparent "article" $ "name" ~~? "%pencil%")
 --     qOrderBy [descf "created_at", descf "num"]
---     qPath "ord__ord_pos" do
---       qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
+--     qPath "items" do
+--       qWhere $ pparent "article" $ "name" ~~? "%pencil%"
 --       qOrderBy [ascf "num"]
---     qLimit 20
+--     qLimit 20)
 -- @
 --
--- Here we get all orders created after `someDay` that have positions with articles like "%pencil%",
+-- Here we get all orders created after @someDay@ that have positions with articles like @"%pencil%"@,
 -- and return only those order items that relate to "pencil", with article info.
 --
 -- The preceding 'insertJSON_' call inserts one root row (here an order) and nested
--- /child/ rows (here order positions) in a single database operation, again using
--- JSON internally. Child data is carried in list fields: the field’s name (after 'Renamer') names
--- the FK constraint in the database and thus selects the child table and link;
--- each list element supplies one child row’s columns, with nested lists for further
--- children in the same way. 'insertJSON' / 'insertJSON_' require every mandatory
--- column and emit plain @INSERT@ only (duplicates fail in the database).
--- 'upsertJSON' / 'upsertJSON_' relax mandatory requirements and may @UPDATE@ or
--- @INSERT … ON CONFLICT …@ (see their Haddock).
--- 'updateJSON' / 'updateJSON_' update existing rows only (never @INSERT@).
--- Flat 'insertSch', 'upsertByKey', and 'updateByKey' use 'PlainOut' for @RETURNING@
--- (any plain columns of the table; 'RequireBareRow' forbids @Maybe@ on the whole
--- row). Tree @*JSON@ uses 'ReturningMatches{Insert,Upsert,Update}' instead.
--- 'upsertByKey' requires mandatory columns and a full key; 'updateByKey' is
--- key-only and returns @IO ([Maybe r'], Text)@.
+-- /child/ rows (here order positions) in a single database operation, using
+-- JSON internally. Child data is carried in list fields: the field’s name (after the
+-- 'Renamer') names the FK constraint in the database and thus selects the child table
+-- and link; each list element supplies one child row’s columns, with nested lists for
+-- further children in the same way.
+--
+-- * 'insertJSON' / 'insertJSON_' require every mandatory column and emit plain
+--   @INSERT@ only (duplicates fail in the database).
+-- * 'upsertJSON' / 'upsertJSON_' relax mandatory requirements and may @UPDATE@ or
+--   @INSERT … ON CONFLICT …@ (see 'upsertJSON').
+-- * 'updateJSON' / 'updateJSON_' update existing rows only (never @INSERT@).
+--
+-- Flat (single-table) 'insertSch', 'upsertByKey' and 'updateByKey' may return any
+-- plain columns of the table; the returning row itself must not be wrapped in
+-- 'Maybe'. Tree @*JSON@ operations check the returning type with
+-- 'ReturningMatchesInsert', 'ReturningMatchesUpsert' and 'ReturningMatchesUpdate'
+-- instead. 'upsertByKey' requires all mandatory columns and a full key;
+-- 'updateByKey' requires only a full key and returns @IO ([Maybe r'], Text)@.
 --
 -- 'selectSch' decodes each row into a Haskell type @r@ whose fields describe the
 -- root table columns and nested data for relations (multiple list-shaped children
 -- and nested parents/'Maybe' as appropriate). The type drives the generated SQL
--- shape; monadic 'QueryParam' only adds what this call needs—filters, ordering on a
+-- shape; monadic t'QueryParam' only adds what this call needs: filters, ordering on a
 -- branch, limits, and so on.
 --
--- We can use both 'GHC.Generics.Generic'-based and 'PgTag'-based ('(=:)') interfaces and mix them in any way.
+-- We can use both 'GHC.Generics.Generic'-based and t'PgTag'-based ('(=:)') interfaces and mix them in any way.
 --
 -- All string literals at the type level are 'GHC.TypeLits.Symbol' thanks to @RequiredTypeArguments@.
 -- Operations are safe when the live database schema matches the generated schema types.
 --
 -- The @INSERT@ and @SELECT@ shown here each run as a single, fast database round-trip (JSON inside PostgreSQL).
 --
--- We use a 'Renamer' (e.g. 'CamelToSnake') to map Haskell field names to @snake_case@ in the database.
+-- A 'Renamer' maps Haskell field names to database names. It is a type-level
+-- function declared as an empty data type with an 'ApplyRenamer' instance (see
+-- 'ApplyRenamer' and the example above); 'CamelToSnake' converts @camelCase@ to
+-- @snake_case@ and is a convenient default case for your renamer.
 -- The renamer is applied to all names: record fields, column names in conditions
 -- and ordering, relation names in 'qPath' / 'pchild' / 'pparent'. So with a renamer
--- like 'CamelToSnake' you can write either @"ownerId"@ or @"owner_id"@.
+-- based on 'CamelToSnake' you can write either @"ownerId"@ or @"owner_id"@.
 --
 module PgSchema.DML
   (
@@ -84,9 +101,9 @@ module PgSchema.DML
   -- | Example: @"name" =? "John"@
   , (<?),(>?),(<=?),(>=?),(=?)
   -- | Null-safe equality on nullable columns (@IS NOT DISTINCT FROM@).
-  -- | Example: @"suffix" =?? (Just "a")@
+  -- Example: @"suffix" =?? (Just "a")@
   , (=??)
-  -- | Example: @"name" ~~? "%joh%"@
+  -- | @LIKE@ ('~=?') and @ILIKE@ ('~~?'). Example: @"name" ~~? "%joh%"@
   ,(~=?),(~~?)
   , (|||), (&&&), pnot, pnull, pin, pinArr
   , pparent, pchild
@@ -106,14 +123,14 @@ module PgSchema.DML
   --
   -- - For insert you need all mandatory fields.
   -- - For key-based update you need a full primary or unique key.
-  -- - For upsert you need all mandatory fields _and_ some key.
+  -- - For upsert you need all mandatory fields /and/ some key.
   --
   -- You can get in return any subset of the columns of the table which was affected by the operation.
-  -- For update you get `Maybe t`. It is `Nothing` if the row was not found by the key.
+  -- For key-based update each returned row is @Maybe r'@: it is 'Nothing' if the row was not found by the key.
   --
   -- All these constraints are checked at compile time.
   --
-  -- There is also operations to update or delete data by a condition.
+  -- There are also operations to update or delete data by a condition.
   --
   , insertSch, insertSch_, insertText, insertText_
   , upsertByKey, upsertByKey_, upsertByKeyText, upsertByKeyText_
@@ -131,27 +148,27 @@ module PgSchema.DML
   --
   -- - For insert you need all mandatory fields at every node.
   -- - For update you need a full primary or unique key at every node.
-  -- - For upsert you need all mandatory fields _or_ some key at every node.
+  -- - For upsert you need all mandatory fields /or/ some key at every node.
   --
   --     At each node:
   --
-  --     - the operation works like an insert if there is no key
-  --     - the operation works like an update if there is not all mandatory fields
-  --     - the operation works like an upsert if there is all mandatory fields and a key exists
+  --     - the operation works like an insert if there is no key;
+  --     - the operation works like an update if not all mandatory fields are present;
+  --     - the operation works like an upsert if all mandatory fields and a key are present.
   --
   -- You don't need foreign keys for children in your data (and often even keys for parents).
   -- They will be determined automatically.
   --
   -- You can get in return any subset of the columns of the tables which were affected by the operation.
-  -- All rows returned in the same order as the input tree.
+  -- All rows are returned in the same order as in the input tree.
   -- For update or some nodes of upsert (where not all mandatory fields are present),
-  -- the returning type is `Maybe t`. It is 'Nothing' if the row was not found by the key.
+  -- the returning type is @Maybe r'@. It is 'Nothing' if the row was not found by the key.
   --
   -- All these constraints are checked at compile time.
   --
   -- For all these operations you should use types that can be converted to JSON (and from JSON for returning).
   -- You don't need instances but all fields should be serializable into JSON.
-  -- I.e. you can't use 'Bytestring' for fields here.
+  -- E.g. you can't use 'Data.ByteString.ByteString' fields here.
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_
   , updateJSON, updateJSON_, insertJSONText, insertJSONText_
   , upsertJSONText, upsertJSONText_, updateJSONText, updateJSONText_
@@ -183,7 +200,7 @@ module PgSchema.DML
   -- ** Conversion checks
   , CanConvert, CanConvert1, CheckAggr, TypDef'(..)
   -- ** Other types
-  , PgChar(..), PgOid(..)
+  , PgChar(..)
   , NameNS'(..), type (->>), NameNSK, (->>)
   , PathElem'(..), PathElem, PathElemK, PathKind(..)
   , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable, CTabDef(..)
