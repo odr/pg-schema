@@ -1,54 +1,26 @@
 # Changelog for pg-schema
 
-## Unreleased
-- Fix typos in compile-time error messages: "renaimer" → "renamer"
-  (generated `Sch.hs`; regenerate it to pick up the change) and
-  "more then" → "more than" (`UnsafeCol` expression check).
+## 0.9.0.0
+- Fix typos in some compile-time error messages
 - Fix: tree DML (`insertJSON`, `upsertJSON`, `updateJSON` and their `_`
   variants) stored `Nothing` for a nullable `json` / `jsonb` column as the JSON
-  value `null` instead of SQL `NULL` (so `pnull` did not find the row and
-  selecting into `Maybe T` failed with "expected Object, but encountered
-  Null"). Now `Nothing` gives SQL `NULL`, as with flat `insertSch`; this covers
-  `INSERT`, the `SET` of `UPDATE` and `ON CONFLICT … DO UPDATE`. A JSON `null`
+  value `null` instead of SQL `NULL`. Now `Nothing` gives SQL `NULL`. A JSON `null`
   value (e.g. `Just Aeson.Null` in a `Maybe Value` field) can't be told apart
   from `Nothing` in the JSON sent to PostgreSQL, so it is stored as SQL `NULL`
   too; use `insertSch` / `updateByCond` to store the JSON value `null` itself.
 - `named` (and type family `Named`): give field names once for a whole list of
-  plain rows (`named ["ownerId", "title"] [1 :. "a", 2 :. "b"]`) instead of
-  `"field" =: value` in every row. Values (e.g. enum constructors, `Nothing`)
-  are used as is; the result has the same type as rows built with `(=:)`.
-  Wrong number of names is reported at compile time.
-- `rowsOf` / `plains` (and `rowOf` / `plain` for one row, `Plain`): rows from / to plain
-  values with field names and types taken from the row type
-  (`rowsOf @Root ["r1" :. 1 :. [10 :. True]]`). Rows are flattened as for
-  `ToRow`/`FromRow`: parts joined with `(:.)` and Generic records give their
-  fields in order, `fld := ()` gives no field; nested rows in field values
-  (children, parents, optional parents) are plain too.
+  plain rows instead of `"field" =: value` in every row.
+- `rowsOf` / `plains`: rows from / to plain values with field names and types
+  taken from the row type.
 - Aggregate fields (`Aggr` / `Aggr'`) are now type-checked against the SQL
   result type of the aggregate function. Previously the check was not applied
-  at all, so e.g. `"priority" := Aggr AAvg (Maybe Double)` over an `integer`
-  field compiled but failed at runtime (`avg(integer)` is `numeric`).
-  Result types: `count` - `int8`; `min`/`max` - the field type;
-  `sum(int2/int4)` - `int8`; `sum(int8/numeric)` and `avg(int2/int4/int8/numeric)`
-  - `numeric`; `sum(float4)` - `float4`; `sum(float8)` and `avg(float4/float8)` -
-  `float8`. Use `Int64` for `int8`, `Scientific` or `Rational` for `numeric`,
-  `Double` (or `Scientific`/`Rational`) for `float4`/`float8`. `Double` is now
-  allowed for `sum`/`avg` over float fields, `Rational` for `sum`/`avg`.
-  `Aggr` requires `Maybe` (except `count`); `Aggr'` requires `Maybe` exactly for
-  nullable fields. Mismatches give a type error naming the aggregate, the field
-  type and the SQL result type. New type family `CheckAggr`.
+  at all.
 - `qPath` / `qPathFromHere` / `qPathToHere` with an unknown relation name now
   report `relation "..." is not defined` with the valid relations of the table
   (previously `qPath` reported a misleading self-reference error).
 - Fix `RETURNING` checks of `insertJSON` / `upsertJSON` / `updateJSON`
   (`ReturningMatchesInsert` / `ReturningMatchesUpsert` / `ReturningMatchesUpdate`),
-  which were silently skipped in most cases: e.g. `updateJSON` accepted a bare
-  child list element (`"tasks" := [t]` instead of `[Maybe t]`) and then failed at
-  runtime to decode `null` for a child not found by its key.
-  The walk over the returning type dropped all fields after the first plain
-  column, compared nested levels against the root row type, and checked
-  `PgTag ann t` instead of the element row `t` (so a correct `[Maybe t]` as the
-  first field was rejected). Now every child list at any depth is checked.
+  which were silently skipped in most cases.
   Code that compiled only because of this may now fail to compile:
   - `updateJSON`: child list elements must be `Maybe`;
   - `insertJSON`: child list elements must not be `Maybe`;
