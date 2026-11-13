@@ -55,18 +55,26 @@ data ExceptionSch
 
 instance Exception ExceptionSch
 
+-- | A relation that does not exist in the database as a foreign key, but is
+-- used as if it existed (e.g. a relation to a view).
+--
+-- Nothing checks the relation in the database: the columns must be correct and
+-- the data must really be consistent with it.
 data AddRelation = AddRelation
   { name  :: Text
-  -- ^ name of an additional (non-existing in the database) relation.
-  -- All additional relations will be added with the namespace "_add".
-  , from  :: NameNS
-  , to    :: NameNS
-  , cols  :: [(Text, Text)] }
+  -- ^ Name of an additional (non-existing in the database) relation.
+  -- All additional relations will be added with the namespace @_add@.
+  , from  :: NameNS -- ^ Child (referencing) table.
+  , to    :: NameNS -- ^ Parent (referenced) table.
+  , cols  :: [(Text, Text)]
+  -- ^ Pairs of columns: (column of the child table, column of the parent table).
+  }
 
+-- | What to generate.
 data GenNames = GenNames
-  { schemas :: [Text]   -- ^ generate data for all tables in these schemas
-  , tables  :: [NameNS] -- ^ generate data for these tables
-  , addRelations :: [AddRelation] -- ^ additional relations. Be careful!
+  { schemas :: [Text]   -- ^ Generate data for all tables in these schemas.
+  , tables  :: [NameNS] -- ^ Generate data for these tables.
+  , addRelations :: [AddRelation] -- ^ Additional relations. Be careful!
   }
 
 type AnnCat tn = 'Ann RenamerId PgCatalog 3 (PGC tn)

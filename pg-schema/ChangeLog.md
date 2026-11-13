@@ -4,6 +4,11 @@
 - Haddock: fix incorrect and outdated descriptions (renamers and `CamelToSnake`,
   the module example in `PgSchema.DML`, `upsertJSON`, `Aggr` / `Aggr'`,
   `pparent`, unique keys used by key-based operations) and broken markup.
+- Haddock: document the previously undocumented API (`(=:)`, `(:=)`,
+  `UnsafeCol`, `pUnsafeCond`, comparison operators, `upsertByKey` and all
+  `*Text` functions, return values of DML functions, query-parameter types,
+  `GenNames` / `AddRelation`, `genDot` etc.).
+- `PgSchema.DML` exports the type `FldDef'` (used by `FdType` / `FdNullable`).
 - Remove the unused constructor `RFEmpty` of `RecField'`.
 - `PgOid` is no longer exported from `PgSchema.DML`: it is used only to read
   the system catalogs, and its `Eq` instance treats all values as equal.

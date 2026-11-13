@@ -16,10 +16,16 @@ import Data.Text as T
 import PgSchema.Schema
 
 
+-- | Operations that change the DOT representation.
 data DotOper
   = ExcludeToTab NameNS Text
-  -- ^ Exclude relation to given table from DOT representation.
+  -- ^ Exclude relations to the given table from the DOT representation.
+  -- Instead of an arrow, the given text is added to the label of each table
+  -- that references this table (e.g. for a table referenced from everywhere).
 
+-- | DOT representation (@digraph@) of the tables and relations of schema @sch@.
+-- Tables are grouped by database schemas; relations with a nullable foreign
+-- key are green.
 genDot :: forall sch. CSchema sch
   => Bool -- ^ Whether to use qualified names
   -> [DotOper] -- ^ Operations to exclude relations from DOT representation

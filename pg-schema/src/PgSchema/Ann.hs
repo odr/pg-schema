@@ -88,6 +88,7 @@ data RenamerId :: Renamer
 
 type instance ApplyRenamer RenamerId s = s
 
+-- | Apply renamer to the name (not to the namespace) of a qualified name.
 type family ApplyRenamerNS (ren :: Renamer) (nns :: NameNSK) :: NameNSK where
   ApplyRenamerNS ren ('NameNS ns n) = 'NameNS ns (ApplyRenamer ren n)
 
@@ -530,6 +531,13 @@ data RecordInfo s   = RecordInfo
   , fields  :: [FieldInfo s] }
   deriving Show
 
+-- | Term-level description of how the Haskell row type @r@ maps to the table of
+-- annotation @ann@: database names of the fields and, for relation fields, the
+-- nested descriptions of the related tables.
+--
+-- It is used to generate SQL. There is a single instance for all rows, and it
+-- reports a compile-time error if some field of @r@ does not exist in the table
+-- or has an incompatible type.
 class CRecInfo (ann :: Ann) (r :: Type) where
   getRecordInfo :: RecordInfo T.Text
 
@@ -683,6 +691,9 @@ type family TRecordInfoCols (ann  :: Ann) (cols :: [ColInfo NameNSK]) :: [FieldI
   TRecordInfoCols ann ('ColInfo sn t db fi ': cs) =
     'FieldInfo (NameSymNat sn) db (TFldInfo ann fi t) ': TRecordInfoCols ann cs
 
+-- | Type-level analogue of 'getRecordInfo': the fields of row @r@ for annotation
+-- @ann@ with their database names and kinds (plain column, aggregate, relation
+-- with the fields of the nested row).
 type family TRecordInfo (ann :: Ann) (r :: Type) :: [FieldInfo Symbol] where
   TRecordInfo ann r = TRecordInfoCols ann (Cols ann r)
 
@@ -780,18 +791,29 @@ type family WalkLevelAnn
       , WalkLevelAnn check ('Ann ren sch d tab) xs rs )
   WalkLevelAnn check ann (_ ': xs) rs = WalkLevelAnn check ann xs rs
 
+-- | Every node of the input tree @r@ (a row or a list of rows) has all mandatory
+-- columns of its table (for 'PgSchema.DML.insertJSON').
+--
+-- @rFlds@ are columns that are known to be present at the root besides the
+-- fields of @r@ (usually @'[]@). Foreign-key columns of child rows are counted
+-- as present: they are taken from the parent row.
 type family AllMandatoryTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   :: Constraint where
   AllMandatoryTree ann [r] rFlds = AllMandatoryTree ann r rFlds
   AllMandatoryTree ann r rFlds =
     WalkLevelAnn CheckAllMandatorySym0 ann (TRecordInfo ann r) rFlds
 
+-- | Every node of the input tree @r@ has all mandatory columns of its table or a
+-- full primary / unique key (for 'PgSchema.DML.upsertJSON'). See
+-- 'AllMandatoryTree' for @rFlds@.
 type family AllMandatoryOrHasKeyTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   :: Constraint where
   AllMandatoryOrHasKeyTree ann [r] rFlds = AllMandatoryOrHasKeyTree ann r rFlds
   AllMandatoryOrHasKeyTree ann r rFlds =
     WalkLevelAnn CheckAllMandatoryOrHasKeySym0 ann (TRecordInfo ann r) rFlds
 
+-- | Every node of the input tree @r@ has a full primary / unique key of its table
+-- (for 'PgSchema.DML.updateJSON'). See 'AllMandatoryTree' for @rFlds@.
 type family AllHasKeyTree (ann :: Ann) (r :: Type) (rFlds :: [Symbol])
   :: Constraint where
   AllHasKeyTree ann [r] rFlds = AllHasKeyTree ann r rFlds

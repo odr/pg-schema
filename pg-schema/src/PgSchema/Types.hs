@@ -556,9 +556,17 @@ instance {-# OVERLAPPABLE #-} Show t => Show (PgTag s t) where
 instance {-# OVERLAPPABLE #-} Read t => Read (PgTag s t) where
   readsPrec p = readParen (p > 11) readsPgTagLegacy
 
+-- | Field named @s@ with value of type @t@: the type of @s '=:' value@.
+--
+-- > type User = "name" := Text :. "email" := Maybe Text
 type s := t = PgTag s t
 infixr 5 :=
 
+-- | Field with name @a@ (given as a required type argument) and value of type @b@.
+--
+-- > "name" =: ("John" :: Text) :. "email" =: (Nothing :: Maybe Text)
+--
+-- Fields are chained into rows with t'(:.)'.
 (=:) :: forall b. forall a -> b -> a := b
 (=:) _ = coerce
 infixr 5 =:
@@ -617,6 +625,20 @@ type family Named (ns :: [Symbol]) (r :: Type) :: Type where
       TE.:<>: TE.ShowType r
     TE.:$$: TE.Text "  Names without fields: " TE.:<>: TE.ShowType ns )
 
+-- | Field whose value is an SQL expression over columns of the table
+-- (for @SELECT@ only).
+--
+-- @expr@ is an SQL expression where each @?@ is replaced with a column from
+-- @flds@ in order (qualified with the alias of the table; the renamer is
+-- applied to the names). E.g. the field
+--
+-- > "total" := UnsafeCol '["price", "qty"] "? * ?" Double
+--
+-- is selected as @t0.price * t0.qty@ and decoded as 'Double'.
+--
+-- It is checked at compile time that all columns exist in the table and that
+-- the number of @?@ is equal to the number of columns. The expression itself and
+-- the type of its result are /not/ checked.
 newtype UnsafeCol (flds :: [Symbol]) (expr :: Symbol) res = UnsafeCol
   { getUnsafeCol :: res }
 

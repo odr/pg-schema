@@ -49,7 +49,12 @@ updateByKeyRowParams rec =
 
 -- | Update rows by primary / unique key from record fields (never inserts).
 --
+-- The key is the first fully covered one of: the primary key, unique keys over
+-- @NOT NULL@ columns, other unique keys. Key columns are compared with
+-- @IS NOT DISTINCT FROM@; all other fields of @r@ are updated.
+--
 -- Returning type @r'@ is a bare row; the result is @IO ([Maybe r'], Text)@
+-- (one element per input row, then the SQL text)
 -- with @Nothing@ when no row matched the key.
 updateByKey
   :: forall ann -> forall r r'. UpdateByKeyReturning ann r r'
@@ -64,7 +69,9 @@ updateByKey ann @r @r' conn recs =
         _ -> Nothing
     pure (rs, sql)
 
--- | Update rows by key without @RETURNING@.
+-- | Update rows by key without @RETURNING@ (see 'updateByKey').
+--
+-- Returns the number of updated rows and the SQL text.
 updateByKey_
   :: forall ann -> forall r. UpdateByKeyNonReturning ann r
   => Connection -> [r] -> IO (Int64, Text)
@@ -75,6 +82,8 @@ updateByKey_ ann @r conn recs =
       $ fmap (updateByKeyRowParams @ann @r) recs
     pure (n, sql)
 
+-- | SQL text of 'updateByKey': update one row by key and return columns of @r'@.
+-- It has a @?@ placeholder for each field of @r@.
 updateByKeyText
   :: forall ann -> forall r r' s
   . ( CRecInfo ann r, CRecInfo ann r', IsString s, Monoid s, HasSchema ann ) => s
@@ -84,6 +93,8 @@ updateByKeyText ann @r @r' =
     ri' = getRecordInfo @ann @r'
     fs' = fromString $ T.unpack $ T.intercalate "," [fi.fieldDbName | fi <- ri'.fields]
 
+-- | SQL text of 'updateByKey_': update one row by key.
+-- It has a @?@ placeholder for each field of @r@.
 updateByKeyText_
   :: forall ann -> forall r s
   . (IsString s, Monoid s, CRecInfo ann r, HasSchema ann) => s
@@ -108,7 +119,10 @@ updateByKeyStmt ann @r =
     <> " set " <> setClause
     <> keyWhereClause plainsKey
 
--- | Update rows matching a condition; the result type selects which columns are returned.
+-- | Update rows matching a condition: set the fields of @r@ (the same values for
+-- all rows) and return the columns of @r'@ of the updated rows.
+--
+-- The result type selects which columns are returned.
 updateByCond :: forall ann -> forall r r'.
   (UpdateReturning ann r r') => Connection -> r -> CondAnn ann -> IO [r']
 updateByCond ann @r @r' conn r (updateText ann @r @r' -> (q,ps)) =
@@ -118,6 +132,8 @@ updateByCond ann @r @r' conn r (updateText ann @r @r' -> (q,ps)) =
   $ PgTag @ann @r r :. ps
 
 -- | Update records by condition without @RETURNING@.
+--
+-- Returns the number of updated rows.
 updateByCond_ :: forall ann -> forall r. UpdateNonReturning ann r =>
   Connection -> r -> CondAnn ann -> IO Int64
 updateByCond_ ann @r conn r (updateText_ ann @r -> (q, ps)) =

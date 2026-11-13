@@ -43,6 +43,9 @@ data QueryParam ren sch t = QueryParam
   , qpDistinct  :: ![DistWithPath ren sch t]    -- ^ @DISTINCT@ and @DISTINCT ON@ clauses
   }
 
+-- | t'QueryParam' for the renamer, schema and root table of annotation @ann@.
+--
+-- It is the type of query parameters accepted by 'PgSchema.DML.selectSch'.
 type QueryParamAnn ann = QueryParam (AnnRen ann) (AnnSch ann) (AnnTab ann)
 
 -- | Empty t'QueryParam'.
@@ -51,6 +54,19 @@ type QueryParamAnn ann = QueryParam (AnnRen ann) (AnnSch ann) (AnnTab ann)
 qpEmpty :: forall ren sch t. QueryParam ren sch t
 qpEmpty = QueryParam [] [] [] []
 
+-- | Monad to describe t'QueryParam' for root table @t@.
+--
+-- @path@ is the path from the root table to the current table (the table that
+-- conditions, ordering, limits etc. are applied to). It is empty for the root
+-- table and is extended by 'qPath', 'qPathFromHere' and 'qPathToHere'.
+--
+-- Run it with 'qRoot':
+--
+-- > qRoot do
+-- >   qWhere $ "name" ~~? "%john%"
+-- >   qPath "tasks" do
+-- >     qOrderBy [descf "created_at"]
+-- >     qLimit 10
 type MonadQP ren sch t path
   = PathCtx ren sch t path
   => RWS (Proxy path) () (QueryParam ren sch t) ()
@@ -210,6 +226,8 @@ data Cmp = (:=) | (:<=) | (:>=) | (:>) | (:<) | Like | ILike | NotDistinctFrom
 -- | Boolean operations.
 data BoolOp = And | Or deriving (Show, Eq, Generic)
 
+-- | SQL operator for the comparison, e.g. @\"<=\"@ for v'(:<=)' or
+-- @\"ilike\"@ for 'ILike'.
 showCmp :: IsString s => Cmp -> s
 showCmp = \case
   (:=)  -> "="
@@ -233,6 +251,12 @@ showCmp = \case
 -}
 type CondMonad = RWS (Text, NonEmpty Int) [SomeToField] Int
 
+-- | A value of any type with 'ToField' (and 'Show' for debugging): a value for
+-- one @?@ placeholder of the generated SQL.
+--
+-- The list of these values is returned together with the SQL text by
+-- 'PgSchema.DML.selectText', 'PgSchema.DML.updateText' etc.
+-- In 'CondMonad' you add placeholder values with 'tell', e.g. in 'pUnsafeCond'.
 data SomeToField where
   SomeToField :: (ToField a, Show a) => a -> SomeToField
 
@@ -241,6 +265,8 @@ deriving instance Show SomeToField
 instance ToField SomeToField where
   toField (SomeToField v) = toField v
 
+-- | Field @fld@ (a database name, after the renamer) is a plain column of table
+-- @tab@ in schema @sch@. Otherwise it is a compile-time error.
 type CDBField sch tab fld =
   (CDBField' sch tab fld (TDBFieldInfo sch tab fld), CDBFieldInfo sch tab fld)
 
@@ -254,6 +280,9 @@ type family CDBField' sch tab fld fi :: Constraint where
 -- type CDBValue sch tab fld fd v =
 --   (CDBField sch tab fld fd, ToField v, Show v, CanConvert sch tab fld fd v)
 
+-- | Field @fld@ (a database name, after the renamer) is a plain column of table
+-- @tab@, and a value of Haskell type @v@ can be compared with it ('CanConvert'):
+-- e.g. @v@ is 'Maybe' iff the column is nullable.
 type CDBValue sch tab fld v =
   (CDBValue' sch tab fld (TDBFieldInfo sch tab fld) v, CDBFieldInfo sch tab fld
   , ToField v, Show v)
@@ -265,6 +294,8 @@ type family CDBValue' sch tab fld fi v where
     :$$: TE.Text "Schema: " :<>: ShowType sch
     :$$: TE.Text "")
 
+-- | Field @fld@ (a database name, after the renamer) is a nullable plain column
+-- of table @tab@.
 type CDBFieldNullable sch tab fld =
   ( CDBField sch tab fld , FdNullable (GetFldDef sch tab fld) ~ 'True)
 
@@ -303,6 +334,8 @@ data Cond (ren :: Renamer) (sch::Type) (tab::NameNSK) where
   UnsafeCond :: CondMonad Text -> Cond ren sch tab
   -- ^ Unsafe condition built manually inside 'CondMonad'.
 
+-- | 'Cond' for the renamer, schema and root table of annotation @ann@
+-- (e.g. for 'PgSchema.DML.updateByCond' and 'PgSchema.DML.deleteByCond').
 type CondAnn ann = Cond (AnnRen ann) (AnnSch ann) (AnnTab ann)
 
 -- | Conjunction ('(&&&)') is a much more frequent operation for query conditions,
@@ -320,9 +353,10 @@ instance Monoid (Cond ren sch tab) where
 -- condition on child table.
 --
 data TabParam ren sch tab = TabParam
-  { cond :: Cond ren sch tab
-  , order :: [OrdFld ren sch tab]
-  , lo :: LO }
+  { cond :: Cond ren sch tab    -- ^ Condition on child rows.
+  , order :: [OrdFld ren sch tab] -- ^ Ordering of child rows (for 'lo').
+  , lo :: LO                    -- ^ Limit and offset of child rows.
+  }
 
 -- | Default empty t'TabParam': no conditions, no ordering, no limits.
 defTabParam :: TabParam ren sch tab
@@ -357,6 +391,22 @@ pparent name = Parent @ren @sch @name
 pnot :: Cond ren sch tab -> Cond ren sch tab
 pnot = Not
 
+-- | Unsafe condition written as raw SQL inside 'CondMonad'.
+--
+-- Use it only for conditions that can't be expressed with the safe API.
+-- The SQL text is not checked at all: neither the names of the columns nor the
+-- types of the values.
+--
+-- * 'PgSchema.DML.tabPref' gives the alias of the current table and
+--   'PgSchema.DML.qual' gives a column
+--   qualified with it (use database names: the renamer is not applied).
+-- * Add a value for each @?@ placeholder with 'tell' (in the order of the
+--   placeholders).
+--
+-- > pUnsafeCond do
+-- >   name <- qual @"name"
+-- >   tell [SomeToField ("^jo" :: Text)]
+-- >   pure $ name <> " ~ ?"
 {-# INLINE pUnsafeCond #-}
 pUnsafeCond :: CondMonad Text -> Cond ren sch tab
 pUnsafeCond = UnsafeCond
@@ -395,6 +445,15 @@ infixl 3 &&&
 {-# INLINE (=??) #-}
 {-# INLINE (~=?) #-}
 {-# INLINE (~~?) #-}
+-- | Compare field @fld@ with a value: @\<@, @\>@, @\<=@, @\>=@ and @=@.
+--
+-- The field name is given as a required type argument and the renamer is
+-- applied to it. The value must have a compatible Haskell type ('CDBValue'):
+--
+-- > "name" =? ("John" :: Text)
+-- > "created_at" >? someDay
+--
+-- @=@ with @NULL@ is never true: use '(=??)' or 'pnull' for nullable columns.
 (<?),(>?),(<=?),(>=?),(=?)
    :: forall fld -> forall ren sch tab v. CDBValue sch tab (ApplyRenamer ren fld) v => v -> Cond ren sch tab
 x <? b  = Cmp @x (:<)  b
@@ -410,21 +469,36 @@ x =? b = Cmp @x (:=) b
     )
   => v -> Cond ren sch tab
 x =?? b = Cmp @x NotDistinctFrom b
+-- | Match field @fld@ with a pattern: @LIKE@ ('~=?') and case-insensitive
+-- @ILIKE@ ('~~?').
+--
+-- > "name" ~~? ("%john%" :: Text)
 (~=?),(~~?)
   :: forall fld -> forall ren sch tab v. CDBValue sch tab (ApplyRenamer ren fld) v => v -> Cond ren sch tab
 x ~=? b  = Cmp @x Like b
 x ~~? b  = Cmp @x ILike b
 infix 4 <?, >?, <=?, >=?, =?, =??, ~=?, ~~?
 
+-- | Direction of ordering. In both directions @NULL@ values go last
+-- (@NULLS LAST@).
 data OrdDirection = Asc | Desc deriving Show
 
+-- | One item of @ORDER BY@ (or @DISTINCT ON@) for table @tab@.
+--
+-- Usually it is made with 'ascf', 'descf' or 'ordf'.
 data OrdFld ren sch tab where
   OrdFld :: forall fld ren sch tab. CDBField sch tab (ApplyRenamer ren fld) =>
     OrdDirection -> OrdFld ren sch tab
+  -- ^ Order by field @fld@ (given as a type application, the renamer is applied).
   UnsafeOrd :: CondMonad (Text, OrdDirection) -> OrdFld ren sch tab
+  -- ^ Order by an SQL expression built in 'CondMonad' (see 'pUnsafeCond').
+  -- The expression is not checked.
 
+-- | @DISTINCT@ or @DISTINCT ON@ for table @tab@. Usually it is set with
+-- 'qDistinct' or 'qDistinctOn'.
 data Dist ren sch tab where
   Distinct :: Dist ren sch tab
+  -- ^ @DISTINCT@: remove duplicate rows.
   -- | Having 'DistinctOn' we automatically add fields from 'DistinctOn'
   -- into the beginning of @ORDER BY@.
   -- (It is "good enough" and simpler than checking it on the type level.)
@@ -455,9 +529,11 @@ descf :: forall fld -> forall sch tab. CDBField sch tab (ApplyRenamer ren fld)
   => OrdFld ren sch tab
 descf fld = ordf fld Desc
 
+-- | @LIMIT@ and @OFFSET@. 'Nothing' means no limit / no offset.
 data LO = LO
-  { limit  :: Maybe Natural
-  , offset :: Maybe Natural }
+  { limit  :: Maybe Natural -- ^ @LIMIT@
+  , offset :: Maybe Natural -- ^ @OFFSET@
+  }
   deriving Show
 
 -- | No limit and no offset.

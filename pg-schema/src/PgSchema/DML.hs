@@ -111,6 +111,8 @@ module PgSchema.DML
   -- ** Order By and Limit/Offset
   , ordf, ascf, descf, defLO, lo1
   -- ** Internals
+  -- | Types and functions that appear in the signatures above, and the building
+  -- blocks for unsafe conditions and ordering ('pUnsafeCond', 'UnsafeOrd').
   , Selectable, CRecInfo(..)
   , MonadQP, CondWithPath(..), OrdWithPath(..)
   , Cond(..), CondAnn, Cmp(..), BoolOp(..), TabParam(..), defTabParam
@@ -203,7 +205,11 @@ module PgSchema.DML
   , PgChar(..)
   , NameNS'(..), type (->>), NameNSK, (->>)
   , PathElem'(..), PathElem, PathElemK, PathKind(..)
-  , TRelDef, RelDef'(..), RdFrom, RdTo, FdType, FdNullable, CTabDef(..)
+  , TRelDef, RelDef'(..), FldDef', CTabDef(..)
+  -- | Type-level selectors (promoted record fields): 'RdFrom' and 'RdTo' give
+  -- the child and the parent table of a t'RelDef'', 'FdType' and 'FdNullable'
+  -- give the type and the nullability of a t'FldDef''.
+  , RdFrom, RdTo, FdType, FdNullable
   ) where
 
 

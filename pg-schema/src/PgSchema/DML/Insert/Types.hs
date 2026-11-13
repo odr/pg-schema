@@ -46,6 +46,8 @@ type UpsertByKeyNonReturning ann r =
   ( PlainIn ann r, HasSchema ann
   , CheckAllMandatoryAndHasKey ann (ColsDbNames (Cols ann r)) )
 
+-- | Upsert one table row by key with @RETURNING@: the constraints of
+-- 'UpsertByKeyNonReturning', and @r'@ is any bare plain column subset of the table.
 type UpsertByKeyReturning ann r r' =
   ( UpsertByKeyNonReturning ann r, PlainOut ann r', RequireBareRow r' )
 

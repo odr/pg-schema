@@ -294,11 +294,18 @@ loByPath p = fromMaybe mempty . withLOsWithPath convLO p
 runCond :: Int -> CondMonad a -> (a,[SomeToField])
 runCond n x = evalRWS x ("q", pure n) 0
 
+-- | Alias of the current table in the generated SQL (e.g. @t0@), for
+-- unsafe conditions and ordering ('pUnsafeCond', 'UnsafeOrd').
 tabPref :: CondMonad Text
 tabPref = asks \case
   (_, n :| []) -> "t" <> show' n
   (p, n :| (np : _)) -> "t" <> show' np <> p <> show' n
 
+-- | Column @fld@ qualified with the alias of the current table
+-- (e.g. @t0.name@), for unsafe conditions and ordering ('pUnsafeCond',
+-- 'UnsafeOrd'). @fld@ is a database name: the renamer is not applied.
+--
+-- > qual @"name"
 qual :: forall (fld :: Symbol). ToStar fld => CondMonad Text
 qual = tabPref <&> (<> "." <> (demote @fld))
 
