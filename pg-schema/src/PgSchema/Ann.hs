@@ -260,7 +260,7 @@ class FromJSONCols (ann :: Ann) (colsCase :: ColsCase) (cols :: [ColInfo NameNSK
 
 -- (:=)
 --------------------------------------------------------------------------------
--- NonGeneric: (:=) и (:.)
+-- NonGeneric: (:=) and (:.)
 --------------------------------------------------------------------------------
 instance ToJSONCols ann 'NonGenericCase '[] (fld := ()) where
   toPairs _ = []

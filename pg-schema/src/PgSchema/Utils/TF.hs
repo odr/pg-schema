@@ -46,10 +46,10 @@ type family Length (xs :: [a]) :: Nat where
 type family SplitAt (n :: Nat) (xs :: [k]) :: ([k], [k]) where
   SplitAt 0 xs             = '( '[], xs)
   SplitAt n '[]            = '( '[], '[])
-  -- Используем вспомогательный тип, чтобы "пробросить" результат рекурсии
+  -- Use a helper type family to thread the result of the recursion through
   SplitAt n (x ': xs)      = SplitAtHelper x (SplitAt (n - 1) xs)
 
--- Вспомогательный тип для конструирования результата
+-- Helper type family that builds the result
 type family SplitAtHelper (x :: k) (res :: ([k], [k])) :: ([k], [k]) where
   SplitAtHelper x '(left, right) = '(x ': left, right)
 
