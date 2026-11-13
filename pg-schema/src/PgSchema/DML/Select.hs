@@ -76,6 +76,11 @@ type Selectable ann r = (CRecInfo ann r, FromRow (PgTag ann r))
 --
 -- Build t'QueryParam' with the 'MonadQP' API.
 --
+-- To pattern match on rows of t'PgTag' fields without unwrapping every field,
+-- use 'PgSchema.DML.plains':
+--
+-- > rows <- plains @("id" := Int64 :. "name" := Text) . fst <$> selectSch (MyAnn "users") conn qpEmpty
+--
 selectSch :: forall ann -> forall r. Selectable ann r
   => Connection -> QueryParamAnn ann -> IO ([r], (Text,[SomeToField]))
 selectSch ann @r conn (selectText ann @r -> (sql,fs)) =

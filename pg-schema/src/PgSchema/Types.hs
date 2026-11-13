@@ -476,6 +476,11 @@ type instance CanConvert1 sch tab fld n ('TypDef "E" 'Nothing es) (PGEnum sch n)
 -- 2. Symbol-labelled rows built from '(=:)' and chained with t'(:.)' from
 --    @postgresql-simple@ (re-exported from "PgSchema.DML").
 --
+-- Lists of symbol-labelled rows can also be made from plain values without
+-- field names: with 'PgSchema.DML.rowsOf' (names and types are taken from the
+-- row type) or 'named' (names are given once for the whole list). In the other
+-- direction, 'PgSchema.DML.plains' drops the names from selected or returned rows.
+--
 -- t'PgTag' is analogous to 'Data.Tagged.Tagged' from the @tagged@ package, but
 -- carries JSON (and related) instances suited to @pg-schema@.
 --
@@ -566,7 +571,8 @@ infixr 5 :=
 --
 -- > "name" =: ("John" :: Text) :. "email" =: (Nothing :: Maybe Text)
 --
--- Fields are chained into rows with t'(:.)'.
+-- Fields are chained into rows with t'(:.)'. To make a list of rows without
+-- repeating the field names in every row, see 'PgSchema.DML.rowsOf' and 'named'.
 (=:) :: forall b. forall a -> b -> a := b
 (=:) _ = coerce
 infixr 5 =:
@@ -576,18 +582,23 @@ infixr 5 =:
 -- Rows are ordinary values chained with t'(:.)' (no t'PgTag' on each field);
 -- the names are given only once, for the whole list:
 --
--- > insertSch (MyAnn "projects") conn
--- >   $ named ["ownerId", "title", "status", "tags"]
--- >   [ (1 :: Int64) :. ("pg-schema" :: Text) :. Project_status_active :. pgArr' ["db" :: Text, "haskell"]
--- >   , 1 :. "tutorial" :. Project_status_draft :. pgArr' ["learning"] ]
+-- > (res, _) <- insertSch (MyAnn "projects") conn $
+-- >   named ["ownerId", "title", "status", "tags"]
+-- >     [ (1 :: Int64) :. ("pg-schema" :: Text) :. Project_status_active :. pgArr' ["db" :: Text, "haskell"]
+-- >     , 1 :. "tutorial" :. Project_status_draft :. pgArr' ["learning"] ]
+-- > print (plains @("id" := Int64) res)
 --
 -- is the same as
 --
--- > insertSch (MyAnn "projects") conn
+-- > (res, _) <- insertSch (MyAnn "projects") conn
 -- >   [ "ownerId" =: (1 :: Int64) :. "title" =: ("pg-schema" :: Text)
 -- >     :. "status" =: Project_status_active :. "tags" =: pgArr' ["db" :: Text, "haskell"]
 -- >   , "ownerId" =: 1 :. "title" =: "tutorial"
 -- >     :. "status" =: Project_status_draft :. "tags" =: pgArr' ["learning"] ]
+--
+-- The types of the values are inferred from the values here (hence the
+-- annotations). With 'PgSchema.DML.rowsOf' they are taken from a row type
+-- instead: @rowsOf \@(\"ownerId\" := Int64 :. \"title\" := Text :. …)@.
 --
 -- The n-th name is attached to the n-th field; the last name takes the whole
 -- rest of the row. The number of names must be equal to the number of fields,

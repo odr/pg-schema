@@ -264,12 +264,12 @@ plain = toChain . toPlainCols @(PlainCaseOf r) @(PlainCols r)
 -- | Make rows of type @r@ from plain values: field names (and field types)
 -- are taken from @r@, so values don't need names or type annotations.
 --
--- > type Mid1 = "pos" := Int32 :. "flag" := Bool
--- > type Root = "code" := Text :. "grp" := Int32 :. "mid1RootFk" := [Mid1]
+-- > type Mid1 = "pos" := Int32 :. "flag" := Bool :. "sortKey" := Int32
+-- > type Root = "code" := Text :. "grp" := Int32 :. "name" := Text :. "mid1RootFk" := [Mid1]
 -- >
--- > insertJSON (MyAnn "root") conn $ rowsOf @Root
--- >   [ "r1" :. 1 :. [10 :. True, 11 :. False]
--- >   , "r2" :. 2 :. [] ]
+-- > insertJSON_ (MyAnn "root") conn $ rowsOf @Root
+-- >   [ "r1" :. 1 :. "first" :. [10 :. True :. 1, 11 :. False :. 2]
+-- >   , "r2" :. 2 :. "second" :. [] ]
 --
 -- Rows are flattened as for 'Database.PostgreSQL.Simple.ToRow': parts joined
 -- with t'(:.)' and Generic records give their fields in order, so no
@@ -293,7 +293,7 @@ rowsOf = fmap (rowOf @r)
 -- result is written:
 --
 -- > rows <- plains @(Mid1 :. "mid1RootFk" := Root) . fst <$> selectSch (MyAnn "mid1") conn qpEmpty
--- > for_ rows \(pos :. flag :. (code :. _)) -> ...
+-- > for_ rows \(pos :. flag :. _ :. (code :. _)) -> print (pos, flag, code)
 --
 -- >>> plains ["a" =: (1 :: Int) :. "b" =: True]
 -- [1 :. True]

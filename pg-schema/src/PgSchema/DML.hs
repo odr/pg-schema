@@ -12,41 +12,57 @@
 --
 -- == Example
 --
--- @
--- data MyRenamer :: Renamer
+-- A schema module @MySch@ is generated (see "PgSchema.Generation") for tables
+-- @shop.ord@, @shop.ord_pos@ (with foreign keys @ord__ord_pos@ to @ord@ and
+-- @ord_pos__article@ to @article@) and @shop.article@.
 --
--- type family MyRenamerImpl (s :: Symbol) :: Symbol where
---   MyRenamerImpl "items"   = "ord\_\_ord_pos"     -- FK from ord_pos to ord
---   MyRenamerImpl "article" = "ord_pos\_\_article" -- FK from ord_pos to article
---   MyRenamerImpl s         = CamelToSnake s
+-- > data MyRenamer :: Renamer
+-- >
+-- > type family MyRenamerImpl (s :: Symbol) :: Symbol where
+-- >   MyRenamerImpl "items"   = "ord__ord_pos"     -- FK from ord_pos to ord
+-- >   MyRenamerImpl "article" = "ord_pos__article" -- FK from ord_pos to article
+-- >   MyRenamerImpl s         = CamelToSnake s
+-- >
+-- > type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
+-- >
+-- > type Shop name = "shop" ->> name
+-- >
+-- > type MyAnn tabName = 'Ann MyRenamer MySch 5 (Shop tabName)
+-- >
+-- > -- Rows to insert: an order with its positions.
+-- > type OrdIn = "num" := Text :. "items" := [OrdPosIn]
+-- > type OrdPosIn = "num" := Int32 :. "articleId" := Int32 :. "price" := Double
+-- >
+-- > -- Rows to select.
+-- > data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
+-- > data OrdPos = OrdPos { num :: Int32, article :: Article, price :: Double } deriving Generic
+-- > data Article = Article { name :: Text } deriving Generic
+-- >
+-- > example :: Connection -> Day -> IO [Order]
+-- > example conn someDay = do
+-- >   void $ insertJSON_ (MyAnn "ord") conn $ rowsOf @OrdIn
+-- >     [ "num1" :. [ 1 :. 42 :. 10, 2 :. 41 :. 15 ] ]
+-- >
+-- >   fst <$> selectSch (MyAnn "ord") conn (qRoot do
+-- >     qWhere $ "created_at" >=? someDay
+-- >       &&& pchild (Shop "items") defTabParam
+-- >         (pparent (Shop "article") $ "name" ~~? ("%pencil%" :: Text))
+-- >     qOrderBy [descf "created_at", descf "num"]
+-- >     qPath "items" do
+-- >       qWhere $ pparent (Shop "article") $ "name" ~~? ("%pencil%" :: Text)
+-- >       qOrderBy [ascf "num"]
+-- >     qLimit 20)
 --
--- type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
+-- Here we insert an order with two positions and then get all orders created
+-- on or after @someDay@ that have positions with articles like @"%pencil%"@.
+-- For each order only the positions that relate to "pencil" are returned, with
+-- the article info.
 --
--- type MyAnn tabName = 'Ann MyRenamer MySch 5 ("dbSchema" ->> tabName)
---
--- data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
--- data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
--- data Article = Article { id :: Int32, name :: Text } deriving Generic
---     ...
--- do
---   void $ insertJSON_ (MyAnn "ord") conn
---     [ "num" =: "num1" :. "items" =:
---       [ "num" =: 1 :. "articleId" =: 42 :. "price" =: 10
---       , "num" =: 2 :. "articleId" =: 41 :. "price" =: 15 ] ]
---
---   (xs :: [Order]) <- fst \<$\> selectSch (MyAnn "ord") conn (qRoot do
---     qWhere $ "created_at" >? someDay
---       &&& pchild "items" defTabParam
---         (pparent "article" $ "name" ~~? "%pencil%")
---     qOrderBy [descf "created_at", descf "num"]
---     qPath "items" do
---       qWhere $ pparent "article" $ "name" ~~? "%pencil%"
---       qOrderBy [ascf "num"]
---     qLimit 20)
--- @
---
--- Here we get all orders created after @someDay@ that have positions with articles like @"%pencil%"@,
--- and return only those order items that relate to "pencil", with article info.
+-- Rows can be given as records ('GHC.Generics.Generic'), as rows of fields
+-- built with '(=:)' and chained with t'(:.)' (e.g. @"num" =: "num1" :. …@), or,
+-- as here, as plain values: 'rowsOf' takes field names and types from the row
+-- type, so the values need neither names nor type annotations. See also 'named'
+-- and 'plains'.
 --
 -- The preceding 'insertJSON_' call inserts one root row (here an order) and nested
 -- /child/ rows (here order positions) in a single database operation, using
@@ -74,8 +90,6 @@
 -- shape; monadic t'QueryParam' only adds what this call needs: filters, ordering on a
 -- branch, limits, and so on.
 --
--- We can use both 'GHC.Generics.Generic'-based and t'PgTag'-based ('(=:)') interfaces and mix them in any way.
---
 -- All string literals at the type level are 'GHC.TypeLits.Symbol' thanks to @RequiredTypeArguments@.
 -- Operations are safe when the live database schema matches the generated schema types.
 --
@@ -86,7 +100,8 @@
 -- 'ApplyRenamer' and the example above); 'CamelToSnake' converts @camelCase@ to
 -- @snake_case@ and is a convenient default case for your renamer.
 -- The renamer is applied to all names: record fields, column names in conditions
--- and ordering, relation names in 'qPath' / 'pchild' / 'pparent'. So with a renamer
+-- and ordering, relation names in 'qPath' and in 'pchild' / 'pparent' (where the
+-- name is qualified, like @Shop \"items\"@ above). So with a renamer
 -- based on 'CamelToSnake' you can write either @"ownerId"@ or @"owner_id"@.
 --
 module PgSchema.DML
@@ -134,6 +149,10 @@ module PgSchema.DML
   --
   -- There are also operations to update or delete data by a condition.
   --
+  -- Input rows can be records, rows of fields built with '(=:)', or plain values
+  -- made into rows with 'rowsOf' or 'named'; 'plains' gives plain values of the
+  -- returned rows.
+  --
   , insertSch, insertSch_, insertText, insertText_
   , upsertByKey, upsertByKey_, upsertByKeyText, upsertByKeyText_
   , updateByKey, updateByKey_, updateByKeyText, updateByKeyText_
@@ -171,6 +190,9 @@ module PgSchema.DML
   -- For all these operations you should use types that can be converted to JSON (and from JSON for returning).
   -- You don't need instances but all fields should be serializable into JSON.
   -- E.g. you can't use 'Data.ByteString.ByteString' fields here.
+  --
+  -- Input trees are easy to write as plain values with 'rowsOf' (see the
+  -- example at the top of this module).
   , insertJSON, insertJSON_, upsertJSON, upsertJSON_
   , updateJSON, updateJSON_, insertJSONText, insertJSONText_
   , upsertJSONText, upsertJSONText_, updateJSONText, updateJSONText_
