@@ -13,50 +13,37 @@
 -- == Example
 --
 -- A schema module @MySch@ is generated (see "PgSchema.Generation") for tables
--- @shop.ord@, @shop.ord_pos@ (with foreign keys @ord__ord_pos@ to @ord@ and
--- @ord_pos__article@ to @article@) and @shop.article@.
+-- @shop.ord@, @shop.ord_pos@ and @shop.article@ with foreign keys
+-- @ord\_\_ord_pos@ (from @ord_pos@ to @ord@) and @ord_pos\_\_article@ (from
+-- @ord_pos@ to @article@).
 --
--- > data MyRenamer :: Renamer
+-- > type ShopAnn tabName = 'Ann RenamerId MySch 5 ("shop" ->> tabName)
 -- >
--- > type family MyRenamerImpl (s :: Symbol) :: Symbol where
--- >   MyRenamerImpl "items"   = "ord__ord_pos"     -- FK from ord_pos to ord
--- >   MyRenamerImpl "article" = "ord_pos__article" -- FK from ord_pos to article
--- >   MyRenamerImpl s         = CamelToSnake s
+-- > -- An order with its positions to insert
+-- > type OrdIn = "num" := Text :. "ord__ord_pos" := [OrdPosIn]
+-- > type OrdPosIn = "num" := Int32 :. "article_id" := Int32 :. "price" := Double
 -- >
--- > type instance ApplyRenamer MyRenamer s = MyRenamerImpl s
--- >
--- > type Shop name = "shop" ->> name
--- >
--- > type MyAnn tabName = 'Ann MyRenamer MySch 5 (Shop tabName)
--- >
--- > -- Rows to insert: an order with its positions.
--- > type OrdIn = "num" := Text :. "items" := [OrdPosIn]
--- > type OrdPosIn = "num" := Int32 :. "articleId" := Int32 :. "price" := Double
--- >
--- > -- Rows to select.
--- > data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
--- > data OrdPos = OrdPos { num :: Int32, article :: Article, price :: Double } deriving Generic
+-- > -- Orders to select: with positions and their articles
+-- > data Order = Order { num :: Text, created_at :: Day, ord__ord_pos :: [OrdPos] } deriving Generic
+-- > data OrdPos = OrdPos { num :: Int32, ord_pos__article :: Article, price :: Double } deriving Generic
 -- > data Article = Article { name :: Text } deriving Generic
 -- >
 -- > example :: Connection -> Day -> IO [Order]
 -- > example conn someDay = do
--- >   void $ insertJSON_ (MyAnn "ord") conn $ rowsOf @OrdIn
+-- >   void $ insertJSON_ (ShopAnn "ord") conn $ rowsOf @OrdIn
 -- >     [ "num1" :. [ 1 :. 42 :. 10, 2 :. 41 :. 15 ] ]
--- >
--- >   fst <$> selectSch (MyAnn "ord") conn (qRoot do
+-- >   fst <$> selectSch (ShopAnn "ord") conn (qRoot do
 -- >     qWhere $ "created_at" >=? someDay
--- >       &&& pchild (Shop "items") defTabParam
--- >         (pparent (Shop "article") $ "name" ~~? ("%pencil%" :: Text))
 -- >     qOrderBy [descf "created_at", descf "num"]
--- >     qPath "items" do
--- >       qWhere $ pparent (Shop "article") $ "name" ~~? ("%pencil%" :: Text)
--- >       qOrderBy [ascf "num"]
--- >     qLimit 20)
+-- >     qPath "ord__ord_pos" do
+-- >       qWhere $ "price" >? (12 :: Double)
+-- >       qOrderBy [ascf "num"])
 --
--- Here we insert an order with two positions and then get all orders created
--- on or after @someDay@ that have positions with articles like @"%pencil%"@.
--- For each order only the positions that relate to "pencil" are returned, with
--- the article info.
+-- Here we insert an order with two positions and then get the orders created on
+-- or after @someDay@, each with its positions priced above 12 and their articles.
+--
+-- Field names are the database names here, since 'RenamerId' does not rename
+-- anything. A field of a relation is named after its foreign key.
 --
 -- Rows can be given as records ('GHC.Generics.Generic'), as rows of fields
 -- built with '(=:)' and chained with t'(:.)' (e.g. @"num" =: "num1" :. …@), or,
@@ -64,7 +51,9 @@
 -- type, so the values need neither names nor type annotations. See also 'named'
 -- and 'plains'.
 --
--- The preceding 'insertJSON_' call inserts one root row (here an order) and nested
+-- Conditions on related tables are made with 'pchild' and 'pparent'.
+--
+-- The 'insertJSON_' call in the example inserts one root row (here an order) and nested
 -- /child/ rows (here order positions) in a single database operation, using
 -- JSON internally. Child data is carried in list fields: the field’s name (after the
 -- 'Renamer') names the FK constraint in the database and thus selects the child table
@@ -95,14 +84,13 @@
 --
 -- The @INSERT@ and @SELECT@ shown here each run as a single, fast database round-trip (JSON inside PostgreSQL).
 --
--- A 'Renamer' maps Haskell field names to database names. It is a type-level
--- function declared as an empty data type with an 'ApplyRenamer' instance (see
--- 'ApplyRenamer' and the example above); 'CamelToSnake' converts @camelCase@ to
--- @snake_case@ and is a convenient default case for your renamer.
+-- A 'Renamer' maps Haskell field names to database names. 'RenamerId' keeps
+-- them as they are; to use e.g. @createdAt@ for @created_at@ or @items@ for
+-- @ord\_\_ord_pos@, declare your own renamer (see 'ApplyRenamer'). 'CamelToSnake'
+-- converts @camelCase@ to @snake_case@ and is a convenient default case for it.
 -- The renamer is applied to all names: record fields, column names in conditions
--- and ordering, relation names in 'qPath' and in 'pchild' / 'pparent' (where the
--- name is qualified, like @Shop \"items\"@ above). So with a renamer
--- based on 'CamelToSnake' you can write either @"ownerId"@ or @"owner_id"@.
+-- and ordering, relation names in 'qPath', 'pchild' and 'pparent'. So with a
+-- renamer based on 'CamelToSnake' you can write either @"ownerId"@ or @"owner_id"@.
 --
 module PgSchema.DML
   (
