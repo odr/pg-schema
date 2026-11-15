@@ -14,6 +14,8 @@ tested-with:
   , GHC ==9.14.1
 synopsis:       Type-level definition of database schema and safe DML for PostgreSQL.
 description:
+    You can learn it in the <https://odr.github.io/pg-schema tutorial>.
+
     == Schema definition
 
     Use @updateSchemaFile@ function from "PgSchema.Generation" module to generate type-level definition of database schema.
