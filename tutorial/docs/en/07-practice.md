@@ -98,9 +98,13 @@ foreign key to `users`.
 
 Such a relation can be described in the generator with `AddRelation`, as in
 `GenNames` above: the name of the relation, the table it leads from, the table
-it leads to, and the pairs of columns. After that `pg-schema` works with it just
-as with a foreign key. In result types and in `qPath` its name goes through the
-renamer as usual: `"taskEventsAuthor"`. Where a relation is given by its full
+it leads to, and the pairs of columns. We named the relation
+`task_events_author_id_fkey`, the name PostgreSQL itself would give to a foreign
+key on `author_id`: if the foreign key is ever added to the database, the
+relation is removed from the generator, and its name in the code stays the same
+(only full names with `_add`, described below, change their schema). Once
+described, the relation works in `pg-schema` just like a foreign key. In result types and in `qPath` its name goes through the
+renamer as usual: `"taskEventsAuthorIdFkey"`. Where a relation is given by its full
 name together with the schema, as in `pchild` and `pparent` from the chapter [Select](04-select.md),
 `_add` is written instead of the database schema: the generator puts all added
 relations into this namespace. There is an example with `pparent` a bit below.

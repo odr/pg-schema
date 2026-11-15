@@ -730,30 +730,30 @@ join tut.projects t1 on t0.project_id=t1.id
 order by t0.id Asc nulls last;
 --8<-- [end:prac-audit-select-sql]
 --8<-- [start:prac-addrel]
-"seq" =: 1 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthor" =: Just ("name" =: "Alice")))
-"seq" =: 1 :. ("eventNo" =: 2 :. ("kind" =: "reviewed" :. "taskEventsAuthor" =: Just ("name" =: "Bob")))
-"seq" =: 2 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthor" =: Nothing))
-"seq" =: 2 :. ("eventNo" =: 2 :. ("kind" =: "edited" :. "taskEventsAuthor" =: Nothing))
+"seq" =: 1 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthorIdFkey" =: Just ("name" =: "Alice")))
+"seq" =: 1 :. ("eventNo" =: 2 :. ("kind" =: "reviewed" :. "taskEventsAuthorIdFkey" =: Just ("name" =: "Bob")))
+"seq" =: 2 :. ("eventNo" =: 1 :. ("kind" =: "created" :. "taskEventsAuthorIdFkey" =: Nothing))
+"seq" =: 2 :. ("eventNo" =: 2 :. ("kind" =: "edited" :. "taskEventsAuthorIdFkey" =: Nothing))
 --8<-- [end:prac-addrel]
 --8<-- [start:prac-addrel-sql]
 select t0.seq "seq",
        t0.event_no "eventNo",
        t0.kind "kind",
-       case when t1.name is null then null else jsonb_build_object('name',t1.name) end "taskEventsAuthor"
+       case when t1.name is null then null else jsonb_build_object('name',t1.name) end "taskEventsAuthorIdFkey"
 from tut.task_events t0
 left outer join tut.users t1 on t0.author_id=t1.id
 order by t0.seq Asc nulls last,t0.event_no Asc nulls last;
 --8<-- [end:prac-addrel-sql]
 --8<-- [start:prac-addrel-children]
-"name" =: "Alice" :. "taskEventsAuthor" =: ["kind" =: "created"]
-"name" =: "Bob" :. "taskEventsAuthor" =: ["kind" =: "reviewed"]
+"name" =: "Alice" :. "taskEventsAuthorIdFkey" =: ["kind" =: "created"]
+"name" =: "Bob" :. "taskEventsAuthorIdFkey" =: ["kind" =: "reviewed"]
 --8<-- [end:prac-addrel-children]
 --8<-- [start:prac-addrel-children-sql]
 select t0.name "name",
        array_to_json(array(
            select jsonb_build_object('kind',t1.kind)
            from tut.task_events t1
-           where t1.author_id=t0.id)) "taskEventsAuthor"
+           where t1.author_id=t0.id)) "taskEventsAuthorIdFkey"
 from tut.users t0
 order by t0.name Asc nulls last;
 --8<-- [end:prac-addrel-children-sql]
