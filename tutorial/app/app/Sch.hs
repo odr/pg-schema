@@ -59,7 +59,7 @@ instance (ToStar (TTabDef Sch name), ToStar name) => CTabDef Sch name where
   type TTabDef Sch name = TTabDefSch name
 
 type family TRelDefSch (ref :: NameNSK) :: RelDef' TL.Symbol where
-  TRelDefSch ( "_add" ->> "task_events_author" ) = 'RelDef ( "tut" ->> "task_events" ) ( "tut" ->> "users" ) '[ '( "author_id","id" ) ]
+  TRelDefSch ( "_add" ->> "task_events_author_id_fkey" ) = 'RelDef ( "tut" ->> "task_events" ) ( "tut" ->> "users" ) '[ '( "author_id","id" ) ]
   TRelDefSch ( "audit" ->> "project_log_project_id_fkey" ) = 'RelDef ( "audit" ->> "project_log" ) ( "tut" ->> "projects" ) '[ '( "project_id","id" ) ]
   TRelDefSch ( "tut" ->> "projects_owner_id_fkey" ) = 'RelDef ( "tut" ->> "projects" ) ( "tut" ->> "users" ) '[ '( "owner_id","id" ) ]
   TRelDefSch ( "tut" ->> "task_events_project_id_seq_fkey" ) = 'RelDef ( "tut" ->> "task_events" ) ( "tut" ->> "tasks" ) '[ '( "project_id","project_id" ),'( "seq","seq" ) ]
@@ -68,7 +68,7 @@ type family TRelDefSch (ref :: NameNSK) :: RelDef' TL.Symbol where
   TRelDefSch ref = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "relation " TE.:<>: TE.ShowType ref TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Relations: _add.task_events_author, audit.project_log_project_id_fkey, tut.projects_owner_id_fkey, tut.task_events_project_id_seq_fkey, tut.tasks_project_id_fkey, tut.users_manager_id_fkey."
+    TE.:$$: TE.Text "  Relations: _add.task_events_author_id_fkey, audit.project_log_project_id_fkey, tut.projects_owner_id_fkey, tut.task_events_project_id_seq_fkey, tut.tasks_project_id_fkey, tut.users_manager_id_fkey."
     TE.:$$: TE.Text "")
 instance ( ToStar (TRelDef Sch ref)
          , CTabDef Sch (RdFrom (TRelDef Sch ref))
@@ -81,7 +81,7 @@ type family TFromSch (tab :: NameNSK) :: [NameNSK] where
 
   TFromSch ( "tut" ->> "projects" ) = '[ ( "tut" ->> "projects_owner_id_fkey" ) ]
 
-  TFromSch ( "tut" ->> "task_events" ) = '[ ( "_add" ->> "task_events_author" )
+  TFromSch ( "tut" ->> "task_events" ) = '[ ( "_add" ->> "task_events_author_id_fkey" )
     ,( "tut" ->> "task_events_project_id_seq_fkey" ) ]
 
   TFromSch ( "tut" ->> "tasks" ) = '[ ( "tut" ->> "tasks_project_id_fkey" ) ]
@@ -104,7 +104,7 @@ type family TToSch (tab :: NameNSK) :: [NameNSK] where
 
   TToSch ( "tut" ->> "tasks" ) = '[ ( "tut" ->> "task_events_project_id_seq_fkey" ) ]
 
-  TToSch ( "tut" ->> "users" ) = '[ ( "_add" ->> "task_events_author" )
+  TToSch ( "tut" ->> "users" ) = '[ ( "_add" ->> "task_events_author_id_fkey" )
     ,( "tut" ->> "projects_owner_id_fkey" )
     ,( "tut" ->> "users_manager_id_fkey" ) ]
 
@@ -164,7 +164,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "meta" = 'RFPlain ('FldDef ( "pg_catalog" ->> "jsonb" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "project_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False)
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "seq" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int4" ) 'False 'False)
-  TDBFieldInfoSch ( "tut" ->> "task_events" ) "task_events_author" = 'RFFromHere ( "tut" ->> "users" )
+  TDBFieldInfoSch ( "tut" ->> "task_events" ) "task_events_author_id_fkey" = 'RFFromHere ( "tut" ->> "users" )
       '[ 'Ref "author_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
   TDBFieldInfoSch ( "tut" ->> "task_events" ) "task_events_project_id_seq_fkey" = 'RFFromHere ( "tut" ->> "tasks" )
       '[ 'Ref "project_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False) "project_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False)
@@ -175,7 +175,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
     TE.:$$: TE.Text "  Fields: project_id, seq, event_no, kind, meta, author_id, created_at."
-    TE.:$$: TE.Text "  Foreign key constraints: task_events_author, task_events_project_id_seq_fkey."
+    TE.:$$: TE.Text "  Foreign key constraints: task_events_author_id_fkey, task_events_project_id_seq_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")
@@ -205,7 +205,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
   TDBFieldInfoSch ( "tut" ->> "users" ) "id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True)
   TDBFieldInfoSch ( "tut" ->> "users" ) "manager_id" = 'RFPlain ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False)
   TDBFieldInfoSch ( "tut" ->> "users" ) "name" = 'RFPlain ('FldDef ( "pg_catalog" ->> "text" ) 'False 'False)
-  TDBFieldInfoSch ( "tut" ->> "users" ) "task_events_author" = 'RFToHere ( "tut" ->> "task_events" )
+  TDBFieldInfoSch ( "tut" ->> "users" ) "task_events_author_id_fkey" = 'RFToHere ( "tut" ->> "task_events" )
       '[ 'Ref "author_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'True 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
   TDBFieldInfoSch ( "tut" ->> "users" ) "projects_owner_id_fkey" = 'RFToHere ( "tut" ->> "projects" )
       '[ 'Ref "owner_id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'False) "id" ('FldDef ( "pg_catalog" ->> "int8" ) 'False 'True) ]
@@ -217,7 +217,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
     TE.:$$: TE.Text "  Fields: id, name, email, manager_id, created_at."
-    TE.:$$: TE.Text "  Foreign key constraints: users_manager_id_fkey, task_events_author, projects_owner_id_fkey."
+    TE.:$$: TE.Text "  Foreign key constraints: users_manager_id_fkey, task_events_author_id_fkey, projects_owner_id_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
     TE.:$$: TE.Text "")

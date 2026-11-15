@@ -64,7 +64,7 @@ practice conn = do
     -- --8<-- [start:prac-addrel]
     (rows, (sql, _)) <- selectSch (MyAnn "task_events")
       @( "seq" := Int32 :. "eventNo" := Int32 :. "kind" := Text
-      :. "taskEventsAuthor" := Maybe ("name" := Text) )
+      :. "taskEventsAuthorIdFkey" := Maybe ("name" := Text) )
       conn $ qRoot do
         qOrderBy [ascf "seq", ascf "eventNo"]
     mapM_ print rows
@@ -75,7 +75,7 @@ practice conn = do
   sqls4 <- section "prac-addrel-children" $ do
     -- --8<-- [start:prac-addrel-children]
     (rows, (sql, _)) <- selectSch (MyAnn "users")
-      @("name" := Text :. "taskEventsAuthor" := ["kind" := Text])
+      @("name" := Text :. "taskEventsAuthorIdFkey" := ["kind" := Text])
       conn $ qRoot do
         qOrderBy [ascf "name"]
     mapM_ print rows
@@ -87,7 +87,7 @@ practice conn = do
     -- --8<-- [start:prac-addrel-parent]
     (rows, (sql, _)) <- selectSch (MyAnn "task_events")
       @("seq" := Int32 :. "eventNo" := Int32 :. "kind" := Text) conn $ qRoot do
-        qWhere $ pparent (Add "taskEventsAuthor") ("name" =? ("Alice" :: Text))
+        qWhere $ pparent (Add "taskEventsAuthorIdFkey") ("name" =? ("Alice" :: Text))
     mapM_ print rows
     -- --8<-- [end:prac-addrel-parent]
     pure [sql]
