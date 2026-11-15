@@ -13,19 +13,19 @@
 -- == Example
 --
 -- A schema module @MySch@ is generated (see "PgSchema.Generation") for tables
--- @shop.ord@, @shop.ord_pos@ and @shop.article@ with foreign keys
--- @ord\_\_ord_pos@ (from @ord_pos@ to @ord@) and @ord_pos\_\_article@ (from
--- @ord_pos@ to @article@).
+-- @shop.ord@, @shop.ord_pos@ and @shop.article@, where @ord_pos@ references
+-- @ord@ and @article@. The foreign keys have the names that PostgreSQL gives
+-- them by default: @ord_pos_ord_id_fkey@ and @ord_pos_article_id_fkey@.
 --
 -- > type ShopAnn tabName = 'Ann RenamerId MySch 5 ("shop" ->> tabName)
 -- >
 -- > -- An order with its positions to insert
--- > type OrdIn = "num" := Text :. "ord__ord_pos" := [OrdPosIn]
+-- > type OrdIn = "num" := Text :. "ord_pos_ord_id_fkey" := [OrdPosIn]
 -- > type OrdPosIn = "num" := Int32 :. "article_id" := Int32 :. "price" := Double
 -- >
 -- > -- Orders to select: with positions and their articles
--- > data Order = Order { num :: Text, created_at :: Day, ord__ord_pos :: [OrdPos] } deriving Generic
--- > data OrdPos = OrdPos { num :: Int32, ord_pos__article :: Article, price :: Double } deriving Generic
+-- > data Order = Order { num :: Text, created_at :: Day, ord_pos_ord_id_fkey :: [OrdPos] } deriving Generic
+-- > data OrdPos = OrdPos { num :: Int32, ord_pos_article_id_fkey :: Article, price :: Double } deriving Generic
 -- > data Article = Article { name :: Text } deriving Generic
 -- >
 -- > example :: Connection -> Day -> IO [Order]
@@ -35,7 +35,7 @@
 -- >   fst <$> selectSch (ShopAnn "ord") conn (qRoot do
 -- >     qWhere $ "created_at" >=? someDay
 -- >     qOrderBy [descf "created_at", descf "num"]
--- >     qPath "ord__ord_pos" do
+-- >     qPath "ord_pos_ord_id_fkey" do
 -- >       qWhere $ "price" >? (12 :: Double)
 -- >       qOrderBy [ascf "num"])
 --
@@ -86,7 +86,7 @@
 --
 -- A 'Renamer' maps Haskell field names to database names. 'RenamerId' keeps
 -- them as they are; to use e.g. @createdAt@ for @created_at@ or @items@ for
--- @ord\_\_ord_pos@, declare your own renamer (see 'ApplyRenamer'). 'CamelToSnake'
+-- @ord_pos_ord_id_fkey@, declare your own renamer (see 'ApplyRenamer'). 'CamelToSnake'
 -- converts @camelCase@ to @snake_case@ and is a convenient default case for it.
 -- The renamer is applied to all names: record fields, column names in conditions
 -- and ordering, relation names in 'qPath', 'pchild' and 'pparent'. So with a
