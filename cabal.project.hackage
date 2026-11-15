@@ -5,7 +5,7 @@
 
 optimization: False
 
-with-compiler: ghc-9.12.2
+with-compiler: ghc-9.12.4
 
 packages:
   pg-schema
