@@ -16,7 +16,7 @@ synopsis:       Type-level definition of database schema and safe DML for Postgr
 description:
     == Schema definition
 
-    Use `updateSchemaFile` function from "PgSchema.Generation" module to generate type-level definition of database schema.
+    Use @updateSchemaFile@ function from "PgSchema.Generation" module to generate type-level definition of database schema.
     You can make several schemas with any parts of your database.
 
     Usually you make executable which imports this module and run it to generate schema definition.
@@ -30,41 +30,38 @@ description:
     With @pg-schema@ you can select or insert/upsert data into tree-like ADT in one request.
 
     === Example
-    Let's say
 
-    - we have a database with tables: "orders", "order_positions", "articles".
-    - There are articles with ids 41 and 42.
-    - We have generated `MySch` schema with `updateSchemaFile` function from "PgSchema.Generation" module.
+    Let's say we have tables @shop.ord@, @shop.ord_pos@ and @shop.article@, where @ord_pos@
+    references @ord@ and @article@. The foreign keys have the default names given by PostgreSQL:
+    @ord_pos_ord_id_fkey@ and @ord_pos_article_id_fkey@. There are articles with ids 41 and 42,
+    and we have generated the schema @MySch@ with @updateSchemaFile@ from "PgSchema.Generation".
 
-    Then we can write a function to insert an order with order positions.
-    And select orders with order positions and articles in one request using some conditions for orders and order positions that return in order.
+    Then we can insert an order with its positions, and select orders with their positions and
+    articles, using conditions for orders and positions. Each operation is one request.
 
-    Note that all table names, field names and foreign key constraint names are checked in compile time!
+    > type ShopAnn tabName = 'Ann RenamerId MySch 5 ("shop" ->> tabName)
+    >
+    > -- An order with its positions to insert
+    > type OrdIn = "num" := Text :. "ord_pos_ord_id_fkey" := [OrdPosIn]
+    > type OrdPosIn = "num" := Int32 :. "article_id" := Int32 :. "price" := Double
+    >
+    > -- Orders to select: with positions and their articles
+    > data Order = Order { num :: Text, created_at :: Day, ord_pos_ord_id_fkey :: [OrdPos] } deriving Generic
+    > data OrdPos = OrdPos { num :: Int32, ord_pos_article_id_fkey :: Article, price :: Double } deriving Generic
+    > data Article = Article { name :: Text } deriving Generic
+    >
+    > example :: Connection -> Day -> IO [Order]
+    > example conn someDay = do
+    >   void $ insertJSON_ (ShopAnn "ord") conn $ rowsOf @OrdIn
+    >     [ "num1" :. [ 1 :. 42 :. 10, 2 :. 41 :. 15 ] ]
+    >   fst <$> selectSch (ShopAnn "ord") conn (qRoot do
+    >     qWhere $ "created_at" >=? someDay
+    >     qOrderBy [descf "created_at", descf "num"]
+    >     qPath "ord_pos_ord_id_fkey" do
+    >       qWhere $ "price" >? (12 :: Double)
+    >       qOrderBy [ascf "num"])
 
-    @
-    data Order = Order { num :: Text, createdAt :: Day, items :: [OrdPos] } deriving Generic
-    data OrdPos = OrdPos { id :: Int32, num :: Int32, article :: Article, price :: Double } deriving Generic
-    data Article = Article { id :: Int32, name :: Text } deriving Generic
-    type MyAnn tabName = 'Ann CamelToSnake MySch 5 ("dbSchema" ->> tabName)
-        ...
-    do
-      -- insert an order with order positions
-      void $ insertJSON_ (MyAnn "orders") conn
-        [ "num" =: "num1" :. "ord__ord_pos" =:
-          [ "num" =: 1 :. "articleId" =: 42 :. "price" =: 10
-          , "num" =: 2 :. "articleId" =: 41 :. "price" =: 15 ] ]
-
-      -- select orders
-      (xs :: [Order]) <- selectSch (MyAnn "orders") conn $ qRoot do
-        qWhere $ "created_at" >? someDay
-          &&& pchild "ord__ord_pos" defTabParam
-            (pparent "ord_pos__article" $ "name" ~~? "%pencil%")
-        qOrderBy [descf "created_at", descf "num"]
-        qPath "ord__ord_pos" do
-          qWhere $ pparent "ord_pos__article" $ "name" ~~? "%pencil%"
-          qOrderBy [ascf "num"]
-        qLimit 20
-    @
+    Note that all table names, field names and foreign key constraint names are checked at compile time!
 
     === Structure of modules
 
