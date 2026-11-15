@@ -14,7 +14,7 @@ genNames = GenNames
   , tables = []                -- and single tables of other schemas (none here)
   , addRelations =             -- relations that are missing in the DB
     [ AddRelation
-      { name = "task_events_author"
+      { name = "task_events_author_id_fkey"
       , from = "tut" ->> "task_events"
       , to = "tut" ->> "users"
       , cols = [("author_id", "id")] } ] }
