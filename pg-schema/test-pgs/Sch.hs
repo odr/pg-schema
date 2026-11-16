@@ -64,18 +64,18 @@ instance (ToStar (TTypDef Sch name), ToStar name) => CTypDef Sch name where
   type TTypDef Sch name = TTypDefSch name
 
 type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
-  TTabDefSch ( "test_pgs" ->> "aggr_nums" ) = 'TabDef '[ "id","grp","i2","i4","i8","n","f4","f8" ] '[ "id" ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "arrays" ) = 'TabDef '[ "id","root_id","dates_nullable","jsons" ] '[ "id" ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "base_arr_converts" ) = 'TabDef '[ "cboolean","cint4","cfloat8","ctimestamptz","ctext" ] '[  ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "base_converts" ) = 'TabDef '[ "cboolean","cint4","cfloat8","cdate","ctime","ctimestamp","ctimestamptz","ctext" ] '[  ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "aggr_nums" ) = 'TabDef '[ "id","f4","f8","grp","i2","i4","i8","n" ] '[ "id" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "arrays" ) = 'TabDef '[ "id","dates_nullable","jsons","root_id" ] '[ "id" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "base_arr_converts" ) = 'TabDef '[ "cboolean","cfloat8","cint4","ctext","ctimestamptz" ] '[  ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "base_converts" ) = 'TabDef '[ "cboolean","cdate","cfloat8","cint4","ctext","ctime","ctimestamp","ctimestamptz" ] '[  ] '[  ]
   TTabDefSch ( "test_pgs" ->> "dim" ) = 'TabDef '[ "id","name" ] '[ "id" ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "ext_arr_converts" ) = 'TabDef '[ "ccitext","cbytea","cjsonb","cuuid","ccolor" ] '[  ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "ext_converts" ) = 'TabDef '[ "ccitext","cbytea","cjsonb","cjson","cuuid","ccolor" ] '[  ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "leaf" ) = 'TabDef '[ "root_id","seq","leaf_no","value","category","created_at" ] '[ "root_id","seq","leaf_no" ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "mid1" ) = 'TabDef '[ "id","root_id","pos","flag","sort_key","payload" ] '[ "id" ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "mid2" ) = 'TabDef '[ "root_id","seq","kind","flag","priority","payload" ] '[ "root_id","seq" ] '[  ]
-  TTabDefSch ( "test_pgs" ->> "nullable_uq_row" ) = 'TabDef '[ "id","code","suffix","name","note" ] '[ "id" ] '[ '[ "code","suffix" ] ]
-  TTabDefSch ( "test_pgs" ->> "root" ) = 'TabDef '[ "id","code","grp","name","created_at","dim_a_id","dim_b_id" ] '[ "id" ] '[ '[ "code","grp" ] ]
+  TTabDefSch ( "test_pgs" ->> "ext_arr_converts" ) = 'TabDef '[ "cbytea","ccitext","ccolor","cjsonb","cuuid" ] '[  ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "ext_converts" ) = 'TabDef '[ "cbytea","ccitext","ccolor","cjson","cjsonb","cuuid" ] '[  ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "leaf" ) = 'TabDef '[ "root_id","seq","leaf_no","category","created_at","value" ] '[ "root_id","seq","leaf_no" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "mid1" ) = 'TabDef '[ "id","flag","payload","pos","root_id","sort_key" ] '[ "id" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "mid2" ) = 'TabDef '[ "root_id","seq","flag","kind","payload","priority" ] '[ "root_id","seq" ] '[  ]
+  TTabDefSch ( "test_pgs" ->> "nullable_uq_row" ) = 'TabDef '[ "id","code","name","note","suffix" ] '[ "id" ] '[ '[ "code","suffix" ] ]
+  TTabDefSch ( "test_pgs" ->> "root" ) = 'TabDef '[ "id","code","created_at","dim_a_id","dim_b_id","grp","name" ] '[ "id" ] '[ '[ "code","grp" ] ]
   TTabDefSch ( "test_pgs" ->> "tag_link" ) = 'TabDef '[ "owner_id","tag","note" ] '[ "owner_id","tag" ] '[  ]
   TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
@@ -189,7 +189,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, grp, i2, i4, i8, n, f4, f8."
+    TE.:$$: TE.Text "  Fields: id, f4, f8, grp, i2, i4, i8, n."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -205,7 +205,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, root_id, dates_nullable, jsons."
+    TE.:$$: TE.Text "  Fields: id, dates_nullable, jsons, root_id."
     TE.:$$: TE.Text "  Foreign key constraints: arrays_root_fk."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -220,7 +220,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: cboolean, cint4, cfloat8, ctimestamptz, ctext."
+    TE.:$$: TE.Text "  Fields: cboolean, cfloat8, cint4, ctext, ctimestamptz."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -238,7 +238,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: cboolean, cint4, cfloat8, cdate, ctime, ctimestamp, ctimestamptz, ctext."
+    TE.:$$: TE.Text "  Fields: cboolean, cdate, cfloat8, cint4, ctext, ctime, ctimestamp, ctimestamptz."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -269,7 +269,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: ccitext, cbytea, cjsonb, cuuid, ccolor."
+    TE.:$$: TE.Text "  Fields: cbytea, ccitext, ccolor, cjsonb, cuuid."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -285,7 +285,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: ccitext, cbytea, cjsonb, cjson, cuuid, ccolor."
+    TE.:$$: TE.Text "  Fields: cbytea, ccitext, ccolor, cjson, cjsonb, cuuid."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -304,7 +304,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: root_id, seq, leaf_no, value, category, created_at."
+    TE.:$$: TE.Text "  Fields: root_id, seq, leaf_no, category, created_at, value."
     TE.:$$: TE.Text "  Foreign key constraints: leaf_mid2_fk."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -322,7 +322,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, root_id, pos, flag, sort_key, payload."
+    TE.:$$: TE.Text "  Fields: id, flag, payload, pos, root_id, sort_key."
     TE.:$$: TE.Text "  Foreign key constraints: mid1_root_fk."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -343,7 +343,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: root_id, seq, kind, flag, priority, payload."
+    TE.:$$: TE.Text "  Fields: root_id, seq, flag, kind, payload, priority."
     TE.:$$: TE.Text "  Foreign key constraints: mid2_root_fk, leaf_mid2_fk."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -358,7 +358,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, code, suffix, name, note."
+    TE.:$$: TE.Text "  Fields: id, code, name, note, suffix."
     TE.:$$: TE.Text "  Foreign key constraints: ."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -385,7 +385,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, code, grp, name, created_at, dim_a_id, dim_b_id."
+    TE.:$$: TE.Text "  Fields: id, code, created_at, dim_a_id, dim_b_id, grp, name."
     TE.:$$: TE.Text "  Foreign key constraints: root_dim_a_fk, root_dim_b_fk, arrays_root_fk, mid1_root_fk, mid2_root_fk."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."

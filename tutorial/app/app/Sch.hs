@@ -45,11 +45,11 @@ instance (ToStar (TTypDef Sch name), ToStar name) => CTypDef Sch name where
   type TTypDef Sch name = TTypDefSch name
 
 type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
-  TTabDefSch ( "audit" ->> "project_log" ) = 'TabDef '[ "id","project_id","message","client_ip","created_at" ] '[ "id" ] '[  ]
-  TTabDefSch ( "tut" ->> "projects" ) = 'TabDef '[ "id","owner_id","title","status","tags","created_at" ] '[ "id" ] '[  ]
-  TTabDefSch ( "tut" ->> "task_events" ) = 'TabDef '[ "project_id","seq","event_no","kind","meta","author_id","created_at" ] '[ "project_id","seq","event_no" ] '[  ]
-  TTabDefSch ( "tut" ->> "tasks" ) = 'TabDef '[ "project_id","seq","title","priority","payload","watchers" ] '[ "project_id","seq" ] '[  ]
-  TTabDefSch ( "tut" ->> "users" ) = 'TabDef '[ "id","name","email","manager_id","created_at" ] '[ "id" ] '[ '[ "email" ] ]
+  TTabDefSch ( "audit" ->> "project_log" ) = 'TabDef '[ "id","client_ip","created_at","message","project_id" ] '[ "id" ] '[  ]
+  TTabDefSch ( "tut" ->> "projects" ) = 'TabDef '[ "id","created_at","owner_id","status","tags","title" ] '[ "id" ] '[  ]
+  TTabDefSch ( "tut" ->> "task_events" ) = 'TabDef '[ "project_id","seq","event_no","author_id","created_at","kind","meta" ] '[ "project_id","seq","event_no" ] '[  ]
+  TTabDefSch ( "tut" ->> "tasks" ) = 'TabDef '[ "project_id","seq","payload","priority","title","watchers" ] '[ "project_id","seq" ] '[  ]
+  TTabDefSch ( "tut" ->> "users" ) = 'TabDef '[ "id","created_at","email","manager_id","name" ] '[ "id" ] '[ '[ "email" ] ]
   TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
@@ -130,7 +130,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, project_id, message, client_ip, created_at."
+    TE.:$$: TE.Text "  Fields: id, client_ip, created_at, message, project_id."
     TE.:$$: TE.Text "  Foreign key constraints: project_log_project_id_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -152,7 +152,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, owner_id, title, status, tags, created_at."
+    TE.:$$: TE.Text "  Fields: id, created_at, owner_id, status, tags, title."
     TE.:$$: TE.Text "  Foreign key constraints: projects_owner_id_fkey, project_log_project_id_fkey, tasks_project_id_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -174,7 +174,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: project_id, seq, event_no, kind, meta, author_id, created_at."
+    TE.:$$: TE.Text "  Fields: project_id, seq, event_no, author_id, created_at, kind, meta."
     TE.:$$: TE.Text "  Foreign key constraints: task_events_author_id_fkey, task_events_project_id_seq_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -195,7 +195,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: project_id, seq, title, priority, payload, watchers."
+    TE.:$$: TE.Text "  Fields: project_id, seq, payload, priority, title, watchers."
     TE.:$$: TE.Text "  Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -216,7 +216,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, name, email, manager_id, created_at."
+    TE.:$$: TE.Text "  Fields: id, created_at, email, manager_id, name."
     TE.:$$: TE.Text "  Foreign key constraints: users_manager_id_fkey, task_events_author_id_fkey, projects_owner_id_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."

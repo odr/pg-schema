@@ -165,7 +165,7 @@ Haskell — модуль `Sch.hs`. Затем, при работе с данны
   name "mail" is not defined.
 
   Valid values are:
-    Fields: id, name, email, manager_id, created_at.
+    Fields: id, created_at, email, manager_id, name.
     Foreign key constraints: users_manager_id_fkey, task_events_author_id_fkey, projects_owner_id_fkey.
 
   Your source or target type or renamer is probably invalid.
@@ -255,7 +255,7 @@ Record-типы удобны, но не всегда: заводить отде�
   name "manager_id1" is not defined.
 
   Valid values are:
-    Fields: id, name, email, manager_id, created_at.
+    Fields: id, created_at, email, manager_id, name.
     Foreign key constraints: users_manager_id_fkey, task_events_author_id_fkey, projects_owner_id_fkey.
 
   Your source or target type or renamer is probably invalid.

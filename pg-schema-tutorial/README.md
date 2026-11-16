@@ -238,7 +238,7 @@ ghci> :kind! TTabDef Tutorial ('NameNS "sch" "addresses")
 
 TTabDef Tutorial ('NameNS "sch" "addresses") :: TabDef' Symbol
 = 'TabDef
-    '["id", "city_id", "street", "home", "app", "zipcode"] '["id"] '[]
+    '["id", "app", "city_id", "home", "street", "zipcode"] '["id"] '[]
 
 ghci> :kind! TFldDef Tutorial ('NameNS "sch" "addresses") ("street")
 

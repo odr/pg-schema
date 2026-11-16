@@ -95,7 +95,7 @@ This reads projects with their tasks in one SQL query; `insertJSON` / `upsertJSO
   name "priorty" is not defined.
 
   Valid values are:
-    Fields: project_id, seq, title, priority.
+    Fields: project_id, seq, priority, title.
     Foreign key constraints: tasks_project_id_fkey.
 
   Your source or target type or renamer is probably invalid.
