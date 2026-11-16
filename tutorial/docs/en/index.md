@@ -2,42 +2,130 @@
 
 [`pg-schema`](https://hackage.haskell.org/package/pg-schema) is a library for
 working with PostgreSQL from Haskell in which the compiler checks your
-queries. The schema is extracted once from a live PostgreSQL database into a
-Haskell module, and from then on `select`, `insert`, `update` and `delete`
-are built with compile-time checks. A typo in a column name, a relation to the
-wrong table, a value of the wrong type, nested data of the wrong shape — all of
-these become compile errors instead of errors at query time. And when the
-database schema changes, you regenerate the module and the compiler shows every
-place in the program that needs fixing.
+queries. Two ideas make it different:
 
-`pg-schema` works on top of `postgresql-simple`: operations take an ordinary
-`Connection` and run in ordinary transactions. Using the schema description,
-`selectSch` reads data together with related rows by following foreign keys,
-and `insertJSON` and `upsertJSON` write a whole tree of data — say, a project
-together with its tasks — in one operation. Enums, `json` and `jsonb`, arrays
-and composite keys are supported, and for whatever the library cannot express
-there is a way out to raw SQL.
+- **The schema description is taken from the database itself**, so it cannot
+  silently drift from it. A generator reads a live PostgreSQL database once
+  and writes a Haskell module that describes its tables, columns, keys and
+  relations at the type level.
+- **An SQL query is not written but built in accordance with Haskell types and checked against the generated schema description.** You describe
+  which data you need — which fields, and which related rows along foreign
+  keys — and get one SQL query that reads exactly that. Inserts and updates
+  work the same way, from the type of the input data.
 
-Here is what a typical query looks like:
+A typo in a column name, a relation to the wrong table, a value of the wrong
+type, nested data of the wrong shape — all of these become compile errors
+instead of errors at query time. And when the database schema changes, you
+regenerate the module and the compiler shows every place in the program that
+needs fixing.
+
+## How you work with pg-schema {#how-you-work-with-pg-schema}
+
+The whole workflow has four steps. Every step links to the corresponding file
+of the tutorial, so you can see what it looks like in a real project.
+
+1. **Create the database.** The schema is defined in PostgreSQL as usual — by
+   an SQL script or by migrations. pg-schema does not create or change tables.
+   The tutorial schema:
+   [`tutorial/sql/00-create-schema.sql`](https://github.com/odr/pg-schema/blob/master/tutorial/sql/00-create-schema.sql). Its
+   comments show the names of the foreign keys: in pg-schema a relation
+   between tables is referred to by the name of its FK constraint.
+2. **Generate the schema description.** A small program — the generator —
+   reads the PostgreSQL metadata and writes a Haskell module with the
+   description of tables, columns, keys, relations and enums at the type
+   level. Generator: [`tutorial/app/generator/Main.hs`](https://github.com/odr/pg-schema/blob/master/tutorial/app/generator/Main.hs),
+   generated module: [`tutorial/app/app/Sch.hs`](https://github.com/odr/pg-schema/blob/master/tutorial/app/app/Sch.hs). The
+   generator is re-run after every change to the database structure.
+3. **Optionally, define your data types.** Ordinary records with
+   `deriving Generic`, whose fields are named after columns and relations —
+   for example, [`Project` and `Task`](https://github.com/odr/pg-schema/blob/master/tutorial/app/app/Tut/Wow.hs). No instances
+   are needed. You do not have to define records at all: fields can be
+   described right in the type of an operation with `PgTag`
+   (`"title" := Text :. "status" := …`).
+4. **Write queries with the EDSL, checked statically.** `selectSch`,
+   `insertSch`, `insertJSON`, `upsertJSON`, `updateByCond`, `deleteByCond` and
+   the others take an annotation with the generated schema and the base table.
+   From the types of the input and the result, pg-schema builds the SQL, and
+   the compiler checks every name, type, nullability and relation against
+   the description from step 2. Examples: the chapters of this tutorial and
+   their code in [`tutorial/app/app/Tut`](https://github.com/odr/pg-schema/blob/master/tutorial/app/app/Tut).
+
+When the database changes, you repeat step 2, and the compiler points at every
+query that no longer matches the database.
+
+## An example {#an-example}
+
+Here is a complete example: what is in the database, what is generated, and
+what you write.
+
+**The database (step 1).** The example uses two tables of the tutorial schema
+`tut` — projects and their tasks — linked by a foreign key that PostgreSQL
+named `tasks_project_id_fkey` (full script:
+[`00-create-schema.sql`](https://github.com/odr/pg-schema/blob/master/tutorial/sql/00-create-schema.sql)):
+
+```sql
+create type project_status as enum ('draft', 'active', 'archived');
+
+create table projects (
+  id          bigserial primary key,
+  owner_id    bigint not null references users(id),  -- projects_owner_id_fkey
+  title       text not null,
+  status      project_status not null default 'draft',
+  ...
+);
+
+create table tasks (
+  project_id  bigint not null references projects(id), -- tasks_project_id_fkey
+  seq         integer not null,
+  title       text not null,
+  priority    integer not null default 100,
+  ...
+  primary key (project_id, seq)
+);
+```
+
+**Generated (step 2).** You do not write or edit the module
+[`Sch`](https://github.com/odr/pg-schema/blob/master/tutorial/app/app/Sch.hs): the generator creates it from the database. It
+exports the schema type `Sch` and a Haskell type for every enum, here with the
+constructors `Project_status_draft`, `Project_status_active` and
+`Project_status_archived`.
+
+**Written by you (steps 3 and 4).** This is the whole user code of the
+example, including the extensions and the imports:
 
 ```haskell
+--8<-- "app/app/Tut/Why.hs:why-header"
+--8<-- "app/app/Tut/Why.hs:why-imports"
+
 --8<-- "app/app/Tut/Why.hs:why-ann"
 
 --8<-- "app/app/Tut/Why.hs:why-select"
 ```
 
+Where the names come from:
+
+| Name | Where from |
+|------|------------|
+| `Sch`, `Project_status_active` | generated module `Sch` |
+| `Ann`, `RenamerId`, `->>`, `:=`, `selectSch`, `qRoot`, `qWhere`, `qPath`, `=?`, `<?` | library, module `PgSchema.DML` |
+| `:.`, `Connection` | `postgresql-simple` (`:.` is re-exported by `PgSchema.DML`) |
+| `MyAnn`, the result type, the query | your code |
+| `"projects"`, `"title"`, `"status"`, `"priority"`, `"tasks_project_id_fkey"` | names from the database, checked by the compiler against `Sch` |
+
 `MyAnn` is the annotation shared by all operations: `Sch` is the generated
 schema description, `"tut" ->> tab` is a table in the `tut` database schema,
 `RenamerId` means that names in the program are the same as in the database,
-and `5` limits the depth of nested relations. The field `tasks_project_id_fkey`
-is named after the foreign key that links tasks to a project; with a renamer
-you can give relations and columns the usual camelCase names instead. All this
-is covered in detail in the chapter [Core workflow](02-core-workflow.md).
+and `5` limits the depth of nested relations. The relation from projects to
+their tasks is named after the foreign key, `tasks_project_id_fkey`; with a
+renamer you can give relations and columns the usual camelCase names instead.
+All this is covered in detail in the chapter [Core workflow](02-core-workflow.md).
 
-The result type defines which fields and relations to read: here, projects
-with the list of their tasks (the fields are described with `PgTag`:
-`"title" := Text`, and `:.` joins fields into a row). `qRoot` sets conditions
-for the root table `projects`, and `qPath` for the branch of tasks. This is what
+Step 3 — defining data types — is optional, and this example skips it: the
+result type is written right in the signature with `PgTag` fields
+(`"title" := Text`, joined into a row with `:.`). Here it is projects with the
+list of their tasks. Below, the same can be done with ordinary records.
+`qRoot` sets conditions for the root table `projects`, and `qPath` for the
+branch of tasks. This is what
 the query returns on the tutorial data:
 
 ```text
@@ -119,15 +207,14 @@ Among the libraries for type-safe database access from Haskell there are, for
 example, opaleye, beam and persistent. In them the database schema is described
 in Haskell code, and queries are built from expressions of an embedded
 language, which lets you write almost any query. `pg-schema` works differently.
-The schema description is taken from the database itself, so it cannot silently
-drift from it. And a query is not written but built from the result type: you
-describe which data you need and get one query that reads it. For complex trees
+As described at the top, the schema description is taken from the
+database itself, and a query is built from the result type. For complex trees
 of data this is shorter and more reliable, and whatever cannot be expressed
 this way can still be written as raw SQL. As for hasql, it is an alternative
 not to `pg-schema` but to `postgresql-simple`, on top of which `pg-schema`
 works.
 
-## Requirements
+## Requirements {#requirements}
 
 - GHC ≥ 9.10: the library uses visible type arguments
   (`selectSch (MyAnn "users") …`). You do not need to enable
