@@ -19,7 +19,7 @@ description:
     * __The schema description is taken from the database itself__, so it cannot silently drift from it.
       A generator reads a live database and writes a Haskell module that describes its tables, columns,
       keys, relations and enums at the type level.
-    * __A query is not written but built from the result type.__ You describe which data you need
+    * __An SQL query is not written but built in accordance with Haskell types.__ You describe which data you need
       (fields, and related rows along foreign keys) and get one SQL query that reads exactly that.
 
     The workflow:
