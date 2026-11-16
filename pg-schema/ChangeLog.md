@@ -1,6 +1,6 @@
 # Changelog for pg-schema
 
-## Unreleased
+## 0.9.0.1
 - Generation: the column list of a table (`tdFlds`) no longer follows the
   physical order (`attnum`), which depends on the history of `ALTER TABLE`:
   primary key columns go first (in the key order), then the other columns by
