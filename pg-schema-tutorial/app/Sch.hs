@@ -45,14 +45,14 @@ instance (ToStar (TTypDef Sch name), ToStar name) => CTypDef Sch name where
   type TTypDef Sch name = TTypDefSch name
 
 type family TTabDefSch (name :: NameNSK) :: TabDef' TL.Symbol where
-  TTabDefSch ( "sch" ->> "addresses" ) = 'TabDef '[ "id","city_id","street","home","app","zipcode","phones","numbers" ] '[ "id" ] '[  ]
-  TTabDefSch ( "sch" ->> "articles" ) = 'TabDef '[ "id","name","code","created_at","updated_at" ] '[ "id" ] '[ '[ "name" ] ]
+  TTabDefSch ( "sch" ->> "addresses" ) = 'TabDef '[ "id","app","city_id","home","numbers","phones","street","zipcode" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "articles" ) = 'TabDef '[ "id","code","created_at","name","updated_at" ] '[ "id" ] '[ '[ "name" ] ]
   TTabDefSch ( "sch" ->> "cities" ) = 'TabDef '[ "id","country_id","name" ] '[ "id" ] '[  ]
-  TTabDefSch ( "sch" ->> "companies" ) = 'TabDef '[ "id","name","address_id","created_at","updated_at" ] '[ "id" ] '[  ]
-  TTabDefSch ( "sch" ->> "countries" ) = 'TabDef '[ "id","name","code" ] '[ "id" ] '[  ]
-  TTabDefSch ( "sch" ->> "customers" ) = 'TabDef '[ "id","name","address_id","note","created_at","updated_at" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "companies" ) = 'TabDef '[ "id","address_id","created_at","name","updated_at" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "countries" ) = 'TabDef '[ "id","code","name" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "customers" ) = 'TabDef '[ "id","address_id","created_at","name","note","updated_at" ] '[ "id" ] '[  ]
   TTabDefSch ( "sch" ->> "order_positions" ) = 'TabDef '[ "order_id","num","article_id","cnt","price" ] '[ "order_id","num" ] '[ '[ "order_id","article_id" ] ]
-  TTabDefSch ( "sch" ->> "orders" ) = 'TabDef '[ "id","day","num","customer_id","seller_id","trader_id","state","created_at","updated_at" ] '[ "id" ] '[  ]
+  TTabDefSch ( "sch" ->> "orders" ) = 'TabDef '[ "id","created_at","customer_id","day","num","seller_id","state","trader_id","updated_at" ] '[ "id" ] '[  ]
   TTabDefSch name = TE.TypeError (TE.Text "In schema " TE.:<>: TE.ShowType Sch TE.:$$: TE.Text "table " TE.:<>: TE.ShowType name TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
@@ -152,7 +152,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, city_id, street, home, app, zipcode, phones, numbers."
+    TE.:$$: TE.Text "  Fields: id, app, city_id, home, numbers, phones, street, zipcode."
     TE.:$$: TE.Text "  Foreign key constraints: address_city, comp_addr, cust_addr."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -169,7 +169,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, name, code, created_at, updated_at."
+    TE.:$$: TE.Text "  Fields: id, code, created_at, name, updated_at."
     TE.:$$: TE.Text "  Foreign key constraints: opos_article."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -207,7 +207,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, name, address_id, created_at, updated_at."
+    TE.:$$: TE.Text "  Fields: id, address_id, created_at, name, updated_at."
     TE.:$$: TE.Text "  Foreign key constraints: comp_addr, ord_seller, ord_trader."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -222,7 +222,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, name, code."
+    TE.:$$: TE.Text "  Fields: id, code, name."
     TE.:$$: TE.Text "  Foreign key constraints: city_country."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -242,7 +242,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, name, address_id, note, created_at, updated_at."
+    TE.:$$: TE.Text "  Fields: id, address_id, created_at, name, note, updated_at."
     TE.:$$: TE.Text "  Foreign key constraints: cust_addr, ord_cust."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."
@@ -288,7 +288,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, day, num, customer_id, seller_id, trader_id, state, created_at, updated_at."
+    TE.:$$: TE.Text "  Fields: id, created_at, customer_id, day, num, seller_id, state, trader_id, updated_at."
     TE.:$$: TE.Text "  Foreign key constraints: ord_cust, ord_seller, ord_trader, opos_order."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."

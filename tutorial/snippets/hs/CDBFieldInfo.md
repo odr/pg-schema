@@ -17,7 +17,7 @@ type family TDBFieldInfoSch (t :: NameNSK) (f :: TL.Symbol) :: RecFieldK NameNSK
     TE.:$$: TE.Text "name " TE.:<>: TE.ShowType f TE.:<>: TE.Text " is not defined."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Valid values are:"
-    TE.:$$: TE.Text "  Fields: id, owner_id, title, status, tags, created_at."
+    TE.:$$: TE.Text "  Fields: id, created_at, owner_id, status, tags, title."
     TE.:$$: TE.Text "  Foreign key constraints: projects_owner_id_fkey, project_log_project_id_fkey, tasks_project_id_fkey."
     TE.:$$: TE.Text ""
     TE.:$$: TE.Text "Your source or target type or renamer is probably invalid."

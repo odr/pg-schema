@@ -45,9 +45,9 @@ data FldDef' s = FldDef
 
 -- | Table shape: ordered column names, primary key, unique constraints.
 data TabDef' s = TabDef
-  { tdFlds :: [s]     -- ^ Physical column names in order.
+  { tdFlds :: [s]     -- ^ Column names: primary key columns first, then the rest by name.
   , tdKey :: [s]      -- ^ Primary key column names.
-  , tdUniq :: [[s]]   -- ^ Unique constraints as lists of column names.
+  , tdUniq :: [[s]]   -- ^ Unique constraints as lists of column names, sorted.
   } deriving Show
 
 -- | Foreign-key-style link between two qualified tables and column mapping.

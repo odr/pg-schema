@@ -129,7 +129,7 @@ Column names in the new values are checked as everywhere else. A typo
   name "status1" is not defined.
 
   Valid values are:
-    Fields: id, owner_id, title, status, tags, created_at.
+    Fields: id, created_at, owner_id, status, tags, title.
     Foreign key constraints: projects_owner_id_fkey, project_log_project_id_fkey, tasks_project_id_fkey.
 
   Your source or target type or renamer is probably invalid.

@@ -361,7 +361,7 @@ names the table has:
   name "titel" is not defined.
 
   Valid values are:
-    Fields: project_id, seq, title, priority, payload, watchers.
+    Fields: project_id, seq, payload, priority, title, watchers.
     Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey.
 
   Your source or target type or renamer is probably invalid.
@@ -380,7 +380,7 @@ instead of `"priority"` in `activeProjects`, the message is almost the same:
   name "priorty" is not defined.
 
   Valid values are:
-    Fields: project_id, seq, title, priority, payload, watchers.
+    Fields: project_id, seq, payload, priority, title, watchers.
     Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey.
 
   Your source or target type or renamer is probably invalid.

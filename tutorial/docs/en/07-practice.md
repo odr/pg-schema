@@ -233,7 +233,7 @@ exists:
   name "priority" is not defined.
 
   Valid values are:
-    Fields: project_id, seq, title, weight, payload, watchers.
+    Fields: project_id, seq, payload, title, watchers, weight.
     Foreign key constraints: tasks_project_id_fkey, task_events_project_id_seq_fkey.
 
   Your source or target type or renamer is probably invalid.
