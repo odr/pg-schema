@@ -1,10 +1,13 @@
+-- --8<-- [start:why-header]
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+-- --8<-- [end:why-header]
 -- | Introduction (index.md): a minimal example and a parameterized record.
 -- Runs on the chapter 04 data (after its examples).
 module Tut.Why (whyExample, whyParam) where
 
+-- --8<-- [start:why-imports]
 import Data.Int (Int32)
 import Data.Text (Text)
 import Data.Type.Bool (If)
@@ -13,6 +16,7 @@ import Database.PostgreSQL.Simple (Connection)
 import GHC.Generics (Generic)
 import PgSchema.DML
 import Sch
+-- --8<-- [end:why-imports]
 
 -- --8<-- [start:why-ann]
 type MyAnn tab = 'Ann RenamerId Sch 5 ("tut" ->> tab)

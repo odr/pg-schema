@@ -1,91 +1,130 @@
 # Quick start
 
-This chapter is a short example of working with `pg-schema`. We create a
-database schema, connect it to a project, and write and read some data. We will
-work with data in two related tables at once: projects and their tasks. We
-write projects together with their tasks in one operation and read them back
-with one query, and the compiler checks the names of tables, fields and
-relations before the program even runs.
+This chapter is a short example of working with `pg-schema`. We will work with
+data in two related tables at once: projects and their tasks. We write projects
+together with their tasks in one operation and read them back with one query,
+and the compiler checks the names of tables, fields and relations before the
+program even runs.
 
-## Preparation
+The chapter follows the four steps of the [workflow](index.md#how-you-work-with-pg-schema):
 
-You need a clone of the `pg-schema` repository, a running PostgreSQL where you
-may create databases, and GHC with cabal (version requirements are in the
-[introduction](index.md)). All commands are run from the repository root, where
-`cabal.project` and the `Makefile` are. The schema generator and the examples
-application read the database connection string from the `PG_CONN` environment
-variable. The tutorial database is called `tutorial`, so for a local PostgreSQL
-this string is enough:
+1. [create the database](#step-1-the-database);
+2. [generate the schema description](#step-2-schema-generation);
+3. [define the data types](#step-3-application-data-types-optional) (optional);
+4. [write queries](#step-4-queries), which the compiler checks against the
+   description.
+
+If you only want to run the examples, two commands from the repository root
+are enough (you need PostgreSQL where you may create databases, and GHC with
+cabal — see the [requirements](index.md#requirements)):
 
 ```bash
 export PG_CONN='dbname=tutorial'
 ```
 
-If your server needs a host, a user or a password, add them to the same
-string, for example `dbname=tutorial host=localhost user=postgres`. The `make`
-commands below use the same variable.
-
-Now create the database and the tutorial schema `tut`:
-
 ```bash
-make tut-db-init
+make tut-run
 ```
 
-This command creates the `tutorial` database if it does not exist yet and runs
-the script `tutorial/sql/00-create-schema.sql`. The script starts by dropping
-the `tut` schema, so you can run it as often as you like and get a clean
-database each time. To make sure that the tables `users`, `projects`, `tasks`
-and `task_events` exist, run:
+`make tut-run` creates the database, runs the generator and then all the
+examples of the tutorial, and saves their output to `tutorial/out/tutorial.txt`.
 
-```bash
-psql "$PG_CONN" -c "\dt tut.*"
+??? note "Preparation in detail: the connection string, separate commands, the first build"
+
+    All commands are run from the root of a clone of the `pg-schema`
+    repository, where `cabal.project` and the `Makefile` are. The schema
+    generator and the examples application read the database connection string
+    from the `PG_CONN` environment variable. The tutorial database is called
+    `tutorial`, so for a local PostgreSQL `dbname=tutorial` is enough. If your
+    server needs a host, a user or a password, add them to the same string, for
+    example `dbname=tutorial host=localhost user=postgres`. The `make` commands
+    use the same variable.
+
+    `make tut-run` is made of three steps that can also be run separately:
+
+    ```bash
+    make tut-db-init               # create the database and the schemas
+    cabal run tutorial:generator   # regenerate tutorial/app/app/Sch.hs
+    cabal run tutorial:tutorial    # run the examples of all chapters
+    ```
+
+    `make tut-db-init` creates the `tutorial` database if it does not exist yet
+    and runs the script `tutorial/sql/00-create-schema.sql`. The script starts
+    by dropping the schemas, so you can run it as often as you like. To make
+    sure that the tables exist, run `psql "$PG_CONN" -c "\dt tut.*"`.
+
+    The examples program runs the examples of all chapters in order, and the
+    examples of this chapter come first. Before them it recreates the `tut`
+    schema itself, so the output does not depend on previous runs. You still
+    need `make tut-db-init` once: it creates the database itself, and the
+    generator needs the schema before the examples run.
+
+    The first build from scratch takes a while, because cabal builds all the
+    dependencies. It is convenient to start it in advance in another terminal
+    and keep reading: `cabal build tutorial:tutorial`.
+
+## Step 1. The database {#step-1-the-database}
+
+`pg-schema` does not create tables: the schema is defined in PostgreSQL as
+usual. The tutorial schema `tut` is created by the script
+[`tutorial/sql/00-create-schema.sql`](https://github.com/odr/pg-schema/blob/master/tutorial/sql/00-create-schema.sql). In this
+chapter we need two of its tables — `projects` and `tasks` — and `users`,
+because every project has an owner:
+
+```sql
+--8<-- "sql/00-create-schema.sql:wow-tables"
 ```
 
-The first build of the project from scratch takes a while, because cabal builds
-all the dependencies. It is convenient to start it in advance in another
-terminal and keep reading: `cabal build tutorial:tutorial`.
+Note the names of the foreign keys in the comments. We did not name the
+constraints, so PostgreSQL named them by default: the table, the columns and
+the suffix `_fkey`. In `pg-schema` a relation is referred to by exactly this
+name: below, the field `tasks_project_id_fkey` of a project will hold the list
+of its tasks. If you prefer other names, give the constraints names in the
+database (`constraint … foreign key …`) or use a renamer, which we will meet
+in the next chapter.
 
-## Schema generation
+??? note "The whole script `00-create-schema.sql`"
+
+    ```sql
+    --8<-- "sql/00-create-schema.sql"
+    ```
+
+## Step 2. Schema generation {#step-2-schema-generation}
 
 To check our queries, the compiler needs to know how the database is built.
 This description is created by the generator, and it must be run after every
 change to the database structure. The generator is a small program,
-`tutorial/app/generator/Main.hs`: it calls `updateSchemaFile`, reads the
-PostgreSQL metadata and writes it to the module `tutorial/app/app/Sch.hs`:
+[`tutorial/app/generator/Main.hs`](https://github.com/odr/pg-schema/blob/master/tutorial/app/generator/Main.hs): it lists which
+database schemas to describe and calls `updateSchemaFile`, which reads the
+PostgreSQL metadata and writes it to the module
+[`tutorial/app/app/Sch.hs`](https://github.com/odr/pg-schema/blob/master/tutorial/app/app/Sch.hs):
+
+```haskell
+--8<-- "app/generator/Main.hs:gen-main"
+```
 
 ```bash
 cabal run tutorial:generator
 ```
 
-The file `tutorial/app/app/Sch.hs` is already in the repository, and the
-generator rewrites it only if the database description has changed. If you
-forget to run the generator after changing the structure, the compiler checks
-queries against an outdated description: new columns and tables are unknown to
-it, while queries to dropped or renamed columns compile and fail only at run
-time. `Sch.hs` describes the tables of the `tut` schema, their fields and
-relations at the type level. We look at its contents in detail in the chapter
-[Core workflow](02-core-workflow.md); for now it is enough to know that the
+The file `Sch.hs` is already in the repository, and the generator rewrites it
+only if the database description has changed. If you forget to run the
+generator after changing the structure, the compiler checks queries against an
+outdated description: new columns and tables are unknown to it, while queries
+to dropped or renamed columns compile and fail only at run time. `Sch.hs`
+describes the tables, their fields and relations at the type level. You do not
+need to read it to use the library; we look at its contents in the chapter
+[Core workflow](02-core-workflow.md). For now it is enough to know that the
 examples import this module.
 
-Now you can run the examples themselves:
+## Step 3. Application data types (optional) {#step-3-application-data-types-optional}
 
-```bash
-cabal run tutorial:tutorial
-```
+This step is optional: instead of records, the fields can be listed right in
+the type of an operation with `PgTag`, as in the [introduction](index.md#an-example).
+With records, though, the code is easier to read.
 
-The program runs the examples of all chapters in order, and the examples of
-this chapter come first. Before them the program recreates the `tut` schema
-itself, so the output does not depend on previous runs, and you can run it as
-often as you like. You still need `make tut-db-init`: it creates the database
-itself, and the generator needs the schema before the examples run. Generating
-the schema and running the examples can also be done with a single command,
-`make tut-run`: it also runs `tut-db-init` and saves the output to
-`tutorial/out/tutorial.txt`. Below we go step by step through what the examples
-of this chapter do and what they print.
-
-## Application data types
-
-The examples of this chapter are in `tutorial/app/app/Tut/Wow.hs`. The project
+The examples of this chapter are in
+[`tutorial/app/app/Tut/Wow.hs`](https://github.com/odr/pg-schema/blob/master/tutorial/app/app/Tut/Wow.hs). The project
 is built with `GHC2024`, which already enables `TypeApplications` and
 `ScopedTypeVariables`, and the module enables a few more extensions:
 
@@ -148,7 +187,12 @@ called `Project_status_draft`, `Project_status_active` and
 have the same names as functions from `Prelude`, but this does no harm: we
 never call the fields ourselves, `pg-schema` works with them via `Generic`.
 
-## Inserting data
+## Step 4. Queries {#step-4-queries}
+
+Now we can work with the data. All examples of this step are
+functions in `IO` that take a `postgresql-simple` connection.
+
+### Inserting data
 
 Every project must have an owner: the column `projects.owner_id` is mandatory
 and refers to the `users` table. So first we add one user. A type with the
@@ -224,7 +268,7 @@ function in the database (`create function pg_temp.__ins …`), then calls it
 Note also that we never gave `project_id` for the tasks: the function takes it
 from the project it has just inserted.
 
-## Reading data
+### Reading data
 
 Now let us read the data back. We describe the query separately, so that in the
 next section we can look at its SQL without running it. The type
@@ -278,7 +322,7 @@ text, so the condition on tasks comes first. The text shows that the projects
 together with their tasks were read by one SQL query: the tasks of each project
 are gathered into a JSON array right inside it.
 
-## SQL without running the query
+### SQL without running the query
 
 Sometimes you want not to run a query but only to see what SQL it produces: in
 a REPL, while debugging, or in a test that has no database. That is what
@@ -304,7 +348,7 @@ This is the same query that `selectSch` ran in the previous section. The result
 type is given explicitly here (`@Project`), because we get no rows, and the
 compiler has nothing to infer it from.
 
-## :thinking_face: What if…
+### :thinking_face: What if…
 
 Let us see what happens if we get a name wrong. Suppose we made a typo in the
 type `Task` and named the field `titel` instead of `title`. The program does not
