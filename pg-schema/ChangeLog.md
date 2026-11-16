@@ -1,6 +1,6 @@
 # Changelog for pg-schema
 
-## 0.9.0.0
+## Unreleased
 - Generation: the column list of a table (`tdFlds`) no longer follows the
   physical order (`attnum`), which depends on the history of `ALTER TABLE`:
   primary key columns go first (in the key order), then the other columns by
@@ -10,6 +10,8 @@
   columns instead of the constraint names.
 - Fix: `addRelations` took the column number from the position of the column
   in the list, so it got the wrong column after a column was dropped.
+
+## 0.9.0.0
 - Fix typos in some compile-time error messages
 - Improve Haddock
 - Remove the unused constructor `RFEmpty` of `RecField'`.
