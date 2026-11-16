@@ -3,7 +3,7 @@
 [*pg-schema*](https://hackage-content.haskell.org/package/pg-schema) is a Haskell library for working with PostgreSQL in which the compiler checks your queries. Two ideas make it different:
 
 - **The schema description is taken from the database itself**, so it cannot silently drift from it. A generator reads a live PostgreSQL database and writes a Haskell module that describes its tables, columns, keys, relations and enums at the type level.
-- **An SQL query is not written but built in accordance with Haskell types.** You describe which data you need — which fields, and which related rows along foreign keys — and get one SQL query that reads exactly that. Inserts and updates are built the same way, from the type of the input data.
+- **An SQL query is not written but built in accordance with Haskell types and checked against the generated schema description.** You describe which data you need — which fields, and which related rows along foreign keys — and get one SQL query that reads exactly that. Inserts and updates are built the same way, from the type of the input data.
 
 A typo in a column name, a relation to the wrong table, a value of the wrong type, nested data of the wrong shape — all of these become compile errors. When the database changes, you regenerate the module, and the compiler shows every query that no longer matches it.
 

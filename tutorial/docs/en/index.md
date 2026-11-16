@@ -8,7 +8,7 @@ queries. Two ideas make it different:
   silently drift from it. A generator reads a live PostgreSQL database once
   and writes a Haskell module that describes its tables, columns, keys and
   relations at the type level.
-- **A query is not written but built from the result type.** You describe
+- **An SQL query is not written but built in accordance with Haskell types and checked against the generated schema description.** You describe
   which data you need — which fields, and which related rows along foreign
   keys — and get one SQL query that reads exactly that. Inserts and updates
   work the same way, from the type of the input data.
